@@ -1,0 +1,67 @@
+TITLE: BIOSTATUS
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/functions/network/func_net_telemetry.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+BIOSTATUS KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: func_net_telemetry.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (common_reg_funcs.c, eval_ident_builtin.c)
+    // NEEDS: libcore (language_descriptor.h, strings.h)
+    // NEEDS: libengine (func_net_telemetry.h)
+    // Provides runtime implementation and LanguageDescriptors for network and I/O
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Returns block device I/O status bitmask.
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    BIOSTATUS
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM BIOSTATUS Demonstration
+    20 PRINT "BIOSTATUS executed successfully."
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+None
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Diagnostics
+Subsystem:     SUBSYSTEM_PLATFORM
+Safety Level:  SAFETY_SAFE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  BIOSTATUS
+Category              Diagnostics
+Syntax                BIOSTATUS
+Description           Returns block device I/O status bitmask.
+Error Summary         None
+Subsystem             SUBSYSTEM_PLATFORM
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_VARIABLE
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/eval/functions/network/func_net_telemetry.c

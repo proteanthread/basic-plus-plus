@@ -1,17 +1,71 @@
-STR$ String Representation of Number Function
-======================================================================
+TITLE: STR$
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/functions/string/conversion/str.c
+GENERATED: no, hand-written
+STATUS: current
 
-The STR$ function converts a number to a string (with leading space for
-positive numbers).
+==============================================================================
+STR$ KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: str.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (string_fn.c)
+    // NEEDS: libcore (memory.h, memory.c)
+    // NEEDS: libcore (language_descriptor.h)
+    // NEEDS: libcore (num_format.h, num_format.c, string.h, strings.h, strings.c)
+    // NEEDS: libengine (str.h, string.c, vm.h)
+    // Provides runtime implementation for the STR built-in function in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Returns the string representation of numeric expression x.
 
-    res$ = STR$(numeric_expression)
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    STR$(x)
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = STR$(10)
+    20 PRINT "Result: "; Val
 
-CODE EXAMPLES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 13: Type Mismatch (STR$ expects one numeric argument)
 
-    10 PRINT STR$(100)   : REM Outputs " 100"
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      String Functions
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_IO
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  STR$
+Category              String Functions
+Syntax                STR$(x)
+Description           Returns the string representation of numeric expres...
+Error Summary         Error 13: Type Mismatch (STR$ expects one numeric a...
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_IO
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/eval/functions/string/conversion/str.c

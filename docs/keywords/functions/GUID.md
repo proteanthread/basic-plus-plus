@@ -1,22 +1,71 @@
-# `GUID` GUID Validation & Binary Conversion Function
+<!--
+Title:        GUID
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/eval/eval.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Function Definition
+# `GUID` Keyword Reference
 
-The `GUID` function parses and validates a UUID/GUID string representation, returning a status code or raw 16-byte buffer representation.
+## Source Header
 
-### Syntax Signatures:
-```basic
-is_valid% = GUID(uuid_str$)
+```c
+// FILENAME: eval.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libboot, libcore, libengine, libext, libkernel, libstandard
+// NEEDS: libengine (eval_expr_internal.h)
+// Implements component functionality for eval.c.
+//
+// ---- Includes ----
 ```
 
-### Operational Rules:
-- Returns non-zero (true) if `uuid_str$` conforms to RFC 4122 standard UUID format; 0 (false) otherwise.
+## 1. Description & Usage
+
+Generates a raw 16-byte binary UUID / GUID buffer representation.
+
+## 2. Syntax
+
+```basic
+GUID
+```
+
+## 3. Code Example
+
+```basic
+10 REM GUID Demonstration
+20 PRINT "GUID executed successfully."
+```
+
+## 4. Error Conditions
+
+Error 14: Out of String Space
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: System & OS
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_SAFE
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 S$ = GUID$
-20 IF GUID(S$) THEN PRINT "Valid UUID generated: "; S$
-```
+| Field | Value |
+|---|---|
+| Name | GUID |
+| Category | System & OS |
+| Syntax | GUID |
+| Description | Generates a raw 16-byte binary UUID / GUID buffer representation. |
+| Error Summary | Error 14: Out of String Space |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_SAFE |
+| Feature Type | FEATURE_FUNCTION |
+| Delimiter Mask | none |
+| Compatibility | BASIC++ Standard |
+| Since Version | 6.0.0 |
+| Source File | engine/src/eval/eval.c |

@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
 // NEEDS: libcore (ctype.h, ctype.c, memory.h, memory.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libcore (strings.h, strings.c, variables.h, variables.c)
 // NEEDS: libengine (eval.h, eval.c, lexer.h, lexer.c, merge.h, string.c, vm.h)
 // NEEDS: libkernel (errors.h, security.h, security.c, vdev.h, vdev.c)
@@ -21,15 +21,28 @@
 #include "runtime/strings.h"
 #include "device/vdev.h"
 #include "security/security.h"
-#include "runtime/micro_lib_metadata.h"
-#include <string.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <ctype.h>
+#include "runtime/language_descriptor.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "runtime/format/snprintf.h"
+#include "runtime/memory/alloc.h"
+#include "runtime/ctype/ctype.h"
+#include "platform/platform.h"
+
+static const LangDesc g_merge_desc = {
+    .name = "MERGE",
+    .category = "Program Mgmt & Editing",
+    .syntax = "MERGE filename_expr",
+    .description = "Merges specified ASCII BASIC source file into current memory program without clearing existing lines.",
+    .error_summary = "Error 53: File Not Found, Error 13: Type Mismatch",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SAFE,
+    .type = FEATURE_STATEMENT
+};
 
 BppError stmt_merge_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     if (!vm || !lex) {
         err.code = ERR_ILLEGAL_FUNCTION_CALL;
         return err;
@@ -48,7 +61,7 @@ BppError stmt_merge_handler(VMContext *vm, LexerContext *lex) {
     }
 
     const char *filename = str_data(val.as.string);
-    FILE *fp = fopen(filename, "r");
+    void *fp = platform_file_open(filename, "r");
     if (!fp) {
         str_release(vm_get_str(vm), val.as.string);
         err.code = ERR_FILE_NOT_FOUND;
@@ -56,18 +69,22 @@ BppError stmt_merge_handler(VMContext *vm, LexerContext *lex) {
     }
 
     char line_buf[1024];
-    while (fgets(line_buf, sizeof(line_buf), fp)) {
-        size_t len = strlen(line_buf);
+    while (platform_file_gets(line_buf, sizeof(line_buf), fp)) {
+        size_t len = runtime_strlen(line_buf);
         while (len > 0 && (line_buf[len - 1] == '\r' || line_buf[len - 1] == '\n')) {
             line_buf[--len] = '\0';
         }
         char *p = line_buf;
-        while (isspace((unsigned char)*p)) p++;
+        while (runtime_isspace((unsigned char)*p)) p++;
         if (*p != '\0') {
-            if (isdigit((unsigned char)*p)) {
-                BppLineNumber line_num = (BppLineNumber)atof(p);
-                while (isdigit((unsigned char)*p) || *p == '.') p++;
-                while (isspace((unsigned char)*p)) p++;
+            if (runtime_isdigit((unsigned char)*p)) {
+                BppLineNumber line_num = 0;
+                while (runtime_isdigit((unsigned char)*p)) {
+                    line_num = line_num * 10 + (*p - '0');
+                    p++;
+                }
+                while (runtime_isdigit((unsigned char)*p) || *p == '.') p++;
+                while (runtime_isspace((unsigned char)*p)) p++;
                 if (*p == '\0') {
                     mem_program_remove(vm_get_mem(vm), line_num);
                 } else {
@@ -79,18 +96,11 @@ BppError stmt_merge_handler(VMContext *vm, LexerContext *lex) {
         }
     }
 
-    fclose(fp);
+    platform_file_close(fp);
     str_release(vm_get_str(vm), val.as.string);
     return err;
 }
 
 void stmt_merge_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "MERGE",
-        .category = "Program Mgmt & Editing",
-        .syntax = "MERGE filename_expr",
-        .help_text = "Merges specified ASCII BASIC source file into current memory program without clearing existing lines.",
-        .error_codes = "Error 53: File Not Found, Error 13: Type Mismatch"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_merge_desc);
 }

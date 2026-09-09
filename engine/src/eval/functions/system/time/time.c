@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libcore, libengine, libplatform
 // NEEDS: libcore (hal.h, memory.h, memory.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libcore (strings.h, strings.c)
 // NEEDS: libengine (string.c, time.h)
 // NEEDS: libplatform (platform.h)
@@ -13,20 +13,26 @@
 
 #include "eval/functions/system/time/time.h"
 #include "platform/platform.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/strings.h"
 #include "runtime/string.h"
 #include "runtime/memory.h"
 #include "hal/hal.h"
+#include "runtime/format/snprintf.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_time_desc = {
+    .name = "TIME$",
+    .category = "System Functions",
+    .syntax = "TIME$ | TIME$(seconds_or_mins)",
+    .description = "Returns the current system time string, or formats a numeric second/minute count into HH:MM:SS (DEC BASIC-PLUS).",
+    .error_summary = "Error 13: Type Mismatch",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_FUNCTION
+};
 void func_time_register(void) {
-    MicroLibMetadata meta = {
-        .name = "TIME$",
-        .category = "System Functions",
-        .syntax = "TIME$ | TIME$(seconds_or_mins)",
-        .help_text = "Returns the current system time string, or formats a numeric second/minute count into HH:MM:SS (DEC BASIC-PLUS).",
-        .error_codes = "Error 13: Type Mismatch"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_time_desc);
 }
 
 BValue func_time_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err) {
@@ -75,14 +81,16 @@ BValue func_time_eval(VMContext *vm, const char *uname, int arg_count, BValue *a
     if (runtime_strcmp(uname, "TIME$") == 0) {
         char buf[64] = "";
         if (lt) {
-            runtime_snprintf(buf, sizeof(buf), "%02d:%02d:%02d", lt->tm_hour, lt->tm_min, lt->tm_sec);
+            int hour12 = (lt->tm_hour == 0) ? 12 : ((lt->tm_hour > 12) ? lt->tm_hour - 12 : lt->tm_hour);
+            const char *ampm = (lt->tm_hour >= 12) ? "PM" : "AM";
+            runtime_snprintf(buf, sizeof(buf), "%02d:%02d:%02d %s", hour12, lt->tm_min, lt->tm_sec, ampm);
         }
         res.type = VAL_STRING;
         res.as.string = str_create(vm_get_str(vm), buf, runtime_strlen(buf));
     } else {
         double val = 0.0;
         if (lt) {
-            val = lt->tm_hour * 10000.0 + lt->tm_min * 100.0 + lt->tm_sec;
+            val = (double)(lt->tm_hour * 10000 + lt->tm_min * 100 + lt->tm_sec);
         }
         res.type = VAL_NUMBER;
         res.as.number = val;

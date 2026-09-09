@@ -4,7 +4,7 @@
 // NEEDED BY: libengine (reformat_analyze.c, reformat_engine.c)
 // NEEDED BY: libengine (reformat_indent.c, reformat_report.c)
 // NEEDS: libcore (ctype.h, ctype.c, memory.h, memory.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libengine (lexer.h, lexer.c, reformat.h, reformat.c, string.c, vm.h)
 // NEEDS: libkernel (vdev.h, vdev.c)
 // NEEDS: libplatform (platform.h)
@@ -15,25 +15,26 @@
 #ifndef REFORMAT_INTERNAL_H
 #define REFORMAT_INTERNAL_H
 
-#include <ctype.h>
+#include "runtime/ctype/ctype.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include "runtime/format/snprintf.h"
+#include "runtime/memory/alloc.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
 
 #include "device/vdev.h"
 #include "lexer/lexer.h"
 #include "memory/memory.h"
 #include "platform/platform.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "statements/program/reformat.h"
 #include "vm/vm.h"
 
 #ifdef _MSC_VER
-#define strcasecmp _stricmp
-#define strncasecmp _strnicmp
+#define runtime_strcasecmp runtime_strcasecmp
+#define runtime_strncasecmp runtime_strncasecmp
 #endif
 
 //
@@ -95,7 +96,7 @@ static inline const char *get_expected_closer(ReformatBlockType type) {
 
 static inline const char *skip_leading_ws(const char *str) {
     if (!str) return "";
-    while (*str && isspace((unsigned char)*str)) str++;
+    while (*str && runtime_isspace((unsigned char)*str)) str++;
     return str;
 }
 
@@ -105,9 +106,9 @@ static inline void add_diagnostic(ReformatPlan *plan, DiagSeverity sev, double l
     ReformatDiagnostic *d = &plan->diagnostics[plan->diag_count++];
     d->severity = sev;
     d->line = line;
-    snprintf(d->what, sizeof(d->what), "%s", what ? what : "");
-    snprintf(d->why,  sizeof(d->why),  "%s", why  ? why  : "");
-    snprintf(d->how,  sizeof(d->how),  "%s", how  ? how  : "");
+    runtime_snprintf(d->what, sizeof(d->what), "%s", what ? what : "");
+    runtime_snprintf(d->why,  sizeof(d->why),  "%s", why  ? why  : "");
+    runtime_snprintf(d->how,  sizeof(d->how),  "%s", how  ? how  : "");
 
     if (sev == DIAG_ERROR) {
         plan->error_count++;
@@ -120,8 +121,8 @@ static inline void add_suggestion(ReformatPlan *plan, double line, const char *t
     if (!plan || plan->suggestion_count >= REFORMAT_MAX_SUGGESTIONS) return;
     ReformatSuggestion *s = &plan->suggestions[plan->suggestion_count++];
     s->line = line;
-    snprintf(s->text, sizeof(s->text), "%s", text ? text : "");
-    snprintf(s->reason, sizeof(s->reason), "%s", reason ? reason : "");
+    runtime_snprintf(s->text, sizeof(s->text), "%s", text ? text : "");
+    runtime_snprintf(s->reason, sizeof(s->reason), "%s", reason ? reason : "");
 }
 
 int tokenize_line_fast(const char *text, FastToken *tokens, int max_tokens);

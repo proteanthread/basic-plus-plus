@@ -1,9 +1,9 @@
-// FILENAME: snprintf.h
+// FILENAME: runtime_snprintf.h
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libboot, libcore, libengine, libkernel, libserver, libstandard
 // NEEDS: platform, memory
-// Freestanding snprintf formatting engine for integers and floats.
+// Freestanding runtime_snprintf formatting engine for integers and floats.
 //
 // ---- Includes ----
 
@@ -12,6 +12,7 @@
 
 #include <stddef.h>
 #include <stdarg.h>
+#include "runtime/format/snprintf.h"
 
 #ifdef __cplusplus
 extern "C" {

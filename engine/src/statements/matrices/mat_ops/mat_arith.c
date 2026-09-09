@@ -8,13 +8,15 @@
 // ---- Includes ----
 
 #include "statements/matrices/mat_internal.h"
+#include "runtime/string/memops.h"
+#include "runtime/memory/alloc.h"
 
 //
 // ---- Binary Matrix Arithmetic ----
 
 BppError mat_op_add(VMContext *vm, const char *dest, const char *name_a, const char *name_b) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     ArrayContext *arr = vm_get_arr(vm);
 
     int bounds_a[4] = {0}, bounds_b[4] = {0};
@@ -50,7 +52,7 @@ BppError mat_op_add(VMContext *vm, const char *dest, const char *name_a, const c
 
 BppError mat_op_sub(VMContext *vm, const char *dest, const char *name_a, const char *name_b) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     ArrayContext *arr = vm_get_arr(vm);
 
     int bounds_a[4] = {0}, bounds_b[4] = {0};
@@ -86,7 +88,7 @@ BppError mat_op_sub(VMContext *vm, const char *dest, const char *name_a, const c
 
 BppError mat_op_mul(VMContext *vm, const char *dest, const char *name_a, const char *name_b) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     ArrayContext *arr = vm_get_arr(vm);
     int base = arr_get_option_base(arr);
 
@@ -106,7 +108,7 @@ BppError mat_op_mul(VMContext *vm, const char *dest, const char *name_a, const c
         }
 
         int bounds_c[2] = {base + rows_a - 1, base + cols_b - 1};
-        double *temp = (double *)calloc((size_t)(rows_a * cols_b), sizeof(double));
+        double *temp = (double *)runtime_calloc((size_t)(rows_a * cols_b), sizeof(double));
         if (!temp) { err.code = 14; err.message = "Out of memory in MAT *"; return err; }
 
         int sz_a = 0, sz_b = 0;
@@ -136,7 +138,7 @@ BppError mat_op_mul(VMContext *vm, const char *dest, const char *name_a, const c
                 ec[i].as.number = temp[i];
             }
         }
-        free(temp);
+        runtime_free(temp);
         err.code = 0;
         return err;
     } else if (dims_a == 1 && dims_b == 1) {
@@ -176,7 +178,7 @@ BppError mat_op_mul(VMContext *vm, const char *dest, const char *name_a, const c
             return err;
         }
 
-        double *temp = (double *)calloc((size_t)cols_b, sizeof(double));
+        double *temp = (double *)runtime_calloc((size_t)cols_b, sizeof(double));
         if (!temp) { err.code = 14; err.message = "Out of memory in MAT *"; return err; }
 
         for (int c = 0; c < cols_b; c++) {
@@ -203,7 +205,7 @@ BppError mat_op_mul(VMContext *vm, const char *dest, const char *name_a, const c
                 pc->as.number = temp[c];
             }
         }
-        free(temp);
+        runtime_free(temp);
         err.code = 0;
         return err;
     } else if (dims_a == 2 && dims_b == 1) {
@@ -215,7 +217,7 @@ BppError mat_op_mul(VMContext *vm, const char *dest, const char *name_a, const c
             return err;
         }
 
-        double *temp = (double *)calloc((size_t)rows_a, sizeof(double));
+        double *temp = (double *)runtime_calloc((size_t)rows_a, sizeof(double));
         if (!temp) { err.code = 14; err.message = "Out of memory in MAT *"; return err; }
 
         for (int r = 0; r < rows_a; r++) {
@@ -242,7 +244,7 @@ BppError mat_op_mul(VMContext *vm, const char *dest, const char *name_a, const c
                 pc->as.number = temp[r];
             }
         }
-        free(temp);
+        runtime_free(temp);
         err.code = 0;
         return err;
     }
@@ -256,7 +258,7 @@ BppError mat_op_mul(VMContext *vm, const char *dest, const char *name_a, const c
 
 BppError mat_op_scalar(VMContext *vm, const char *dest, double scalar, int op_type, const char *src) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     ArrayContext *arr = vm_get_arr(vm);
 
     int sbounds[4] = {0};
@@ -289,7 +291,7 @@ BppError mat_op_scalar(VMContext *vm, const char *dest, double scalar, int op_ty
 
 BppError mat_op_div_scalar(VMContext *vm, const char *dest, const char *name_a, double scalar) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     if (scalar == 0.0) {
         err.code = 11; err.message = "Division by zero in MAT /";
         return err;
@@ -318,7 +320,7 @@ BppError mat_op_div_scalar(VMContext *vm, const char *dest, const char *name_a, 
 
 BppError mat_op_copy(VMContext *vm, const char *dest, const char *src) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     ArrayContext *arr = vm_get_arr(vm);
 
     int bounds_a[4] = {0};

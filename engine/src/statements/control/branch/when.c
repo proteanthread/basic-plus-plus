@@ -2,7 +2,7 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libengine (lexer.h, lexer.c, string.c, vm.h, when.h)
 // Provides runtime implementation for the WHEN statement in BASIC++.
 //
@@ -11,12 +11,24 @@
 #include "statements/control/branch/when.h"
 #include "vm/vm.h"
 #include "lexer/lexer.h"
-#include "runtime/micro_lib_metadata.h"
-#include <string.h>
+#include "runtime/language_descriptor.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_when_desc = {
+    .name = "WHEN",
+    .category = "Control Flow",
+    .syntax = "WHEN ERROR IN ... USE ... END WHEN",
+    .description = "ECMA-116 standard exception handling protection block.",
+    .error_summary = "Error 2: Syntax Error",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SAFE,
+    .type = FEATURE_STATEMENT
+};
 
 BppError stmt_when_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     if (!vm || !lex) {
         err.code = 5; err.message = "Null VM or lexer context";
@@ -26,11 +38,11 @@ BppError stmt_when_handler(VMContext *vm, LexerContext *lex) {
     // Expect optional ERROR IN or EXCEPTION IN after WHEN
     BppToken tok = lex_peek(lex);
     if ((tok.type == TOK_KEYWORD && tok.as.keyword == KW_ERROR) ||
-        (tok.type == TOK_IDENT && ((tok.length == 5 && strncasecmp(tok.start, "ERROR", 5) == 0) ||
-                                   (tok.length == 9 && strncasecmp(tok.start, "EXCEPTION", 9) == 0)))) {
+        (tok.type == TOK_IDENT && ((tok.length == 5 && runtime_strncasecmp(tok.start, "ERROR", 5) == 0) ||
+                                   (tok.length == 9 && runtime_strncasecmp(tok.start, "EXCEPTION", 9) == 0)))) {
         lex_next(lex);
         tok = lex_peek(lex);
-        if (tok.type == TOK_IDENT && tok.length == 2 && strncasecmp(tok.start, "IN", 2) == 0) {
+        if (tok.type == TOK_IDENT && tok.length == 2 && runtime_strncasecmp(tok.start, "IN", 2) == 0) {
             lex_next(lex);
         }
     }
@@ -70,11 +82,11 @@ BppError stmt_when_handler(VMContext *vm, LexerContext *lex) {
             t = lex_next(scan_lex);
         }
         bool is_when = (t.type == TOK_KEYWORD && t.as.keyword == KW_WHEN) ||
-                       (t.type == TOK_IDENT && t.length == 4 && strncasecmp(t.start, "WHEN", 4) == 0);
+                       (t.type == TOK_IDENT && t.length == 4 && runtime_strncasecmp(t.start, "WHEN", 4) == 0);
         bool is_use  = (t.type == TOK_KEYWORD && t.as.keyword == KW_USE) ||
-                       (t.type == TOK_IDENT && t.length == 3 && strncasecmp(t.start, "USE", 3) == 0);
+                       (t.type == TOK_IDENT && t.length == 3 && runtime_strncasecmp(t.start, "USE", 3) == 0);
         bool is_end  = (t.type == TOK_KEYWORD && t.as.keyword == KW_END) ||
-                       (t.type == TOK_IDENT && t.length == 3 && strncasecmp(t.start, "END", 3) == 0);
+                       (t.type == TOK_IDENT && t.length == 3 && runtime_strncasecmp(t.start, "END", 3) == 0);
 
         if (is_when) {
             nest++;
@@ -84,7 +96,7 @@ BppError stmt_when_handler(VMContext *vm, LexerContext *lex) {
         } else if (is_end) {
             BppToken nt = lex_next(scan_lex);
             bool is_nt_when = (nt.type == TOK_KEYWORD && nt.as.keyword == KW_WHEN) ||
-                              (nt.type == TOK_IDENT && nt.length == 4 && strncasecmp(nt.start, "WHEN", 4) == 0);
+                              (nt.type == TOK_IDENT && nt.length == 4 && runtime_strncasecmp(nt.start, "WHEN", 4) == 0);
             if (is_nt_when) {
                 if (nest > 0) {
                     nest--;
@@ -105,7 +117,7 @@ BppError stmt_when_handler(VMContext *vm, LexerContext *lex) {
     }
 
     BppTryFrame frame;
-    memset(&frame, 0, sizeof(frame));
+    runtime_memset(&frame, 0, sizeof(frame));
     frame.catch_line = use_ln;
     frame.catch_pos = use_pos;
     frame.end_try_line = end_when_ln;
@@ -121,7 +133,7 @@ BppError stmt_when_handler(VMContext *vm, LexerContext *lex) {
 
 BppError stmt_use_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     (void)lex;
     if (!vm) return err;
 
@@ -141,18 +153,11 @@ BppError stmt_use_handler(VMContext *vm, LexerContext *lex) {
 
 BppError stmt_end_when_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     (void)vm; (void)lex;
     return err;
 }
 
 void stmt_when_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "WHEN",
-        .category = "Control Flow",
-        .syntax = "WHEN ERROR IN ... USE ... END WHEN",
-        .help_text = "ECMA-116 standard exception handling protection block.",
-        .error_codes = "Error 2: Syntax Error"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_when_desc);
 }

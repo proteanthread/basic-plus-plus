@@ -124,14 +124,14 @@ double runtime_modf(double x, double *iptr) {
     return x - intpart;
 }
 
-double runtime_frexp(double x, int *exp) {
+double runtime_frexp(double x, int *runtime_exp) {
 
     if (x == 0.0) {
-        if (exp) *exp = 0;
+        if (runtime_exp) *runtime_exp = 0;
         return 0.0;
     }
     if (runtime_isnan(x) || runtime_isinf(x)) {
-        if (exp) *exp = 0;
+        if (runtime_exp) *runtime_exp = 0;
         return x;
     }
     union {
@@ -142,11 +142,11 @@ double runtime_frexp(double x, int *exp) {
     int e = (int)((conv.u >> 52) & 0x7FF) - 1022;
     conv.u &= 0x800FFFFFFFFFFFFFULL; // Clear exponent
     conv.u |= 0x3FE0000000000000ULL; // Set exponent to -1 (0.5 <= |mant| < 1.0)
-    if (exp) *exp = e;
+    if (runtime_exp) *runtime_exp = e;
     return conv.d;
 }
 
-double runtime_ldexp(double x, int exp) {
+double runtime_ldexp(double x, int runtime_exp) {
     if (x == 0.0 || runtime_isnan(x) || runtime_isinf(x)) return x;
     union {
         double d;
@@ -154,7 +154,7 @@ double runtime_ldexp(double x, int exp) {
     } conv;
     conv.d = x;
     int cur_exp = (int)((conv.u >> 52) & 0x7FF);
-    int new_exp = cur_exp + exp;
+    int new_exp = cur_exp + runtime_exp;
     if (new_exp >= 2047) {
         return (x < 0.0) ? -RUNTIME_INFINITY : RUNTIME_INFINITY;
     }

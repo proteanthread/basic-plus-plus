@@ -1,0 +1,89 @@
+<!--
+Title:        Porting And Portability Guide
+Tier:         1
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot, bppc, trans, detok)
+Authority:    engine/src/platform/, engine/include/platform/
+Generated:    no
+Status:       Active
+-->
+
+# BASIC++ Porting and Portability Guide
+
+A comprehensive architectural reference detailing how to port the BASIC++ runtime to new operating systems and hardware platforms, alongside best practices for writing cross-platform BASIC++ source programs.
+
+## 1. Engine Porting Architecture
+
+BASIC++ isolates all host operating system and hardware interactions inside the platform abstraction layer (`libplatform` under `engine/src/platform/`). Upper architectural layers — the lexer, parser, AST evaluator, virtual machine, and statement dispatchers — strictly adhere to ISO C17 (§4 ¶6) and contain zero platform-specific `#ifdef` directives or unvirtualized OS calls.
+
+### 1.1 The Nine Platform Modules
+
+The platform abstraction layer is composed of nine dedicated C modules:
+
+| Module | Implementation | Subsystem Responsibilities |
+| :--- | :--- | :--- |
+| `plat_console` | `plat_console.c` | Terminal initialization, cursor positioning, color attributes, raw key input |
+| `plat_fs` | `plat_fs.c` | File open/close/read/write, directory enumeration, path normalization |
+| `plat_sys` | `plat_sys.c` | Process termination, environment variables, hostname, username, shell execution |
+| `plat_time` | `plat_time.c` | Real-time calendar clock, high-resolution microsecond timer, sleep/delay |
+| `plat_thread` | `plat_thread.c` | Mutex creation, thread locking, synchronization primitives |
+| `plat_dl` | `plat_dl.c` | Dynamic shared library loading (`dlopen`/`LoadLibrary`) for `EXTERN` |
+| `plat_net` | `plat_net.c` | TCP/UDP socket creation, connection, data transmission, DNS lookup |
+| `plat_regex` | `plat_regex.c` | Regular expression compilation and matching engine |
+| `plat_clipboard` | `plat_clipboard.c` | Operating system clipboard read and write integration |
+
+### 1.2 Minimum Viable Port
+
+A fully functional headless port requires only three core modules:
+1. `plat_console`: Minimal serial or UART character I/O.
+2. `plat_fs`: File operations (can be backed by a static ROM filesystem or FAT buffer).
+3. `plat_time`: Millisecond tick counter.
+
+With these three modules implemented, the `bpp` lite REPL and `bs` batch script runner execute standard BASIC programs, variable assignments, mathematical routines, and file operations. Non-essential modules (`plat_net`, `plat_clipboard`, `plat_dl`) can be stubbed to return failure codes; unsupported runtime calls gracefully raise Error 73 (Advanced feature disabled).
+
+### 1.3 CMake Toolchain Integration
+
+To add a new platform target:
+1. Create a platform toolchain file in `cmake/` defining the C17 cross-compiler and linker flags.
+2. Add target platform definitions (`-DBASIC_PLATFORM_NAME`).
+3. Compile and link `libplatform` with the engine target.
+
+---
+
+## 2. Writing Portable BASIC++ Programs
+
+BASIC++ abstracts host environmental differences at runtime. Adhering to the following conventions guarantees that BASIC++ source programs run identically across Windows, Linux, macOS, FreeDOS, and embedded microcontrollers.
+
+### 2.1 File System Paths and Normalization
+- Always use forward slashes (`/`) as directory separators in string literals. The BASIC++ Virtual Filesystem (VFS) automatically normalizes path delimiters across operating systems.
+- Avoid hardcoding drive letters (`C:\`) or root paths. Use relative paths or query environment paths via `ENVIRON$("HOME")` or `ENVIRON$("TEMP")`.
+
+### 2.2 Screen and Display Sizing
+- Never assume an 80x25 character terminal. Use dynamic screen dimension queries (`CSRLIN`, `POS(0)`, `SCREEN`) to adapt visual layouts to terminal geometry.
+- For graphics, verify screen mode availability before issuing draw commands.
+
+### 2.3 Operating System Execution Trapping
+External shell execution via `SHELL` is OS-dependent. Portable programs must guard shell commands by inspecting the host environment:
+
+```basic
+IF INSTR(ENVIRON$("OS"), "Windows") > 0 THEN
+    SHELL "dir"
+ELSE
+    SHELL "ls -la"
+END IF
+```
+
+### 2.4 Feature Availability Matrix Across Targets
+
+| Feature / Subsystem | `baspp` (Desktop) | `bpp` (Lite) | `bs` (Batch) | `iot` (Embedded) | FreeDOS |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| Standard I/O (`PRINT`, `INPUT`) | YES | YES | YES | YES | YES |
+| File I/O (`OPEN`, `CLOSE`) | YES | YES | YES | Optional | YES |
+| BGI / SDL2 Graphics | YES | NO | NO | NO | BIOS Only |
+| Sound & Audio | YES | NO | NO | NO | PC Speaker |
+| Sockets & Networking | YES | YES | YES | NO | NO |
+| TUI Multi-Window Editor | YES | NO | NO | NO | NO |
+| Segmented Memory (`vmem`) | YES | NO | NO | NO | NO |
+
+### 2.5 Text Encoding and Numeric Determinism
+- **String Byte Semantics**: String functions (`LEN`, `LEFT$`, `MID$`) operate on byte offsets to preserve 100% backward compatibility with vintage GW-BASIC and QBASIC code. Code Page 437 box-drawing characters (128–255) are supported across all console drivers.
+- **IEEE 754 Floating Point**: All floating-point math adheres to standard 64-bit double precision, guaranteeing identical calculations across platforms.

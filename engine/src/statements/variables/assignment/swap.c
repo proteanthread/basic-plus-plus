@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (exchange.c)
 // NEEDS: libcore (arrays.h, arrays.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libcore (variables.h, variables.c)
 // NEEDS: libengine (eval.h, eval.c, string.c, swap.h)
 // Provides runtime implementation for the SWAP statement in BASIC++.
@@ -14,33 +14,38 @@
 #include "eval/eval.h"
 #include "runtime/variables.h"
 #include "runtime/arrays.h"
-#include "runtime/micro_lib_metadata.h"
-#include <string.h>
+#include "runtime/language_descriptor.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_swap_desc = {
+    .name = "SWAP",
+    .category = "Variables & Memory",
+    .syntax = "SWAP variable1, variable2",
+    .description = "Exchanges the values of two variables or array elements of identical types.",
+    .error_summary = "Error 2: Syntax Error, Error 13: Type Mismatch",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SYSTEM,
+    .type = FEATURE_STATEMENT
+};
 
 void stmt_swap_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "SWAP",
-        .category = "Variables & Memory",
-        .syntax = "SWAP variable1, variable2",
-        .help_text = "Exchanges the values of two variables or array elements of identical types.",
-        .error_codes = "Error 2: Syntax Error, Error 13: Type Mismatch"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_swap_desc);
 }
 
 BppError stmt_swap_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BppToken tok1 = lex_next(lex);
-    if (tok1.type != TOK_IDENT) {
+    if (tok1.type != TOK_IDENT && tok1.type != TOK_KEYWORD) {
         err.code = 2;
         err.message = "Syntax Error in SWAP (expected variable)";
         return err;
     }
     char var1[64];
     if (tok1.length >= sizeof(var1)) tok1.length = sizeof(var1) - 1;
-    memcpy(var1, tok1.start, tok1.length);
+    runtime_memcpy(var1, tok1.start, tok1.length);
     var1[tok1.length] = '\0';
 
     bool is_arr1 = false;
@@ -79,14 +84,14 @@ BppError stmt_swap_handler(VMContext *vm, LexerContext *lex) {
     }
 
     BppToken tok2 = lex_next(lex);
-    if (tok2.type != TOK_IDENT) {
+    if (tok2.type != TOK_IDENT && tok2.type != TOK_KEYWORD) {
         err.code = 2;
         err.message = "Syntax Error in SWAP (expected second variable)";
         return err;
     }
     char var2[64];
     if (tok2.length >= sizeof(var2)) tok2.length = sizeof(var2) - 1;
-    memcpy(var2, tok2.start, tok2.length);
+    runtime_memcpy(var2, tok2.start, tok2.length);
     var2[tok2.length] = '\0';
 
     bool is_arr2 = false;
@@ -119,8 +124,8 @@ BppError stmt_swap_handler(VMContext *vm, LexerContext *lex) {
 
     VariableContext *vc = vm_get_var(vm);
     ArrayContext *arr_ctx = vm_get_arr(vm);
-    bool str1 = (var1[strlen(var1) - 1] == '$');
-    bool str2 = (var2[strlen(var2) - 1] == '$');
+    bool str1 = (var1[runtime_strlen(var1) - 1] == '$');
+    bool str2 = (var2[runtime_strlen(var2) - 1] == '$');
 
     if (str1 != str2) {
         err.code = 13;

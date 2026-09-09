@@ -1,93 +1,58 @@
-# BASIC++ v6.5.2 Self-Programming and Code Generation
+<!--
+Title:        Self_Programming
+Tier:         2
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/eval/functions/system/environment/func_program.c, engine/src/statements/system/stmt_chain.c, engine/src/statements/introspection/override.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. OVERVIEW
+# BASIC++ v6.5.2 Self-Programming & Runtime Metaprogramming Architecture
 
-BASIC++ programs can examine and modify their own source code at runtime. This capability enables self-modifying programs, code generators, and programs that construct other programs dynamically. The BASIC++ approach treats the program line store as a mutable data structure that accepts insertions, replacements, and deletions while the program is running.
+The authoritative specification for source line introspection, program overlay merging, keyword redirection, and runtime metaprogramming in BASIC++ v6.5.2.
 
-## 2. RUNTIME LINE MANIPULATION
+---
 
-A BASIC++ program can insert new lines by constructing a string containing a line number and a statement, then executing it as if the user had typed it at the prompt. The technique uses the EXEC statement:
+## 1. Overview and Design Principles
 
-```basic
-100 FOR I = 1000 TO 1090 STEP 10
-110   EXEC STR$(I) + " DATA " + STR$(RND * 100)
-120 NEXT I
-130 RUN 1000
-```
+BASIC++ programs can inspect their own source code, merge external code overlays, and dynamically intercept keyword execution at runtime. Rather than using unsafe string injection, the BASIC++ runtime provides bounded introspection and metaprogramming primitives:
 
-This loop generates DATA statements on lines 1000-1090, each containing a random number. The EXEC statement interprets the string as if it were entered at the prompt — if it has a line number, it is stored; if not, it is executed immediately.
+- **Program Source Introspection**: Programs examine their stored source lines using `PROGRAM$`.
+- **Dynamic Program Overlays**: Programs overlay and chain external modules using `MERGE` and `CHAIN`.
+- **Execution Metaprogramming**: Programs intercept and modify statement execution using `OVERRIDE`, `ALIAS`, and `SCOPE HOOK`.
 
-## 3. DELETING LINES AT RUNTIME
+---
 
-A program can delete its own lines by executing a line number with no statement:
+## 2. Program Source Introspection (`PROGRAM$`)
 
-```basic
-200 EXEC "1000"     ' Deletes line 1000
-```
+Implemented in `engine/src/eval/functions/system/environment/func_program.c`:
 
-DELETE also works: `EXEC "DELETE 1000-1090"`.
-
-## 4. LINE INSPECTION
-
-A program can read its own source lines:
-
-LINES returns the total number of lines in the current program.
-LINE$(n) returns the source text of the line with number n, including the line number. If line n does not exist, it returns an empty string.
+- **`PROGRAM$(line_number)`**: Returns the exact source text of the stored program line with number `line_number`, including line number and statements. Returns an empty string if the line does not exist.
+- **`PROGRAM$("COUNT")`**: Returns the total number of lines currently stored in the active program buffer.
 
 ```basic
-10 FOR I = 10 TO 100 STEP 10
-20   IF LINE$(I) <> "" THEN PRINT LINE$(I)
-30 NEXT I
+10 REM Self-Inspection Loop
+20 Total = VAL(PROGRAM$("COUNT"))
+30 PRINT "Total lines stored: "; Total
+40 FOR L = 10 TO 100 STEP 10
+50   LineText$ = PROGRAM$(L)
+60   IF LineText$ <> "" THEN PRINT "Line "; L; ": "; LineText$
+70 NEXT L
 ```
 
-## 5. CODE GENERATION PATTERNS
+---
 
-### Generating Lookup Tables
+## 3. Dynamic Code Overlays (`MERGE` and `CHAIN`)
 
-```basic
-10 FOR I = 0 TO 360
-20   Radians = I * PI / 180
-30   EXEC STR$(5000 + I) + " DATA " + STR$(SIN(Radians))
-40 NEXT I
-50 PRINT "Generated 361 DATA statements (lines 5000-5360)"
-```
+- **`MERGE "filename.bas"`**: Merges source lines from a specified external ASCII file into the existing program buffer without clearing variables.
+- **`CHAIN [MERGE] "filename.bas" [, line_num]`**: Transfers execution control to a secondary BASIC program overlay, optionally preserving variable state with `COMMON` and merging line buffers.
 
-### Building Computed GOTO Tables
+---
 
-```basic
-10 FOR I = 1 TO N
-20   EXEC STR$(9000 + I) + " ON CHOICE GOTO " + STR$(1000 * I)
-30 NEXT I
-```
+## 4. Statement Hooking & Metaprogramming
 
-### Self-Modifying Prompts
+- **`OVERRIDE keyword WITH GOSUB line | SUB name`**: Intercepts built-in keyword execution with user-defined procedures.
+- **`ALIAS existing_name AS new_name`**: Dynamically creates synonym identifiers for existing keywords.
+- **`SCOPE HOOK BEFORE|AFTER cmd GOSUB target`**: Installs pre-execution and post-execution hooks around specific commands.
 
-```basic
-10 Prompt$ = "Enter value: "
-20 EXEC "100 INPUT " + CHR$(34) + Prompt$ + CHR$(34) + "; X"
-30 RUN 100
-```
-
-## 6. SAFETY CONSIDERATIONS
-
-Self-modification is powerful but risky. Programs that modify their own running code can create hard-to-debug conditions:
-
-- **CONT Invalidation**: Modifying any line after STOP invalidates CONT (Error 17).
-- **Execution Position**: If a running program deletes or renumbers the line it is about to execute, the VM may skip lines or produce Error 8 (Undefined line number).
-- **GOSUB/FOR Stack Corruption**: If a program deletes lines containing NEXT or RETURN while a FOR or GOSUB is active, the corresponding stack entry refers to a non-existent line.
-
-Best practice is to separate the generating code (low line numbers) from the generated code (high line numbers) so that the running generator does not interfere with its own execution.
-
-## 7. THE SPECIFICATION SYSTEM
-
-The specification system (engine/src/runtime/spec.c) allows BASIC++ programs to define and validate language specifications programmatically. A BASIC++ program can describe its own keyword set, syntax rules, and semantic constraints, then validate those specifications against the running engine.
-
-This enables dialect metaprogramming: writing BASIC++ programs that generate, validate, and document language specifications. The specification system is accessed through the SPEC statement family.
-
-## 8. RELATIONSHIP TO OVERLAY LOADING
-
-Self-programming complements the MERGE and CHAIN overlay system. A program can generate code, SAVE it, and then MERGE or CHAIN to load the generated code into a different execution context. This is the basis for multi-pass code generation where one BASIC++ program writes another.
-
-## 9. THE REFORMAT COMMAND
-
-REFORMAT standardizes the spacing and indentation of the current program without changing line numbers or logic. This is useful after self-modification to clean up generated code for readability. REFORMAT is implemented as a single-pass scan that normalizes keyword capitalization, statement spacing, and indentation depth.
+*(Note: Direct runtime text injection via hypothetical statements like `EXEC "100 DATA..."` is not part of the engine; line buffer management is handled via `MERGE` and `Program_Management.md` lifecycle commands.)*

@@ -13,6 +13,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include "runtime/memory/alloc.h"
 
 #ifdef __cplusplus
 extern "C" {

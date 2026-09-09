@@ -1,32 +1,67 @@
-ERROR Runtime Error Simulation Statement
-========================================
+TITLE: ERROR
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/vm/error/error.c
+GENERATED: no, hand-written
+STATUS: current
 
-Simulates a runtime error with the specified numeric code, triggering active ON ERROR traps.
+==============================================================================
+ERROR KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: error.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community -- All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: baspp.exe, bpp.exe, bs.exe, libengine
+    // NEEDS: libcore, libkernel
+    // Implements component functionality for ERROR.
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Simulates a runtime error with the specified numeric code, triggering active
+ON ERROR traps.
 
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
     ERROR error_code%
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM ERROR Demonstration
+    20 PRINT "ERROR executed successfully."
 
-ERROR CONDITIONS
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Simulates runtime error code
 
-  - Error 5 (ERR_ILLEGAL_FUNCTION_CALL): Error code < 1 or > 255.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       GW-BASIC, QBASIC, BASIC++ Standard
+Since Version: 6.0.0
+Category:      Error Handling
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SAFE
 
-
-OPERATIONAL NOTES
-----------------------------------------------------------------------
-
-  Enables custom error code dispatching and unit test validation.
-
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 ON ERROR GOTO 100
-    20 ERROR 55 : REM File already open
-    30 END
-    100 PRINT "Simulated error: "; ERR
-    110 RESUME NEXT
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  ERROR
+Category              Error Handling
+Syntax                ERROR error_code%
+Description           Simulates a runtime error with the specified numeri...
+Error Summary         Simulates runtime error code
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         GW-BASIC, QBASIC, BASIC++ Standard
+Since Version         6.0.0
+Source File           engine/src/vm/error/error.c

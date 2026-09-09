@@ -1,28 +1,72 @@
-SAVE Save Program File Statement
-================================
+TITLE: SAVE
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/program/save.c
+GENERATED: no, hand-written
+STATUS: current
 
-Saves the BASIC program in memory to a file on disk in ASCII text (A), tokenized binary (B), or protected (P) format.
+==============================================================================
+SAVE KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: save.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (memory.h, memory.c)
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libcore (strings.h, strings.c)
+    // NEEDS: libengine (eval.h, eval.c, lexer.h, lexer.c, save.h, string.c, vm.h)
+    // NEEDS: libkernel (errors.h, security.h, security.c, vdev.h, vdev.c)
+    // Provides runtime implementation for the SAVE statement in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Saves the program currently in memory to a file on disk.
 
-    SAVE filename$ [, {A | B | P}]
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    SAVE filename_expr [, A | P]
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM SAVE Demonstration
+    20 PRINT "SAVE executed successfully."
 
-ERROR CONDITIONS
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error, Error 64: Bad File Name, Error 70: Permission Denied
 
-  - Error 61 (ERR_DISK_FULL): Insufficient storage space on disk.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Program Mgmt & Editing
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SAFE
 
-
-OPERATIONAL NOTES
-----------------------------------------------------------------------
-
-  Defaults to standard portable UTF-8 ASCII format.
-
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    SAVE "GAME.BAS", A : REM Saves as plaintext ASCII file
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  SAVE
+Category              Program Mgmt & Editing
+Syntax                SAVE filename_expr [, A | P]
+Description           Saves the program currently in memory to a file on ...
+Error Summary         Error 2: Syntax Error, Error 64: Bad File Name, Err...
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/program/save.c

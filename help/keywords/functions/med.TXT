@@ -1,18 +1,68 @@
-MED Statistical Median Value Function
-======================================================================
+TITLE: MED
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/eval.c
+GENERATED: no, hand-written
+STATUS: current
 
-The MED function calculates the median (middle) value of a set of
-numbers or an array.
+==============================================================================
+MED KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: eval.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libboot, libcore, libengine, libext, libkernel, libstandard
+    // NEEDS: libengine (eval_expr_internal.h)
+    // Implements component functionality for eval.c.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Returns the median (middle) value among the supplied numeric arguments.
 
-    median = MED(val1, val2 [, ...])
-    median = MED(array())
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    MED(val1, val2, ...)
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = MED(val1, val2, ...)
+    20 PRINT "Result: "; Val
 
-CODE EXAMPLES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 5: Illegal Function Call (no arguments)
 
-    10 PRINT MED(10, 20, 30, 40, 50)   : REM Outputs 30
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Statistical Functions
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_PURE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  MED
+Category              Statistical Functions
+Syntax                MED(val1, val2, ...)
+Description           Returns the median (middle) value among the supplie...
+Error Summary         Error 5: Illegal Function Call (no arguments)
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_PURE
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         BASIC++ Standard
+Since Version         6.0.0
+Source File           engine/src/eval/eval.c

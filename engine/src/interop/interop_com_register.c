@@ -8,7 +8,8 @@
 // ---- Includes ----
 
 #include "interop/interop_com.h"
-#include <stdio.h>
+#include "runtime/format/snprintf.h"
+#include "runtime/string/strops.h"
 
 #ifdef _WIN32
 
@@ -18,14 +19,14 @@ static const char *g_ProgIdKey = "Software\\Classes\\BASICPP.Engine";
 static HRESULT SetRegKey(const char *key, const char *subKey, const char *value) {
     HKEY hKey;
     char fullKey[512];
-    snprintf(fullKey, sizeof(fullKey), "%s%s%s", key, subKey ? "\\" : "", subKey ? subKey : "");
+    runtime_snprintf(fullKey, sizeof(fullKey), "%s%s%s", key, subKey ? "\\" : "", subKey ? subKey : "");
 
     if (RegCreateKeyExA(HKEY_LOCAL_MACHINE, fullKey, 0, NULL, REG_OPTION_NON_VOLATILE, KEY_WRITE, NULL, &hKey, NULL) != ERROR_SUCCESS) {
         return E_FAIL;
     }
 
     if (value) {
-        RegSetValueExA(hKey, NULL, 0, REG_SZ, (const BYTE *)value, (DWORD)strlen(value) + 1);
+        RegSetValueExA(hKey, NULL, 0, REG_SZ, (const BYTE *)value, (DWORD)runtime_strlen(value) + 1);
     }
     RegCloseKey(hKey);
     return S_OK;

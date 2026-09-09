@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
 // NEEDS: libcore (memory.h, memory.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libengine (eval.h, eval.c, function.h, lexer.h, lexer.c, string.c)
 // NEEDS: libengine (vm.h)
 // NEEDS: libkernel (security.h, security.c, vdev.h, vdev.c)
@@ -17,14 +17,26 @@
 #include "eval/eval.h"
 #include "device/vdev.h"
 #include "security/security.h"
-#include "runtime/micro_lib_metadata.h"
-#include <string.h>
+#include "runtime/language_descriptor.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
 
 #include "memory/memory.h"
 
+static const LangDesc g_function_desc = {
+    .name = "FUNCTION",
+    .category = "Control Flow",
+    .syntax = "FUNCTION name [(parameter_list)] ... END FUNCTION",
+    .description = "Declares the name, parameters, and code that define a FUNCTION procedure block.",
+    .error_summary = "Error 2: Syntax Error, Error 35: SUB/FUNCTION Without END, Error 36: Illegal Parameter List",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SAFE,
+    .type = FEATURE_STATEMENT
+};
+
 BppError stmt_function_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     if (!vm || !lex) {
         err.code = 5; err.message = "Null VM or lexer context";
@@ -32,7 +44,7 @@ BppError stmt_function_handler(VMContext *vm, LexerContext *lex) {
     }
 
     BppSubFrame frame;
-    if (vm_sub_peek(vm, &frame) && strcmp(vm_get_active_proc(vm), "") != 0) {
+    if (vm_sub_peek(vm, &frame) && runtime_strcmp(vm_get_active_proc(vm), "") != 0) {
         // Currently inside call frame, execute FUNCTION body normally
         return err;
     }
@@ -78,7 +90,7 @@ BppError stmt_function_handler(VMContext *vm, LexerContext *lex) {
 
 BppError stmt_end_function_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     (void)lex;
 
     if (!vm) {
@@ -99,13 +111,6 @@ BppError stmt_end_function_handler(VMContext *vm, LexerContext *lex) {
 }
 
 void stmt_function_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "FUNCTION",
-        .category = "Control Flow",
-        .syntax = "FUNCTION name [(parameter_list)] ... END FUNCTION",
-        .help_text = "Declares the name, parameters, and code that define a FUNCTION procedure block.",
-        .error_codes = "Error 2: Syntax Error, Error 35: SUB/FUNCTION Without END, Error 36: Illegal Parameter List"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_function_desc);
 }
 

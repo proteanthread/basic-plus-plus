@@ -11,16 +11,27 @@
 #include "vm/vm.h"
 #include "lexer/lexer.h"
 #include "eval/eval.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/strings.h"
 #include "runtime/string/strops.h"
 #include "runtime/variables.h"
 #include "iot_net.h"
-#include <string.h>
+#include "runtime/string/memops.h"
+
+static const LangDesc g_espnow_desc = {
+    .name = "ESPNOW",
+    .category = "Wireless & IoT",
+    .syntax = "ESPNOW.INIT [channel] | ESPNOW.ADD.PEER mac$ [, channel] | ESPNOW.SEND mac$, data$ | ESPNOW.RECV var$",
+    .description = "Transmits connectionless low-latency 2.4 GHz packets between ESP32 peers without Wi-Fi router.",
+    .error_summary = "Error 2: Syntax Error, Error 13: Type Mismatch",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_STATEMENT
+};
 
 BppError stmt_espnow_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     bool is_init = false;
     bool is_add_peer = false;
@@ -96,7 +107,7 @@ BppError stmt_espnow_handler(VMContext *vm, LexerContext *lex) {
         if (tok.type == TOK_IDENT) {
             char var_name[64];
             size_t nlen = (tok.length < sizeof(var_name) - 1) ? tok.length : sizeof(var_name) - 1;
-            memcpy(var_name, tok.start, nlen);
+            runtime_memcpy(var_name, tok.start, nlen);
             var_name[nlen] = '\0';
             char buf[256] = {0};
             char sender_mac[32] = {0};
@@ -133,12 +144,5 @@ BppError stmt_espnow_handler(VMContext *vm, LexerContext *lex) {
 }
 
 void stmt_espnow_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "ESPNOW",
-        .category = "Wireless & IoT",
-        .syntax = "ESPNOW.INIT [channel] | ESPNOW.ADD.PEER mac$ [, channel] | ESPNOW.SEND mac$, data$ | ESPNOW.RECV var$",
-        .help_text = "Transmits connectionless low-latency 2.4 GHz packets between ESP32 peers without Wi-Fi router.",
-        .error_codes = "Error 2: Syntax Error, Error 13: Type Mismatch"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_espnow_desc);
 }

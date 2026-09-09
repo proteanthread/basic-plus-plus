@@ -8,6 +8,10 @@
 #include <ctype.h>
 #include <time.h>
 
+#if defined(_WIN32)
+#include <windows.h>
+#endif
+
 #ifndef BASIC_RAM_SIZE
 #define BASIC_RAM_SIZE    65536L
 #endif
@@ -114,6 +118,29 @@ static short parse_expression(void);
 
 static void trigger_beep(void) {
     printf("\a");
+    fflush(stdout);
+}
+
+static void cmd_home(void) {
+#if defined(_WIN32)
+    HANDLE hStdOut;
+    CONSOLE_SCREEN_BUFFER_INFO csbi;
+    DWORD count;
+    DWORD cellCount;
+    COORD homeCoords;
+    homeCoords.X = 0;
+    homeCoords.Y = 0;
+    hStdOut = GetStdHandle(STD_OUTPUT_HANDLE);
+    if (hStdOut != INVALID_HANDLE_VALUE && GetConsoleScreenBufferInfo(hStdOut, &csbi)) {
+        cellCount = (DWORD)(csbi.dwSize.X * csbi.dwSize.Y);
+        if (FillConsoleOutputCharacterA(hStdOut, ' ', cellCount, homeCoords, &count)) {
+            FillConsoleOutputAttribute(hStdOut, csbi.wAttributes, cellCount, homeCoords, &count);
+            SetConsoleCursorPosition(hStdOut, homeCoords);
+            return;
+        }
+    }
+#endif
+    printf("\033[2J\033[H");
     fflush(stdout);
 }
 
@@ -1270,8 +1297,8 @@ static void exec_statement(void) {
     if (match_keyword("BEEP"))  { trigger_beep(); return; }
 
     /* Display & Graphics Safe Simulation */
-    if (match_keyword("HOME") || match_keyword("CLS")) {
-        printf("\033[2J\033[H"); fflush(stdout); return;
+    if (match_keyword("HOME")) {
+        cmd_home(); return;
     }
     if (match_keyword("TEXT") || match_keyword("GR") || match_keyword("NORMAL") ||
         match_keyword("INVERSE") || match_keyword("FLASH") || match_keyword("NOTRACE")) {
@@ -1394,6 +1421,21 @@ int main(int argc, char **argv) {
     int batch_mode = 0;
     int file_arg_idx = 0;
     int i;
+#if defined(_WIN32)
+    HANDLE hOut;
+    DWORD dwMode;
+#endif
+
+#if defined(_WIN32)
+    hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+    if (hOut != INVALID_HANDLE_VALUE) {
+        dwMode = 0;
+        if (GetConsoleMode(hOut, &dwMode)) {
+            dwMode |= 0x0004; /* ENABLE_VIRTUAL_TERMINAL_PROCESSING */
+            SetConsoleMode(hOut, dwMode);
+        }
+    }
+#endif
 
     srand((unsigned int)time(NULL));
     clear_program();

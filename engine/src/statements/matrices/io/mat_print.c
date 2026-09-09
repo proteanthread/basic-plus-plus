@@ -15,25 +15,30 @@
 #include "runtime/file.h"
 #include "runtime/num_format.h"
 #include "device/vdev.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "types/errors.h"
-#include <string.h>
-#include <stdio.h>
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "runtime/format/snprintf.h"
+
+static const LangDesc g_mat_print_desc = {
+    .name = "MAT PRINT",
+    .category = "Matrix Operations",
+    .syntax = "MAT PRINT [#file_num,] array_name [;|,]",
+    .description = "Outputs formatted 1D or 2D matrix array elements to console or file stream (SDS 940 / DEC PDP-10 Super BASIC).",
+    .error_summary = "Error 2: Syntax Error, Error 9: Subscript Out of Range, Error 52: Bad File Number",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_STATEMENT
+};
 
 void stmt_mat_print_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "MAT PRINT",
-        .category = "Matrix Operations",
-        .syntax = "MAT PRINT [#file_num,] array_name [;|,]",
-        .help_text = "Outputs formatted 1D or 2D matrix array elements to console or file stream (SDS 940 / DEC PDP-10 Super BASIC).",
-        .error_codes = "Error 2: Syntax Error, Error 9: Subscript Out of Range, Error 52: Bad File Number"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_mat_print_desc);
 }
 
 BppError stmt_mat_print_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     VDevContext *vdev = vm_get_vdev(vm);
     FileContext *fc = vm_get_file(vm);
@@ -71,7 +76,7 @@ BppError stmt_mat_print_handler(VMContext *vm, LexerContext *lex) {
 
     char arr_name[64];
     size_t arr_len = (tok.length < sizeof(arr_name) - 1) ? tok.length : sizeof(arr_name) - 1;
-    memcpy(arr_name, tok.start, arr_len);
+    runtime_memcpy(arr_name, tok.start, arr_len);
     arr_name[arr_len] = '\0';
 
     bool is_compact = false;
@@ -103,7 +108,7 @@ BppError stmt_mat_print_handler(VMContext *vm, LexerContext *lex) {
             char buf[128] = "";
             if (elem) {
                 if (elem->type == VAL_STRING && elem->as.string) {
-                    snprintf(buf, sizeof(buf), "%s", str_data(elem->as.string));
+                    runtime_snprintf(buf, sizeof(buf), "%s", str_data(elem->as.string));
                 } else {
                     num_format_display(buf, sizeof(buf), elem->as.number, false, false);
                 }
@@ -112,7 +117,7 @@ BppError stmt_mat_print_handler(VMContext *vm, LexerContext *lex) {
                 file_puts(fc, channel, buf);
                 if (is_compact) file_puts(fc, channel, " ");
                 else {
-                    size_t pad = (strlen(buf) < zone_w) ? (zone_w - strlen(buf)) : 1;
+                    size_t pad = (runtime_strlen(buf) < zone_w) ? (zone_w - runtime_strlen(buf)) : 1;
                     for (size_t s = 0; s < pad; s++) file_putc(fc, channel, ' ');
                 }
             } else {
@@ -120,7 +125,7 @@ BppError stmt_mat_print_handler(VMContext *vm, LexerContext *lex) {
                     vdev_puts(vdev, buf);
                     if (is_compact) vdev_puts(vdev, " ");
                     else {
-                        size_t pad = (strlen(buf) < zone_w) ? (zone_w - strlen(buf)) : 1;
+                        size_t pad = (runtime_strlen(buf) < zone_w) ? (zone_w - runtime_strlen(buf)) : 1;
                         for (size_t s = 0; s < pad; s++) vdev_putc(vdev, ' ');
                     }
                 }
@@ -136,7 +141,7 @@ BppError stmt_mat_print_handler(VMContext *vm, LexerContext *lex) {
                 char buf[128] = "";
                 if (elem) {
                     if (elem->type == VAL_STRING && elem->as.string) {
-                        snprintf(buf, sizeof(buf), "%s", str_data(elem->as.string));
+                        runtime_snprintf(buf, sizeof(buf), "%s", str_data(elem->as.string));
                     } else {
                         num_format_display(buf, sizeof(buf), elem->as.number, false, false);
                     }
@@ -145,7 +150,7 @@ BppError stmt_mat_print_handler(VMContext *vm, LexerContext *lex) {
                     file_puts(fc, channel, buf);
                     if (is_compact) file_puts(fc, channel, " ");
                     else {
-                        size_t pad = (strlen(buf) < zone_w) ? (zone_w - strlen(buf)) : 1;
+                        size_t pad = (runtime_strlen(buf) < zone_w) ? (zone_w - runtime_strlen(buf)) : 1;
                         for (size_t s = 0; s < pad; s++) file_putc(fc, channel, ' ');
                     }
                 } else {
@@ -153,7 +158,7 @@ BppError stmt_mat_print_handler(VMContext *vm, LexerContext *lex) {
                         vdev_puts(vdev, buf);
                         if (is_compact) vdev_puts(vdev, " ");
                         else {
-                            size_t pad = (strlen(buf) < zone_w) ? (zone_w - strlen(buf)) : 1;
+                            size_t pad = (runtime_strlen(buf) < zone_w) ? (zone_w - runtime_strlen(buf)) : 1;
                             for (size_t s = 0; s < pad; s++) vdev_putc(vdev, ' ');
                         }
                     }

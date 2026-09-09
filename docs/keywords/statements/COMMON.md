@@ -1,27 +1,74 @@
-# `COMMON` Shared Overlay Variable Statement
+<!--
+Title:        COMMON
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/statements/variables/declaration/common.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Keyword Definition
+# `COMMON` Keyword Reference
 
-The `COMMON` statement designates variables that persist across program overlays when executing `CHAIN` or `RUN "file", R` statements, allowing chained programs to share variable data in memory without disk serialization.
+## Source Header
 
-### Syntax Signatures:
-```basic
-COMMON var1 [, var2, var3, ...]
-COMMON SHARED var1 [, var2, ...]
+```c
+// FILENAME: common.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore (language_descriptor.h, string.h)
+// NEEDS: libcore (variables.h, variables.c)
+// NEEDS: libengine (common.h, string.c)
+// NEEDS: libkernel (errors.h)
+// Provides runtime implementation for the COMMON statement in BASIC++.
+//
+// ---- Includes ----
 ```
 
-### Operational Rules:
-- **Program Overlay Lifecycle**: Variables declared in `COMMON` are retained during `var_clear_for_chain()` and transferred to the chained program.
-- **Order Matching**: When chaining between programs, `COMMON` lists in both programs must match in order and type.
-- **`COMMON SHARED`**: Combines `COMMON` (cross-program persistence) with `SHARED` (global accessibility inside `SUB` and `FUNCTION` blocks).
+## 1. Description & Usage
+
+Declares global variables to be preserved across CHAIN and module boundaries.
+
+## 2. Syntax
+
+```basic
+COMMON [SHARED] var1 [()] [, var2 [()]...]
+```
+
+## 3. Code Example
+
+```basic
+10 Val = COMMON [SHARED] var1 [()] [, var2 [()]...]
+20 PRINT "Result: "; Val
+```
+
+## 4. Error Conditions
+
+Error 2: Syntax Error, Error 5: Illegal Function Call
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Variables & Memory
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_SYSTEM
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 COMMON USER_NAME$, ACCESS_LEVEL%, USER_ID#
-20 USER_NAME$ = "Alice" : ACCESS_LEVEL% = 5 : USER_ID# = 1042
-30 PRINT "Passing common variables to MODULE2.BAS..."
-40 CHAIN "MODULE2.BAS"
-```
+| Field | Value |
+|---|---|
+| Name | COMMON |
+| Category | Variables & Memory |
+| Syntax | COMMON [SHARED] var1 [()] [, var2 [()]...] |
+| Description | Declares global variables to be preserved across CHAIN and module boundaries. |
+| Error Summary | Error 2: Syntax Error, Error 5: Illegal Function Call |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_SYSTEM |
+| Feature Type | FEATURE_STATEMENT |
+| Delimiter Mask | none |
+| Compatibility | none |
+| Since Version | none |
+| Source File | engine/src/statements/variables/declaration/common.c |

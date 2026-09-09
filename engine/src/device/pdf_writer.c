@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libkernel (vprinter.c)
 // NEEDS: libcore (alloc.h, alloc.c, hal.h, memops.h, memops.c)
-// NEEDS: libcore (snprintf.h, snprintf.c, strops.h, strops.c)
+// NEEDS: libcore (runtime_snprintf.h, runtime_snprintf.c, strops.h, strops.c)
 // NEEDS: libkernel (pdf_writer.h)
 // Implements virtual device and graphics rendering logic for pdf_writer.
 //

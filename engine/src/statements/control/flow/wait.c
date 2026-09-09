@@ -2,7 +2,7 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libengine (eval.h, eval.c, string.c, wait.h)
 // NEEDS: libkernel (errors.h)
 // NEEDS: libplatform (platform.h)
@@ -12,25 +12,30 @@
 
 #include "statements/control/flow/wait.h"
 #include "eval/eval.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "types/errors.h"
 #include "platform/platform.h"
-#include <string.h>
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_wait_desc = {
+    .name = "WAIT",
+    .category = "Control Flow",
+    .syntax = "WAIT seconds | WAIT port, and_mask [, xor_mask] | WAIT #channel, seconds",
+    .description = "Suspends execution for specified duration, or polls hardware port until condition is met.",
+    .error_summary = "Error 2: Syntax Error, Error 13: Type Mismatch",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SAFE,
+    .type = FEATURE_STATEMENT
+};
 
 void stmt_wait_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "WAIT",
-        .category = "Control Flow",
-        .syntax = "WAIT seconds | WAIT port, and_mask [, xor_mask] | WAIT #channel, seconds",
-        .help_text = "Suspends execution for specified duration, or polls hardware port until condition is met.",
-        .error_codes = "Error 2: Syntax Error, Error 13: Type Mismatch"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_wait_desc);
 }
 
 BppError stmt_wait_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BppToken tok = lex_peek(lex);
     if (tok.type == TOK_HASH) {

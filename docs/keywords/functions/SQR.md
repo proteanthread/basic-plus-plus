@@ -1,22 +1,72 @@
-# `SQR` Square Root Function
+<!--
+Title:        SQR
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/eval/functions/math/algebra/sqr.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Function Definition
+# `SQR` Keyword Reference
 
-The `SQR` function computes the non-negative square root $\sqrt{x}$ of a numeric expression.
+## Source Header
 
-### Syntax Signatures:
-```basic
-root# = SQR(numeric_expression)
+```c
+// FILENAME: sqr.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine (math_fn.c)
+// NEEDS: libcore (math.h, language_descriptor.h, string.h)
+// NEEDS: libengine (math.c, sqr.h, string.c)
+// Provides runtime implementation for the SQR built-in function in BASIC++.
+//
+// ---- Includes ----
 ```
 
-### Operational Rules:
-- **Domain Constraint**: Requires $x \ge 0$. Negative arguments trigger Error 5 (`ERR_ILLEGAL_FUNCTION_CALL`) in real mode (for complex square roots, use `CSQR`).
+## 1. Description & Usage
+
+Returns the non-negative square root of a numeric expression x >= 0.
+
+## 2. Syntax
+
+```basic
+SQR(x)
+```
+
+## 3. Code Example
+
+```basic
+10 Val = 16
+20 PRINT "SQR("; Val; ") = "; SQR(Val)
+```
+
+## 4. Error Conditions
+
+Error 5: Illegal Function Call (SQR of negative number), Error 13: Type Mismatch (SQR expects one numeric argument)
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Math Functions
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_PURE
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 PRINT SQR(16) : REM Outputs 4
-20 PRINT SQR(2)  : REM Outputs 1.414213562373095
-```
+| Field | Value |
+|---|---|
+| Name | SQR |
+| Category | Math Functions |
+| Syntax | SQR(x) |
+| Description | Returns the non-negative square root of a numeric expression x >= 0. |
+| Error Summary | Error 5: Illegal Function Call (SQR of negative number), Error 13: Type Mismatch (SQR expects one numeric argument) |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_PURE |
+| Feature Type | FEATURE_FUNCTION |
+| Delimiter Mask | none |
+| Compatibility | none |
+| Since Version | none |
+| Source File | engine/src/eval/functions/math/algebra/sqr.c |

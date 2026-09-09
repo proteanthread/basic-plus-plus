@@ -15,14 +15,16 @@
 #include "device/vprinter.h"
 #include "runtime/file.h"
 #include "runtime/using.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <ctype.h>
+#include "runtime/format/snprintf.h"
+#include "runtime/memory/alloc.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "runtime/ctype/ctype.h"
+#include "platform/platform.h"
 
-void print_using_internal_ex(VMContext *vm, LexerContext *lex, int channel, FILE *stream) {
+void print_using_internal_ex(VMContext *vm, LexerContext *lex, int channel, void *stream) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     // 1. Format string expression or IMAGE line number
     BValue fmt_val = eval_expression(vm, lex, &err);
@@ -43,21 +45,21 @@ void print_using_internal_ex(VMContext *vm, LexerContext *lex, int channel, FILE
             return;
         }
         const char *p = line_text;
-        while (isspace((unsigned char)*p)) p++;
-        if (strncasecmp(p, "IMAGE", 5) == 0) {
+        while (runtime_isspace((unsigned char)*p)) p++;
+        if (runtime_strncasecmp(p, "IMAGE", 5) == 0) {
             p += 5;
-            while (isspace((unsigned char)*p) || *p == ':') p++;
-            strncpy(image_buf, p, sizeof(image_buf) - 1);
+            while (runtime_isspace((unsigned char)*p) || *p == ':') p++;
+            runtime_strncpy(image_buf, p, sizeof(image_buf) - 1);
             image_buf[sizeof(image_buf) - 1] = '\0';
             fmt_str = image_buf;
-        } else if (strncasecmp(p, "FORM", 4) == 0) {
+        } else if (runtime_strncasecmp(p, "FORM", 4) == 0) {
             p += 4;
-            while (isspace((unsigned char)*p) || *p == ':') p++;
-            strncpy(image_buf, p, sizeof(image_buf) - 1);
+            while (runtime_isspace((unsigned char)*p) || *p == ':') p++;
+            runtime_strncpy(image_buf, p, sizeof(image_buf) - 1);
             image_buf[sizeof(image_buf) - 1] = '\0';
             fmt_str = image_buf;
         } else {
-            strncpy(image_buf, p, sizeof(image_buf) - 1);
+            runtime_strncpy(image_buf, p, sizeof(image_buf) - 1);
             image_buf[sizeof(image_buf) - 1] = '\0';
             fmt_str = image_buf;
         }
@@ -86,7 +88,7 @@ void print_using_internal_ex(VMContext *vm, LexerContext *lex, int channel, FILE
     int mask_idx = 0;
     bool last_was_sep = false;
     BValue val_none;
-    memset(&val_none, 0, sizeof(val_none));
+    runtime_memset(&val_none, 0, sizeof(val_none));
     val_none.type = VAL_NUMBER;
     val_none.as.number = 0.0;
 
@@ -106,7 +108,7 @@ void print_using_internal_ex(VMContext *vm, LexerContext *lex, int channel, FILE
                 char out_buf[256];
                 using_format_output(vm, &mask, &mask_idx, val_none, out_buf, sizeof(out_buf));
                 if (stream) {
-                    fprintf(stream, "%s", out_buf);
+                    platform_file_printf(stream, "%s", out_buf);
                 } else if (channel == PRINT_CHANNEL_CONSOLE) {
                     vdev_puts(vm_get_vdev(vm), out_buf);
                 } else if (channel == PRINT_CHANNEL_PRINTER) {
@@ -131,7 +133,7 @@ void print_using_internal_ex(VMContext *vm, LexerContext *lex, int channel, FILE
                     char out_buf[256];
                     using_format_output(vm, &mask, &mask_idx, val_none, out_buf, sizeof(out_buf));
                     if (stream) {
-                        fprintf(stream, "%s", out_buf);
+                        platform_file_printf(stream, "%s", out_buf);
                     } else if (channel == PRINT_CHANNEL_CONSOLE) {
                         vdev_puts(vm_get_vdev(vm), out_buf);
                     } else if (channel == PRINT_CHANNEL_PRINTER) {
@@ -158,7 +160,7 @@ void print_using_internal_ex(VMContext *vm, LexerContext *lex, int channel, FILE
         using_format_output(vm, &mask, &mask_idx, val, out_buf, sizeof(out_buf));
 
         if (stream) {
-            fprintf(stream, "%s", out_buf);
+            platform_file_printf(stream, "%s", out_buf);
         } else if (channel == PRINT_CHANNEL_CONSOLE) {
             vdev_puts(vm_get_vdev(vm), out_buf);
         } else if (channel == PRINT_CHANNEL_PRINTER) {
@@ -171,16 +173,19 @@ void print_using_internal_ex(VMContext *vm, LexerContext *lex, int channel, FILE
             str_release(vm_get_str(vm), val.as.string);
         }
 
-        tok = lex_peek(lex);
-        if (tok.type == TOK_COMMA || tok.type == TOK_SEMICOLON) {
-            lex_next(lex);
+        // Check for comma/semicolon separator
+        BppToken sep = lex_peek(lex);
+        if (sep.type == TOK_COMMA || sep.type == TOK_SEMICOLON) {
+            lex_next(lex); // consume separator
             last_was_sep = true;
+            continue;
         } else {
             last_was_sep = false;
+            break;
         }
     }
 
-    // Print trailing literals
+    // Flush any trailing literal tokens from mask
     while (mask_idx < mask.token_count) {
         UsingTokenType t_type = mask.tokens[mask_idx].type;
         if (t_type == USING_TOK_LITERAL || t_type == USING_TOK_ATTR || 
@@ -190,7 +195,7 @@ void print_using_internal_ex(VMContext *vm, LexerContext *lex, int channel, FILE
             char out_buf[256];
             using_format_output(vm, &mask, &mask_idx, val_none, out_buf, sizeof(out_buf));
             if (stream) {
-                fprintf(stream, "%s", out_buf);
+                platform_file_printf(stream, "%s", out_buf);
             } else if (channel == PRINT_CHANNEL_CONSOLE) {
                 vdev_puts(vm_get_vdev(vm), out_buf);
             } else if (channel == PRINT_CHANNEL_PRINTER) {
@@ -205,7 +210,7 @@ void print_using_internal_ex(VMContext *vm, LexerContext *lex, int channel, FILE
 
     if (!last_was_sep) {
         if (stream) {
-            fprintf(stream, "\n");
+            platform_file_printf(stream, "\n");
         } else if (channel == PRINT_CHANNEL_CONSOLE) {
             vdev_putc(vm_get_vdev(vm), '\n');
         } else if (channel == PRINT_CHANNEL_PRINTER) {
@@ -215,7 +220,7 @@ void print_using_internal_ex(VMContext *vm, LexerContext *lex, int channel, FILE
         }
     }
     if (stream) {
-        fflush(stream);
+        platform_file_flush(stream);
     } else if (channel >= 0) {
         file_flush(vm_get_file(vm), channel);
     }
@@ -230,7 +235,7 @@ void print_using_internal(VMContext *vm, LexerContext *lex, int channel) {
 
 BppError stmt_print_using_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     print_using_internal(vm, lex, -1);
     return err;

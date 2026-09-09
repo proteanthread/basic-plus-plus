@@ -1,0 +1,69 @@
+TITLE: EXTERN
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/control/external/stmt_extern.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+EXTERN KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: stmt_extern.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (language_descriptor.h), libengine (eval.h, stmt.h), libplat
+    // Provides runtime implementation for the dynamic FFI EXTERN statement in BAS
+    //
+    // ---- Includes ----
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Dynamically binds an external dynamic shared library (DLL/.so) C symbol for
+direct calling in BASIC++.
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    EXTERN {SUB | FUNCTION} name [ALIAS "aliasname"] [(params)]
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = EXTERN {SUB | FUNCTION} name [ALIAS "aliasname"] [(params)]
+    20 PRINT "Result: "; Val
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error, Error 13: Type Mismatch
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Control Flow
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SAFE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  EXTERN
+Category              Control Flow
+Syntax                EXTERN {SUB | FUNCTION} name [ALIAS "aliasname"] [(...
+Description           Dynamically binds an external dynamic shared librar...
+Error Summary         Error 2: Syntax Error, Error 13: Type Mismatch
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/control/external/stmt_extern.c

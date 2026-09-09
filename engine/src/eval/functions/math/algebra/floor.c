@@ -1,26 +1,32 @@
-// FILENAME: floor.c
+// FILENAME: runtime_floor.c
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (math_fn.c)
-// NEEDS: libcore (math.h, micro_lib_metadata.h, micro_lib_metadata.c, string.h)
-// NEEDS: libengine (floor.h, math.c, string.c)
+// NEEDS: libcore (math.h, language_descriptor.h, string.h)
+// NEEDS: libengine (runtime_floor.h, math.c, string.c)
 // Provides runtime implementation for the FLOOR built-in function in BASIC++.
 //
 // ---- Includes ----
 
 #include "eval/functions/math/algebra/floor.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/math.h"
 #include "runtime/string.h"
+#include "runtime/string/strops.h"
+#include "runtime/math/math.h"
+
+static const LangDesc g_floor_desc = {
+    .name = "FLOOR",
+    .category = "Math Functions",
+    .syntax = "FLOOR(x)",
+    .description = "Returns the largest integer less than or equal to x.",
+    .error_summary = "Error 13: Type Mismatch (FLOOR expects one numeric argument)",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_PURE,
+    .type = FEATURE_FUNCTION
+};
 void func_floor_register(void) {
-    MicroLibMetadata meta = {
-        .name = "FLOOR",
-        .category = "Math Functions",
-        .syntax = "FLOOR(x)",
-        .help_text = "Returns the largest integer less than or equal to x.",
-        .error_codes = "Error 13: Type Mismatch (FLOOR expects one numeric argument)"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_floor_desc);
 }
 
 BValue func_floor_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err) {

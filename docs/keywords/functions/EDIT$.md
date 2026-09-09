@@ -1,28 +1,71 @@
-# `EDIT$` String Editing & Transformation Function
+<!--
+Title:        EDIT$
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/runtime/string/strops.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Function Definition
+# `EDIT$` Keyword Reference
 
-The `EDIT$` function performs bitmask-controlled string transformations (stripping control chars, trimming whitespace, collapsing multiple spaces, uppercasing) on a source string.
+## Source Header
 
-### Syntax Signatures:
-```basic
-res$ = EDIT$(source_string$, control_mask%)
+```c
+// FILENAME: strops.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libboot, libcore, libengine, libhardware, libkernel, libserver, 
+// NEEDS: libcore (ctype.h, ctype.c, memops.h, memops.c, strops.h)
+// Freestanding string search and manipulation implementation.
+//
+// ---- Includes ----
 ```
 
-### Operational Rules:
-- Bit 1: Discard parity bit.
-- Bit 2: Discard all spaces and tabs.
-- Bit 4: Discard carriage returns, line feeds, nulls.
-- Bit 8: Discard leading spaces and tabs.
-- Bit 16: Collapse multiple spaces to single spaces.
-- Bit 32: Convert lowercase to uppercase.
-- Bit 128: Discard trailing spaces and tabs.
+## 1. Description & Usage
+
+Transforms string str$ according to bitmask actions (trim, compress spaces, lowercase, etc.).
+
+## 2. Syntax
+
+```basic
+EDIT$(str$, action_mask%)
+```
+
+## 3. Code Example
+
+```basic
+10 Val = EDIT$(str$, action_mask%)
+20 PRINT "Result: "; Val
+```
+
+## 4. Error Conditions
+
+Error 5: Illegal Function Call
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: String Functions
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_PURE
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 S$ = "   Hello   World   "
-20 PRINT EDIT$(S$, 32 + 8 + 128) : REM Outputs "HELLO   WORLD"
-```
+| Field | Value |
+|---|---|
+| Name | EDIT$ |
+| Category | String Functions |
+| Syntax | EDIT$(str$, action_mask%) |
+| Description | Transforms string str$ according to bitmask actions (trim, compress spaces, lowercase, etc.). |
+| Error Summary | Error 5: Illegal Function Call |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_PURE |
+| Feature Type | FEATURE_FUNCTION |
+| Delimiter Mask | none |
+| Compatibility | BASIC++ Standard |
+| Since Version | 6.0.0 |
+| Source File | engine/src/runtime/string/strops.c |

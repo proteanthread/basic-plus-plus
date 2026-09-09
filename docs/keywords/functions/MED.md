@@ -1,22 +1,71 @@
-# `MED` Statistical Median Value Function
+<!--
+Title:        MED
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/eval/eval.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Function Definition
+# `MED` Keyword Reference
 
-The `MED` function computes the statistical median (middle value of a sorted distribution) across multiple numeric arguments or array elements.
+## Source Header
 
-### Syntax Signatures:
-```basic
-median = MED(val1, val2, val3 [, ...])
-median = MED(array())
+```c
+// FILENAME: eval.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libboot, libcore, libengine, libext, libkernel, libstandard
+// NEEDS: libengine (eval_expr_internal.h)
+// Implements component functionality for eval.c.
+//
+// ---- Includes ----
 ```
 
-### Operational Rules:
-- Sorts values and selects the central value (or average of two central values for even $N$).
+## 1. Description & Usage
+
+Returns the median (middle) value among the supplied numeric arguments.
+
+## 2. Syntax
+
+```basic
+MED(val1, val2, ...)
+```
+
+## 3. Code Example
+
+```basic
+10 Val = MED(val1, val2, ...)
+20 PRINT "Result: "; Val
+```
+
+## 4. Error Conditions
+
+Error 5: Illegal Function Call (no arguments)
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Statistical Functions
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_PURE
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 PRINT "Median of 1, 5, 2, 8, 7 = "; MED(1, 5, 2, 8, 7) : REM Outputs 5
-```
+| Field | Value |
+|---|---|
+| Name | MED |
+| Category | Statistical Functions |
+| Syntax | MED(val1, val2, ...) |
+| Description | Returns the median (middle) value among the supplied numeric arguments. |
+| Error Summary | Error 5: Illegal Function Call (no arguments) |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_PURE |
+| Feature Type | FEATURE_FUNCTION |
+| Delimiter Mask | none |
+| Compatibility | BASIC++ Standard |
+| Since Version | 6.0.0 |
+| Source File | engine/src/eval/eval.c |

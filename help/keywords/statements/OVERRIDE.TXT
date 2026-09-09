@@ -1,0 +1,69 @@
+TITLE: OVERRIDE
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/introspection/override.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+OVERRIDE KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: override.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (exec_control_internal.h, exec_internal.h)
+    // NEEDS: libcore (language_descriptor.h, memops.h, strops.h)
+    // NEEDS: libengine (lexer.h, override.h, vm.h)
+    // NEEDS: libkernel (types.h, vdev.h)
+    // Provides runtime implementation for the OVERRIDE statement in BASIC++.
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Replaces or hooks built-in statement execution with user-defined SUB or GOSUB
+routines.
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    OVERRIDE target WITH GOSUB line_num | OVERRIDE target WITH sub_name | OVERRIDE CLEAR
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM OVERRIDE Demonstration
+    20 PRINT "OVERRIDE executed successfully."
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error, Error 13: Permission Denied (Protected Keyword)
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Introspection
+Subsystem:     SUBSYSTEM_FLEX
+Safety Level:  SAFETY_SAFE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  OVERRIDE
+Category              Introspection
+Syntax                OVERRIDE target WITH GOSUB line_num | OVERRIDE targ...
+Description           Replaces or hooks built-in statement execution with...
+Error Summary         Error 2: Syntax Error, Error 13: Permission Denied ...
+Subsystem             SUBSYSTEM_FLEX
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/introspection/override.c

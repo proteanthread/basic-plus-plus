@@ -1,16 +1,69 @@
-ABS Absolute Value Function
-======================================================================
+TITLE: ABS
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/functions/math/algebra/abs.c
+GENERATED: no, hand-written
+STATUS: current
 
-The ABS function returns the absolute value of a numeric expression.
+==============================================================================
+ABS KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: abs.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (math_fn.c)
+    // NEEDS: libcore (math.h, language_descriptor.h, string.h)
+    // NEEDS: libengine (abs.h, math.c, string.c)
+    // Provides runtime implementation for the ABS built-in function in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Returns the absolute value of a numeric expression.
 
-    result = ABS(numeric_expression)
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    ABS(x)
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 X = -42.5
+    20 PRINT "Original: "; X; " Absolute: "; ABS(X)
 
-CODE EXAMPLES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 13: Type Mismatch (ABS expects one numeric argument)
 
-    10 PRINT ABS(-15)   : REM Outputs 15
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Math Functions
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_PURE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  ABS
+Category              Math Functions
+Syntax                ABS(x)
+Description           Returns the absolute value of a numeric expression.
+Error Summary         Error 13: Type Mismatch (ABS expects one numeric ar...
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_PURE
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/eval/functions/math/algebra/abs.c

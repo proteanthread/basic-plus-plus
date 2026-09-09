@@ -12,6 +12,9 @@
 #include "bootstrap/common_internal.h"
 #include "hal/hal.h"
 #include "device/vdev_esp32.h"
+#include "runtime/string/memops.h"
+#include "runtime/conv/float_parse.h"
+#include "platform/platform.h"
 
 // Forward declarations
 VDev vdev_console_create(void);
@@ -68,7 +71,7 @@ BootContext *boot_execute(const BootConfig *config) {
     feature_reg_init();
 
     funcreg_init();
-    microlib_init();
+    lang_desc_init();
     spec_registry_init();
 
     boot_register_all_statements();
@@ -155,6 +158,7 @@ void boot_shutdown(BootContext *ctx) {
     if (!ctx) return;
 
     vprinter_shutdown();
+    lang_desc_shutdown();
     if (ctx->vm) vm_shutdown(ctx->vm);
     if (ctx->var) var_shutdown(ctx->var);
     if (ctx->str) str_shutdown(ctx->str);

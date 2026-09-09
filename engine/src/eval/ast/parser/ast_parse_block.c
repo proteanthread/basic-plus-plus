@@ -15,6 +15,9 @@
 #include "platform/platform.h"
 #include "runtime/strings.h"
 #include "vm/vm.h"
+#include "runtime/string/strops.h"
+#include "runtime/string/memops.h"
+#include "runtime/ctype/ctype.h"
 
 //
 // ---- Multi-Line Block Compilers ----
@@ -49,16 +52,12 @@ EvalAstNode *eval_ast_try_compile_multiline_if(VMContext *vm, const BppProgramLi
 
     BppToken ttok = lex_peek(lex);
     if (!is_tok_kw(ttok, KW_THEN, "THEN", 4)) {
-        eval_ast_free_tree(cond);
-        lex_shutdown(lex);
-        return NULL;
+        eval_ast_free_tree(cond); lex_shutdown(lex); return NULL;
     }
     lex_next(lex);
 
     if (lex_peek(lex).type != TOK_EOF && lex_peek(lex).type != TOK_EOL) {
-        eval_ast_free_tree(cond);
-        lex_shutdown(lex);
-        return NULL;
+        eval_ast_free_tree(cond); lex_shutdown(lex); return NULL;
     }
     lex_shutdown(lex);
 
@@ -198,7 +197,7 @@ EvalAstNode *eval_ast_try_compile_multiline_block(VMContext *vm, const BppProgra
         }
 
         BppToken vtok = lex_peek(lex);
-        if (vtok.type != TOK_IDENT) {
+        if (vtok.type != TOK_IDENT && vtok.type != TOK_KEYWORD) {
             lex_shutdown(lex);
             return NULL;
         }
@@ -215,24 +214,17 @@ EvalAstNode *eval_ast_try_compile_multiline_block(VMContext *vm, const BppProgra
         lex_next(lex);
 
         EvalAstNode *start_expr = eval_ast_parse_expression(lex);
-        if (!start_expr) {
-            lex_shutdown(lex);
-            return NULL;
-        }
+        if (!start_expr) { lex_shutdown(lex); return NULL; }
 
         BppToken to_tok = lex_peek(lex);
         if (!is_tok_kw(to_tok, KW_TO, "TO", 2)) {
-            eval_ast_free_tree(start_expr);
-            lex_shutdown(lex);
-            return NULL;
+            eval_ast_free_tree(start_expr); lex_shutdown(lex); return NULL;
         }
         lex_next(lex);
 
         EvalAstNode *end_expr = eval_ast_parse_expression(lex);
         if (!end_expr) {
-            eval_ast_free_tree(start_expr);
-            lex_shutdown(lex);
-            return NULL;
+            eval_ast_free_tree(start_expr); lex_shutdown(lex); return NULL;
         }
 
         EvalAstNode *step_expr = NULL;
@@ -240,39 +232,74 @@ EvalAstNode *eval_ast_try_compile_multiline_block(VMContext *vm, const BppProgra
             lex_next(lex);
             step_expr = eval_ast_parse_expression(lex);
             if (!step_expr) {
-                eval_ast_free_tree(start_expr);
-                eval_ast_free_tree(end_expr);
-                lex_shutdown(lex);
-                return NULL;
+                eval_ast_free_tree(start_expr); eval_ast_free_tree(end_expr); lex_shutdown(lex); return NULL;
             }
         }
 
         EvalAstNode *same_line_body = NULL;
         EvalAstNode *same_line_tail = NULL;
+        EvalAstNode *trailing_same_line = NULL;
+        EvalAstNode *trailing_same_line_tail = NULL;
         bool closed_same_line = false;
 
         while (lex_peek(lex).type != TOK_EOF) {
-            if (lex_peek(lex).type == TOK_EOL) {
-                if (*lex_peek(lex).start == ':') {
+            BppToken ptok = lex_peek(lex);
+            if (ptok.type == TOK_EOL) {
+                if (ptok.start && *ptok.start == ':') {
                     lex_next(lex);
-                } else {
-                    break;
+                    continue;
                 }
+                break;
             }
-            if (is_tok_kw(lex_peek(lex), KW_NEXT, "NEXT", 4)) {
+            if (is_tok_kw(ptok, KW_NEXT, "NEXT", 4)) {
                 lex_next(lex);
-                if (lex_peek(lex).type == TOK_IDENT) lex_next(lex);
+                if (lex_peek(lex).type == TOK_IDENT || lex_peek(lex).type == TOK_KEYWORD) lex_next(lex);
+                while (lex_peek(lex).type == TOK_COMMA) {
+                    lex_next(lex);
+                    if (lex_peek(lex).type == TOK_IDENT || lex_peek(lex).type == TOK_KEYWORD) lex_next(lex);
+                }
                 closed_same_line = true;
+
+                // Parse any trailing statements on the same line after NEXT
+                while (lex_peek(lex).type != TOK_EOF) {
+                    BppToken sep = lex_peek(lex);
+                    if (sep.type == TOK_EOL) {
+                        if (sep.start && *sep.start == ':') {
+                            lex_next(lex);
+                            continue;
+                        }
+                        break;
+                    }
+                    if (sep.type == TOK_BACKSLASH) {
+                        lex_next(lex);
+                        continue;
+                    }
+                    EvalAstNode *t_stmt = parse_single_statement(lex);
+                    if (!t_stmt) {
+                        eval_ast_free_tree(start_expr); eval_ast_free_tree(end_expr);
+                        if (step_expr) eval_ast_free_tree(step_expr);
+                        if (same_line_body) eval_ast_free_tree(same_line_body);
+                        if (trailing_same_line) eval_ast_free_tree(trailing_same_line);
+                        lex_shutdown(lex); return NULL;
+                    }
+                    if (!trailing_same_line) {
+                        trailing_same_line = t_stmt;
+                        trailing_same_line_tail = t_stmt;
+                    } else {
+                        trailing_same_line_tail->next = t_stmt;
+                        trailing_same_line_tail = t_stmt;
+                    }
+                    while (trailing_same_line_tail->next) trailing_same_line_tail = trailing_same_line_tail->next;
+                }
                 break;
             }
             EvalAstNode *b_stmt = parse_single_statement(lex);
             if (!b_stmt) {
-                eval_ast_free_tree(start_expr);
-                eval_ast_free_tree(end_expr);
+                eval_ast_free_tree(start_expr); eval_ast_free_tree(end_expr);
                 if (step_expr) eval_ast_free_tree(step_expr);
                 if (same_line_body) eval_ast_free_tree(same_line_body);
-                lex_shutdown(lex);
-                return NULL;
+                if (trailing_same_line) eval_ast_free_tree(trailing_same_line);
+                lex_shutdown(lex); return NULL;
             }
             if (!same_line_body) {
                 same_line_body = b_stmt;
@@ -281,12 +308,34 @@ EvalAstNode *eval_ast_try_compile_multiline_block(VMContext *vm, const BppProgra
                 same_line_tail->next = b_stmt;
                 same_line_tail = b_stmt;
             }
+            while (same_line_tail->next) same_line_tail = same_line_tail->next;
         }
         lex_shutdown(lex);
 
         if (closed_same_line) {
+            EvalAstNode *chk = same_line_body;
+            bool has_jump = false;
+            while (chk) {
+                if (chk->type == AST_NODE_GOTO || chk->type == AST_NODE_GOSUB) {
+                    has_jump = true;
+                    break;
+                }
+                chk = chk->next;
+            }
+            if (has_jump) {
+                eval_ast_free_tree(start_expr);
+                eval_ast_free_tree(end_expr);
+                if (step_expr) eval_ast_free_tree(step_expr);
+                if (same_line_body) eval_ast_free_tree(same_line_body);
+                if (trailing_same_line) eval_ast_free_tree(trailing_same_line);
+                return NULL;
+            }
             *out_lines_skipped = 0;
-            return eval_ast_create_for_loop(NULL, var_name, start_expr, end_expr, step_expr, same_line_body);
+            EvalAstNode *for_loop = eval_ast_create_for_loop(NULL, var_name, start_expr, end_expr, step_expr, same_line_body);
+            if (for_loop && trailing_same_line) {
+                for_loop->next = trailing_same_line;
+            }
+            return for_loop;
         }
 
         EvalAstNode *body_head = same_line_body;
@@ -349,31 +398,54 @@ EvalAstNode *eval_ast_try_compile_multiline_block(VMContext *vm, const BppProgra
                 return NULL;
             }
 
-            EvalAstNode *chk = line_ast;
-            bool has_jump = false;
-            while (chk) {
-                if (chk->type == AST_NODE_GOTO) {
-                    has_jump = true;
-                    break;
-                }
-                if (chk->type == AST_NODE_GOSUB) {
-                    if (!chk->target_ast) {
-                        chk->target_ast = eval_ast_compile_subroutine(vm, lines, total_count, chk->target_line);
+            if (line_ast->type == AST_NODE_GOSUB && !line_ast->next) {
+                EvalAstNode *sub_ast = eval_ast_compile_subroutine(vm, lines, total_count, line_ast->target_line);
+                if (sub_ast) {
+                    EvalAstNode *scurr = sub_ast;
+                    EvalAstNode *sprev = NULL;
+                    while (scurr->next) {
+                        sprev = scurr;
+                        scurr = scurr->next;
                     }
-                    if (!chk->target_ast) {
+                    if (scurr->type == AST_NODE_RETURN) {
+                        if (sprev) {
+                            sprev->next = NULL;
+                            eval_ast_free_tree(scurr);
+                        } else {
+                            eval_ast_free_tree(scurr);
+                            sub_ast = NULL;
+                        }
+                    }
+                    if (sub_ast) {
+                        eval_ast_free_tree(line_ast);
+                        line_ast = sub_ast;
+                    }
+                } else {
+                    eval_ast_free_tree(line_ast);
+                    eval_ast_free_tree(start_expr);
+                    eval_ast_free_tree(end_expr);
+                    if (step_expr) eval_ast_free_tree(step_expr);
+                    if (body_head) eval_ast_free_tree(body_head);
+                    return NULL;
+                }
+            } else {
+                EvalAstNode *chk = line_ast;
+                bool has_jump = false;
+                while (chk) {
+                    if (chk->type == AST_NODE_GOTO || chk->type == AST_NODE_GOSUB) {
                         has_jump = true;
                         break;
                     }
+                    chk = chk->next;
                 }
-                chk = chk->next;
-            }
-            if (has_jump) {
-                eval_ast_free_tree(line_ast);
-                eval_ast_free_tree(start_expr);
-                eval_ast_free_tree(end_expr);
-                if (step_expr) eval_ast_free_tree(step_expr);
-                if (body_head) eval_ast_free_tree(body_head);
-                return NULL;
+                if (has_jump) {
+                    eval_ast_free_tree(line_ast);
+                    eval_ast_free_tree(start_expr);
+                    eval_ast_free_tree(end_expr);
+                    if (step_expr) eval_ast_free_tree(step_expr);
+                    if (body_head) eval_ast_free_tree(body_head);
+                    return NULL;
+                }
             }
 
             if (!body_head) {
@@ -393,8 +465,53 @@ EvalAstNode *eval_ast_try_compile_multiline_block(VMContext *vm, const BppProgra
             return NULL;
         }
 
+        EvalAstNode *trailing_multiline = NULL;
+        EvalAstNode *trailing_multiline_tail = NULL;
+        const char *end_text = skip_line_number_and_spaces(lines[end_idx].text);
+        LexerContext *nlex = lex_init(vm_get_mem(vm), end_text);
+        if (nlex) {
+            if (lex_peek(nlex).type == TOK_NUMBER) lex_next(nlex);
+            BppToken ntok = lex_next(nlex);
+            if (is_tok_kw(ntok, KW_NEXT, "NEXT", 4)) {
+                if (lex_peek(nlex).type == TOK_IDENT || lex_peek(nlex).type == TOK_KEYWORD) lex_next(nlex);
+                while (lex_peek(nlex).type == TOK_COMMA) {
+                    lex_next(nlex);
+                    if (lex_peek(nlex).type == TOK_IDENT || lex_peek(nlex).type == TOK_KEYWORD) lex_next(nlex);
+                }
+                while (lex_peek(nlex).type != TOK_EOF) {
+                    BppToken sep = lex_peek(nlex);
+                    if (sep.type == TOK_EOL) {
+                        if (sep.start && *sep.start == ':') {
+                            lex_next(nlex);
+                            continue;
+                        }
+                        break;
+                    }
+                    if (sep.type == TOK_BACKSLASH) {
+                        lex_next(nlex);
+                        continue;
+                    }
+                    EvalAstNode *t_stmt = parse_single_statement(nlex);
+                    if (!t_stmt) break;
+                    if (!trailing_multiline) {
+                        trailing_multiline = t_stmt;
+                        trailing_multiline_tail = t_stmt;
+                    } else {
+                        trailing_multiline_tail->next = t_stmt;
+                        trailing_multiline_tail = t_stmt;
+                    }
+                    while (trailing_multiline_tail->next) trailing_multiline_tail = trailing_multiline_tail->next;
+                }
+            }
+            lex_shutdown(nlex);
+        }
+
         *out_lines_skipped = end_idx - start_idx;
-        return eval_ast_create_for_loop(NULL, var_name, start_expr, end_expr, step_expr, body_head);
+        EvalAstNode *for_loop = eval_ast_create_for_loop(NULL, var_name, start_expr, end_expr, step_expr, body_head);
+        if (for_loop && trailing_multiline) {
+            for_loop->next = trailing_multiline;
+        }
+        return for_loop;
     }
 
     // 2. WHILE ... WEND Loop
@@ -421,6 +538,9 @@ EvalAstNode *eval_ast_try_compile_multiline_block(VMContext *vm, const BppProgra
         EvalAstNode *same_line_tail = NULL;
         bool closed_same_line = false;
 
+        EvalAstNode *trailing_same_line = NULL;
+        EvalAstNode *trailing_same_line_tail = NULL;
+
         while (lex_peek(lex).type != TOK_EOF) {
             if (lex_peek(lex).type == TOK_EOL) {
                 if (*lex_peek(lex).start == ':') {
@@ -432,12 +552,43 @@ EvalAstNode *eval_ast_try_compile_multiline_block(VMContext *vm, const BppProgra
             if (is_tok_kw(lex_peek(lex), KW_WEND, "WEND", 4)) {
                 lex_next(lex);
                 closed_same_line = true;
+                while (lex_peek(lex).type != TOK_EOF) {
+                    BppToken sep = lex_peek(lex);
+                    if (sep.type == TOK_EOL) {
+                        if (sep.start && *sep.start == ':') {
+                            lex_next(lex);
+                            continue;
+                        }
+                        break;
+                    }
+                    if (sep.type == TOK_BACKSLASH) {
+                        lex_next(lex);
+                        continue;
+                    }
+                    EvalAstNode *t_stmt = parse_single_statement(lex);
+                    if (!t_stmt) {
+                        eval_ast_free_tree(cond_expr);
+                        if (same_line_body) eval_ast_free_tree(same_line_body);
+                        if (trailing_same_line) eval_ast_free_tree(trailing_same_line);
+                        lex_shutdown(lex);
+                        return NULL;
+                    }
+                    if (!trailing_same_line) {
+                        trailing_same_line = t_stmt;
+                        trailing_same_line_tail = t_stmt;
+                    } else {
+                        trailing_same_line_tail->next = t_stmt;
+                        trailing_same_line_tail = t_stmt;
+                    }
+                    while (trailing_same_line_tail->next) trailing_same_line_tail = trailing_same_line_tail->next;
+                }
                 break;
             }
             EvalAstNode *b_stmt = parse_single_statement(lex);
             if (!b_stmt) {
                 eval_ast_free_tree(cond_expr);
                 if (same_line_body) eval_ast_free_tree(same_line_body);
+                if (trailing_same_line) eval_ast_free_tree(trailing_same_line);
                 lex_shutdown(lex);
                 return NULL;
             }
@@ -448,12 +599,32 @@ EvalAstNode *eval_ast_try_compile_multiline_block(VMContext *vm, const BppProgra
                 same_line_tail->next = b_stmt;
                 same_line_tail = b_stmt;
             }
+            while (same_line_tail->next) same_line_tail = same_line_tail->next;
         }
         lex_shutdown(lex);
 
         if (closed_same_line) {
+            EvalAstNode *chk = same_line_body;
+            bool has_jump = false;
+            while (chk) {
+                if (chk->type == AST_NODE_GOTO || chk->type == AST_NODE_GOSUB) {
+                    has_jump = true;
+                    break;
+                }
+                chk = chk->next;
+            }
+            if (has_jump) {
+                eval_ast_free_tree(cond_expr);
+                if (same_line_body) eval_ast_free_tree(same_line_body);
+                if (trailing_same_line) eval_ast_free_tree(trailing_same_line);
+                return NULL;
+            }
             *out_lines_skipped = 0;
-            return eval_ast_create_while_loop(NULL, cond_expr, same_line_body);
+            EvalAstNode *while_loop = eval_ast_create_while_loop(NULL, cond_expr, same_line_body);
+            if (while_loop && trailing_same_line) {
+                while_loop->next = trailing_same_line;
+            }
+            return while_loop;
         }
 
         EvalAstNode *body_head = same_line_body;
@@ -514,20 +685,50 @@ EvalAstNode *eval_ast_try_compile_multiline_block(VMContext *vm, const BppProgra
                 return NULL;
             }
 
-            EvalAstNode *chk = line_ast;
-            bool has_jump = false;
-            while (chk) {
-                if (chk->type == AST_NODE_GOTO) {
-                    has_jump = true;
-                    break;
+            if (line_ast->type == AST_NODE_GOSUB && !line_ast->next) {
+                EvalAstNode *sub_ast = eval_ast_compile_subroutine(vm, lines, total_count, line_ast->target_line);
+                if (sub_ast) {
+                    EvalAstNode *scurr = sub_ast;
+                    EvalAstNode *sprev = NULL;
+                    while (scurr->next) {
+                        sprev = scurr;
+                        scurr = scurr->next;
+                    }
+                    if (scurr->type == AST_NODE_RETURN) {
+                        if (sprev) {
+                            sprev->next = NULL;
+                            eval_ast_free_tree(scurr);
+                        } else {
+                            eval_ast_free_tree(scurr);
+                            sub_ast = NULL;
+                        }
+                    }
+                    if (sub_ast) {
+                        eval_ast_free_tree(line_ast);
+                        line_ast = sub_ast;
+                    }
+                } else {
+                    eval_ast_free_tree(line_ast);
+                    eval_ast_free_tree(cond_expr);
+                    if (body_head) eval_ast_free_tree(body_head);
+                    return NULL;
                 }
-                chk = chk->next;
-            }
-            if (has_jump) {
-                eval_ast_free_tree(line_ast);
-                eval_ast_free_tree(cond_expr);
-                if (body_head) eval_ast_free_tree(body_head);
-                return NULL;
+            } else {
+                EvalAstNode *chk = line_ast;
+                bool has_jump = false;
+                while (chk) {
+                    if (chk->type == AST_NODE_GOTO || chk->type == AST_NODE_GOSUB) {
+                        has_jump = true;
+                        break;
+                    }
+                    chk = chk->next;
+                }
+                if (has_jump) {
+                    eval_ast_free_tree(line_ast);
+                    eval_ast_free_tree(cond_expr);
+                    if (body_head) eval_ast_free_tree(body_head);
+                    return NULL;
+                }
             }
 
             if (!body_head) {
@@ -545,8 +746,48 @@ EvalAstNode *eval_ast_try_compile_multiline_block(VMContext *vm, const BppProgra
             return NULL;
         }
 
+        EvalAstNode *trailing_wend = NULL;
+        EvalAstNode *trailing_wend_tail = NULL;
+        const char *wend_text = skip_line_number_and_spaces(lines[end_idx].text);
+        LexerContext *wlex = lex_init(vm_get_mem(vm), wend_text);
+        if (wlex) {
+            if (lex_peek(wlex).type == TOK_NUMBER) lex_next(wlex);
+            BppToken wtok = lex_next(wlex);
+            if (is_tok_kw(wtok, KW_WEND, "WEND", 4)) {
+                while (lex_peek(wlex).type != TOK_EOF) {
+                    BppToken sep = lex_peek(wlex);
+                    if (sep.type == TOK_EOL) {
+                        if (sep.start && *sep.start == ':') {
+                            lex_next(wlex);
+                            continue;
+                        }
+                        break;
+                    }
+                    if (sep.type == TOK_BACKSLASH) {
+                        lex_next(wlex);
+                        continue;
+                    }
+                    EvalAstNode *t_stmt = parse_single_statement(wlex);
+                    if (!t_stmt) break;
+                    if (!trailing_wend) {
+                        trailing_wend = t_stmt;
+                        trailing_wend_tail = t_stmt;
+                    } else {
+                        trailing_wend_tail->next = t_stmt;
+                        trailing_wend_tail = t_stmt;
+                    }
+                    while (trailing_wend_tail->next) trailing_wend_tail = trailing_wend_tail->next;
+                }
+            }
+            lex_shutdown(wlex);
+        }
+
         *out_lines_skipped = end_idx - start_idx;
-        return eval_ast_create_while_loop(NULL, cond_expr, body_head);
+        EvalAstNode *while_loop = eval_ast_create_while_loop(NULL, cond_expr, body_head);
+        if (while_loop && trailing_wend) {
+            while_loop->next = trailing_wend;
+        }
+        return while_loop;
     }
 
     return NULL;

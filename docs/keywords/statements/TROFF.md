@@ -1,23 +1,73 @@
-# `TROFF` Turn Off Line Tracing Statement
+<!--
+Title:        TROFF
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/debug/logger.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Keyword Definition
+# `TROFF` Keyword Reference
 
-Disables line number execution tracing (GW-BASIC compatibility command).
+## Source Header
 
-### Syntax Signatures:
+```c
+// FILENAME: logger.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: baspp.exe, bpp.exe, bs.exe, libboot, libcore, libengine, libkern
+// NEEDS: libcore (alloc.h, alloc.c, hal.h, logger.h, memops.h, memops.c)
+// NEEDS: libcore (runtime_snprintf.h, runtime_snprintf.c, strops.h, strops.c)
+// NEEDS: libplatform (platform.h)
+// Provides multi-level logging, circular ring buffer, and pluggable sink inte
+//
+// ---- Includes ----
+```
+
+## 1. Description & Usage
+
+Turns trace mode off, stopping execution line number printing to console.
+
+## 2. Syntax
+
 ```basic
 TROFF
 ```
 
-### Operational Notes:
-- Equivalent to TRACE OFF.
+## 3. Code Example
+
+```basic
+10 REM TROFF Demonstration
+20 PRINT "TROFF executed successfully."
+```
+
+## 4. Error Conditions
+
+None
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: GW-BASIC, QBASIC, BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Debugging
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_SAFE
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 TRON : REM Enable tracing
-20 X = 10
-30 TROFF : REM Disable tracing
-```
+| Field | Value |
+|---|---|
+| Name | TROFF |
+| Category | Debugging |
+| Syntax | TROFF |
+| Description | Turns trace mode off, stopping execution line number printing to console. |
+| Error Summary | None |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_SAFE |
+| Feature Type | FEATURE_STATEMENT |
+| Delimiter Mask | none |
+| Compatibility | GW-BASIC, QBASIC, BASIC++ Standard |
+| Since Version | 6.0.0 |
+| Source File | engine/src/debug/logger.c |

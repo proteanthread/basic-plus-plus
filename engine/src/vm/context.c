@@ -110,6 +110,14 @@ int              vm_get_margin(VMContext *vm) { return (vm && vm->margin > 0) ? 
 void             vm_set_margin(VMContext *vm, int margin) { if (vm) vm->margin = margin; }
 int              vm_get_zone_width(VMContext *vm) { return (vm && vm->zone_width > 0) ? vm->zone_width : 14; }
 void             vm_set_zone_width(VMContext *vm, int zone_width) { if (vm) vm->zone_width = zone_width; }
+int              vm_get_angle_mode(VMContext *vm) { return vm ? vm->angle_mode : 0; }
+void             vm_set_angle_mode(VMContext *vm, int mode) { if (vm) vm->angle_mode = mode; }
+int              vm_get_jit_mode(VMContext *vm) { return vm ? vm->jit_mode : 1; }
+void             vm_set_jit_mode(VMContext *vm, int mode) { if (vm) vm->jit_mode = mode; }
+bool             vm_get_jit_fast(VMContext *vm) { return vm ? vm->jit_fast_mode : false; }
+void             vm_set_jit_fast(VMContext *vm, bool fast_mode) { if (vm) vm->jit_fast_mode = fast_mode; }
+void            *vm_get_jit_context(VMContext *vm) { return vm ? vm->jit_context : NULL; }
+void             vm_set_jit_context(VMContext *vm, void *ctx) { if (vm) vm->jit_context = ctx; }
 
 void vm_reset_for_run(VMContext *vm) {
     if (!vm) return;
@@ -132,6 +140,7 @@ void vm_reset_for_run(VMContext *vm) {
     // Reset VM option flags to defaults
     vm->opt_eh = false;
     vm->opt_arithmetic_decimal = false;
+    vm->angle_mode = 0;
 
     // NOTE: metadata_init() is NOT called here because
 // metadata_pre_scan_program() already resets the registry at the
@@ -157,7 +166,7 @@ void vm_reset_for_run(VMContext *vm) {
     // Clear library program lines loaded by LOAD FEATURE
     mem_lib_program_clear(vm->mem);
 
-    // Clear/free loaded sound and image buffers
+    // Clear/runtime_free loaded sound and image buffers
     vdev_sound_free_all();
     vdev_image_free_all();
 
@@ -319,6 +328,9 @@ VMContext *vm_init(MemoryContext *mem, StringContext *str, VariableContext *var,
     vm->jiffies_multiplier = 60.0;
     vm->margin = 80;
     vm->zone_width = 14;
+    vm->jit_mode = 1;
+    vm->jit_fast_mode = false;
+    vm->jit_context = NULL;
 
     vm->arr = arr_init(mem, str);
     if (!vm->arr) {
@@ -665,6 +677,7 @@ void vm_reset_watchdog(VMContext *vm) {
 
 bool vm_check_watchdog(VMContext *vm, BppError *out_err) {
     if (!vm) return true;
+    vm->cycle_count++;
     if (vm->break_triggered) {
         vm->break_triggered = false;
         if (out_err) {
@@ -673,24 +686,32 @@ bool vm_check_watchdog(VMContext *vm, BppError *out_err) {
         }
         return false;
     }
-    if (!vm->watchdog_enabled) return true;
-    vm->cycle_count++;
-    if (vm->max_cycles > 0 && vm->cycle_count > vm->max_cycles) {
+    if ((vm->cycle_count & 65535) == 0) {
+        if (platform_peek_key() == 3) {
+            platform_inkey_char();
+            if (out_err) {
+                out_err->code = ERR_DEVICE_IO_ERROR;
+                out_err->message = "Break";
+            }
+            return false;
+        }
+        if (vm->watchdog_enabled && vm->timeout_ms > 0.0) {
+            double now = platform_get_uptime() * 1000.0;
+            if (now - vm->start_time_ms > vm->timeout_ms) {
+                if (out_err) {
+                    out_err->code = ERR_DEVICE_TIMEOUT;
+                    out_err->message = "Execution timeout exceeded: watchdog timer triggered";
+                }
+                return false;
+            }
+        }
+    }
+    if (vm->watchdog_enabled && vm->max_cycles > 0 && vm->cycle_count > vm->max_cycles) {
         if (out_err) {
             out_err->code = ERR_DEVICE_TIMEOUT;
             out_err->message = "Execution limit exceeded: cycle watchdog timeout";
         }
         return false;
-    }
-    if (vm->timeout_ms > 0.0 && ((vm->cycle_count & 1023) == 0)) {
-        double now = platform_get_uptime() * 1000.0;
-        if (now - vm->start_time_ms > vm->timeout_ms) {
-            if (out_err) {
-                out_err->code = ERR_DEVICE_TIMEOUT;
-                out_err->message = "Execution timeout exceeded: watchdog timer triggered";
-            }
-            return false;
-        }
     }
     return true;
 }

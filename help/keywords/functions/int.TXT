@@ -1,23 +1,70 @@
-INT Greatest Integer (Floor) Function
-======================================================================
+TITLE: INT
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/functions/math/algebra/int.c
+GENERATED: no, hand-written
+STATUS: current
 
-The INT function calculates the largest integer less than or equal to
-the argument (floor towards -infinity).
+==============================================================================
+INT KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: int.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (math_fn.c)
+    // NEEDS: libcore (math.h, language_descriptor.h, string.h)
+    // NEEDS: libengine (int.h, math.c, string.c)
+    // Provides runtime implementation for the INT built-in function in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Returns the largest integer less than or equal to x (runtime_floor
+conversion).
 
-    res = INT(numeric_expression)
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    INT(x)
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = INT(10)
+    20 PRINT "Result: "; Val
 
-OPERATIONAL RULES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 13: Type Mismatch (INT expects one numeric argument)
 
-  - Rounds towards -infinity (INT(-3.1) = -4, whereas FIX(-3.1) = -3).
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Math Functions
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_PURE
 
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 PRINT INT(5.8)   : REM Outputs 5
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  INT
+Category              Math Functions
+Syntax                INT(x)
+Description           Returns the largest integer less than or equal to x...
+Error Summary         Error 13: Type Mismatch (INT expects one numeric ar...
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_PURE
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/eval/functions/math/algebra/int.c

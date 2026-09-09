@@ -61,6 +61,7 @@ BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int arg_coun
     }
 
     err->code = 5; // Illegal function call
+    err->message = "Illegal function call";
     err->line = vm_get_current_line(vm);
     return res;
 }

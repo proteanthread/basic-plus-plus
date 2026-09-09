@@ -1,133 +1,83 @@
-# BASIC++ v6.5.2 SuperBASIC (Sinclair QL) Dialect
+<!--
+Title:        SuperBASIC_QL
+Tier:         2
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/statements/control/, engine/src/eval/
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. HISTORY
+# BASIC++ v6.5.2 SuperBASIC (Sinclair QL) Compatibility Architecture
 
-SuperBASIC is the built-in BASIC dialect of the Sinclair QL (Quantum Leap), released in 1984. It was one of the most advanced BASIC dialects of the 8-bit era, featuring structured programming constructs (REPeat, DEFine PROCedure, DEFine FuNction), local variables, and a flexible syntax. BASIC++ implements SuperBASIC compatibility through the SQLB dialect configuration.
+The authoritative specification for Sinclair QL SuperBASIC language constructs, named procedures, structured loops, and inline range slicing in BASIC++ v6.5.2.
 
-## 2. ACTIVATING SUPERBASIC MODE
+---
 
-```basic
-10 DIALECT "SQLB"
-```
+## 1. History & Architectural Overview
 
-Or launch with: `baspp --dialect=SQLB`.
+SuperBASIC was the resident advanced operating system and language of the Motorola 68008-based Sinclair QL (Quantum Leap), authored by Jan Jones in 1984. It introduced advanced structured programming features: named procedures and functions, loop labels with targeted `EXIT`, multi-condition `SELect ON`, and first-class string and array slicing.
 
-## 3. STRUCTURED LOOPS
+In BASIC++ v6.5.2, all Sinclair QL SuperBASIC constructs are recognized directly by the master parser with zero dialect switching (upholding the Zero DIALECT invariant).
 
-SuperBASIC uses REPeat/END REPeat instead of WHILE/WEND for indefinite loops:
+---
 
-```basic
-10 REPeat MainLoop
-20   INPUT "Number (0 to quit): "; N
-30   IF N = 0 THEN EXIT MainLoop
-40   PRINT N; "squared ="; N * N
-50 END REPeat MainLoop
-```
+## 2. Structured Loops and Targeted Exits
 
-REPeat loops are named and can be exited from anywhere within the loop body using EXIT name. This is more flexible than WHILE/WEND because the exit condition can appear at any point, not just at the top.
-
-## 4. FOR LOOPS
-
-SuperBASIC FOR loops also support named EXIT:
+SuperBASIC introduced named `REPeat` loops with targeted loop control:
 
 ```basic
-10 FOR I = 1 TO 100
-20   IF A(I) = Target THEN EXIT I
-30 END FOR I
+REPeat LoopName
+  statements
+  IF exit_condition THEN EXIT LoopName
+  IF skip_condition THEN NEXT LoopName
+END REPeat [LoopName]
 ```
 
-Note the END FOR terminator — SuperBASIC uses END FOR instead of NEXT. BASIC++ accepts both forms.
+- **`REPeat [name]`**: Begins an infinite loop block, optionally identified by `name`.
+- **`EXIT [name]`**: Breaks execution out of the innermost loop or specifically designated named loop.
+- **`NEXT [name]`**: Skips remaining statements and continues with the next iteration of the target loop.
+- **`END REPeat [name]`**: Closes the designated loop block.
 
-## 5. PROCEDURES
+---
 
-DEFine PROCedure defines a named procedure with parameters and local variables:
+## 3. Procedures and Functions (`DEF PROC` / `DEF FN`)
+
+SuperBASIC used clean `DEF PROC` and `DEF FN` procedure headers:
 
 ```basic
-1000 DEFine PROCedure DrawBox(x, y, w, h)
-1010   LOCal i
-1020   FOR i = x TO x + w
-1030     PRINT AT y, i; "*"
-1040     PRINT AT y + h, i; "*"
-1050   END FOR i
-1060 END DEFine DrawBox
+DEFine PROCedure CalcTotals(x, y)
+  PRINT "Sum: "; x + y
+END DEFine
+
+DEFine FuNction Average(a, b)
+  RETurn (a + b) / 2
+END DEFine
 ```
+In BASIC++, shortened keyword variants (`DEF PROC`, `END PROC`, `DEF FN`, `END FN`, and `RETurn`) are fully recognized.
 
-Procedures are called by name: `DrawBox 10, 5, 20, 10`. Note that SuperBASIC does not use CALL or parentheses for procedure calls — arguments follow the procedure name separated by commas.
+---
 
-## 6. FUNCTIONS
-
-DEFine FuNction defines a named function that returns a value. The return value is assigned using RETurn:
+## 4. Multi-Way Selection (`SELect ON`)
 
 ```basic
-2000 DEFine FuNction Factorial(n)
-2010   LOCal result, i
-2020   result = 1
-2030   FOR i = 2 TO n
-2040     result = result * i
-2050   END FOR i
-2060   RETurn result
-2070 END DEFine Factorial
+SELect ON choice
+  ON choice = 1: PRINT "Option 1"
+  ON choice = 2 TO 5: PRINT "Option 2-5"
+  ON choice = REMAINDER: PRINT "Default"
+END SELect
 ```
 
-Functions are called in expressions: `PRINT Factorial(10)`.
+---
 
-## 7. LOCAL VARIABLES
-
-LOCal declares variables as local to the current procedure or function:
+## 5. Example: Sinclair QL Structured Loop
 
 ```basic
-1000 DEFine PROCedure Example
-1010   LOCal x, y, temp$
-1020   x = 10
-1030   y = 20
-1040   ' x and y exist only within this procedure
-1050 END DEFine Example
+10 REM Sinclair QL SuperBASIC Demo
+20 Count = 0
+30 REPeat CounterLoop
+40   Count = Count + 1
+50   PRINT "Iteration: "; Count
+60   IF Count >= 5 THEN EXIT CounterLoop
+70 END REPeat CounterLoop
+80 PRINT "Loop finished successfully."
 ```
-
-## 8. IF/END IF
-
-SuperBASIC uses IF/THEN/ELSE/END IF with the same block structure as BASIC++:
-
-```basic
-10 IF Score > 90 THEN
-20   PRINT "Excellent"
-30 ELSE IF Score > 70 THEN
-40   PRINT "Good"
-50 ELSE
-60   PRINT "Try again"
-70 END IF
-```
-
-Note: SuperBASIC uses `ELSE IF` (two words) rather than ELSEIF. BASIC++ accepts both forms.
-
-## 9. SELECT ON
-
-SuperBASIC uses SELECT ON instead of SELECT CASE:
-
-```basic
-10 SELECT ON Choice
-20   = 1 : PRINT "One"
-30   = 2 : PRINT "Two"
-40   = 3 : PRINT "Three"
-50   = REMAINDER : PRINT "Other"
-60 END SELECT
-```
-
-`= REMAINDER` is equivalent to CASE ELSE.
-
-## 10. WHEN ERROR
-
-SuperBASIC structured error handling uses WHEN ERROR:
-
-```basic
-10 WHEN ERROR
-20   PRINT "An error occurred: "; ERR
-30   CONTINUE
-40 END WHEN
-```
-
-CONTINUE inside the error handler resumes execution at the statement after the one that caused the error. RETRY re-executes the statement that caused the error.
-
-## 11. COMPATIBILITY NOTES
-
-The SQLB dialect maps SuperBASIC syntax to BASIC++ internal representations: REPeat maps to a specialized loop construct, DEFine PROCedure maps to SUB, DEFine FuNction maps to FUNCTION, LOCal maps to LOCAL, and RETurn maps to the function return mechanism. All standard BASIC++ keywords remain available in SQLB mode.

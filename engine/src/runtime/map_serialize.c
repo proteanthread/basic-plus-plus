@@ -14,11 +14,13 @@
 #include "runtime/strings.h"
 #include "types/config.h"
 #include "runtime/num_format.h"
-#include <stdlib.h>
-#include <string.h>
-#include <ctype.h>
-#include <stdio.h>
+#include "runtime/memory/alloc.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "runtime/ctype/ctype.h"
+#include "runtime/format/snprintf.h"
 #include <stdbool.h>
+#include "runtime/conv/float_parse.h"
 
 
 #if SUPPORT_JSON
@@ -27,7 +29,7 @@ static void stringify_json_internal(BppMap *map, char **p_buf, size_t *p_cap, si
 
 // Helper: skip whitespace
 static const char *skip_ws(const char *p) {
-    while (*p && isspace((unsigned char)*p)) p++;
+    while (*p && runtime_isspace((unsigned char)*p)) p++;
     return p;
 }
 
@@ -38,12 +40,12 @@ static const char *skip_inline_ws(const char *p) {
 }
 #endif
 
-// Safe realloc helper. Doubles the buffer capacity.
+// Safe runtime_realloc helper. Doubles the buffer capacity.
 // On failure, the original buffer is preserved and false is returned.
 // On success, *p_buf and *p_cap are updated and true is returned.
 static bool safe_buf_grow(char **p_buf, size_t *p_cap) {
     size_t new_cap = *p_cap * 2;
-    char *new_buf = (char *)realloc(*p_buf, new_cap);
+    char *new_buf = (char *)runtime_realloc(*p_buf, new_cap);
     if (!new_buf) return false;
     *p_buf = new_buf;
     *p_cap = new_cap;
@@ -51,11 +53,11 @@ static bool safe_buf_grow(char **p_buf, size_t *p_cap) {
 }
 
 static void buf_append_str(char **p_buf, size_t *p_cap, size_t *p_len, const char *str) {
-    size_t len = strlen(str);
+    size_t len = runtime_strlen(str);
     while (*p_len + len + 1 >= *p_cap) {
         if (!safe_buf_grow(p_buf, p_cap)) return;
     }
-    memcpy(*p_buf + *p_len, str, len + 1);
+    runtime_memcpy(*p_buf + *p_len, str, len + 1);
     *p_len += len;
 }
 
@@ -77,9 +79,9 @@ static char *parse_json_string(const char **p_in) {
     const char *start = p;
     while (*p && *p != '"') p++;
     size_t len = p - start;
-    char *res = (char *)calloc(1, len + 1);
+    char *res = (char *)runtime_calloc(1, len + 1);
     if (res) {
-        memcpy(res, start, len);
+        runtime_memcpy(res, start, len);
         res[len] = '\0';
     }
     if (*p == '"') p++;
@@ -99,8 +101,8 @@ static BValue parse_json_value(void *str_ctx, const char **p_in, bool *ok) {
         char *s = parse_json_string(&p);
         if (s) {
             val.type = VAL_STRING;
-            val.as.string = str_create((StringContext *)str_ctx, s, strlen(s));
-            free(s);
+            val.as.string = str_create((StringContext *)str_ctx, s, runtime_strlen(s));
+            runtime_free(s);
             *ok = true;
         }
     } else if (*p == '{') {
@@ -120,7 +122,7 @@ static BValue parse_json_value(void *str_ctx, const char **p_in, bool *ok) {
                     if (!k) break;
                     p = skip_ws(p);
                     if (*p != ':') {
-                        free(k);
+                        runtime_free(k);
                         break;
                     }
                     p++; // skip ':'
@@ -128,7 +130,7 @@ static BValue parse_json_value(void *str_ctx, const char **p_in, bool *ok) {
                     bool val_ok = false;
                     BValue v = parse_json_value(str_ctx, &p, &val_ok);
                     if (!val_ok) {
-                        free(k);
+                        runtime_free(k);
                         break;
                     }
                     map_set(str_ctx, sub, k, v);
@@ -137,7 +139,7 @@ static BValue parse_json_value(void *str_ctx, const char **p_in, bool *ok) {
                     } else if (v.type == VAL_MAP && v.as.map) {
                         map_release(str_ctx, v.as.map);
                     }
-                    free(k);
+                    runtime_free(k);
                     p = skip_ws(p);
                     if (*p == ',') {
                         p++;
@@ -156,26 +158,26 @@ static BValue parse_json_value(void *str_ctx, const char **p_in, bool *ok) {
         if (!*ok && sub) {
             map_release(str_ctx, sub);
         }
-    } else if (isdigit((unsigned char)*p) || *p == '-' || *p == '+') {
+    } else if (runtime_isdigit((unsigned char)*p) || *p == '-' || *p == '+') {
         char *endptr;
-        double d = strtod(p, &endptr);
+        double d = runtime_strtod(p, &endptr);
         if (endptr != p) {
             val.type = VAL_NUMBER;
             val.as.number = d;
             p = endptr;
             *ok = true;
         }
-    } else if (strncmp(p, "true", 4) == 0) {
+    } else if (runtime_strncmp(p, "true", 4) == 0) {
         val.type = VAL_NUMBER;
         val.as.number = 1.0;
         p += 4;
         *ok = true;
-    } else if (strncmp(p, "false", 5) == 0) {
+    } else if (runtime_strncmp(p, "false", 5) == 0) {
         val.type = VAL_NUMBER;
         val.as.number = 0.0;
         p += 5;
         *ok = true;
-    } else if (strncmp(p, "null", 4) == 0) {
+    } else if (runtime_strncmp(p, "null", 4) == 0) {
         val.type = VAL_NONE;
         p += 4;
         *ok = true;
@@ -213,7 +215,7 @@ static void stringify_json_internal(BppMap *map, char **p_buf, size_t *p_cap, si
 
         // Format key
         char k_fmt[512];
-        snprintf(k_fmt, sizeof(k_fmt), "\"%s\":", map->entries[i].key);
+        runtime_snprintf(k_fmt, sizeof(k_fmt), "\"%s\":", map->entries[i].key);
         buf_append_str(p_buf, p_cap, p_len, k_fmt);
 
         // Format value
@@ -240,7 +242,7 @@ static void stringify_json_internal(BppMap *map, char **p_buf, size_t *p_cap, si
 char *map_stringify_json(BppMap *map) {
     size_t cap = 256;
     size_t len = 0;
-    char *buf = (char *)calloc(1, cap);
+    char *buf = (char *)runtime_calloc(1, cap);
     if (!buf) return NULL;
     buf[0] = '\0';
     stringify_json_internal(map, &buf, &cap, &len);
@@ -279,7 +281,7 @@ BppMap *map_parse_xml(void *str_ctx, const char *xml) {
             size_t t_len = p - t_start;
             char tag[256];
             if (t_len >= sizeof(tag)) t_len = sizeof(tag) - 1;
-            memcpy(tag, t_start, t_len);
+            runtime_memcpy(tag, t_start, t_len);
             tag[t_len] = '\0';
             if (*p == '>') p++;
 
@@ -287,9 +289,9 @@ BppMap *map_parse_xml(void *str_ctx, const char *xml) {
             const char *val_start = p;
             while (*p && *p != '<') p++;
             size_t val_len = p - val_start;
-            char *val_str = (char *)calloc(1, val_len + 1);
+            char *val_str = (char *)runtime_calloc(1, val_len + 1);
             if (val_str) {
-                memcpy(val_str, val_start, val_len);
+                runtime_memcpy(val_str, val_start, val_len);
                 val_str[val_len] = '\0';
             }
 
@@ -297,7 +299,7 @@ BppMap *map_parse_xml(void *str_ctx, const char *xml) {
             p = skip_ws(p);
             if (*p == '<' && *(p + 1) != '/') {
                 // Nested child tag - parse recursively
-                free(val_str);
+                runtime_free(val_str);
                 BppMap *sub = map_parse_xml(str_ctx, val_start);
                 BValue val;
                 val.type = VAL_MAP;
@@ -309,19 +311,19 @@ BppMap *map_parse_xml(void *str_ctx, const char *xml) {
                 BValue val;
                 // Try to parse as number first
                 char *endptr;
-                double d = strtod(val_str, &endptr);
+                double d = runtime_strtod(val_str, &endptr);
                 if (endptr != val_str && *skip_ws(endptr) == '\0') {
                     val.type = VAL_NUMBER;
                     val.as.number = d;
                 } else {
                     val.type = VAL_STRING;
-                    val.as.string = str_create((StringContext *)str_ctx, val_str, strlen(val_str));
+                    val.as.string = str_create((StringContext *)str_ctx, val_str, runtime_strlen(val_str));
                 }
                 map_set(str_ctx, map, tag, val);
                 if (val.type == VAL_STRING && val.as.string) {
                     str_release((StringContext *)str_ctx, val.as.string);
                 }
-                free(val_str);
+                runtime_free(val_str);
             }
 
             // Consume close tag </tag>
@@ -340,7 +342,7 @@ static void stringify_xml_internal(BppMap *map, char **p_buf, size_t *p_cap, siz
     if (!map) return;
     for (int i = 0; i < map->count; ++i) {
         char tag[256];
-        snprintf(tag, sizeof(tag), "%s", map->entries[i].key);
+        runtime_snprintf(tag, sizeof(tag), "%s", map->entries[i].key);
 
         // Open tag
         buf_append_char(p_buf, p_cap, p_len, '<');
@@ -371,7 +373,7 @@ static void stringify_xml_internal(BppMap *map, char **p_buf, size_t *p_cap, siz
 char *map_stringify_xml(BppMap *map) {
     size_t cap = 256;
     size_t len = 0;
-    char *buf = (char *)calloc(1, cap);
+    char *buf = (char *)runtime_calloc(1, cap);
     if (!buf) return NULL;
     buf[0] = '\0';
     stringify_xml_internal(map, &buf, &cap, &len);
@@ -405,7 +407,7 @@ BppMap *map_parse_yaml(void *str_ctx, const char *yaml) {
             size_t k_len = p - k_start;
             char tag[256];
             if (k_len >= sizeof(tag)) k_len = sizeof(tag) - 1;
-            memcpy(tag, k_start, k_len);
+            runtime_memcpy(tag, k_start, k_len);
             tag[k_len] = '\0';
             p++; // skip ':'
 
@@ -413,32 +415,32 @@ BppMap *map_parse_yaml(void *str_ctx, const char *yaml) {
             const char *val_start = p;
             while (*p && *p != '\n') p++;
             const char *val_end = p - 1;
-            while (val_end > val_start && isspace((unsigned char)*val_end)) val_end--;
+            while (val_end > val_start && runtime_isspace((unsigned char)*val_end)) val_end--;
             size_t val_len = (val_end >= val_start) ? (val_end - val_start + 1) : 0;
 
-            char *val_str = (char *)calloc(1, val_len + 1);
+            char *val_str = (char *)runtime_calloc(1, val_len + 1);
             if (!val_str) {
                 if (*p == '\n') p++;
                 continue;
             }
-            memcpy(val_str, val_start, val_len);
+            runtime_memcpy(val_str, val_start, val_len);
             val_str[val_len] = '\0';
 
             BValue val;
             char *endptr;
-            double d = strtod(val_str, &endptr);
+            double d = runtime_strtod(val_str, &endptr);
             if (endptr != val_str && *skip_ws(endptr) == '\0') {
                 val.type = VAL_NUMBER;
                 val.as.number = d;
             } else {
                 val.type = VAL_STRING;
-                val.as.string = str_create((StringContext *)str_ctx, val_str, strlen(val_str));
+                val.as.string = str_create((StringContext *)str_ctx, val_str, runtime_strlen(val_str));
             }
             map_set(str_ctx, map, tag, val);
             if (val.type == VAL_STRING && val.as.string) {
                 str_release((StringContext *)str_ctx, val.as.string);
             }
-            free(val_str);
+            runtime_free(val_str);
         }
         if (*p == '\n') p++;
     }
@@ -455,7 +457,7 @@ static void stringify_yaml_internal(BppMap *map, char **p_buf, size_t *p_cap, si
 
         // Format key
         char k_fmt[256];
-        snprintf(k_fmt, sizeof(k_fmt), "%s: ", map->entries[i].key);
+        runtime_snprintf(k_fmt, sizeof(k_fmt), "%s: ", map->entries[i].key);
         buf_append_str(p_buf, p_cap, p_len, k_fmt);
 
         BValue val = map->entries[i].val;
@@ -463,7 +465,7 @@ static void stringify_yaml_internal(BppMap *map, char **p_buf, size_t *p_cap, si
             char num_buf[128];
             char tbuf[64];
             num_format_serialize(tbuf, sizeof(tbuf), val.as.number);
-            snprintf(num_buf, sizeof(num_buf), "%s\n", tbuf);
+            runtime_snprintf(num_buf, sizeof(num_buf), "%s\n", tbuf);
             buf_append_str(p_buf, p_cap, p_len, num_buf);
         } else if (val.type == VAL_STRING) {
             const char *str = val.as.string ? str_data(val.as.string) : "";
@@ -479,7 +481,7 @@ static void stringify_yaml_internal(BppMap *map, char **p_buf, size_t *p_cap, si
 char *map_stringify_yaml(BppMap *map) {
     size_t cap = 256;
     size_t len = 0;
-    char *buf = (char *)calloc(1, cap);
+    char *buf = (char *)runtime_calloc(1, cap);
     if (!buf) return NULL;
     buf[0] = '\0';
     stringify_yaml_internal(map, &buf, &cap, &len, 0);
@@ -514,7 +516,7 @@ BppMap *map_parse_ini(void *str_ctx, const char *ini) {
                 size_t s_len = p - s_start;
                 char sect[256];
                 if (s_len >= sizeof(sect)) s_len = sizeof(sect) - 1;
-                memcpy(sect, s_start, s_len);
+                runtime_memcpy(sect, s_start, s_len);
                 sect[s_len] = '\0';
                 p++; // skip ']'
 
@@ -540,11 +542,11 @@ BppMap *map_parse_ini(void *str_ctx, const char *ini) {
         if (*p == '=') {
             // Trim trailing whitespace from key
             const char *k_end = p - 1;
-            while (k_end > k_start && isspace((unsigned char)*k_end)) k_end--;
+            while (k_end > k_start && runtime_isspace((unsigned char)*k_end)) k_end--;
             size_t k_len = k_end - k_start + 1;
             char tag[256];
             if (k_len >= sizeof(tag)) k_len = sizeof(tag) - 1;
-            memcpy(tag, k_start, k_len);
+            runtime_memcpy(tag, k_start, k_len);
             tag[k_len] = '\0';
 
             p++; // skip '='
@@ -553,30 +555,30 @@ BppMap *map_parse_ini(void *str_ctx, const char *ini) {
             while (*p && *p != '\n') p++;
             // Trim trailing whitespace from value
             const char *val_end = p - 1;
-            while (val_end > val_start && isspace((unsigned char)*val_end)) val_end--;
+            while (val_end > val_start && runtime_isspace((unsigned char)*val_end)) val_end--;
             size_t val_len = (val_end >= val_start) ? (val_end - val_start + 1) : 0;
 
-            char *val_str = (char *)calloc(1, val_len + 1);
+            char *val_str = (char *)runtime_calloc(1, val_len + 1);
             if (val_str) {
-                memcpy(val_str, val_start, val_len);
+                runtime_memcpy(val_str, val_start, val_len);
                 val_str[val_len] = '\0';
             }
 
             BValue val;
             char *endptr;
-            double d = strtod(val_str, &endptr);
+            double d = runtime_strtod(val_str, &endptr);
             if (endptr != val_str && *skip_ws(endptr) == '\0') {
                 val.type = VAL_NUMBER;
                 val.as.number = d;
             } else {
                 val.type = VAL_STRING;
-                val.as.string = str_create((StringContext *)str_ctx, val_str, strlen(val_str));
+                val.as.string = str_create((StringContext *)str_ctx, val_str, runtime_strlen(val_str));
             }
             map_set(str_ctx, current_section, tag, val);
             if (val.type == VAL_STRING && val.as.string) {
                 str_release((StringContext *)str_ctx, val.as.string);
             }
-            free(val_str);
+            runtime_free(val_str);
         }
         if (*p == '\n') p++;
     }
@@ -591,14 +593,14 @@ static void stringify_ini_internal(BppMap *map, char **p_buf, size_t *p_cap, siz
         BValue val = map->entries[i].val;
         if (val.type != VAL_MAP) {
             char k_fmt[256];
-            snprintf(k_fmt, sizeof(k_fmt), "%s = ", map->entries[i].key);
+            runtime_snprintf(k_fmt, sizeof(k_fmt), "%s = ", map->entries[i].key);
             buf_append_str(p_buf, p_cap, p_len, k_fmt);
 
             if (val.type == VAL_NUMBER) {
                 char num_buf[128];
                 char tbuf[64];
                 num_format_serialize(tbuf, sizeof(tbuf), val.as.number);
-                snprintf(num_buf, sizeof(num_buf), "%s\n", tbuf);
+                runtime_snprintf(num_buf, sizeof(num_buf), "%s\n", tbuf);
                 buf_append_str(p_buf, p_cap, p_len, num_buf);
             } else if (val.type == VAL_STRING) {
                 const char *str = val.as.string ? str_data(val.as.string) : "";
@@ -613,14 +615,14 @@ static void stringify_ini_internal(BppMap *map, char **p_buf, size_t *p_cap, siz
         BValue val = map->entries[i].val;
         if (val.type == VAL_MAP) {
             char s_hdr[512];
-            snprintf(s_hdr, sizeof(s_hdr), "\n[%s]\n", map->entries[i].key);
+            runtime_snprintf(s_hdr, sizeof(s_hdr), "\n[%s]\n", map->entries[i].key);
             buf_append_str(p_buf, p_cap, p_len, s_hdr);
 
             // Print sub-keys
             BppMap *sub = val.as.map;
             for (int j = 0; j < sub->count; ++j) {
                 char k_fmt[256];
-                snprintf(k_fmt, sizeof(k_fmt), "%s = ", sub->entries[j].key);
+                runtime_snprintf(k_fmt, sizeof(k_fmt), "%s = ", sub->entries[j].key);
                 buf_append_str(p_buf, p_cap, p_len, k_fmt);
 
                 BValue sub_val = sub->entries[j].val;
@@ -628,7 +630,7 @@ static void stringify_ini_internal(BppMap *map, char **p_buf, size_t *p_cap, siz
                     char num_buf[128];
                     char tbuf[64];
                     num_format_serialize(tbuf, sizeof(tbuf), sub_val.as.number);
-                    snprintf(num_buf, sizeof(num_buf), "%s\n", tbuf);
+                    runtime_snprintf(num_buf, sizeof(num_buf), "%s\n", tbuf);
                     buf_append_str(p_buf, p_cap, p_len, num_buf);
                 } else if (sub_val.type == VAL_STRING) {
                     const char *str = sub_val.as.string ? str_data(sub_val.as.string) : "";
@@ -643,7 +645,7 @@ static void stringify_ini_internal(BppMap *map, char **p_buf, size_t *p_cap, siz
 char *map_stringify_ini(BppMap *map) {
     size_t cap = 256;
     size_t len = 0;
-    char *buf = (char *)calloc(1, cap);
+    char *buf = (char *)runtime_calloc(1, cap);
     if (!buf) return NULL;
     buf[0] = '\0';
     stringify_ini_internal(map, &buf, &cap, &len);

@@ -1,0 +1,71 @@
+TITLE: MAGTAPE
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/functions/system/hardware/magtape.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+MAGTAPE KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: magtape.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (memory.h, memory.c)
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libengine (magtape.h, string.c)
+    // Provides runtime implementation for the MAGTAPE built-in function in BASIC+
+    //
+    // ---- Includes ----
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Performs magnetic tape operations (rewind, space, write EOF) on a file channel
+(DEC RSTS/E).
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    MAGTAPE(function_code, channel_num, arg)
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = MAGTAPE(function_code, channel_num, arg)
+    20 PRINT "Result: "; Val
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 13: Type Mismatch, Error 52: Bad File Number
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      System Functions
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_IO
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  MAGTAPE
+Category              System Functions
+Syntax                MAGTAPE(function_code, channel_num, arg)
+Description           Performs magnetic tape operations (rewind, space, w...
+Error Summary         Error 13: Type Mismatch, Error 52: Bad File Number
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_IO
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/eval/functions/system/hardware/magtape.c

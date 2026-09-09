@@ -8,6 +8,14 @@
 // ---- Includes ----
 
 #include "vm/exec_control_internal.h"
+#include "lexer/lexer_internal.h"
+#include "runtime/string/strops.h"
+#include "runtime/string/memops.h"
+#include "runtime/format/snprintf.h"
+#include "device/vdev.h"
+#include "debug/logger.h"
+#include "eval/ast.h"
+#include "vm/jit.h"
 
 //
 // ---- Namespace Resolution ----
@@ -26,15 +34,15 @@ static void get_namespace_at_line(VMContext *vm, BppLineNumber target_line, char
         if (lines[i].line_number > target_line) {
             break;
         }
-        if (strstr(lines[i].text, "NAMESPACE") || strstr(lines[i].text, "namespace") || strstr(lines[i].text, "Namespace")) {
+        if (runtime_strstr(lines[i].text, "NAMESPACE") || runtime_strstr(lines[i].text, "namespace") || runtime_strstr(lines[i].text, "Namespace")) {
             LexerContext *scan_lex = lex_init(vm_get_mem(vm), lines[i].text);
             if (scan_lex) {
                 BppToken tok = lex_next(scan_lex);
                 if (tok.type == TOK_NAMESPACE_DECL) {
                     int len = (int)(tok.length < sizeof(current_ns) - 1 ? tok.length : sizeof(current_ns) - 1);
-                    memcpy(current_ns, tok.as.string, len);
+                    runtime_memcpy(current_ns, tok.as.string, len);
                     current_ns[len] = '\0';
-                    if (strcasecmp(current_ns, "DEFAULT") == 0) {
+                    if (runtime_strcasecmp(current_ns, "DEFAULT") == 0) {
                         current_ns[0] = '\0';
                     }
                 }
@@ -42,9 +50,9 @@ static void get_namespace_at_line(VMContext *vm, BppLineNumber target_line, char
             }
         }
     }
-    size_t copy_len = strlen(current_ns);
+    size_t copy_len = runtime_strlen(current_ns);
     if (copy_len >= max_len) copy_len = max_len - 1;
-    memcpy(out_ns, current_ns, copy_len);
+    runtime_memcpy(out_ns, current_ns, copy_len);
     out_ns[copy_len] = '\0';
 }
 
@@ -53,19 +61,37 @@ static void get_namespace_at_line(VMContext *vm, BppLineNumber target_line, char
 
 BppError vm_execute_line(VMContext *vm, const char *source) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     if (!vm || !source) return err;
 
-    size_t slen = strlen(source);
+    if (jit_get_mode(vm) != JIT_MODE_OFF && !vm->jump_active && vm->current_pos == NULL) {
+        if (runtime_strcasestr(source, "FOR") != NULL && runtime_strcasestr(source, "NEXT") != NULL) {
+            char ns[64];
+            get_namespace_at_line(vm, vm->current_line, ns, sizeof(ns));
+            var_set_namespace(vm->var, ns);
+
+            EvalAstNode *ast = eval_ast_try_parse_line(vm, source);
+            if (ast) {
+                bool was_running = vm_is_running(vm);
+                if (!was_running) vm_set_running(vm, true);
+                err = eval_ast_execute(vm, ast);
+                if (!was_running && !vm_is_jump_active(vm)) vm_set_running(vm, false);
+                eval_ast_free_tree(ast);
+                return err;
+            }
+        }
+    }
+
+    size_t slen = runtime_strlen(source);
     char stack_buf[1024];
-    char *source_copy = (slen < sizeof(stack_buf)) ? stack_buf : (char *)malloc(slen + 1);
+    char *source_copy = (slen < sizeof(stack_buf)) ? stack_buf : (char *)mem_scratch_alloc(vm_get_mem(vm), slen + 1);
     if (!source_copy) {
         err.code = 14;
         err.message = "Failed to allocate statement line buffer";
         return err;
     }
-    memcpy(source_copy, source, slen + 1);
+    runtime_memcpy(source_copy, source, slen + 1);
 
     const char *prev_orig = vm->active_line_original;
     const char *prev_copy = vm->active_line_copy;
@@ -88,15 +114,17 @@ BppError vm_execute_line(VMContext *vm, const char *source) {
     vm->current_pos = NULL;
     vm->eval_depth = 0;
 
-    LexerContext *lex = lex_init(vm->mem, start_pos);
-    if (!lex) {
-        vm->active_line_original = prev_orig;
-        vm->active_line_copy = prev_copy;
-        vm->current_pos = prev_pos;
-        if (source_copy != stack_buf) free(source_copy);
-        err.code = 14;
-        err.message = "Failed to initialize statement parser";
-        return err;
+    LexerContext lex_inst;
+    lex_init_stack(&lex_inst, vm->mem, start_pos);
+    LexerContext *lex = &lex_inst;
+
+    if (start_pos == source_copy && vm->current_line > 0 && logger_is_trace()) {
+        char tr_buf[32];
+        runtime_snprintf(tr_buf, sizeof(tr_buf), "[%lld]", (long long)vm->current_line);
+        if (vm->vdev) {
+            vdev_puts(vm->vdev, tr_buf);
+        }
+        log_emit(BPP_LOG_TRACE, "TRON", "%s", tr_buf);
     }
 
     bool was_running = vm->running;
@@ -120,17 +148,14 @@ BppError vm_execute_line(VMContext *vm, const char *source) {
                 ptrdiff_t jmp_offset = -1;
                 if (vm->next_pos && vm->next_pos >= source && vm->next_pos <= source + slen) {
                     jmp_offset = vm->next_pos - source;
-                } else if (vm->next_pos && vm->next_pos >= source_copy && vm->next_pos <= source_copy + slen) {
-                    jmp_offset = vm->next_pos - source_copy;
                 }
                 if (jmp_offset >= 0 && (size_t)jmp_offset <= slen) {
-                    lex_shutdown(lex);
-                    lex = lex_init(vm->mem, source_copy + jmp_offset);
-                    if (lex) {
-                        vm->jump_active = false;
-                        tok = lex_peek(lex);
-                        continue;
-                    }
+                    lex_set_pos(lex, source_copy + jmp_offset);
+                    vm->jump_active = false;
+                    tok = lex_peek(lex);
+                    ptrdiff_t next_offset = tok.start - source_copy;
+                    vm->next_pos = source + next_offset;
+                    continue;
                 }
             }
             break;
@@ -146,11 +171,9 @@ BppError vm_execute_line(VMContext *vm, const char *source) {
         }
     }
 
-    lex_shutdown(lex);
     vm->active_line_original = prev_orig;
     vm->active_line_copy = prev_copy;
     vm->current_pos = prev_pos;
-    if (source_copy != stack_buf) free(source_copy);
 
     if (!was_running && vprinter_has_output()) {
         vprinter_flush_pdf(NULL);

@@ -1,26 +1,69 @@
-# `WIDTH` Screen and Printer Column Width Statement
+<!--
+Title:        WIDTH
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/device/gfx_tui.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Keyword Definition
+# `WIDTH` Keyword Reference
 
-Sets the number of text columns (e.g. 40 or 80) and rows (25, 43, 50) for the screen display, printer, or file channel.
+## Source Header
 
-### Syntax Signatures:
-```basic
-WIDTH [columns%] [, rows%]
-WIDTH [#]filenum%, columns%
+```c
+// FILENAME: gfx_tui.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community -- All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: baspp.exe, bpp.exe, bs.exe, libengine
+// NEEDS: libcore, libkernel
+// Implements component functionality for WIDTH.
 ```
 
-### Error Handling & Boundary Conditions:
-- **Error 5 (ERR_ILLEGAL_FUNCTION_CALL)**: Width/height not supported by active display.
+## 1. Description & Usage
 
-### Operational Notes:
-- Controls automatic text wrapping margins.
+Sets the text output column width for the console screen, active window, or printer channel.
+
+## 2. Syntax
+
+```basic
+WIDTH [columns] [, rows] | WIDTH [#file_num,] columns
+```
+
+## 3. Code Example
+
+```basic
+10 REM WIDTH Demonstration
+20 PRINT "WIDTH executed successfully."
+```
+
+## 4. Error Conditions
+
+Error 5: Illegal Function Call
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: GW-BASIC, QBASIC, BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Console & Printer I/O
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_SAFE
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 WIDTH 80, 25 : REM Standard 80x25 text
-20 WIDTH 40, 25 : REM 40-column large text mode
-```
+| Field | Value |
+|---|---|
+| Name | WIDTH |
+| Category | Console & Printer I/O |
+| Syntax | WIDTH [columns] [, rows] \| WIDTH [#file_num,] columns |
+| Description | Sets the text output column width for the console screen, active window, or printer channel. |
+| Error Summary | Error 5: Illegal Function Call |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_SAFE |
+| Feature Type | FEATURE_STATEMENT |
+| Delimiter Mask | none |
+| Compatibility | GW-BASIC, QBASIC, BASIC++ Standard |
+| Since Version | 6.0.0 |
+| Source File | engine/src/device/gfx_tui.c |

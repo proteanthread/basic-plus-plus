@@ -1,16 +1,71 @@
-BIN$ Binary String Conversion Function
-======================================================================
+TITLE: BIN$
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/functions/string/conversion/bin.c
+GENERATED: no, hand-written
+STATUS: current
 
-The BIN$ function converts an integer into its binary string representation.
+==============================================================================
+BIN$ KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: bin.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (conversion_fn.c)
+    // NEEDS: libcore (memory.h, memory.c)
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libcore (strings.h, strings.c)
+    // NEEDS: libengine (bin.h, string.c)
+    // Provides runtime implementation for the BIN built-in function in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Returns the binary string representation of integer x.
 
-    bin_str$ = BIN$(numeric_expression)
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    BIN$(x)
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = BIN$(10)
+    20 PRINT "Result: "; Val
 
-CODE EXAMPLES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 13: Type Mismatch (BIN$ expects one numeric argument)
 
-    10 PRINT BIN$(10)   : REM Outputs "1010"
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      String Functions
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_IO
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  BIN$
+Category              String Functions
+Syntax                BIN$(x)
+Description           Returns the binary string representation of integer x.
+Error Summary         Error 13: Type Mismatch (BIN$ expects one numeric a...
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_IO
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/eval/functions/string/conversion/bin.c

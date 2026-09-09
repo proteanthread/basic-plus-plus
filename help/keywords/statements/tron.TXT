@@ -1,24 +1,71 @@
-TRON Turn On Line Tracing Statement
-===================================
+TITLE: TRON
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/debug/logger.c
+GENERATED: no, hand-written
+STATUS: current
 
-Enables line number execution tracing, displaying each executed line number in brackets (e.g. '[10][20]').
+==============================================================================
+TRON KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: logger.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: baspp.exe, bpp.exe, bs.exe, libboot, libcore, libengine, libkern
+    // NEEDS: libcore (alloc.h, alloc.c, hal.h, logger.h, memops.h, memops.c)
+    // NEEDS: libcore (runtime_snprintf.h, runtime_snprintf.c, strops.h, strops.c)
+    // NEEDS: libplatform (platform.h)
+    // Provides multi-level logging, circular ring buffer, and pluggable sink inte
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Turns trace mode on, printing line numbers in brackets [n] to console as each
+statement executes.
 
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
     TRON
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM TRON Demonstration
+    20 PRINT "TRON executed successfully."
 
-OPERATIONAL NOTES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+None
 
-  Equivalent to TRACE ON.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       GW-BASIC, QBASIC, BASIC++ Standard
+Since Version: 6.0.0
+Category:      Debugging
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SAFE
 
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 TRON
-    20 PRINT "Hello with tracing"
-    30 TROFF
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  TRON
+Category              Debugging
+Syntax                TRON
+Description           Turns trace mode on, printing line numbers in brack...
+Error Summary         None
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         GW-BASIC, QBASIC, BASIC++ Standard
+Since Version         6.0.0
+Source File           engine/src/debug/logger.c

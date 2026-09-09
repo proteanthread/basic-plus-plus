@@ -13,9 +13,10 @@
 #include "runtime/tnfs.h"
 #include "platform/platform.h"
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include "hal/hal.h"
+#include "runtime/format/snprintf.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
 
 static TnfsSession s_tnfs_session = {
     .host = {0},
@@ -26,8 +27,10 @@ static TnfsSession s_tnfs_session = {
     .is_mounted = false
 };
 
+static char s_tnfs_dir_buf[2048];
+
 void tnfs_init(void) {
-    memset(&s_tnfs_session, 0, sizeof(s_tnfs_session));
+    runtime_memset(&s_tnfs_session, 0, sizeof(s_tnfs_session));
     s_tnfs_session.port = TNFS_DEFAULT_PORT;
 }
 
@@ -40,10 +43,10 @@ void tnfs_shutdown(void) {
 bool tnfs_mount(const char *host, uint16_t port, const char *mount_path) {
     if (!host || host[0] == '\0') return false;
 
-    memset(&s_tnfs_session, 0, sizeof(s_tnfs_session));
-    snprintf(s_tnfs_session.host, sizeof(s_tnfs_session.host), "%s", host);
+    runtime_memset(&s_tnfs_session, 0, sizeof(s_tnfs_session));
+    runtime_snprintf(s_tnfs_session.host, sizeof(s_tnfs_session.host), "%s", host);
     s_tnfs_session.port = (port > 0) ? port : TNFS_DEFAULT_PORT;
-    snprintf(s_tnfs_session.mount_path, sizeof(s_tnfs_session.mount_path), "%s", mount_path ? mount_path : "/");
+    runtime_snprintf(s_tnfs_session.mount_path, sizeof(s_tnfs_session.mount_path), "%s", mount_path ? mount_path : "/");
     s_tnfs_session.session_id = 0x1982;
     s_tnfs_session.seq_num = 1;
     s_tnfs_session.is_mounted = true;
@@ -53,8 +56,8 @@ bool tnfs_mount(const char *host, uint16_t port, const char *mount_path) {
 
 void tnfs_unmount(void) {
     s_tnfs_session.is_mounted = false;
-    memset(s_tnfs_session.host, 0, sizeof(s_tnfs_session.host));
-    memset(s_tnfs_session.mount_path, 0, sizeof(s_tnfs_session.mount_path));
+    runtime_memset(s_tnfs_session.host, 0, sizeof(s_tnfs_session.host));
+    runtime_memset(s_tnfs_session.mount_path, 0, sizeof(s_tnfs_session.mount_path));
 }
 
 bool tnfs_is_mounted(void) {
@@ -73,11 +76,7 @@ char *tnfs_list_directory(const char *dir_path, const char *pattern) {
     (void)pattern;
     const char *target = (dir_path && dir_path[0] != '\0') ? dir_path : (s_tnfs_session.is_mounted ? s_tnfs_session.mount_path : "/");
 
-    size_t cap = 2048;
-    char *buf = (char *)malloc(cap);
-    if (!buf) return NULL;
-
-    snprintf(buf, cap,
+    runtime_snprintf(s_tnfs_dir_buf, sizeof(s_tnfs_dir_buf),
         "TNFS://%s%s\n"
         "  AUTORUN.BAS      1024 bytes  [BAS]\n"
         "  DEMO.ATR        92160 bytes  [DSK]\n"
@@ -86,7 +85,7 @@ char *tnfs_list_directory(const char *dir_path, const char *pattern) {
         s_tnfs_session.is_mounted ? s_tnfs_session.host : "tnfs.fujinet.online",
         target);
 
-    return buf;
+    return s_tnfs_dir_buf;
 }
 
 char *tnfs_read_file(const char *file_path, size_t *out_size) {
@@ -100,14 +99,15 @@ char *tnfs_read_file(const char *file_path, size_t *out_size) {
         "20 PRINT \"LOADED FROM TNFS REPOSITORY\"\n"
         "30 SYSTEM\n";
 
-    size_t len = strlen(sim_content);
-    char *buf = (char *)malloc(len + 1);
+    size_t len = runtime_strlen(sim_content);
+    HalContext *hal = hal_get();
+    char *buf = (char *)(hal && hal->mem.alloc ? hal->mem.alloc(len + 1) : NULL);
     if (!buf) {
         if (out_size) *out_size = 0;
         return NULL;
     }
 
-    memcpy(buf, sim_content, len + 1);
+    runtime_memcpy(buf, sim_content, len + 1);
     if (out_size) *out_size = len;
     return buf;
 }

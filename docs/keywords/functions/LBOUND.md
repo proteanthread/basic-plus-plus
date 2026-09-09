@@ -1,47 +1,73 @@
-# `LBOUND` Lower Bound Array Function
+<!--
+Title:        LBOUND
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/eval/functions/math/linear_algebra/lbound.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Function Definition
+# `LBOUND` Keyword Reference
 
-The `LBOUND` function returns the lowest valid subscript index for a designated dimension of an array. If no dimension is specified, `LBOUND` defaults to the first dimension (dimension 1).
+## Source Header
 
-### Syntax Signatures:
-```basic
-result = LBOUND(arrayname [, dimension])
+```c
+// FILENAME: lbound.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine (sys_fn.c)
+// NEEDS: libcore (arrays.h, arrays.c, math.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
+// NEEDS: libengine (lbound.h, math.c, string.c, vm.h)
+// Provides runtime implementation for the LBOUND built-in function in BASIC++
+//
+// ---- Includes ----
 ```
 
-### Operational Rules:
-- **Default Dimension**: If `dimension` is omitted, dimension 1 is queried.
-- **Dimension Range**: `dimension` must be an integer between 1 and the array's total dimension count ($1 \le \text{dim} \le D$).
-- **Base Compatibility**: Returns `0` (or `1` under `OPTION BASE 1`), or the custom lower bound declared via `DIM A(lower TO upper)`.
-- **Return Type**: `VAL_NUMBER` (integer integer value).
+## 1. Description & Usage
+
+Returns the lowest subscript for the indicated dimension of an array.
+
+## 2. Syntax
+
+```basic
+low% = LBOUND(array [, dimension%])
+```
+
+## 3. Code Example
+
+```basic
+10 Val = low% = LBOUND(array [, dimension%])
+20 PRINT "Result: "; Val
+```
+
+## 4. Error Conditions
+
+Error 9: Subscript out of range, Error 13: Type Mismatch
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Array Functions
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_IO
 
 ---
 
-## 2. Language Dialect & Compatibility
+## LanguageDescriptor (LangDesc) Quick Reference
 
-| Dialect | Syntax | Default Base | Custom Lower Bound | Notes |
-|---|---|---|---|---|
-| **GW-BASIC / BASICA** | *None* | 0 or 1 | No | Not available in 1980s GW-BASIC |
-| **QuickBASIC / QBASIC** | `LBOUND(A, 1)` | 0 or 1 | Yes (`TO`) | Standard QuickBASIC function |
-| **Visual Basic** | `LBound(A, 1)` | 0 or 1 | Yes | Standard |
-| **BASIC++ (Master)** | `LBOUND(A [, dim])` | 0 or 1 | Yes (`TO`) | Full multidimensional inspection |
-
----
-
-## 3. Examples
-
-### Generic Array Loop Traverser
-```basic
-10 DIM Buffer(-15 TO 25)
-20 FOR I = LBOUND(Buffer) TO UBOUND(Buffer)
-30   Buffer(I) = I * 2
-40 NEXT I
-50 PRINT "Processed elements from "; LBOUND(Buffer); " to "; UBOUND(Buffer)
-```
-
-### Multidimensional Array Boundary Checking
-```basic
-100 DIM Grid(1 TO 10, -5 TO 5)
-110 PRINT "Dim 1 lower bound: "; LBOUND(Grid, 1)
-120 PRINT "Dim 2 lower bound: "; LBOUND(Grid, 2)
-```
+| Field | Value |
+|---|---|
+| Name | LBOUND |
+| Category | Array Functions |
+| Syntax | low% = LBOUND(array [, dimension%]) |
+| Description | Returns the lowest subscript for the indicated dimension of an array. |
+| Error Summary | Error 9: Subscript out of range, Error 13: Type Mismatch |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_IO |
+| Feature Type | FEATURE_FUNCTION |
+| Delimiter Mask | none |
+| Compatibility | none |
+| Since Version | none |
+| Source File | engine/src/eval/functions/math/linear_algebra/lbound.c |

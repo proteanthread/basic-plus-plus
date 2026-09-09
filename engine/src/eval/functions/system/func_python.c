@@ -3,16 +3,27 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
 // NEEDS: libcore (funcreg.h, funcreg.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libengine (string.c, vm.h)
 // Implements the PYTHON$ built-in function to evaluate Python expressions.
 //
 // ---- Includes ----
 
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/funcreg.h"
 #include "runtime/string.h"
 #include "vm/vm.h"
+
+static const LangDesc g_python_desc = {
+    .name = "PYTHON$",
+    .category = "Language Interop",
+    .syntax = "PYTHON$(expr$)",
+    .description = "Evaluates a Python expression string and returns resulting string representation.",
+    .error_summary = "Error 13: Type Mismatch",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SAFE,
+    .type = FEATURE_FUNCTION
+};
 
 BValue func_python_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err) {
     (void)uname;
@@ -31,14 +42,7 @@ BValue func_python_eval(VMContext *vm, const char *uname, int arg_count, BValue 
 }
 
 void func_python_register(void) {
-    MicroLibMetadata meta = {
-        .name = "PYTHON$",
-        .category = "Language Interop",
-        .syntax = "PYTHON$(expr$)",
-        .help_text = "Evaluates a Python expression string and returns resulting string representation.",
-        .error_codes = "Error 13: Type Mismatch"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_python_desc);
 
     FunctionEntry entry_py = {
         .name = "PYTHON$",

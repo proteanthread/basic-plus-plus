@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
 // NEEDS: libcore (arrays.h, arrays.c, ctype.h, ctype.c, file.h, file.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libengine (eval.h, eval.c, stmt.h, string.c, time.h, time.c)
 // NEEDS: libkernel (vdev.h, vdev.c)
 // NEEDS: libplatform (platform.h)
@@ -12,65 +12,73 @@
 // ---- Includes ----
 
 #include "stmt/stmt.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "device/vdev.h"
 #include "eval/eval.h"
 #include "runtime/file.h"
 #include "runtime/arrays.h"
 #include "platform/platform.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
-#include <ctype.h>
+#include "runtime/format/snprintf.h"
+#include "runtime/memory/alloc.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "runtime/ctype/ctype.h"
+#include "eval/functions/math/random/rnd.h"
+
+static const LangDesc g_randomize_desc = {
+    .name = "RANDOMIZE",
+    .category = "System Control",
+    .syntax = "RANDOMIZE [seed% | TIMER | GET[#] ch | INPUT[#] ch | READ [count] | arr[()] | seed$]",
+    .description = "Reseeds the random number generator using a numeric seed, system timer, channel byte/line, DATA items, array elements, or string hash.",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_PURE,
+    .type = FEATURE_STATEMENT
+};
 
 BppError stmt_randomize_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
-    VDevContext *vdev = vm_get_vdev(vm);
     BppToken tok = lex_peek(lex);
 
-    bool is_prompt = false;
-
-    // Check if EOL or EOF or ELSE
+    // If no argument supplied, prompt the user interactively
     if (tok.type == TOK_EOL || tok.type == TOK_EOF || (tok.type == TOK_KEYWORD && tok.as.keyword == KW_ELSE)) {
-        is_prompt = true;
-    } else if (tok.type == TOK_UNKNOWN ||
-               (tok.length >= 2 && strncmp(tok.start, "!?", 2) == 0) ||
-               (tok.type == TOK_IDENT && tok.length == 6 && strncasecmp(tok.start, "RANDOM", 6) == 0)) {
-        is_prompt = true;
-        lex_next(lex); // Consume prompt flag
-    }
-
-    if (is_prompt) {
-        vdev_puts(vdev, "Random number seed (-32768 to 32767)? ");
-        VDev *con_dev = vdev_get(vdev, "CON:");
-        if (con_dev && con_dev->ops.flush) {
-            con_dev->ops.flush(con_dev);
+        VDevContext *con_dev = vm_get_vdev(vm);
+        if (con_dev) {
+            vdev_puts(con_dev, "Random number seed (-32768 to 32767)? ");
         }
 
         char input_buf[64] = "";
-        if (con_dev && con_dev->ops.gets) {
-            con_dev->ops.gets(con_dev, input_buf, sizeof(input_buf));
+        if (con_dev) {
+            vdev_gets(con_dev, input_buf, sizeof(input_buf));
         }
 
         // Strip trailing newlines
-        size_t len = strlen(input_buf);
+        size_t len = runtime_strlen(input_buf);
         while (len > 0 && (input_buf[len - 1] == '\n' || input_buf[len - 1] == '\r')) {
             input_buf[len - 1] = '\0';
             len--;
         }
 
-        long seed = atol(input_buf);
-        srand((unsigned int)seed);
+        long seed = 0;
+        const char *sp = input_buf;
+        while (*sp == ' ' || *sp == '\t') sp++;
+        bool neg = false;
+        if (*sp == '-') { neg = true; sp++; }
+        else if (*sp == '+') { sp++; }
+        while (*sp >= '0' && *sp <= '9') {
+            seed = seed * 10 + (*sp - '0');
+            sp++;
+        }
+        if (neg) seed = -seed;
+        func_rnd_set_seed((uint64_t)seed);
         return err;
     }
 
     // Check for RANDOMIZE TIMER
     if (tok.type == TOK_KEYWORD && tok.as.keyword == KW_TIMER) {
         lex_next(lex); // Consume TIMER
-        srand((unsigned int)(platform_get_timer() * 1000.0) ^ (unsigned int)time(NULL));
+        func_rnd_set_seed((uint64_t)(platform_get_timer() * 1000.0) ^ (uint64_t)platform_get_uptime());
         return err;
     }
 
@@ -87,7 +95,7 @@ BppError stmt_randomize_handler(VMContext *vm, LexerContext *lex) {
 
         int byte = file_getc(vm_get_file(vm), channel);
         if (byte == -1) byte = 0;
-        srand((unsigned int)byte);
+        func_rnd_set_seed((uint64_t)byte);
         return err;
     }
 
@@ -109,7 +117,7 @@ BppError stmt_randomize_handler(VMContext *vm, LexerContext *lex) {
         for (int i = 0; line_buf[i]; i++) {
             hash = ((hash << 5) + hash) + (unsigned char)line_buf[i];
         }
-        srand(hash);
+        func_rnd_set_seed(hash);
         return err;
     }
 
@@ -154,7 +162,7 @@ BppError stmt_randomize_handler(VMContext *vm, LexerContext *lex) {
             items_read++;
         }
 
-        srand(hash);
+        func_rnd_set_seed(hash);
         return err;
     }
 
@@ -162,7 +170,7 @@ BppError stmt_randomize_handler(VMContext *vm, LexerContext *lex) {
     if (tok.type == TOK_IDENT) {
         char arr_name[256];
         size_t clen = (tok.length < sizeof(arr_name) - 1) ? tok.length : sizeof(arr_name) - 1;
-        memcpy(arr_name, tok.start, clen);
+        runtime_memcpy(arr_name, tok.start, clen);
         arr_name[clen] = '\0';
 
         if (arr_exists(vm_get_arr(vm), arr_name)) {
@@ -183,7 +191,9 @@ BppError stmt_randomize_handler(VMContext *vm, LexerContext *lex) {
             BValue *elements = arr_get_flat_elements(vm_get_arr(vm), arr_name, &total_size);
             if (elements && total_size > 0) {
                 for (int i = total_size - 1; i > 0; i--) {
-                    int j = rand() % (i + 1);
+                    int j = (int)(func_rnd_eval(vm, "RND", 0, NULL, &err).as.number * (double)(i + 1));
+                    if (j < 0) j = 0;
+                    if (j > i) j = i;
                     BValue temp = elements[i];
                     elements[i] = elements[j];
                     elements[j] = temp;
@@ -203,23 +213,16 @@ BppError stmt_randomize_handler(VMContext *vm, LexerContext *lex) {
         for (int i = 0; s[i]; i++) {
             hash = ((hash << 5) + hash) + (unsigned char)s[i];
         }
-        srand(hash);
+        func_rnd_set_seed(hash);
         str_release(vm_get_str(vm), seed_val.as.string);
     } else {
         long seed = (long)seed_val.as.number;
-        srand((unsigned int)seed);
+        func_rnd_set_seed((uint64_t)seed);
     }
 
     return err;
 }
 
 void stmt_randomize_register(void) {
-    MicroLibMetadata meta = {
-        .name = "RANDOMIZE",
-        .category = "Control & Math",
-        .syntax = "RANDOMIZE [seed]",
-        .help_text = "Reseeds the pseudo-random number generator used by the RND function.",
-        .error_codes = "Error 5: Illegal Function Call (negative or invalid seed)"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_randomize_desc);
 }

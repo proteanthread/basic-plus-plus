@@ -5,7 +5,7 @@
 // NEEDED BY: libcore (error.c, spec.c)
 // NEEDED BY: libengine (context.c, control.c, data.c, events_internal.h)
 // NEEDED BY: libengine (exec_internal.h, vm_internal.h)
-// NEEDS: libcore (hal.h, memops.h, memops.c, snprintf.h, snprintf.c)
+// NEEDS: libcore (hal.h, memops.h, memops.c, runtime_snprintf.h, runtime_snprintf.c)
 // NEEDS: libcore (strops.h, strops.c, vfs.h)
 // NEEDS: libkernel (vdev.h, vdev.c)
 // NEEDS: libplatform (platform.h)
@@ -20,6 +20,7 @@
 #include "runtime/string/memops.h"
 #include "runtime/format/snprintf.h"
 #include "platform/platform.h"
+#include "runtime/memory/alloc.h"
 
 static void safe_strncpy(char *dest, const char *src, size_t max_len) {
     if (!dest || max_len == 0) return;
@@ -106,7 +107,7 @@ bool vfs_mount(VfsContext *ctx, const char *prefix, const char *target, BppMount
         }
     }
 
-    // Find free slot
+    // Find runtime_free slot
     for (int i = 0; i < VFS_MAX_MOUNTS; ++i) {
         if (!ctx->mounts[i].active) {
             safe_strncpy(ctx->mounts[i].prefix, norm_prefix, VFS_MAX_PREFIX);

@@ -1,27 +1,71 @@
-# `PAPER` Background Paper Color Setting Statement
+<!--
+Title:        PAPER
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/device/gfx.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Keyword Definition
+# `PAPER` Keyword Reference
 
-Sets the active background paper color for text output in Sinclair and Locomotive BASIC dialects.
+## Source Header
 
-### Syntax Signatures:
-```basic
-PAPER color_index%
+```c
+// FILENAME: gfx.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore, libengine, libkernel, libplatform
+// Implements virtual device and graphics rendering logic for gfx.
+//
+// ---- Includes ----
 ```
 
-### Error Handling & Boundary Conditions:
-- **Error 5 (ERR_ILLEGAL_FUNCTION_CALL)**: Color index outside range.
+## 1. Description & Usage
 
-### Operational Notes:
-- ZX Spectrum display attribute emulation.
+Sets the active background fill and character background color index.
+
+## 2. Syntax
+
+```basic
+PAPER color_index
+```
+
+## 3. Code Example
+
+```basic
+10 REM PAPER Demonstration
+20 PRINT "PAPER executed successfully."
+```
+
+## 4. Error Conditions
+
+Error 5: Illegal Function Call
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: Sinclair ZX Spectrum, Amstrad CPC, BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Graphics & Display
+- **Subsystem**: SUBSYSTEM_ADVANCED
+- **Safety Level**: SAFETY_SAFE
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 PAPER 1 : REM Set blue background
-20 INK 7   : REM Set white text
-30 CLS
-40 PRINT "White on Blue"
-```
+| Field | Value |
+|---|---|
+| Name | PAPER |
+| Category | Graphics & Display |
+| Syntax | PAPER color_index |
+| Description | Sets the active background fill and character background color index. |
+| Error Summary | Error 5: Illegal Function Call |
+| Subsystem | SUBSYSTEM_ADVANCED |
+| Safety Level | SAFETY_SAFE |
+| Feature Type | FEATURE_STATEMENT |
+| Delimiter Mask | none |
+| Compatibility | Sinclair ZX Spectrum, Amstrad CPC, BASIC++ Standard |
+| Since Version | 6.0.0 |
+| Source File | engine/src/device/gfx.c |

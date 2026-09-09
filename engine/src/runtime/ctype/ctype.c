@@ -18,7 +18,7 @@
 // NEEDED BY: libcore (analyzer.c, error.c, feature_reg.c, float_parse.c)
 // NEEDED BY: libcore (funcreg.c, map_serialize.c, metadata.c)
 // NEEDED BY: libcore (micro_lib_metadata.c, num_parse.c, print_using.c)
-// NEEDED BY: libcore (select.c, snprintf.c, spec.c, sscanf.c, strops.c)
+// NEEDED BY: libcore (select.c, runtime_snprintf.c, spec.c, sscanf.c, strops.c)
 // NEEDED BY: libcore (struct.c, using_engine.c, vdev_core.c)
 // NEEDED BY: libengine (ast_internal.h, dispatch_internal.h)
 // NEEDED BY: libengine (eval_expr_internal.h, eval_internal.h)
@@ -45,6 +45,7 @@
 // ---- Includes ----
 
 #include "runtime/ctype/ctype.h"
+#include "runtime/format/snprintf.h"
 
 // 256-entry character classification lookup table (ISO/IEC 9899:2018 C17)
 const uint8_t runtime_ctype_table[256] = {

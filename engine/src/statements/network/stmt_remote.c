@@ -13,12 +13,13 @@
 #include "runtime/nil_transport.h"
 #include "eval/eval.h"
 #include "runtime/strings.h"
-
-#include <string.h>
+#include "runtime/language_descriptor.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
 
 BppError stmt_remote_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BppToken tok = lex_peek(lex);
     if (tok.type == TOK_PERIOD) {
@@ -26,7 +27,7 @@ BppError stmt_remote_handler(VMContext *vm, LexerContext *lex) {
         tok = lex_peek(lex);
     }
     if (tok.type == TOK_IDENT || tok.type == TOK_KEYWORD) {
-        if (tok.length == 4 && strncasecmp(tok.start, "EXEC", 4) == 0) {
+        if (tok.length == 4 && runtime_strncasecmp(tok.start, "EXEC", 4) == 0) {
             lex_next(lex);
         }
     }
@@ -40,7 +41,7 @@ BppError stmt_remote_handler(VMContext *vm, LexerContext *lex) {
     if (tok.type == TOK_COMMA) {
         lex_next(lex);
     } else if (tok.type == TOK_IDENT || tok.type == TOK_KEYWORD) {
-        if (tok.length == 4 && strncasecmp(tok.start, "EXEC", 4) == 0) {
+        if (tok.length == 4 && runtime_strncasecmp(tok.start, "EXEC", 4) == 0) {
             lex_next(lex);
         }
     }
@@ -53,7 +54,7 @@ BppError stmt_remote_handler(VMContext *vm, LexerContext *lex) {
 
     const char *cmd = (cmd_val.type == VAL_STRING && cmd_val.as.string) ? str_data(cmd_val.as.string) : "";
 
-    nil_transport_send(vm, target, (const uint8_t *)cmd, strlen(cmd));
+    nil_transport_send(vm, target, (const uint8_t *)cmd, runtime_strlen(cmd));
 
     if (cmd_val.type == VAL_STRING && cmd_val.as.string) str_release(vm_get_str(vm), cmd_val.as.string);
     if (target_val.type == VAL_STRING && target_val.as.string) str_release(vm_get_str(vm), target_val.as.string);
@@ -61,6 +62,17 @@ BppError stmt_remote_handler(VMContext *vm, LexerContext *lex) {
     return err;
 }
 
+static const LangDesc g_remote_exec_desc = {
+    .name = "REMOTE.EXEC",
+    .category = "Hardware & Network",
+    .syntax = "REMOTE.EXEC target$, cmd$",
+    .description = "Dispatches an execution command string to a remote IoT node.",
+    .error_summary = "None",
+    .subsystem = SUBSYSTEM_SERVER,
+    .safety = SAFETY_IO,
+    .type = FEATURE_STATEMENT
+};
+
 void stmt_remote_register(void) {
-    // Registered in VM dispatch
+    lang_desc_register(&g_remote_exec_desc);
 }

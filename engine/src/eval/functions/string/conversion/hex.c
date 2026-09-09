@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (conversion_fn.c)
 // NEEDS: libcore (funcreg.h, funcreg.c, hal.h, memory.h, memory.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libcore (strings.h, strings.c)
 // NEEDS: libengine (hex.h, string.c)
 // Provides runtime implementation for the HEX built-in function in BASIC++.
@@ -11,12 +11,25 @@
 // ---- Includes ----
 
 #include "eval/functions/string/conversion/hex.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/strings.h"
 #include "runtime/funcreg.h"
 #include "runtime/string.h"
 #include "runtime/memory.h"
 #include "hal/hal.h"
+#include "runtime/format/snprintf.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_hex_desc = {
+    .name = "HEX$",
+    .category = "String Functions",
+    .syntax = "HEX$(x) | HEX(hex_str$)",
+    .description = "HEX$(x) returns hexadecimal string of number x (GW-BASIC); HEX(s$) decodes hex string to raw binary byte string (Wang 3300).",
+    .error_summary = "Error 13: Type Mismatch, Error 5: Illegal function call",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_FUNCTION
+};
 static int hex_char_to_val(char c) {
     if (c >= '0' && c <= '9') return c - '0';
     if (c >= 'a' && c <= 'f') return c - 'a' + 10;
@@ -65,14 +78,7 @@ static BValue func_hex_wang(VMContext *vm, BValue *args, int arg_count, BppError
 }
 
 void func_hex_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "HEX$",
-        .category = "String Functions",
-        .syntax = "HEX$(x) | HEX(hex_str$)",
-        .help_text = "HEX$(x) returns hexadecimal string of number x (GW-BASIC); HEX(s$) decodes hex string to raw binary byte string (Wang 3300).",
-        .error_codes = "Error 13: Type Mismatch, Error 5: Illegal function call"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_hex_desc);
 }
 
 BValue func_hex_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err) {

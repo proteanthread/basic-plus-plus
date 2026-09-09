@@ -1,21 +1,72 @@
-BASIC++ STATEMENT REFERENCE: REDIM
-======================================================================
+TITLE: REDIM
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/variables/declaration/redim.c
+GENERATED: no, hand-written
+STATUS: current
 
-1. SYNTAX & DESCRIPTION
-  REDIM [PRESERVE] arrayname(subscripts) [AS type] [, ...]
+==============================================================================
+REDIM KEYWORD REFERENCE
+==============================================================================
 
-Dynamically reallocates memory for a dynamic array, changing its dimensions
-or element count during program execution.
+SOURCE HEADER:
+    // FILENAME: redim.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (arrays.h, arrays.c)
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libengine (dim.h, dim.c, redim.h, string.c)
+    // Provides runtime implementation for the REDIM statement in BASIC++.
+    //
+    // ---- Includes ----
 
-2. PARAMETERS
-- PRESERVE: Optional clause to keep existing data when resizing the last dimension.
-- arrayname: The dynamic array identifier.
-- subscripts: New dimension bounds.
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Changes the dimensions and size of dynamic arrays, optionally preserving
+existing data.
 
-3. ERROR CODES
-- Error 9 (ERR_SUBSCRIPT_OUT_OF_RANGE): Invalid subscript bounds.
-- Error 10 (ERR_DUPLICATE_DEFINITION): Attempted to REDIM a static array.
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    REDIM [PRESERVE] array_name(subscripts...)
 
-4. EXAMPLES
-  10 REDIM A(50)
-  20 REDIM PRESERVE A(100)
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 DIM Arr(10)
+    20 Arr(5) = 100
+    30 PRINT "Arr(5) = "; Arr(5)
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error, Error 9: Subscript out of range
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Variables & Memory
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SYSTEM
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  REDIM
+Category              Variables & Memory
+Syntax                REDIM [PRESERVE] array_name(subscripts...)
+Description           Changes the dimensions and size of dynamic arrays, ...
+Error Summary         Error 2: Syntax Error, Error 9: Subscript out of range
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SYSTEM
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/variables/declaration/redim.c

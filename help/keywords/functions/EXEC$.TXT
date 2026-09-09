@@ -1,0 +1,67 @@
+TITLE: EXEC$
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/functions/system/environment/func_exec.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+EXEC$ KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: func_exec.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (string_fn.c)
+    // NEEDS: libengine (func_exec.h, vm.h)
+    // Provides runtime implementation for the EXEC$ direct process execution func
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Directly executes a binary executable with arguments and captures standard
+output without shell interpretation.
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    EXEC$(binary$ [, arg1$ [, arg2$...]])
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = EXEC$(binary$ [, arg1$ [, arg2$...]])
+    20 PRINT "Result: "; Val
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 13: Type Mismatch
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      System & OS
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SYSTEM
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  EXEC$
+Category              System & OS
+Syntax                EXEC$(binary$ [, arg1$ [, arg2$...]])
+Description           Directly executes a binary executable with argument...
+Error Summary         Error 13: Type Mismatch
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SYSTEM
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/eval/functions/system/environment/func_e...

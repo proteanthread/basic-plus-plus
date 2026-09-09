@@ -189,6 +189,7 @@
 #include <stdbool.h>
 #include "types/types.h"
 #include "memory/memory.h"
+#include "runtime/memory/alloc.h"
 
 // Opaque String Manager Context
 typedef struct StringContext StringContext;
@@ -196,7 +197,7 @@ typedef struct StringContext StringContext;
 // @brief Initialize the string manager context.
 StringContext *str_init(MemoryContext *mem);
 
-// @brief Shutdown the string manager and free all registered strings.
+// @brief Shutdown the string manager and runtime_free all registered strings.
 void str_shutdown(StringContext *ctx);
 
 // @brief Create a new string in the isolated heap.
@@ -231,7 +232,7 @@ size_t str_len(BppStringRef ref);
 // @brief Increment reference count of a string.
 void str_add_ref(BppStringRef ref);
 
-// @brief Decrement reference count of a string and free if count reaches 0.
+// @brief Decrement reference count of a string and runtime_free if count reaches 0.
 void str_release(StringContext *ctx, BppStringRef ref);
 
 // @brief Check if string has unique ownership (ref_count == 1).

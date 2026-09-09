@@ -2,7 +2,7 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libboot (common_internal.h)
-// NEEDED BY: libcore (float_parse.c, snprintf.c, sscanf.c, string.h)
+// NEEDED BY: libcore (float_parse.c, runtime_snprintf.c, sscanf.c, string.h)
 // NEEDED BY: libengine (ast_internal.h, eval_internal.h, scan_number.c)
 // NEEDED BY: libengine (vm_internal.h)
 // NEEDED BY: libstandard (editor.c)
@@ -16,6 +16,9 @@
 
 #include <stddef.h>
 #include <stdbool.h>
+#include "runtime/format/snprintf.h"
+#include "runtime/math/math.h"
+#include "runtime/conv/float_parse.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -40,7 +43,7 @@ typedef enum {
 
 // @brief High-precision double to ASCII string converter (15-16+ digits bit-exact).
 // @param value The double value to format.
-// @param mode Format mode (auto, fixed, exp, shortest).
+// @param mode Format mode (auto, fixed, runtime_exp, shortest).
 // @param precision Decimal places (or significant digits for shortest/auto). 0 = default (16).
 // @param uppercase Use 'E' instead of 'e' for exponent.
 // @param buf Destination buffer.

@@ -1,16 +1,72 @@
-SPACE$ Space String Generator Function
-======================================================================
+TITLE: SPACE$
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/functions/string/manipulation/space.c
+GENERATED: no, hand-written
+STATUS: current
 
-The SPACE$ function creates a string with N space characters.
+==============================================================================
+SPACE$ KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: space.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (string_fn.c)
+    // NEEDS: libcore (hal.h, memory.h, memory.c)
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libcore (strings.h, strings.c)
+    // NEEDS: libengine (space.h, string.c)
+    // Provides runtime implementation for the SPACE built-in function in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Returns a string consisting of n space characters.
 
-    spaces$ = SPACE$(count%)
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    SPACE$(n)
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = SPACE$(n)
+    20 PRINT "Result: "; Val
 
-CODE EXAMPLES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 5: Illegal Function Call (n < 0), Error 13: Type Mismatch (SPACE$
+expects one numeric argument)
 
-    10 PRINT "A" + SPACE$(5) + "B"   : REM 5 spaces between A and B
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      String Functions
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_IO
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  SPACE$
+Category              String Functions
+Syntax                SPACE$(n)
+Description           Returns a string consisting of n space characters.
+Error Summary         Error 5: Illegal Function Call (n < 0), Error 13: T...
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_IO
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/eval/functions/string/manipulation/space.c

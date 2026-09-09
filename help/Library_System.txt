@@ -1,129 +1,78 @@
-======================================================================
-  BASIC++ V6.5.2 LIBRARY SYSTEM REFERENCE
-======================================================================
+Title:        Library System
+Tier:         1
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot, bppc, trans, detok)
+Authority:    engine/CMakeLists.txt, engine/Engine_Features.md
+Generated:    no
+Status:       Active
+
+BASIC++ V6.5.2 LIBRARY SYSTEM AND MICRO-LIBRARY ARCHITECTURE
+
+The architectural reference defining the accumulative 11-modular library
+spectrum, micro-library compilation targets, and linkage points across
+BASIC++ editions.
 
 
-======================================================================
-  1. THE 12-LIBRARY MODULAR ARCHITECTURE
-======================================================================
+1. THE 11-MODULAR LIBRARY ARCHITECTURE
 
-BASIC++ is compiled as a chain of 12 static micro-libraries. Each library depends on all libraries below it in the chain, forming an accumulative dependency graph. The build targets (baspp, bpp, bs) link at different points in the chain, which determines which features are available in each edition.
+BASIC++ is compiled as a chain of 11 static micro-libraries linked
+accumulatively (libboot through libadvanced, plus libinterop_core). Subsystems
+are structured with unidirectional dependencies: any library in the chain
+depends only on layers below it.
 
-The chain order is fixed. New features are placed in the lowest appropriate library layer. Moving a feature to a higher layer is acceptable (it becomes available to fewer build targets). Moving a feature to a lower layer requires careful verification that the feature's dependencies are satisfied at that level.
-
-
-======================================================================
-  2. LIBRARY CHAIN
-======================================================================
-
-
-----------------------------------------------------------------------
-  libboot (Layer 1)
-----------------------------------------------------------------------
-Boot phase sequence controller. Contains engine/src/bootstrap/common/common.c. Provides initialization sequencing that all other layers depend on. No external dependencies beyond the C standard library.
+Executable targets link at specific layers in the spectrum:
+- iot.exe  : Links up to libkernel (2 MB pool, micro-REPL).
+- bs.exe   : Links up to libscript (64 MB pool, batch runner with file I/O).
+- bpp.exe  : Links up to libcore (384 MB pool, headless terminal REPL).
+- baspp.exe: Links up to libadvanced (640 MB pool, SDL2 graphics).
 
 
-----------------------------------------------------------------------
-  libplatform (Layer 2)
-----------------------------------------------------------------------
-OS platform abstraction. Contains 9 source files implementing the plat_* API:
+2. LIBRARY CHAIN SPECIFICATIONS
 
-| File | Purpose |
-|------|---------|
-| plat_console.c | Terminal input/output, console mode, raw key reading |
-| plat_fs.c | File operations, directory listing, path manipulation |
-| plat_sys.c | System info, environment variables, process execution |
-| plat_time.c | Wall clock, monotonic timer, sleep |
-| plat_thread.c | Threading primitives (mutex, thread create/join) |
-| plat_dl.c | Dynamic library loading (dlopen/LoadLibrary) |
-| plat_net.c | TCP/UDP socket operations |
-| plat_regex.c | POSIX regex or platform-specific pattern matching |
-| plat_clipboard.c | System clipboard read/write |
+Layer 1: libboot (Bootstrap Controller)
+- Source: engine/src/bootstrap/boot.c, common/common.c.
+- Role: Coordinates the 9-phase initialization sequence (boot_engine()).
+- Dependencies: None (Freestanding C17).
 
-All Win32 vs POSIX #ifdef logic is contained here. No code above this layer may include windows.h, unistd.h, or any platform-specific header.
+Layer 2: libplatform (Operating System Abstraction)
+- Source: engine/src/platform/plat_console.c, plat_fs.c, plat_sys.c,
+  plat_time.c, plat_thread.c, plat_dl.c, plat_net.c, plat_regex.c.
+- Role: Encapsulates all Win32, POSIX, and bare-metal OS APIs.
+- Rule: Zero OS-specific headers may appear above this layer.
 
+Layer 3: libkernel (Virtual Machine Core)
+- Source: engine/src/vm/context.c, lexer/lexer.c, memory/memory.c,
+  security/security.c, bios/bios_pc.c, device/vdev.c.
+- Role: Lexer, memory arena, security sandbox, BIOS, and virtual device bus.
 
-----------------------------------------------------------------------
-  libkernel (Layer 3)
-----------------------------------------------------------------------
-Core VM context, lexer, memory manager, security sandbox, BIOS virtualization, and virtual device bus. This is the largest layer, containing the lexer (engine/src/lexer/lexer.c), the VM context and control flow (engine/src/vm/context.c, control.c, data.c, error.c, events.c, host.c, math.c, stack.c), the memory system (engine/src/memory/mem_system.c), the security subsystem (engine/src/security/security.c), the BIOS emulation (engine/src/bios/bios*.c), and the virtual device layer (engine/src/device/vdev.c, vcon.c, bus.c, console.c, mux.c).
+Layer 4: libengine (Evaluator and Parser)
+- Source: engine/src/eval/eval.c, rpn.c, parser/parser.c, vm/exec.c,
+  runtime/variables.c, strings.c.
+- Role: AST evaluator, RPN expression engine, procedure dispatch, variables.
 
+Layer 5: libhardware (Hardware Emulation)
+- Source: engine/src/device/bgi/bgi_core.c, bgi_raster.c, device/fujinet.c.
+- Role: Segmented memory (vmem), BGI software rasterizer, FujiNet bus.
 
-----------------------------------------------------------------------
-  libengine (Layer 4)
-----------------------------------------------------------------------
-The AST evaluator, parser, runtime functions, variables, strings, and the bytecode execution loop. Contains the expression evaluator (engine/src/eval/eval.c, ast.c, dispatch.c, ops.c, rpn.c, stack.c, type.c, helpers.c), the microplex engine (engine/src/eval/microplex.c), the parser (engine/src/parser/parser.c), and all runtime systems (engine/src/runtime/variables.c, strings.c, arrays.c, funcreg.c, num_format.c, print_using.c, override.c, etc.).
+Layer 6: libserver (Networking and Sockets)
+- Source: engine/src/device/vnet.c, server/gemini.c, server/task.c.
+- Role: TCP/UDP network sockets (VNet), Gemini/Gopher clients, tasks, crypto.
 
+Layer 7: libscript (Filesystem and Batch Execution)
+- Source: engine/src/bootstrap/server/server.c, statements/filesystem/.
+- Role: File sector handling, random records, batch script processing.
 
-----------------------------------------------------------------------
-  libhardware (Layer 5)
-----------------------------------------------------------------------
-Segmented virtual memory (vmem), BGI rasterizer, and FujiNet hardware emulation. Contains the segmented memory system (engine/src/memory/segmented_mem.c), the BGI graphics core (engine/src/device/bgi/bgi_core.c, bgi_font.c, bgi_modes.c, bgi_raster.c, bgi_palette.c), and the FujiNet emulation (engine/src/device/fujinet.c).
+Layer 8: libcore (REPL and Formatter)
+- Source: engine/src/bootstrap/iot/iot.c, runtime/numfmt.c, metadata.c.
+- Role: Terminal REPL engine, PRINT USING mask parser, metadata registry.
 
+Layer 9: libflex (Dynamic Metaprogramming)
+- Source: engine/src/scope/scope.c, module/module.c, statements/metaprog/.
+- Role: ALIAS, OVERRIDE, SCOPE, and external module loader.
 
-----------------------------------------------------------------------
-  libserver (Layer 6)
-----------------------------------------------------------------------
-Network socket operations (VNet), Gemini protocol client, background task system, virtual filesystem (VFS), cryptographic functions, and regex module. Contains engine/src/runtime/vnet.c, gemini.c, task.c, vfs.c, crypto.c, and engine/src/module/regex.c.
+Layer 10: libstandard (TUI Workstation and Editor)
+- Source: engine/src/editor/tui_multiplexer.c, editor_buffer.c, debug/dap.c.
+- Role: Multi-window TUI editor multiplexer and DAP debug server.
 
-
-----------------------------------------------------------------------
-  libscript (Layer 7)
-----------------------------------------------------------------------
-File I/O operations. Contains engine/src/runtime/file.c. The bs batch script runner links at this layer, gaining file I/O plus all upstream capabilities.
-
-
-----------------------------------------------------------------------
-  libcore (Layer 8)
-----------------------------------------------------------------------
-Foundational REPL, introspection commands (HELP, CATALOG, SELFTEST), and the documentation generator. Contains engine/src/docgen/docgen.c and engine/src/statements/dialect/help.c, introspection.c, selftest.c. The bpp lite edition links at this layer.
-
-
-----------------------------------------------------------------------
-  libflex (Layer 9)
-----------------------------------------------------------------------
-Dynamic metaprogramming subsystem. Contains ALIAS (engine/src/statements/dialect/alias.c), KEYWORD (keyword.c), OVERRIDE (override.c), REMOVE (remove.c), and SCOPE (scope.c).
-
-
-----------------------------------------------------------------------
-  libstandard (Layer 10)
-----------------------------------------------------------------------
-TUI workstation with the multi-window editor multiplexer and the DAP debug server. Contains the editor implementations (engine/src/editor/edit.c, editor.c, editor_manager.c, edlin.c, tui_multiplexer.c, vi.c, ws.c) and the DAP server (engine/src/debug/dap_server.c). Requires ncurses on Linux.
-
-
-----------------------------------------------------------------------
-  libadvanced (Layer 11)
-----------------------------------------------------------------------
-Desktop visual graphics and multimedia. Contains SDL2/OpenGL bindings, the AAlib ASCII art fallback (engine/src/device/bgi/aalib/aalib.c), and the graphics device interface (engine/src/device/gfx.c). The baspp standard edition links at this layer.
-
-
-----------------------------------------------------------------------
-  libext (Layer 12)
-----------------------------------------------------------------------
-Open-ended extension template. Provides a skeleton for user and third-party extensions that link against the full library chain.
-
-
-======================================================================
-  3. LINK GRAPH
-======================================================================
-
-baspp  -> libadvanced -> libstandard -> libflex -> libcore -> libscript -> libserver
-                                                                              |
-bpp    -------------------------------------------------> libcore -> libscript -> libserver
-                                                                              |
-bs     ----------------------------------------------------------> libscript -> libserver
-                                                                              |
-       libserver -> libhardware -> libengine -> libkernel -> libplatform -> libboot
-
-
-======================================================================
-  4. ADDING A NEW LIBRARY
-======================================================================
-
-If a new subsystem requires its own library (rare), it must be inserted at the correct position in the chain. The insertion criteria are:
-
-1. The new library's dependencies must all be satisfied by libraries below it.
-2. The new library must not introduce dependencies on libraries above it.
-3. All existing targets that link above the insertion point automatically gain the new library.
-
-Add the new library definition in engine/CMakeLists.txt following the pattern of existing libraries: add_library, target_include_directories, target_link_libraries.
+Layer 11: libadvanced (Desktop Graphics and Multimedia)
+- Source: engine/src/bootstrap/desktop/desktop.c, device/gfx.c.
+- Role: SDL2/OpenGL windowing, 2D/3D graphics, audio streaming, joystick.

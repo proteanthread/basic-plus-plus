@@ -1,0 +1,52 @@
+<!--
+Title:        Freestanding Hardware and Server Architecture
+Tier:         2
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/
+Generated:    no
+Status:       Active
+-->
+
+# Freestanding Hardware and Server Architecture
+
+## 1. Architectural Overview
+
+The BASIC++ hardware and server subsystems (`libhardware` and `libserver`) provide low-level graphics display drivers, virtual hardware devices, memory segmentation, cryptographic digests, compression, and networking services under strict ISO C17 freestanding compliance (§4 ¶6).
+
+All memory allocations (`malloc`, `free`), memory manipulation operations (`memset`, `memcpy`, `memmove`), string operations (`strlen`, `strcmp`, `strcasecmp`), mathematical primitives (`abs`, `cos`, `sin`, `sqrt`), and formatting functions route through the freestanding runtime subsystem (`runtime_*`) and the Hardware Abstraction Layer (`hal_get()->mem.*`, `hal_get()->io.*`, `hal_get()->time.*`).
+
+---
+
+## 2. Component Inventory & Architectural Boundaries
+
+### 2.1 Hardware Subsystem (`libhardware`)
+- **Display Detection (`engine/src/device/bgi/bgi_autodetect.c`)**: Freestanding display hardware detection and capability negotiation.
+- **Framebuffer & VRAM (`engine/src/device/bgi/bgi_core.c`)**: Linear framebuffer and VRAM management backed by `hal_get()->mem.alloc`/`free`, `runtime_memset`, and `runtime_memcpy`.
+- **Font Metrics (`engine/src/device/bgi/bgi_font.c`)**: Font metrics and vector glyph lookups using freestanding memory operations.
+- **Video Mode Registry (`engine/src/device/bgi/bgi_modes.c`)**: Video mode registry using `runtime_memset` and `runtime_snprintf`.
+- **Palette Management (`engine/src/device/bgi/bgi_palette.c`)**: Freestanding palette indexing and ARGB conversion.
+- **2D Rasterizer (`engine/src/device/bgi/bgi_raster.c`)**: Primitives (lines, circles, floodfill) driven by `runtime_abs`, `runtime_cos`, `runtime_sin`, `runtime_sqrt`, and `runtime_memcpy`.
+- **FujiNet Virtual Bus (`engine/src/device/fujinet.c`)**: Emulated `N:`, `FUJI:`, and `CLOCK:` devices routed to HAL file I/O, memory buffers, and monotonic time.
+- **Segmented Memory (`engine/src/memory/segmented_mem.c`)**: Dynamic segment handle tables managed via `hal_get()->mem.alloc`/`free`.
+- **Microplex (`engine/src/runtime/microplex.c`)**: String and bit multiplexing using freestanding string operations.
+
+### 2.2 Cloud Server & Networking Subsystem (`libserver`)
+- **Cryptographic Services (`engine/src/runtime/crypto.c`)**: FNV-1a, CRC64, MD5, SHA-256 digests, and LZ77 compression/decompression using `runtime_*` and HAL allocators.
+- **Gemini Protocol (`engine/src/runtime/gemini.c`)**: Native Gemini protocol request parser and fetcher.
+- **Task Manager (`engine/src/runtime/task.c`)**: Cooperative background task manager using `runtime_memset` and `runtime_snprintf`.
+- **Virtual File System (`engine/src/runtime/vfs.c`)**: VFS mounts and hierarchical path resolution using freestanding string routines.
+- **Virtual Network (`engine/src/runtime/vnet.c`)**: Virtual network sockets and virtual device tunnels.
+- **Regular Expressions (`engine/src/module/regex.c`)**: Regular expression engine bridge.
+
+---
+
+## 3. Verification & Quality Gates
+
+1. **Zero Hosted Libc Dependencies**: Audited source tree confirms zero direct `<stdio.h>`, `<stdlib.h>`, `<string.h>`, `<math.h>`, or `<time.h>` hosted headers in active core units.
+2. **Dedicated Unit Test Suites**:
+   - `tests/hardware_freestanding_test.c`: Validates BGI modes, rasterizer, clipping, floodfill, font metrics, segmented memory, microplex, and FujiNet virtual devices.
+   - `tests/server_freestanding_test.c`: Validates cryptographic digests, LZ77 roundtrip compression, VFS mount/resolve, task manager lifecycle, and VNet channels.
+3. **Master Regression Coverage**:
+   - `tests/qb_vbdos_master.bas`: 10/10 packages PASSED (100%).
+   - `tests/vintage_ecosystems_master.bas`: 14/14 packages PASSED (100%).
+   - `tests/vintage_deep_fuzz_stress.bas`: 8/8 tests PASSED (100%).

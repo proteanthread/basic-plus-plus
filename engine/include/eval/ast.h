@@ -42,7 +42,13 @@ typedef enum {
     AST_NODE_STRING_FUNC,
     AST_NODE_POKE,
     AST_NODE_FILE_PRINT,
-    AST_NODE_LINE_INPUT
+    AST_NODE_LINE_INPUT,
+    AST_NODE_DIM,
+    AST_NODE_FILE_OPEN,
+    AST_NODE_FILE_CLOSE,
+    AST_NODE_FILE_KILL,
+    AST_NODE_END,
+    AST_NODE_SWAP
 } EvalAstNodeType;
 
 typedef enum {
@@ -79,7 +85,8 @@ typedef enum {
     AST_STR_INSTR,
     AST_STR_SHA256,
     AST_STR_MD5,
-    AST_STR_PEEK
+    AST_STR_PEEK,
+    AST_STR_PEEK_STR
 } AstStringFunc;
 
 typedef struct EvalAstNode {
@@ -89,10 +96,14 @@ typedef struct EvalAstNode {
     AstMathFunc     math_func;
     AstStringFunc   str_func;
     int             channel;
+    int             file_mode;
+    int             dims;
     char            var_name[64];
+    char            extra_var[64];
     BppLineNumber   target_line;
     const char     *source_pos;
     BValue         *cached_var_ptr;
+    BValue         *cached_extra_var_ptr;
     void           *cached_arr;
     struct EvalAstNode *left;
     struct EvalAstNode *right;
@@ -124,6 +135,13 @@ EvalAstNode *eval_ast_create_array2d_assign(MemoryContext *mem, const char *name
 EvalAstNode *eval_ast_create_poke(MemoryContext *mem, EvalAstNode *addr_expr, EvalAstNode *val_expr);
 EvalAstNode *eval_ast_create_file_print(MemoryContext *mem, int channel, EvalAstNode *expr);
 EvalAstNode *eval_ast_create_line_input(MemoryContext *mem, int channel, const char *var_name);
+
+EvalAstNode *eval_ast_create_dim(MemoryContext *mem, const char *name, int dims, EvalAstNode *d1_expr, EvalAstNode *d2_expr);
+EvalAstNode *eval_ast_create_file_open(MemoryContext *mem, EvalAstNode *filename_expr, int mode, int channel);
+EvalAstNode *eval_ast_create_file_close(MemoryContext *mem, int channel);
+EvalAstNode *eval_ast_create_file_kill(MemoryContext *mem, EvalAstNode *filename_expr);
+EvalAstNode *eval_ast_create_end(MemoryContext *mem);
+EvalAstNode *eval_ast_create_swap(MemoryContext *mem, const char *var1, const char *var2);
 
 EvalAstNode *eval_ast_create_for_loop(MemoryContext *mem, const char *name, EvalAstNode *start_expr, EvalAstNode *end_expr, EvalAstNode *step_expr, EvalAstNode *body);
 EvalAstNode *eval_ast_create_while_loop(MemoryContext *mem, EvalAstNode *cond, EvalAstNode *body);

@@ -9,42 +9,43 @@
 // ---- Includes ----
 
 #include "runtime/session.h"
-#include <string.h>
-#include <time.h>
-#include <stdlib.h>
+#include "platform/platform.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "runtime/memory/alloc.h"
 
 void session_init(BppSessionContext *ctx) {
     if (!ctx) return;
-    memset(ctx, 0, sizeof(BppSessionContext));
-    strncpy(ctx->username, "USER", sizeof(ctx->username) - 1);
-    strncpy(ctx->account, "PUBLIC", sizeof(ctx->account) - 1);
+    runtime_memset(ctx, 0, sizeof(BppSessionContext));
+    runtime_strncpy(ctx->username, "USER", sizeof(ctx->username) - 1);
+    runtime_strncpy(ctx->account, "PUBLIC", sizeof(ctx->account) - 1);
     ctx->job_id = 1;
     ctx->tty_id = 0;
     ctx->priority = 5;
     ctx->echo_enabled = true;
-    ctx->login_timestamp = (uint64_t)time(NULL);
+    ctx->login_timestamp = (uint64_t)platform_get_timer();
     ctx->logged_in = true;
 }
 
 bool session_login(BppSessionContext *ctx, const char *username, const char *account) {
     if (!ctx) return false;
     if (username && username[0]) {
-        strncpy(ctx->username, username, sizeof(ctx->username) - 1);
+        runtime_strncpy(ctx->username, username, sizeof(ctx->username) - 1);
         ctx->username[sizeof(ctx->username) - 1] = '\0';
     }
     if (account && account[0]) {
-        strncpy(ctx->account, account, sizeof(ctx->account) - 1);
+        runtime_strncpy(ctx->account, account, sizeof(ctx->account) - 1);
         ctx->account[sizeof(ctx->account) - 1] = '\0';
     }
-    ctx->login_timestamp = (uint64_t)time(NULL);
+    ctx->login_timestamp = (uint64_t)platform_get_timer();
     ctx->logged_in = true;
     return true;
 }
 
 void session_logout(BppSessionContext *ctx) {
     if (!ctx) return;
-    strncpy(ctx->username, "GUEST", sizeof(ctx->username) - 1);
-    strncpy(ctx->account, "NONE", sizeof(ctx->account) - 1);
+    runtime_strncpy(ctx->username, "GUEST", sizeof(ctx->username) - 1);
+    runtime_strncpy(ctx->account, "NONE", sizeof(ctx->account) - 1);
     ctx->logged_in = false;
 }
 

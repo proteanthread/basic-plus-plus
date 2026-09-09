@@ -1,30 +1,70 @@
-CIRCLE Graphics Circle and Ellipse Drawing Statement
-====================================================
+TITLE: CIRCLE
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/graphics/draw/circle.c
+GENERATED: no, hand-written
+STATUS: current
 
-Draws circles, ellipses, arcs, and pie slices on the active graphics screen.
+==============================================================================
+CIRCLE KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: circle.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libengine (circle.h, eval.h, eval.c, lexer.h, lexer.c, string.c, vm.
+    // NEEDS: libkernel (security.h, security.c, vdev.h, vdev.c)
+    // Provides runtime implementation for the CIRCLE statement in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Draws a circle, ellipse, or arc on the active graphics screen canvas.
 
-    CIRCLE (x%, y%), radius% [, color% [, start_rad [, end_rad [, aspect]]]]
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    CIRCLE (x, y), radius [, [color] [, [start] [, [end] [, aspect]]]]
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = CIRCLE (10, y), radius [, [color] [, [start] [, [end] [, aspect]]]]
+    20 PRINT "Result: "; Val
 
-ERROR CONDITIONS
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error, Error 5: Illegal Function Call
 
-  - Error 5 (ERR_ILLEGAL_FUNCTION_CALL): Radius < 0 or invalid aspect ratio.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Graphics & Display
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SAFE
 
-
-OPERATIONAL NOTES
-----------------------------------------------------------------------
-
-  Pixel-exact GW-BASIC and QuickBASIC circle rasterizer algorithm.
-
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 SCREEN 12 : REM 640x480 16-color
-    20 CIRCLE (320, 240), 100, 14 : REM Yellow circle
-    30 CIRCLE (320, 240), 80, 10, 0, 3.14159 : REM Top arc
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  CIRCLE
+Category              Graphics & Display
+Syntax                CIRCLE (x, y), radius [, [color] [, [start] [, [end...
+Description           Draws a circle, ellipse, or arc on the active graph...
+Error Summary         Error 2: Syntax Error, Error 5: Illegal Function Call
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/graphics/draw/circle.c

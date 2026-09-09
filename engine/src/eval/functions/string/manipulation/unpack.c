@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
 // NEEDS: libcore (funcreg.h, funcreg.c, memory.h, memory.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libcore (strings.h, strings.c)
 // NEEDS: libengine (mux.h, mux.c, string.c, unpack.h)
 // Provides runtime implementation for the UNPACK built-in function in BASIC++.
@@ -11,21 +11,26 @@
 // ---- Includes ----
 
 #include "eval/functions/string/manipulation/unpack.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/strings.h"
 #include "runtime/mux.h"
 #include "runtime/funcreg.h"
 #include "runtime/string.h"
 #include "runtime/memory.h"
+#include "runtime/string/memops.h"
+
+static const LangDesc g_unpack_desc = {
+    .name = "UNPACK",
+    .category = "String Functions",
+    .syntax = "UNPACK(fmt$, bin_str$)",
+    .description = "Unpacks binary data from bin_str$ according to format template fmt$.",
+    .error_summary = "Error 5: Illegal Function Call (invalid format character), Error 13: Type Mismatch (expects string arguments)",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_FUNCTION
+};
 void func_unpack_register(void) {
-    MicroLibMetadata meta = {
-        .name = "UNPACK",
-        .category = "String Functions",
-        .syntax = "UNPACK(fmt$, bin_str$)",
-        .help_text = "Unpacks binary data from bin_str$ according to format template fmt$.",
-        .error_codes = "Error 5: Illegal Function Call (invalid format character), Error 13: Type Mismatch (expects string arguments)"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_unpack_desc);
 
     FunctionEntry entry = {
         .name = "UNPACK$",

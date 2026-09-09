@@ -1,0 +1,72 @@
+TITLE: PORT
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/network/stmt_port_trigger.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+PORT KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: stmt_port_trigger.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (memops.h, memops.c)
+    // NEEDS: libcore (language_descriptor.h)
+    // NEEDS: libcore (strops.h, strops.c)
+    // NEEDS: libengine (eval.h, eval.c, events_net.h, events_net.c)
+    // NEEDS: libengine (stmt_port_trigger.h)
+    // Implements PORT statement for port knocking, triggering and trapping.
+    //
+    // ---- Includes ----
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Controls software port event trapping, firing, and triggering.
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    PORT.FIRE port_num | PORT(p) ON|OFF|STOP
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = PORT.FIRE port_num | PORT(p) ON|OFF|STOP
+    20 PRINT "Result: "; Val
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 5: Syntax error in PORT statement
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Hardware & Network
+Subsystem:     SUBSYSTEM_SERVER
+Safety Level:  SAFETY_IO
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  PORT
+Category              Hardware & Network
+Syntax                PORT.FIRE port_num | PORT(p) ON|OFF|STOP
+Description           Controls software port event trapping, firing, and ...
+Error Summary         Error 5: Syntax error in PORT statement
+Subsystem             SUBSYSTEM_SERVER
+Safety Level          SAFETY_IO
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/network/stmt_port_trigger.c

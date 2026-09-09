@@ -10,8 +10,9 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
+#include "runtime/memory/alloc.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
 
 #include "device/vdev.h"
 #include "eval/eval.h"
@@ -19,27 +20,31 @@
 #include "platform/platform.h"
 #include "runtime/file.h"
 #include "runtime/metadata.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/task.h"
 #include "types/errors.h"
 #include "vm/vm.h"
 
+static const LangDesc g_goodbye_desc = {
+    .name = "GOODBYE",
+    .category = "System & Environment",
+    .syntax = "GOODBYE",
+    .description = "Forcefully terminates all background tasks and aborts the session immediately.",
+    .error_summary = "Error 2: Syntax Error",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SYSTEM,
+    .type = FEATURE_STATEMENT
+};
+
 // registers microlib metadata for the GOODBYE statement
 void stmt_goodbye_register(void) {
-    MicroLibMetadata meta = {
-        .name = "GOODBYE",
-        .category = "System & Environment",
-        .syntax = "GOODBYE",
-        .help_text = "Forcefully terminates all background tasks and aborts the session immediately.",
-        .error_codes = "Error 2: Syntax Error"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_goodbye_desc);
 }
 
 // handles execution of the GOODBYE statement
 BppError stmt_goodbye_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BppToken tok = lex_peek(lex);
     if (tok.type != TOK_EOF && tok.type != TOK_EOL && tok.type != TOK_BACKSLASH) {
@@ -65,7 +70,5 @@ BppError stmt_goodbye_handler(VMContext *vm, LexerContext *lex) {
     // Halt and signal VM exit
     vm_halt(vm);
     vm_request_exit(vm);
-
-    // Immediate forced process exit
-    exit(0);
+    return err;
 }

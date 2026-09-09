@@ -1,0 +1,72 @@
+TITLE: SOCK
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/network/stmt_sock.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+SOCK KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: stmt_sock.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (memops.h, memops.c)
+    // NEEDS: libcore (language_descriptor.h)
+    // NEEDS: libcore (sock_engine.h, sock_engine.c, strops.h, strops.c)
+    // NEEDS: libengine (eval.h, eval.c, stmt_sock.h)
+    // Implements BSD SOCK statement handlers.
+    //
+    // ---- Includes ----
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Controls BSD-style network sockets for TCP/UDP listening, binding,
+transmission, and teardown.
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    SOCK.BIND h, port | SOCK.LISTEN h | SOCK.SEND h, data$ | SOCK.CLOSE h | SOCK.SETSOCKOPT h, opt$, v
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM SOCK Demonstration
+    20 PRINT "SOCK executed successfully."
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 5: Unknown SOCK sub-command
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Hardware & Network
+Subsystem:     SUBSYSTEM_HARDWARE
+Safety Level:  SAFETY_IO
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  SOCK
+Category              Hardware & Network
+Syntax                SOCK.BIND h, port | SOCK.LISTEN h | SOCK.SEND h, da...
+Description           Controls BSD-style network sockets for TCP/UDP list...
+Error Summary         Error 5: Unknown SOCK sub-command
+Subsystem             SUBSYSTEM_HARDWARE
+Safety Level          SAFETY_IO
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/network/stmt_sock.c

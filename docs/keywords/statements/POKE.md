@@ -1,26 +1,71 @@
-# `POKE` Write Memory Byte Statement
+<!--
+Title:        POKE
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/statements/system/hardware/poke.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Keyword Definition
+# `POKE` Keyword Reference
 
-The `POKE` statement writes an 8-bit byte value ($0$ to $255$) directly into the specified virtual memory address in the active segment/bank.
+## Source Header
 
-### Syntax Signatures:
-```basic
-POKE address_expression, byte_value_expression
+```c
+// FILENAME: poke.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore, libengine, libkernel
+// Provides runtime implementation for the POKE statement in BASIC++.
+//
+// ---- Includes ----
 ```
 
-### Operational Rules:
-- **Value Clamping/Validation**: `byte_value` must evaluate to an integer in the range $0 \le \text{byte} \le 255$. Values outside this range trigger Error 5 (`ERR_ILLEGAL_FUNCTION_CALL`).
-- **Target Segment**: Operates relative to the segment defined by `DEF SEG` or `BANK`.
-- **Security Sandbox**: Attempting unauthorized writes outside sandboxed memory ranges generates Error 70 (`ERR_PERMISSION_DENIED`).
+## 1. Description & Usage
+
+Writes a byte directly to virtual memory at segment:offset or to an I/O port.
+
+## 2. Syntax
+
+```basic
+POKE offset, byte_val | OUT port, val
+```
+
+## 3. Code Example
+
+```basic
+10 REM POKE Demonstration
+20 PRINT "POKE executed successfully."
+```
+
+## 4. Error Conditions
+
+Error 2: Syntax Error, Error 5: Illegal Function Call, Error 70: Permission Denied
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Variables & Memory
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_SYSTEM
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 DEF SEG = &HB800 : REM Text video RAM
-20 POKE 0, 65       : REM Character 'A'
-30 POKE 1, 15       : REM White on black attribute
-40 DEF SEG
-```
+| Field | Value |
+|---|---|
+| Name | POKE |
+| Category | Variables & Memory |
+| Syntax | POKE offset, byte_val \| OUT port, val |
+| Description | Writes a byte directly to virtual memory at segment:offset or to an I/O port. |
+| Error Summary | Error 2: Syntax Error, Error 5: Illegal Function Call, Error 70: Permission Denied |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_SYSTEM |
+| Feature Type | FEATURE_STATEMENT |
+| Delimiter Mask | none |
+| Compatibility | none |
+| Since Version | none |
+| Source File | engine/src/statements/system/hardware/poke.c |

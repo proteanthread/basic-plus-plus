@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
 // NEEDS: libcore (memops.h, memops.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, peer.h, peer.c)
+// NEEDS: libcore (language_descriptor.h, peer.h, peer.c)
 // NEEDS: libcore (strings.h, strings.c, strops.h, strops.c)
 // NEEDS: libcore (variables.h, variables.c)
 // NEEDS: libengine (eval.h, eval.c, events_net.h, events_net.c, stmt_peer.h)
@@ -15,7 +15,7 @@
 #include "runtime/peer.h"
 #include "eval/eval.h"
 #include "vm/events_net.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/variables.h"
 #include "runtime/strings.h"
 #include "runtime/string/strops.h"
@@ -155,6 +155,17 @@ BppError stmt_peer_handler(VMContext *vm, LexerContext *lex) {
     return send_err;
 }
 
+static const LangDesc g_peer_desc = {
+    .name = "PEER",
+    .category = "Hardware & Network",
+    .syntax = "PEER.INIT [channel] | PEER.ADD peer_id$ [, mac$] | PEER.SEND target$, data$ | PEER ON|OFF|STOP",
+    .description = "Controls connectionless peer-to-peer communication and mesh networking.",
+    .error_summary = "Error 5: Syntax error in PEER statement",
+    .subsystem = SUBSYSTEM_SERVER,
+    .safety = SAFETY_IO,
+    .type = FEATURE_STATEMENT
+};
+
 void stmt_peer_register(void) {
-    // Registered in VM dispatch
+    lang_desc_register(&g_peer_desc);
 }

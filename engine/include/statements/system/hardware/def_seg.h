@@ -17,5 +17,6 @@
 
 BppError stmt_def_seg_handler(VMContext *vm, LexerContext *lex);
 void stmt_def_seg_register(void);
+uint16_t runtime_get_def_seg(void);
 
 #endif // STATEMENTS_SYSTEM_DEF_SEG_H

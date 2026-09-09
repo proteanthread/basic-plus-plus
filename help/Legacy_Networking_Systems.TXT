@@ -1,0 +1,86 @@
+==============================================================================
+Title:        Legacy_Networking_Systems
+Tier:         2
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/device/fujinet.c, engine/src/runtime/tnfs.c
+Generated:    no, hand-written
+Status:       current
+==============================================================================
+
+BASIC++ LEGACY NETWORKING SYSTEMS: GEMINI, GOPHER, TNFS & FUJINET
+
+The authoritative technical specification and reference manual for
+retro-computing network protocols, virtual peripheral adapters, and remote
+filesystem streaming in BASIC++.
+
+
+1. ARCHITECTURAL OVERVIEW & VIRTUAL DEVICE INTEGRATION
+
+BASIC++ integrates retro-modern communication protocols directly into its
+unified virtual peripheral bus:
+- Atari FujiNet Peripheral Bridge (N:): Emulates the Atari SIO-based FujiNet
+  multi-peripheral adapter (engine/src/device/fujinet.c), routing device
+  paths to native network sockets.
+- Trusted Network File System (TNFS): Implements the UDP-based TNFS client
+  protocol (engine/src/runtime/tnfs.c on UDP port 9868) for remote disk
+  mounting and remote file execution.
+- Lightweight Hypertext Protocols: Integrates Project Gemini
+  (engine/src/runtime/gemini.c) and RFC 1436 Gopher
+  (engine/src/runtime/gopher.c) for alternative internet retrieval.
+
+
+2. ATARI 8-BIT FUJINET EMULATION (N:)
+
+The FujiNet peripheral driver intercepts the N: device prefix in standard
+BASIC file statements, converting device paths into live TCP, UDP, or HTTP
+network streams:
+
+    10 REM Open live TCP socket stream via FujiNet device prefix
+    20 OPEN "N:tcp://retro.bbs.org:23/" FOR RANDOM AS #1
+    30 PRINT #1, "HELLO BBS"
+    40 LINE INPUT #1, Response$
+    50 PRINT "BBS Response: "; Response$
+    60 CLOSE #1
+
+Peripheral Status Queries:
+
+    10 Status$ = FUJI.STATUS$()
+    20 PRINT "FujiNet Adapter Status: "; Status$
+
+
+3. TRUSTED NETWORK FILE SYSTEM (TNFS)
+
+TNFS allows BASIC++ programs to mount remote archives (such as
+tnfs.fujinet.online) over UDP port 9868 as virtual drives:
+
+    10 REM Mount remote TNFS archive to virtual drive slot
+    20 OPEN "N:tnfs://tnfs.fujinet.online/games" FOR INPUT AS #1
+    30 REM Browse remote directory contents
+    40 WHILE NOT EOF(1)
+    50   LINE INPUT #1, Entry$
+    60   PRINT "Remote File: "; Entry$
+    70 WEND
+    80 CLOSE #1
+
+
+4. PROJECT GEMINI & RFC 1436 GOPHER PROTOCOLS
+
+BASIC++ provides built-in intrinsic functions and statements for querying
+lightweight capsules:
+
+Intrinsic Protocol Functions:
+- GEMINI.GET$(url$): Fetches a Gemtext capsule document.
+- GEMINI.STATUS%(): Returns the integer status code of the last request.
+- GEMINI.META$(): Returns response metadata or MIME type.
+- GOPHER.GET$(url$): Retrieves a document from an RFC 1436 Gopher server.
+
+Protocol Retrieval Example:
+
+    10 Doc$ = GEMINI.GET$("gemini://gemini.circumlunar.space/")
+    20 IF GEMINI.STATUS%() = 20 THEN
+    30   PRINT "Document Content:"
+    40   PRINT Doc$
+    50 ELSE
+    60   PRINT "Gemini Error: Code "; GEMINI.STATUS%(); " (";
+    65   PRINT GEMINI.META$(); ")"
+    70 END IF

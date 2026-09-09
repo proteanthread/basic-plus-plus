@@ -1,30 +1,69 @@
-INVERSE Reverse Video Display Mode Statement
-============================================
+TITLE: INVERSE
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/device/gfx.c
+GENERATED: no, hand-written
+STATUS: current
 
-Toggles reverse video text rendering (swapping foreground and background colors).
+==============================================================================
+INVERSE KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: gfx.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore, libengine, libkernel, libplatform
+    // Implements virtual device and graphics rendering logic for gfx.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Enables or disables inverse video text mode swapping foreground and background
+colors.
 
-    INVERSE inverse_flag%
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    INVERSE [state%]
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM INVERSE Demonstration
+    20 PRINT "INVERSE executed successfully."
 
-ERROR CONDITIONS
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+None
 
-  - Error 5 (ERR_ILLEGAL_FUNCTION_CALL): Flag must be 0 or 1.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       Apple II Applesoft, Sinclair ZX Spectrum, BASIC++ Standard
+Since Version: 6.0.0
+Category:      Graphics & Display
+Subsystem:     SUBSYSTEM_ADVANCED
+Safety Level:  SAFETY_SAFE
 
-
-OPERATIONAL NOTES
-----------------------------------------------------------------------
-
-  Apple II and ZX Spectrum display attribute compatibility.
-
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 INVERSE 1
-    20 PRINT " REVERSE HIGHLIGHT "
-    30 INVERSE 0
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  INVERSE
+Category              Graphics & Display
+Syntax                INVERSE [state%]
+Description           Enables or disables inverse video text mode swappin...
+Error Summary         None
+Subsystem             SUBSYSTEM_ADVANCED
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         Apple II Applesoft, Sinclair ZX Spectrum, BASIC++ S...
+Since Version         6.0.0
+Source File           engine/src/device/gfx.c

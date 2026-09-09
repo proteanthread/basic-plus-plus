@@ -1,0 +1,66 @@
+TITLE: UPNP.STATUS
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/functions/network/func_upnp.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+UPNP.STATUS KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: func_upnp.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (builtins, sys_fn.c, string_fn.c)
+    // NEEDS: libcore (memory.h, strings.h), libserver (vnet_nat.h)
+    // Implements UPnP functions (UPNP.EXTERNALIP$, UPNP.STATUS, UPNP.STATUS$).
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Returns integer status of the specified UPnP port forwarding mapping.
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    UPNP.STATUS(port[, proto$])
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = UPNP.STATUS(port[, proto$])
+    20 PRINT "Result: "; Val
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+None
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Network & UPnP
+Subsystem:     SUBSYSTEM_SERVER
+Safety Level:  SAFETY_IO
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  UPNP.STATUS
+Category              Network & UPnP
+Syntax                UPNP.STATUS(port[, proto$])
+Description           Returns integer status of the specified UPnP port f...
+Error Summary         None
+Subsystem             SUBSYSTEM_SERVER
+Safety Level          SAFETY_IO
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/eval/functions/network/func_upnp.c

@@ -1,0 +1,69 @@
+TITLE: DEVINFO$
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/functions/system/hardware/func_devinfo.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+DEVINFO$ KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: func_devinfo.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, sys_fn.c
+    // NEEDS: libkernel (types.h, errors.h, vdev.h), libcore (strings.h, language_
+    // Implementation for DEVINFO$ and DEVCAPS introspection functions.
+    //
+    // ---- Includes ----
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Returns property metadata (CLASS, DRIVER, VERSION, TARGET, STATUS) for a
+registered virtual device.
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    DEVINFO$(dev_name$, property$)
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = DEVINFO$(dev_name$, property$)
+    20 PRINT "Result: "; Val
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 5: Illegal Function Call, Error 13: Type Mismatch
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      System & Hardware
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SYSTEM
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  DEVINFO$
+Category              System & Hardware
+Syntax                DEVINFO$(dev_name$, property$)
+Description           Returns property metadata (CLASS, DRIVER, VERSION, ...
+Error Summary         Error 5: Illegal Function Call, Error 13: Type Mism...
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SYSTEM
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/eval/functions/system/hardware/func_devi...

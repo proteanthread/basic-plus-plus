@@ -1,0 +1,66 @@
+TITLE: CPUSPEED$
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/functions/system/hardware/func_cpuspeed.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+CPUSPEED$ KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: func_cpuspeed.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine
+    // Evaluator implementation for CPUSPEED and CPUSPEED$.
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Returns formatted host or target CPU speed with unit suffix (e.g. "3.40 GHz",
+"4.77 MHz").
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    CPUSPEED$ | CPUSPEED$("model")
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = CPUSPEED$ | CPUSPEED$("model")
+    20 PRINT "Result: "; Val
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 5: Illegal Function Call
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Hardware & Peripherals
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_PURE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  CPUSPEED$
+Category              Hardware & Peripherals
+Syntax                CPUSPEED$ | CPUSPEED$("model")
+Description           Returns formatted host or target CPU speed with uni...
+Error Summary         Error 5: Illegal Function Call
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_PURE
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/eval/functions/system/hardware/func_cpus...

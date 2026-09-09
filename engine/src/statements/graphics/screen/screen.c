@@ -2,7 +2,7 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libengine (eval.h, eval.c, lexer.h, lexer.c, screen.h, string.c, vm.h)
 // NEEDS: libkernel (bgi_autodetect.h, bgi_autodetect.c, bgi_gfx.h, bgi_gfx.c)
 // NEEDS: libkernel (security.h, security.c, vdev.h, vdev.c)
@@ -18,26 +18,31 @@
 #include "device/bgi_gfx.h"
 #include "device/bgi_autodetect.h"
 #include "security/security.h"
-#include "runtime/micro_lib_metadata.h"
-#include <string.h>
+#include "runtime/language_descriptor.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_screen_desc = {
+    .name = "SCREEN",
+    .category = "Graphics & Display",
+    .syntax = "SCREEN mode [, [colorswitch] [, [active_page] [, visual_page]]]",
+    .description = "Sets text (SCREEN 0), heritage (SCREEN 1-13), or modern high-res display mode (SCREEN 14-20: 800x600 to 4K).",
+    .error_summary = "Error 2: Syntax Error, Error 5: Illegal Function Call",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SAFE,
+    .type = FEATURE_STATEMENT
+};
 
 extern BppError vdev_legacy_stmt_screen_handler(VMContext *vm, LexerContext *lex);
 extern BppError vdev_legacy_stmt_screen_mode_handler(VMContext *vm, int mode);
 
 void stmt_screen_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "SCREEN",
-        .category = "Graphics & Display",
-        .syntax = "SCREEN mode [, [colorswitch] [, [active_page] [, visual_page]]]",
-        .help_text = "Sets text (SCREEN 0), heritage (SCREEN 1-13), or modern high-res display mode (SCREEN 14-20: 800x600 to 4K).",
-        .error_codes = "Error 2: Syntax Error, Error 5: Illegal Function Call"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_screen_desc);
 }
 
 static BppError parse_custom_resolution(VMContext *vm, LexerContext *lex, int width, int default_bpp, int default_text_cols, int default_text_rows) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BValue val_h = eval_expression(vm, lex, &err);
     if (err.code != 0) return err;
@@ -98,7 +103,7 @@ static BppError parse_custom_resolution(VMContext *vm, LexerContext *lex, int wi
 
 BppError stmt_screen_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     int first_arg = 0;
     BppToken tok = lex_peek(lex);
@@ -134,10 +139,10 @@ BppError stmt_screen_handler(VMContext *vm, LexerContext *lex) {
     return vdev_legacy_stmt_screen_mode_handler(vm, 0);
 }
 
-BppError stmt_title_handler(VMContext *vm, LexerContext *lex) { (void)vm; (void)lex; BppError err; memset(&err, 0, sizeof(err)); return err; }
-BppError stmt_screenmove_handler(VMContext *vm, LexerContext *lex) { (void)vm; (void)lex; BppError err; memset(&err, 0, sizeof(err)); return err; }
-BppError stmt_fullscreen_handler(VMContext *vm, LexerContext *lex) { (void)vm; (void)lex; BppError err; memset(&err, 0, sizeof(err)); return err; }
-BppError stmt_resize_handler(VMContext *vm, LexerContext *lex) { (void)vm; (void)lex; BppError err; memset(&err, 0, sizeof(err)); return err; }
-BppError stmt_icon_handler(VMContext *vm, LexerContext *lex) { (void)vm; (void)lex; BppError err; memset(&err, 0, sizeof(err)); return err; }
-BppError stmt_freeimage_handler(VMContext *vm, LexerContext *lex) { (void)vm; (void)lex; BppError err; memset(&err, 0, sizeof(err)); return err; }
-BppError stmt_putimage_handler(VMContext *vm, LexerContext *lex) { (void)vm; (void)lex; BppError err; memset(&err, 0, sizeof(err)); return err; }
+BppError stmt_title_handler(VMContext *vm, LexerContext *lex) { (void)vm; (void)lex; BppError err; runtime_memset(&err, 0, sizeof(err)); return err; }
+BppError stmt_screenmove_handler(VMContext *vm, LexerContext *lex) { (void)vm; (void)lex; BppError err; runtime_memset(&err, 0, sizeof(err)); return err; }
+BppError stmt_fullscreen_handler(VMContext *vm, LexerContext *lex) { (void)vm; (void)lex; BppError err; runtime_memset(&err, 0, sizeof(err)); return err; }
+BppError stmt_resize_handler(VMContext *vm, LexerContext *lex) { (void)vm; (void)lex; BppError err; runtime_memset(&err, 0, sizeof(err)); return err; }
+BppError stmt_icon_handler(VMContext *vm, LexerContext *lex) { (void)vm; (void)lex; BppError err; runtime_memset(&err, 0, sizeof(err)); return err; }
+BppError stmt_freeimage_handler(VMContext *vm, LexerContext *lex) { (void)vm; (void)lex; BppError err; runtime_memset(&err, 0, sizeof(err)); return err; }
+BppError stmt_putimage_handler(VMContext *vm, LexerContext *lex) { (void)vm; (void)lex; BppError err; runtime_memset(&err, 0, sizeof(err)); return err; }

@@ -1,0 +1,69 @@
+TITLE: CAUSE
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/control/branch/cause.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+CAUSE KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: cause.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libengine (cause.h, eval.h, eval.c, lexer.h, lexer.c, string.c, vm.h
+    // Provides runtime implementation for the CAUSE statement in BASIC++.
+    //
+    // ---- Includes ----
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+ECMA-116 standard statement to raise a runtime error.
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    CAUSE ERROR error_code
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM CAUSE Demonstration
+    20 PRINT "CAUSE executed successfully."
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Control Flow
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SAFE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  CAUSE
+Category              Control Flow
+Syntax                CAUSE ERROR error_code
+Description           ECMA-116 standard statement to raise a runtime error.
+Error Summary         Error 2: Syntax Error
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/control/branch/cause.c

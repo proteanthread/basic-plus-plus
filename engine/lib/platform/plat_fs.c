@@ -79,10 +79,10 @@ int platform_set_attributes(const char *path, int attr) {
 #endif
 }
 
-int platform_lock_file(FILE *fp) {
+int platform_lock_file(void *fp) {
     if (!fp) return 0;
 #if defined(_WIN32)
-    HANDLE hFile = (HANDLE)_get_osfhandle(_fileno(fp));
+    HANDLE hFile = (HANDLE)_get_osfhandle(_fileno((FILE *)fp));
     if (hFile == INVALID_HANDLE_VALUE) return 0;
     DWORD lenLow = 0xFFFFFFFF, lenHigh = 0xFFFFFFFF;
     OVERLAPPED ov = {0};
@@ -95,14 +95,14 @@ int platform_lock_file(FILE *fp) {
     fl.l_whence = SEEK_SET;
     fl.l_start = 0;
     fl.l_len = 0;
-    return fcntl(fileno(fp), F_SETLK, &fl) != -1 ? 1 : 0;
+    return fcntl(fileno((FILE *)fp), F_SETLK, &fl) != -1 ? 1 : 0;
 #endif
 }
 
-int platform_unlock_file(FILE *fp) {
+int platform_unlock_file(void *fp) {
     if (!fp) return 0;
 #if defined(_WIN32)
-    HANDLE hFile = (HANDLE)_get_osfhandle(_fileno(fp));
+    HANDLE hFile = (HANDLE)_get_osfhandle(_fileno((FILE *)fp));
     if (hFile == INVALID_HANDLE_VALUE) return 0;
     DWORD lenLow = 0xFFFFFFFF, lenHigh = 0xFFFFFFFF;
     OVERLAPPED ov = {0};
@@ -123,23 +123,34 @@ struct BppDirSearch {
 #if defined(_WIN32)
     HANDLE hFind;
     WIN32_FIND_DATAA fd;
-    int is_first;
 #else
     DIR *dir;
 #endif
+    bool in_use;
 };
+
+static struct BppDirSearch s_search_pool[8];
 
 BppDirSearch *platform_find_first_file(const char *pattern, char *out_name, size_t out_size) {
     if (!pattern || !out_name || out_size == 0) return NULL;
-    BppDirSearch *search = calloc(1, sizeof(BppDirSearch));
+    
+    struct BppDirSearch *search = NULL;
+    for (int i = 0; i < 8; ++i) {
+        if (!s_search_pool[i].in_use) {
+            search = &s_search_pool[i];
+            memset(search, 0, sizeof(*search));
+            search->in_use = true;
+            break;
+        }
+    }
     if (!search) return NULL;
+
 #if defined(_WIN32)
     search->hFind = FindFirstFileA(pattern, &search->fd);
     if (search->hFind == INVALID_HANDLE_VALUE) {
-        free(search);
+        search->in_use = false;
         return NULL;
     }
-    search->is_first = 1;
     snprintf(out_name, out_size, "%s", search->fd.cFileName);
     
     return search;
@@ -155,7 +166,7 @@ BppDirSearch *platform_find_first_file(const char *pattern, char *out_name, size
     }
     search->dir = opendir(dir_path);
     if (!search->dir) {
-        free(search);
+        search->in_use = false;
         return NULL;
     }
     if (!platform_find_next_file(search, out_name, out_size)) {
@@ -169,11 +180,7 @@ BppDirSearch *platform_find_first_file(const char *pattern, char *out_name, size
 int platform_find_next_file(BppDirSearch *search, char *out_name, size_t out_size) {
     if (!search || !out_name) return 0;
 #if defined(_WIN32)
-    if (search->is_first) {
-        search->is_first = 0; // Already yielded in find_first
-    } else {
-        if (!FindNextFileA(search->hFind, &search->fd)) return 0;
-    }
+    if (!FindNextFileA(search->hFind, &search->fd)) return 0;
     snprintf(out_name, out_size, "%s", search->fd.cFileName);
     
     return 1;
@@ -195,13 +202,15 @@ void platform_find_close(BppDirSearch *search) {
 #if defined(_WIN32)
     if (search->hFind && search->hFind != INVALID_HANDLE_VALUE) {
         FindClose(search->hFind);
+        search->hFind = INVALID_HANDLE_VALUE;
     }
 #else
     if (search->dir) {
         closedir(search->dir);
+        search->dir = NULL;
     }
 #endif
-    free(search);
+    search->in_use = false;
 }
 
 int platform_chdir(const char *path) {
@@ -447,4 +456,58 @@ void platform_cleanup_workspace(bool full_cleanup) {
     closedir(dir);
 }
 #endif
+
+void *platform_file_open(const char *path, const char *mode) {
+    if (!path || !mode) return NULL;
+    return (void *)fopen(path, mode);
+}
+
+int platform_file_close(void *handle) {
+    if (!handle) return -1;
+    return fclose((FILE *)handle);
+}
+
+size_t platform_file_read(void *handle, void *buffer, size_t size) {
+    if (!handle || !buffer || size == 0) return 0;
+    return fread(buffer, 1, size, (FILE *)handle);
+}
+
+size_t platform_file_write(void *handle, const void *buffer, size_t size) {
+    if (!handle || !buffer || size == 0) return 0;
+    return fwrite(buffer, 1, size, (FILE *)handle);
+}
+
+int platform_file_printf(void *handle, const char *format, ...) {
+    if (!handle || !format) return -1;
+    va_list ap;
+    va_start(ap, format);
+    int ret = vfprintf((FILE *)handle, format, ap);
+    va_end(ap);
+    return ret;
+}
+
+char *platform_file_gets(char *buf, size_t size, void *handle) {
+    if (!buf || !handle || size == 0) return NULL;
+    return fgets(buf, (int)size, (FILE *)handle);
+}
+
+int platform_file_seek(void *handle, long offset, int origin) {
+    if (!handle) return -1;
+    return fseek((FILE *)handle, offset, origin);
+}
+
+long platform_file_tell(void *handle) {
+    if (!handle) return -1;
+    return ftell((FILE *)handle);
+}
+
+int platform_file_eof(void *handle) {
+    if (!handle) return 1;
+    return feof((FILE *)handle);
+}
+
+int platform_file_flush(void *handle) {
+    if (!handle) return -1;
+    return fflush((FILE *)handle);
+}
 

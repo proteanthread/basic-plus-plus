@@ -2,25 +2,31 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (math_fn.c)
-// NEEDS: libcore (math.h, micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (math.h, language_descriptor.h, string.h)
 // NEEDS: libengine (math.c, sqr.h, string.c)
 // Provides runtime implementation for the SQR built-in function in BASIC++.
 //
 // ---- Includes ----
 
 #include "eval/functions/math/algebra/sqr.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/math.h"
 #include "runtime/string.h"
+#include "runtime/string/strops.h"
+#include "runtime/math/math.h"
+
+static const LangDesc g_sqr_desc = {
+    .name = "SQR",
+    .category = "Math Functions",
+    .syntax = "SQR(x)",
+    .description = "Returns the non-negative square root of a numeric expression x >= 0.",
+    .error_summary = "Error 5: Illegal Function Call (SQR of negative number), Error 13: Type Mismatch (SQR expects one numeric argument)",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_PURE,
+    .type = FEATURE_FUNCTION
+};
 void func_sqr_register(void) {
-    MicroLibMetadata meta = {
-        .name = "SQR",
-        .category = "Math Functions",
-        .syntax = "SQR(x)",
-        .help_text = "Returns the non-negative square root of a numeric expression x >= 0.",
-        .error_codes = "Error 5: Illegal Function Call (SQR of negative number), Error 13: Type Mismatch (SQR expects one numeric argument)"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_sqr_desc);
 }
 
 BValue func_sqr_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err) {

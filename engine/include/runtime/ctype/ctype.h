@@ -18,7 +18,7 @@
 // NEEDED BY: libcore (analyzer.c, ctype.c, error.c, feature_reg.c)
 // NEEDED BY: libcore (float_parse.c, funcreg.c, map_serialize.c, metadata.c)
 // NEEDED BY: libcore (micro_lib_metadata.c, num_parse.c, print_using.c)
-// NEEDED BY: libcore (select.c, snprintf.c, spec.c, sscanf.c, strops.c)
+// NEEDED BY: libcore (select.c, runtime_snprintf.c, spec.c, sscanf.c, strops.c)
 // NEEDED BY: libcore (struct.c, using_engine.c, vdev_core.c)
 // NEEDED BY: libengine (ast_internal.h, dispatch_internal.h)
 // NEEDED BY: libengine (eval_expr_internal.h, eval_internal.h)
@@ -49,6 +49,8 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include "runtime/format/snprintf.h"
+#include "runtime/ctype/ctype.h"
 
 #ifdef __cplusplus
 extern "C" {

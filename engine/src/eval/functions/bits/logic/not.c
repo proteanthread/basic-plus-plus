@@ -2,24 +2,29 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (sys_fn.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c)
+// NEEDS: libcore (language_descriptor.h)
 // NEEDS: libengine (not.h)
 // Provides runtime implementation for the NOT built-in function in BASIC++.
 //
 // ---- Includes ----
 
 #include "eval/functions/bits/logic/not.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_not_desc = {
+    .name = "NOT",
+    .category = "Bitwise & Logical Functions",
+    .syntax = "NOT(val) or NOT val",
+    .description = "Performs bitwise and logical negation on an integer or boolean value.",
+    .error_summary = "Error 13: Type Mismatch",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_PURE,
+    .type = FEATURE_FUNCTION
+};
 
 void func_not_register(void) {
-    MicroLibMetadata meta = {
-        .name = "NOT",
-        .category = "Bitwise & Logical Functions",
-        .syntax = "NOT(val) or NOT val",
-        .help_text = "Performs bitwise and logical negation on an integer or boolean value.",
-        .error_codes = "Error 13: Type Mismatch"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_not_desc);
 }
 
 BValue func_not_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err) {

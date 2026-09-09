@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
 // NEEDS: libcore (arrays.h, arrays.c, ctype.h, ctype.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libcore (strings.h, strings.c, variables.h, variables.c)
 // NEEDS: libengine (change.h, eval.h, eval.c, string.c)
 // NEEDS: libkernel (errors.h)
@@ -16,29 +16,42 @@
 #include "runtime/arrays.h"
 #include "runtime/variables.h"
 #include "runtime/strings.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "types/errors.h"
-#include <string.h>
-#include <stdlib.h>
-#include <ctype.h>
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "runtime/memory/alloc.h"
+#include "runtime/ctype/ctype.h"
+
+static const LangDesc g_change_desc = {
+    .name = "CHANGE",
+    .category = "Variables & Memory",
+    .syntax = "CHANGE string_expr TO num_array | CHANGE num_array TO string_var",
+    .description = "Converts between string and a 1D numeric array of ASCII codes (SDS 940 / DEC PDP-10 Super BASIC).",
+    .error_summary = "Error 2: Syntax error, Error 9: Subscript out of range, Error 13: Type mismatch, Error 5: Illegal function call",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SYSTEM,
+    .type = FEATURE_STATEMENT
+};
 
 void stmt_change_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "CHANGE",
-        .category = "Variables & Memory",
-        .syntax = "CHANGE string_expr TO num_array | CHANGE num_array TO string_var",
-        .help_text = "Converts between string and a 1D numeric array of ASCII codes (SDS 940 / DEC PDP-10 Super BASIC).",
-        .error_codes = "Error 2: Syntax error, Error 9: Subscript out of range, Error 13: Type mismatch, Error 5: Illegal function call"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_change_desc);
 }
 
 BppError stmt_change_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BppToken first_tok = lex_peek(lex);
-    if (first_tok.type == TOK_KEYWORD && first_tok.as.keyword == KW_CHANGE) {
+    if (first_tok.type == TOK_KEYWORD && (first_tok.as.keyword == KW_CHANGE ||
+                                          first_tok.as.keyword == KW_UNPACK ||
+                                          first_tok.as.keyword == KW_PACK)) {
+        lex_next(lex);
+        first_tok = lex_peek(lex);
+    } else if (first_tok.type == TOK_IDENT &&
+               ((first_tok.length == 6 && runtime_strncasecmp(first_tok.start, "CHANGE", 6) == 0) ||
+                (first_tok.length == 6 && runtime_strncasecmp(first_tok.start, "UNPACK", 6) == 0) ||
+                (first_tok.length == 4 && runtime_strncasecmp(first_tok.start, "PACK", 4) == 0))) {
         lex_next(lex);
         first_tok = lex_peek(lex);
     }
@@ -77,7 +90,7 @@ BppError stmt_change_handler(VMContext *vm, LexerContext *lex) {
         // Check for TO keyword
         BppToken to_tok = lex_next(lex);
         bool is_to = (to_tok.type == TOK_KEYWORD && to_tok.as.keyword == KW_TO) ||
-                     (to_tok.type == TOK_IDENT && to_tok.length == 2 && strncasecmp(to_tok.start, "TO", 2) == 0);
+                     (to_tok.type == TOK_IDENT && to_tok.length == 2 && runtime_strncasecmp(to_tok.start, "TO", 2) == 0);
         if (!is_to) {
             str_release(vm_get_str(vm), sval.as.string);
             err.code = ERR_SYNTAX;
@@ -96,33 +109,37 @@ BppError stmt_change_handler(VMContext *vm, LexerContext *lex) {
 
         char arr_name[64];
         size_t arr_len = (arr_tok.length < sizeof(arr_name) - 1) ? arr_tok.length : sizeof(arr_name) - 1;
-        memcpy(arr_name, arr_tok.start, arr_len);
+        runtime_memcpy(arr_name, arr_tok.start, arr_len);
         arr_name[arr_len] = '\0';
 
         const char *data = str_data(sval.as.string);
         int slen = (int)str_len(sval.as.string);
 
         ArrayContext *arr_ctx = vm_get_arr(vm);
+        int base = arr_get_option_base(arr_ctx);
+        int idx = (base == 1) ? 1 : 0;
+        int char_start = idx + 1;
+
         if (!arr_exists(arr_ctx, arr_name)) {
-            int bound = (slen > 10) ? slen : 10;
+            int needed = (base == 1) ? (slen + 1) : slen;
+            int bound = (needed > 10) ? needed : 10;
             arr_dim(arr_ctx, arr_name, 1, &bound);
         }
 
-        // Set A(0) = length
-        int idx = 0;
+        // Set A(0) (or A(1) if base 1) = length
         BValue *elem0 = arr_get_element(arr_ctx, arr_name, 1, &idx, &err);
         if (elem0) {
             elem0->type = VAL_NUMBER;
             elem0->as.number = (double)slen;
         }
 
-        // Set A(1)..A(slen) = ASCII char codes
-        for (int i = 1; i <= slen; i++) {
-            int idx_i = i;
+        // Set ASCII char codes starting at char_start
+        for (int i = 0; i < slen; i++) {
+            int idx_i = char_start + i;
             BValue *elemi = arr_get_element(arr_ctx, arr_name, 1, &idx_i, &err);
             if (elemi) {
                 elemi->type = VAL_NUMBER;
-                elemi->as.number = (double)((unsigned char)data[i - 1]);
+                elemi->as.number = (double)((unsigned char)data[i]);
             }
         }
 
@@ -139,13 +156,13 @@ BppError stmt_change_handler(VMContext *vm, LexerContext *lex) {
 
         char arr_name[64];
         size_t arr_len = (arr_tok.length < sizeof(arr_name) - 1) ? arr_tok.length : sizeof(arr_name) - 1;
-        memcpy(arr_name, arr_tok.start, arr_len);
+        runtime_memcpy(arr_name, arr_tok.start, arr_len);
         arr_name[arr_len] = '\0';
 
         // Check for TO keyword
         BppToken to_tok = lex_next(lex);
         bool is_to = (to_tok.type == TOK_KEYWORD && to_tok.as.keyword == KW_TO) ||
-                     (to_tok.type == TOK_IDENT && to_tok.length == 2 && strncasecmp(to_tok.start, "TO", 2) == 0);
+                     (to_tok.type == TOK_IDENT && to_tok.length == 2 && runtime_strncasecmp(to_tok.start, "TO", 2) == 0);
         if (!is_to) {
             err.code = ERR_SYNTAX;
             err.message = "Expected 'TO' in CHANGE statement";
@@ -162,11 +179,14 @@ BppError stmt_change_handler(VMContext *vm, LexerContext *lex) {
 
         char str_var[64];
         size_t str_var_len = (str_tok.length < sizeof(str_var) - 1) ? str_tok.length : sizeof(str_var) - 1;
-        memcpy(str_var, str_tok.start, str_var_len);
+        runtime_memcpy(str_var, str_tok.start, str_var_len);
         str_var[str_var_len] = '\0';
 
         ArrayContext *arr_ctx = vm_get_arr(vm);
-        int idx = 0;
+        int base = arr_get_option_base(arr_ctx);
+        int idx = (base == 1) ? 1 : 0;
+        int char_start = idx + 1;
+
         BValue *elem0 = arr_get_element(arr_ctx, arr_name, 1, &idx, &err);
         if (!elem0 || err.code != 0) {
             if (err.code == 0) err.code = ERR_SUBSCRIPT_OUT_OF_RANGE;
@@ -180,32 +200,35 @@ BppError stmt_change_handler(VMContext *vm, LexerContext *lex) {
             return err;
         }
 
-        char *buf = (char *)malloc((size_t)slen + 1);
-        if (!buf) {
-            err.code = ERR_OUT_OF_MEMORY;
-            err.message = "Out of memory in CHANGE";
-            return err;
+        char stack_buf[512];
+        char *buf = stack_buf;
+        if ((size_t)slen + 1 > sizeof(stack_buf)) {
+            buf = (char *)mem_scratch_alloc(vm_get_mem(vm), (size_t)slen + 1);
+            if (!buf) {
+                err.code = ERR_OUT_OF_MEMORY;
+                err.message = "Out of memory in CHANGE";
+                return err;
+            }
         }
 
-        for (int i = 1; i <= slen; i++) {
-            int idx_i = i;
+        for (int i = 0; i < slen; i++) {
+            int idx_i = char_start + i;
             BValue *elemi = arr_get_element(arr_ctx, arr_name, 1, &idx_i, &err);
             if (elemi) {
-                buf[i - 1] = (char)((int)elemi->as.number & 0xFF);
+                buf[i] = (char)((int)elemi->as.number & 0xFF);
             } else {
-                buf[i - 1] = '\0';
+                buf[i] = '\0';
             }
         }
         buf[slen] = '\0';
 
         BValue str_val;
-        memset(&str_val, 0, sizeof(str_val));
+        runtime_memset(&str_val, 0, sizeof(str_val));
         str_val.type = VAL_STRING;
         str_val.as.string = str_create(vm_get_str(vm), buf, (size_t)slen);
 
         var_assign(vm_get_var(vm), str_var, str_val);
         str_release(vm_get_str(vm), str_val.as.string);
-        free(buf);
 
         return err;
     }

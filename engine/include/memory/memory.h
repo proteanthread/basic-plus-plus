@@ -13,6 +13,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include "types/types.h"
+#include "runtime/memory/alloc.h"
 
 // Opaque Memory Context declaration
 typedef struct MemoryContext MemoryContext;
@@ -68,6 +69,10 @@ BppProgramLine *mem_program_get_all(MemoryContext *ctx, size_t *count);
 // @return true if exact line was found, false otherwise.
 bool mem_program_find_line_index(MemoryContext *ctx, BppLineNumber line, size_t *out_idx);
 
+// @brief O(1) fast direct lookup for program line index using cached jump table.
+// @return true if line found, false otherwise.
+bool mem_program_find_line_index_fast(MemoryContext *ctx, BppLineNumber line, size_t *out_idx);
+
 // @brief Check if stored program contains namespace statements.
 bool mem_program_has_namespaces(MemoryContext *ctx);
 
@@ -98,11 +103,14 @@ void *mem_string_alloc(MemoryContext *ctx, size_t size);
 // @brief Free hook for the isolated string manager.
 void mem_string_free(MemoryContext *ctx, void *ptr);
 
-// @brief Retrieve total amount of free memory (in bytes) available to the user.
+// @brief Retrieve total amount of runtime_free memory (in bytes) available to the user.
 size_t mem_get_free_ram(MemoryContext *ctx);
 
 // @brief Retrieve total amount of used memory (in bytes).
 size_t mem_get_used_ram(MemoryContext *ctx);
+
+// @brief Retrieve total amount of allocated memory pool (in bytes).
+size_t mem_get_total_ram(MemoryContext *ctx);
 
 // @brief Formats size in bytes to a human-readable string (e.g. MB, KB, Bytes).
 void mem_format_size(size_t bytes, char *buf, size_t buf_size);

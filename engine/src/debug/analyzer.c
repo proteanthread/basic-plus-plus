@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (check.c, verify.c)
 // NEEDS: libcore (analyzer.h, ctype.h, ctype.c, memops.h, memops.c)
-// NEEDS: libcore (memory.h, memory.c, snprintf.h, snprintf.c)
+// NEEDS: libcore (memory.h, memory.c, runtime_snprintf.h, runtime_snprintf.c)
 // NEEDS: libcore (strops.h, strops.c)
 // NEEDS: libengine (lexer.h, lexer.c)
 // NEEDS: libkernel (vdev.h, vdev.c)
@@ -23,6 +23,7 @@
 #include "runtime/string/memops.h"
 #include "runtime/format/snprintf.h"
 #include "runtime/ctype/ctype.h"
+#include "runtime/conv/num_parse.h"
 
 static void add_diag(StaticAnalysisReport *rep, BppLineNumber line, const char *severity, const char *code, const char *msg) {
     if (!rep || rep->diagnostic_count >= ANALYZER_MAX_DIAGNOSTICS) return;
@@ -103,6 +104,57 @@ void analyzer_run(MemoryContext *mem, StaticAnalysisReport *out_report) {
 
         if (str_contains_kw(p, "GOTO") || str_contains_kw(p, "RETURN") || str_contains_kw(p, "END")) {
             after_unconditional = true;
+        }
+
+        // Vintage performance optimization diagnostics (GW-BASIC / BASICA guidelines)
+        if (str_contains_kw(p, "FOR")) {
+            const char *fpos = runtime_strcasestr(p, "FOR");
+            if (fpos) {
+                fpos += 3;
+                while (*fpos && runtime_isspace((unsigned char)*fpos)) fpos++;
+                if (runtime_isalpha((unsigned char)*fpos)) {
+                    while (runtime_isalnum((unsigned char)*fpos) || *fpos == '_') fpos++;
+                    if (*fpos != '%' && *fpos != '&' && *fpos != '!') {
+                        add_diag(out_report, lnum, "INFO", "PERF_FLOAT_LOOP", "Loop counter uses floating-point variable; consider integer suffix '%' or DEFINT for faster iteration");
+                    }
+                }
+            }
+        }
+        if (str_contains_kw(p, "DIM")) {
+            const char *dpos = runtime_strcasestr(p, "DIM");
+            if (dpos && runtime_strchr(dpos, '(') && runtime_strchr(dpos, ')')) {
+                const char *op = runtime_strchr(dpos, '(');
+                long long arr_sz = runtime_strtoll(op + 1, NULL, 10);
+                if (arr_sz > 1000) {
+                    add_diag(out_report, lnum, "INFO", "PERF_UNERASED_ARRAY", "Large DIM array allocated; consider ERASE when finished to reclaim dynamic memory pool");
+                }
+            }
+        }
+        if (str_contains_kw(p, "GOTO") || str_contains_kw(p, "GOSUB")) {
+            const char *gpos = runtime_strcasestr(p, "GOTO");
+            if (!gpos) gpos = runtime_strcasestr(p, "GOSUB");
+            if (gpos) {
+                while (*gpos && !runtime_isdigit((unsigned char)*gpos) && *gpos != '\0') gpos++;
+                if (runtime_isdigit((unsigned char)*gpos)) {
+                    long long tgt = runtime_strtoll(gpos, NULL, 10);
+                    if (count > 50 && i < count / 2 && tgt > lines[count - 1].line_number * 3 / 4) {
+                        add_diag(out_report, lnum, "INFO", "PERF_LATE_BRANCH", "Branch target points to late program lines; sequential interpreter line scan penalty detected");
+                    }
+                }
+            }
+            // Check for GOTO chain (line contains only GOTO target)
+            const char *trim = p;
+            while (*trim && runtime_isspace((unsigned char)*trim)) trim++;
+            if (runtime_strncasecmp(trim, "GOTO", 4) == 0) {
+                add_diag(out_report, lnum, "INFO", "PERF_GOTO_CHAIN", "Intermediate GOTO jump line detected; eliminate chaining to reduce line-search hops");
+            }
+        }
+        // Check for 2D array indexing inside loops
+        if (out_report->for_count > out_report->next_count && runtime_strchr(p, '(') && runtime_strchr(p, ',')) {
+            const char *comma_in_paren = runtime_strchr(p, ',');
+            if (comma_in_paren && comma_in_paren > runtime_strchr(p, '(')) {
+                add_diag(out_report, lnum, "INFO", "PERF_2D_INDEX", "Multi-dimensional array indexing in loop; consider 1D flattened computed indexing '(row*width+col)' for speed");
+            }
         }
     }
 

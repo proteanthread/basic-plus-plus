@@ -1,0 +1,69 @@
+TITLE: WHEN
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/control/branch/when.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+WHEN KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: when.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libengine (lexer.h, lexer.c, string.c, vm.h, when.h)
+    // Provides runtime implementation for the WHEN statement in BASIC++.
+    //
+    // ---- Includes ----
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+ECMA-116 standard exception handling protection block.
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    WHEN ERROR IN ... USE ... END WHEN
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM WHEN Demonstration
+    20 PRINT "WHEN executed successfully."
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Control Flow
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SAFE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  WHEN
+Category              Control Flow
+Syntax                WHEN ERROR IN ... USE ... END WHEN
+Description           ECMA-116 standard exception handling protection block.
+Error Summary         Error 2: Syntax Error
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/control/branch/when.c

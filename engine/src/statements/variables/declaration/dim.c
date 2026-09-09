@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (redim.c, vdim.c)
 // NEEDS: libcore (arrays.h, arrays.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libcore (struct.h, struct.c, variables.h, variables.c)
 // NEEDS: libengine (dim.h, eval.h, eval.c, lexer.h, lexer.c, map.h, map.c)
 // NEEDS: libengine (string.c, vm.h)
@@ -19,27 +19,32 @@
 #include "runtime/variables.h"
 #include "core/struct.h"
 #include "runtime/map.h"
-#include "runtime/micro_lib_metadata.h"
-#include <string.h>
+#include "runtime/language_descriptor.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_dim_desc = {
+    .name = "DIM",
+    .category = "Variables & Memory",
+    .syntax = "DIM [#channel,] [SHARED] [DYNAMIC | STATIC] array_name(subscripts...) [*len] [AS type [*len]] [, ...]",
+    .description = "Allocates storage space for arrays, virtual arrays, fixed strings, and class instances.",
+    .error_summary = "Error 2: Syntax Error, Error 9: Subscript out of range, Error 10: Duplicate definition",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SYSTEM,
+    .type = FEATURE_STATEMENT
+};
 
 #ifdef _WIN32
-#define strcasecmp _stricmp
+#define runtime_strcasecmp runtime_strcasecmp
 #endif
 
 void stmt_dim_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "DIM",
-        .category = "Variables & Memory",
-        .syntax = "DIM [#channel,] [SHARED] [DYNAMIC | STATIC] array_name(subscripts...) [*len] [AS type [*len]] [, ...]",
-        .help_text = "Allocates storage space for arrays, virtual arrays, fixed strings, and class instances.",
-        .error_codes = "Error 2: Syntax Error, Error 9: Subscript out of range, Error 10: Duplicate definition"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_dim_desc);
 }
 
 BppError stmt_dim_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     if (!vm || !lex) {
         err.code = 5;
         err.message = "Illegal function call";
@@ -70,15 +75,15 @@ BppError stmt_dim_handler(VMContext *vm, LexerContext *lex) {
 
         // Check for optional modifiers like SHARED, DYNAMIC, STATIC
         if ((tok.type == TOK_KEYWORD && tok.as.keyword == KW_SHARED) ||
-            (tok.type == TOK_IDENT && tok.length == 6 && strncasecmp(tok.start, "SHARED", 6) == 0)) {
+            (tok.type == TOK_IDENT && tok.length == 6 && runtime_strncasecmp(tok.start, "SHARED", 6) == 0)) {
             lex_next(lex);
             tok = lex_peek(lex);
         }
-        if (tok.type == TOK_IDENT && tok.length == 7 && strncasecmp(tok.start, "DYNAMIC", 7) == 0) {
+        if (tok.type == TOK_IDENT && tok.length == 7 && runtime_strncasecmp(tok.start, "DYNAMIC", 7) == 0) {
             lex_next(lex);
             tok = lex_peek(lex);
         }
-        if (tok.type == TOK_IDENT && tok.length == 6 && strncasecmp(tok.start, "STATIC", 6) == 0) {
+        if (tok.type == TOK_IDENT && tok.length == 6 && runtime_strncasecmp(tok.start, "STATIC", 6) == 0) {
             lex_next(lex);
             tok = lex_peek(lex);
         }
@@ -92,10 +97,11 @@ BppError stmt_dim_handler(VMContext *vm, LexerContext *lex) {
         BppToken name_tok = lex_next(lex);
         char arr_name[64];
         size_t copy_len = (name_tok.length < sizeof(arr_name) - 1) ? name_tok.length : sizeof(arr_name) - 1;
-        memcpy(arr_name, name_tok.start, copy_len);
+        runtime_memcpy(arr_name, name_tok.start, copy_len);
         arr_name[copy_len] = '\0';
 
         bool is_array = false;
+        size_t fixed_str_len = 0;
         tok = lex_peek(lex);
         if (tok.type == TOK_LPAREN) {
             is_array = true;
@@ -110,7 +116,7 @@ BppError stmt_dim_handler(VMContext *vm, LexerContext *lex) {
                 // Check for optional 'TO' e.g. 1 TO 10
                 BppToken maybe_to = lex_peek(lex);
                 if ((maybe_to.type == TOK_KEYWORD && maybe_to.as.keyword == KW_TO) ||
-                    (maybe_to.type == TOK_IDENT && maybe_to.length == 2 && strncasecmp(maybe_to.start, "TO", 2) == 0)) {
+                    (maybe_to.type == TOK_IDENT && maybe_to.length == 2 && runtime_strncasecmp(maybe_to.start, "TO", 2) == 0)) {
                     lex_next(lex); // Consume 'TO'
                     BValue upper_val = eval_expression(vm, lex, &err);
                     if (err.code != 0) return err;
@@ -143,6 +149,26 @@ BppError stmt_dim_handler(VMContext *vm, LexerContext *lex) {
                     return dim_err;
                 }
             }
+        } else if (tok.type == TOK_LBRACKET) {
+            // Sized string modifier: DIM S$[len]
+            lex_next(lex); // Consume '['
+            BValue len_val = eval_expression(vm, lex, &err);
+            if (err.code != 0) return err;
+            fixed_str_len = (size_t)len_val.as.number;
+            BppToken rbrk = lex_peek(lex);
+            if (rbrk.type == TOK_RBRACKET) {
+                lex_next(lex); // Consume ']'
+            } else {
+                err.code = 2;
+                err.message = "Expected ']' in string sizing";
+                return err;
+            }
+        } else if (tok.type == TOK_EQ) {
+            // Sized string assignment syntax: DIM S$ = len
+            lex_next(lex); // Consume '='
+            BValue len_val = eval_expression(vm, lex, &err);
+            if (err.code != 0) return err;
+            fixed_str_len = (size_t)len_val.as.number;
         }
 
         // Check for optional fixed-length sizing e.g. DIM A$(10) * 20 or DIM S$ * 80
@@ -151,27 +177,45 @@ BppError stmt_dim_handler(VMContext *vm, LexerContext *lex) {
             lex_next(lex); // Consume '*'
             BValue len_val = eval_expression(vm, lex, &err);
             if (err.code != 0) return err;
-            (void)len_val;
+            fixed_str_len = (size_t)len_val.as.number;
         }
 
         // Check for optional AS <type> e.g. DIM f1 AS Form or DIM S AS STRING * 40
         tok = lex_peek(lex);
         if ((tok.type == TOK_KEYWORD && tok.as.keyword == KW_AS) ||
-            (tok.type == TOK_IDENT && tok.length == 2 && strncasecmp(tok.start, "AS", 2) == 0)) {
+            (tok.type == TOK_IDENT && tok.length == 2 && runtime_strncasecmp(tok.start, "AS", 2) == 0)) {
             lex_next(lex); // Consume AS
             BppToken type_tok = lex_next(lex); // Consume type keyword or ident
             char type_str[64] = {0};
             size_t tlen = (type_tok.length < sizeof(type_str) - 1) ? type_tok.length : sizeof(type_str) - 1;
-            memcpy(type_str, type_tok.start, tlen);
+            runtime_memcpy(type_str, type_tok.start, tlen);
             type_str[tlen] = '\0';
 
-            // Check for optional * length after AS STRING * len
+            // Check for optional * length, = length, or [length] after AS STRING
             BppToken star_tok = lex_peek(lex);
             if (star_tok.type == TOK_MUL || (star_tok.start && star_tok.length == 1 && star_tok.start[0] == '*')) {
                 lex_next(lex); // Consume '*'
                 BValue len_val = eval_expression(vm, lex, &err);
                 if (err.code != 0) return err;
-                (void)len_val;
+                fixed_str_len = (size_t)len_val.as.number;
+            } else if (star_tok.type == TOK_EQ) {
+                lex_next(lex); // Consume '='
+                BValue len_val = eval_expression(vm, lex, &err);
+                if (err.code != 0) return err;
+                fixed_str_len = (size_t)len_val.as.number;
+            } else if (star_tok.type == TOK_LBRACKET) {
+                lex_next(lex); // Consume '['
+                BValue len_val = eval_expression(vm, lex, &err);
+                if (err.code != 0) return err;
+                fixed_str_len = (size_t)len_val.as.number;
+                BppToken rbrk = lex_peek(lex);
+                if (rbrk.type == TOK_RBRACKET) {
+                    lex_next(lex);
+                } else {
+                    err.code = 2;
+                    err.message = "Expected ']' in string sizing";
+                    return err;
+                }
             }
 
             // If scalar (not an array), instantiate class/struct or declare variable
@@ -187,6 +231,15 @@ BppError stmt_dim_handler(VMContext *vm, LexerContext *lex) {
                         var_assign(vm_get_var(vm), arr_name, map_val);
                         map_release(vm_get_str(vm), inst);
                     }
+                } else if (runtime_strcasecmp(type_str, "STRING") == 0) {
+                    BValue s_val;
+                    s_val.type = VAL_STRING;
+                    s_val.as.string = str_create(vm_get_str(vm), "", 0);
+                    var_assign(vm_get_var(vm), arr_name, s_val);
+                    str_release(vm_get_str(vm), s_val.as.string);
+                    if (fixed_str_len > 0) {
+                        var_set_max_len(vm_get_var(vm), arr_name, fixed_str_len);
+                    }
                 } else {
                     var_declare(vm_get_var(vm), arr_name);
                 }
@@ -194,6 +247,9 @@ BppError stmt_dim_handler(VMContext *vm, LexerContext *lex) {
         } else if (!is_array) {
             // Scalar declaration without AS type
             var_declare(vm_get_var(vm), arr_name);
+            if (fixed_str_len > 0) {
+                var_set_max_len(vm_get_var(vm), arr_name, fixed_str_len);
+            }
         }
 
         tok = lex_peek(lex);

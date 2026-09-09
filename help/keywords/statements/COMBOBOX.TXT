@@ -1,0 +1,68 @@
+TITLE: COMBOBOX
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/ui/widgets/combobox.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+COMBOBOX KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: combobox.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (common_reg_stmts.c)
+    // NEEDS: libcore (language_descriptor.h, strings.h)
+    // NEEDS: libengine (combobox.h, ctrl_common.h)
+    // NEEDS: libkernel (vdev.h)
+    // Provides runtime implementation for the COMBOBOX statement in BASIC++.
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Renders a dropdown combo box UI control.
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    COMBOBOX items$ [, sel% [, col%, row%, width%]]
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM COMBOBOX Demonstration
+    20 PRINT "COMBOBOX executed successfully."
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+None
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      User Interface
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_PURE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  COMBOBOX
+Category              User Interface
+Syntax                COMBOBOX items$ [, sel% [, col%, row%, width%]]
+Description           Renders a dropdown combo box UI control.
+Error Summary         None
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_PURE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/ui/widgets/combobox.c

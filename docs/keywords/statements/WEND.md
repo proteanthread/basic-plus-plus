@@ -1,28 +1,74 @@
-# `WEND` End of WHILE Loop Statement
+<!--
+Title:        WEND
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/statements/loops/conditional/wend.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Keyword Definition
+# `WEND` Keyword Reference
 
-Marks the end of a WHILE loop block, branching back to the matching WHILE condition test.
+## Source Header
 
-### Syntax Signatures:
+```c
+// FILENAME: wend.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore (language_descriptor.h, string.h)
+// NEEDS: libengine (eval.h, eval.c, lexer.h, lexer.c, string.c, vm.h, wend.h)
+// NEEDS: libkernel (security.h, security.c, vdev.h, vdev.c)
+// NEEDS: libplatform (platform.h)
+// Provides runtime implementation for the WEND statement in BASIC++.
+//
+// ---- Includes ----
+```
+
+## 1. Description & Usage
+
+Marks the end of a WHILE loop block and jumps back to re-evaluate the WHILE condition.
+
+## 2. Syntax
+
 ```basic
 WEND
 ```
 
-### Error Handling & Boundary Conditions:
-- **Error 2 (ERR_SYNTAX_ERROR)**: WEND without matching WHILE.
+## 3. Code Example
 
-### Operational Notes:
-- Classic structured loop construct.
+```basic
+10 REM WEND Demonstration
+20 PRINT "WEND executed successfully."
+```
+
+## 4. Error Conditions
+
+Error 29: WEND Without WHILE
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Looping / Control Flow
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_SAFE
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 X = 1
-20 WHILE X <= 5
-30   PRINT X
-40   X = X + 1
-50 WEND
-```
+| Field | Value |
+|---|---|
+| Name | WEND |
+| Category | Looping / Control Flow |
+| Syntax | WEND |
+| Description | Marks the end of a WHILE loop block and jumps back to re-evaluate the WHILE condition. |
+| Error Summary | Error 29: WEND Without WHILE |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_SAFE |
+| Feature Type | FEATURE_STATEMENT |
+| Delimiter Mask | none |
+| Compatibility | none |
+| Since Version | none |
+| Source File | engine/src/statements/loops/conditional/wend.c |

@@ -1,0 +1,66 @@
+TITLE: _CPU_LOAD%
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/runtime/descriptors/system_var_descriptors.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+_CPU_LOAD% KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: system_var_descriptors.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libcore, libengine, libflex
+    // NEEDS: libcore (language_descriptor.h, system_var_descriptors.h)
+    // Implements authoritative descriptor definitions for built-in system variabl
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Microcontroller CPU load percentage (0..100%).
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    _CPU_LOAD%
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM _CPU_LOAD% Demonstration
+    20 PRINT "_CPU_LOAD% executed successfully."
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+None
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      IoT & Networking
+Subsystem:     SUBSYSTEM_SERVER
+Safety Level:  SAFETY_SAFE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  _CPU_LOAD%
+Category              IoT & Networking
+Syntax                _CPU_LOAD%
+Description           Microcontroller CPU load percentage (0..100%).
+Error Summary         None
+Subsystem             SUBSYSTEM_SERVER
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_VARIABLE
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/runtime/descriptors/system_var_descripto...

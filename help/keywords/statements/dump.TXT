@@ -1,22 +1,71 @@
-DUMP Memory Hex Dump Diagnostic Statement
-=========================================
+TITLE: DUMP
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/debug/logger.c
+GENERATED: no, hand-written
+STATUS: current
 
-Prints a formatted hex and ASCII memory dump for low-level debugging and memory inspection.
+==============================================================================
+DUMP KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: logger.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: baspp.exe, bpp.exe, bs.exe, libboot, libcore, libengine, libkern
+    // NEEDS: libcore (alloc.h, alloc.c, hal.h, logger.h, memops.h, memops.c)
+    // NEEDS: libcore (runtime_snprintf.h, runtime_snprintf.c, strops.h, strops.c)
+    // NEEDS: libplatform (platform.h)
+    // Provides multi-level logging, circular ring buffer, and pluggable sink inte
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Outputs a formatted hexadecimal and ASCII memory dump of variable contents or
+address range.
 
-    DUMP address& [, length%]
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    DUMP [var_or_address [, length%]]
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM DUMP Demonstration
+    20 PRINT "DUMP executed successfully."
 
-OPERATIONAL NOTES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+None
 
-  Safe read-only memory inspector bounded to allocated RAM pool.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Debugging & Memory
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SAFE
 
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 DUMP 0, 64 : REM Dumps first 64 bytes of virtual memory
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  DUMP
+Category              Debugging & Memory
+Syntax                DUMP [var_or_address [, length%]]
+Description           Outputs a formatted hexadecimal and ASCII memory du...
+Error Summary         None
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         BASIC++ Standard
+Since Version         6.0.0
+Source File           engine/src/debug/logger.c

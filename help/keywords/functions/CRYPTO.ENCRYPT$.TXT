@@ -1,0 +1,71 @@
+TITLE: CRYPTO.ENCRYPT$
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/functions/system/security/func_crypto.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+CRYPTO.ENCRYPT$ KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: func_crypto.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (sys_fn.c)
+    // NEEDS: libcore (crypto_engine.h, crypto_engine.c, memops.h, memops.c)
+    // NEEDS: libcore (string.h, strings.h, strings.c, strops.h, strops.c)
+    // NEEDS: libengine (string.c)
+    // NEEDS: libkernel (func_crypto.h)
+    // Implements CRYPTO.* built-in functions: CRYPTO.ENCRYPT$, CRYPTO.DECRYPT$, C
+    //
+    // ---- Includes ----
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Encrypts plaintext using symmetric key and returns hex-encoded ciphertext.
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    CRYPTO.ENCRYPT$(key$, plaintext$)
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = CRYPTO.ENCRYPT$(key$, plainte10t$)
+    20 PRINT "Result: "; Val
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+None
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Security & Encryption
+Subsystem:     SUBSYSTEM_SERVER
+Safety Level:  SAFETY_SAFE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  CRYPTO.ENCRYPT$
+Category              Security & Encryption
+Syntax                CRYPTO.ENCRYPT$(key$, plaintext$)
+Description           Encrypts plaintext using symmetric key and returns ...
+Error Summary         None
+Subsystem             SUBSYSTEM_SERVER
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/eval/functions/system/security/func_cryp...

@@ -7,7 +7,7 @@
 // NEEDED BY: libcore (iot_main.c)
 // NEEDED BY: libengine (conversion_fn.c, eval_expr_internal.h)
 // NEEDS: libcore (memory.h, memory.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libcore (strings.h, strings.c)
 // NEEDS: libengine (command_fn.h, string.c)
 // Provides runtime implementation for the COMMAND_FN built-in function in BASIC++.
@@ -16,20 +16,26 @@
 
 #include "eval/functions/system/environment/command_fn.h"
 #include "runtime/strings.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/string.h"
 #include "runtime/memory.h"
+#include "runtime/string/strops.h"
+#include "runtime/string/memops.h"
+
+static const LangDesc g_command_desc = {
+    .name = "COMMAND$",
+    .category = "System",
+    .syntax = "COMMAND$",
+    .description = "Returns the command-line arguments string passed to the BASIC program.",
+    .error_summary = "None",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SYSTEM,
+    .type = FEATURE_FUNCTION
+};
 static char g_command_line[2048] = {0};
 
 void func_command_register(void) {
-    MicroLibMetadata meta = {
-        .name = "COMMAND$",
-        .category = "System",
-        .syntax = "COMMAND$",
-        .help_text = "Returns the command-line arguments string passed to the BASIC program.",
-        .error_codes = "None"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_command_desc);
 }
 
 void runtime_set_command_line(const char *cmd) {

@@ -62,6 +62,7 @@ typedef struct {
 typedef struct {
     ReformatBlockType type;
     double            line_opened;
+    char              loop_var[64];
 } ReformatBlockEntry;
 
 typedef struct {
@@ -85,7 +86,8 @@ typedef enum {
     MOD_UPPER,
     MOD_LOWER,
     MOD_PRESERVE,
-    MOD_SPACES
+    MOD_SPACES,
+    MOD_UNPACK
 } ReformatModifier;
 
 typedef struct {
@@ -134,5 +136,8 @@ void reformat_render_suggestions_summary(VMContext *vm, const ReformatPlan *plan
 
 // @brief Find start and end line numbers for a named SUB or FUNCTION procedure.
 bool reformat_find_sub_range(VMContext *vm, const char *sub_name, double *out_start, double *out_end);
+
+BValue func_reformat_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err);
+int reformat_unpack_program(VMContext *vm);
 
 #endif // STATEMENTS_PROGRAM_REFORMAT_H

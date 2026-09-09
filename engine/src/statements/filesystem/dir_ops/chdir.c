@@ -2,7 +2,7 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (prefix.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libcore (strings.h, strings.c)
 // NEEDS: libengine (chdir.h, eval.h, eval.c, string.c)
 // NEEDS: libplatform (platform.h)
@@ -14,23 +14,28 @@
 #include "eval/eval.h"
 #include "platform/platform.h"
 #include "runtime/strings.h"
-#include "runtime/micro_lib_metadata.h"
-#include <string.h>
+#include "runtime/language_descriptor.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_chdir_desc = {
+    .name = "CHDIR",
+    .category = "Filesystem I/O",
+    .syntax = "CHDIR pathname$",
+    .description = "Changes the current working directory to the specified path.",
+    .error_summary = "Error 2: Syntax Error, Error 76: Path Not Found",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_STATEMENT
+};
 
 void stmt_chdir_register(void) {
-    MicroLibMetadata meta = {
-        .name = "CHDIR",
-        .category = "Filesystem I/O",
-        .syntax = "CHDIR pathname$",
-        .help_text = "Changes the current working directory to the specified path.",
-        .error_codes = "Error 2: Syntax Error, Error 76: Path Not Found"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_chdir_desc);
 }
 
 BppError stmt_chdir_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BValue path_val = eval_expression(vm, lex, &err);
     if (err.code != 0) return err;

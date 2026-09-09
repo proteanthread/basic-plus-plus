@@ -1,29 +1,70 @@
-OUT Hardware I/O Port Output Statement
-======================================
+TITLE: OUT
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/system/hardware/out.c
+GENERATED: no, hand-written
+STATUS: current
 
-Writes an 8-bit byte value to a specified hardware or virtualized I/O port address.
+==============================================================================
+OUT KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: out.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libengine (bios.h, bios.c, eval.h, eval.c, out.h, string.c)
+    // NEEDS: libkernel (bus.h, bus.c, security.h, security.c)
+    // Provides runtime implementation for the OUT statement in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Sends a byte (0-255) to a hardware or virtual I/O port address.
 
-    OUT port_address%, byte_value%
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    OUT port, data
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM OUT Demonstration
+    20 PRINT "OUT executed successfully."
 
-ERROR CONDITIONS
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error, Error 5: Illegal Function Call, Error 13: Type Mismatch
 
-  - Error 70 (ERR_PERMISSION_DENIED): Hardware direct I/O blocked in sandbox.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      System & Hardware I/O
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SYSTEM
 
-
-OPERATIONAL NOTES
-----------------------------------------------------------------------
-
-  Routes to virtual BIOS and device bus drivers.
-
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 OUT &H3C8, 0 : REM Set VGA palette index 0
-    20 OUT &H3C9, 63 : OUT &H3C9, 0 : OUT &H3C9, 0 : REM Full red
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  OUT
+Category              System & Hardware I/O
+Syntax                OUT port, data
+Description           Sends a byte (0-255) to a hardware or virtual I/O p...
+Error Summary         Error 2: Syntax Error, Error 5: Illegal Function Ca...
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SYSTEM
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/system/hardware/out.c

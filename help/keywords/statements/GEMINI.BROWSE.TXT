@@ -1,0 +1,70 @@
+TITLE: GEMINI.BROWSE
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/network/stmt_gemini_browse.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+GEMINI.BROWSE KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: stmt_gemini_browse.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (gemini.h, gemini.c, string.h, strings.h, strings.c)
+    // NEEDS: libengine (eval.h, eval.c, stmt_gemini_browse.h, string.c)
+    // NEEDS: libkernel (vdev.h, vdev.c)
+    // Implements GEMINI.BROWSE interactive TUI capsule browser.
+    //
+    // ---- Includes ----
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Fetches and displays a Gemini protocol capsule page in the terminal.
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    GEMINI.BROWSE [url$]
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM GEMINI.BROWSE Demonstration
+    20 PRINT "GEMINI.BROWSE executed successfully."
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+None
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Hardware & Network
+Subsystem:     SUBSYSTEM_SERVER
+Safety Level:  SAFETY_IO
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  GEMINI.BROWSE
+Category              Hardware & Network
+Syntax                GEMINI.BROWSE [url$]
+Description           Fetches and displays a Gemini protocol capsule page...
+Error Summary         None
+Subsystem             SUBSYSTEM_SERVER
+Safety Level          SAFETY_IO
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/network/stmt_gemini_browse.c

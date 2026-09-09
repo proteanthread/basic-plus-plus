@@ -8,6 +8,7 @@
 // ---- Includes ----
 
 #include "vm/events_internal.h"
+#include "platform/platform.h"
 
 //
 // ---- Timer Traps ----

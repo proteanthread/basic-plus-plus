@@ -8,6 +8,8 @@
 // ---- Includes ----
 
 #include "runtime/file_internal.h"
+#include "runtime/string/strops.h"
+#include "runtime/string/memops.h"
 
 //
 // ---- Channel Lifecycle ----
@@ -91,9 +93,27 @@ BppError file_open(FileContext *ctx, VDevContext *vdev_ctx, int channel, const c
     if (colon && vdev_ctx) {
         char dev_name[256];
         size_t name_len = (size_t)(colon - filename + 1);
+        if (runtime_strncasecmp(filename, "BUS:", 4) == 0 ||
+            runtime_strncasecmp(filename, "IPC:", 4) == 0 ||
+            runtime_strncasecmp(filename, "USER:", 5) == 0 ||
+            runtime_strncasecmp(filename, "USR:", 4) == 0) {
+            name_len = runtime_strlen(filename);
+        }
         if (name_len < sizeof(dev_name)) {
             runtime_memcpy(dev_name, filename, name_len);
             dev_name[name_len] = '\0';
+
+            // If it's a device specification (not a Windows drive letter like C:\)
+            if (name_len > 2 || (colon - filename > 1)) {
+                char base_name[32];
+                int sidx = vdev_parse_subdevice_index(dev_name, base_name, sizeof(base_name));
+                if (sidx == 0 || sidx == 9) {
+                    err.code = 5;
+                    err.message = "Illegal function call: device reserved for system";
+                    return err;
+                }
+            }
+
             dev = vdev_get(vdev_ctx, dev_name);
         }
     }
@@ -105,11 +125,20 @@ BppError file_open(FileContext *ctx, VDevContext *vdev_ctx, int channel, const c
             runtime_strcasecmp(filename, "TEK") == 0 || runtime_strcasecmp(filename, "TEK:") == 0 ||
             runtime_strcasecmp(filename, "TEKTRONIX") == 0 || runtime_strcasecmp(filename, "TEKTRONIX:") == 0 ||
             runtime_strcasecmp(filename, "4010") == 0 || runtime_strcasecmp(filename, "4010:") == 0 ||
-            runtime_strcasecmp(filename, "4014") == 0 || runtime_strcasecmp(filename, "4014:") == 0) {
+            runtime_strcasecmp(filename, "4014") == 0 || runtime_strcasecmp(filename, "4014:") == 0 ||
+            runtime_strcasecmp(filename, "CON") == 0 || runtime_strcasecmp(filename, "CON:") == 0 ||
+            runtime_strcasecmp(filename, "SCRN") == 0 || runtime_strcasecmp(filename, "SCRN:") == 0 ||
+            runtime_strcasecmp(filename, "KYBD") == 0 || runtime_strcasecmp(filename, "KYBD:") == 0) {
             dev = vdev_get(vdev_ctx, "CON:");
             if (!dev) dev = vdev_get(vdev_ctx, "CONS:");
             if (!dev) dev = vdev_get(vdev_ctx, "SCRN:");
         }
+    }
+
+    if (!dev && colon && (colon == filename + runtime_strlen(filename) - 1) && (colon - filename > 1)) {
+        err.code = 57;
+        err.message = "Device I/O error: device not found";
+        return err;
     }
 
     if (dev) {

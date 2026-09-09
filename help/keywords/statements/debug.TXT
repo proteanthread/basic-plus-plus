@@ -1,24 +1,69 @@
-DEBUG Debug Engine Control Statement
-====================================
+TITLE: DEBUG
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/system/debug.c
+GENERATED: no, hand-written
+STATUS: current
 
-Controls interactive VM execution debugging, line monitoring, and DAP debug server hooks.
+==============================================================================
+DEBUG KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: debug.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore, libengine, libkernel
+    // Provides runtime implementation for the DEBUG statement in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Master interactive debugger control, execution tracing, breakpoint handling,
+and system introspection suite.
 
-    DEBUG ON | OFF | TRACE | BREAK
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    DEBUG [ON|OFF|DUMP|STACK|MEMORY|VARS] | TRACE | TRON | TROFF | BREAK | CONT | BACKTRACE | INFO | DUMP
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM DEBUG Demonstration
+    20 PRINT "DEBUG executed successfully."
 
-OPERATIONAL NOTES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error, Error 99: Assertion Failed
 
-  Integrates with the Debug Adapter Protocol (DAP) server in libstandard.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Debug & Testing
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SAFE
 
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 DEBUG ON
-    20 LET X = 100
-    30 DEBUG OFF
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  DEBUG
+Category              Debug & Testing
+Syntax                DEBUG [ON|OFF|DUMP|STACK|MEMORY|VARS] | TRACE | TRO...
+Description           Master interactive debugger control, execution trac...
+Error Summary         Error 2: Syntax Error, Error 99: Assertion Failed
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/system/debug.c

@@ -2,7 +2,7 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libengine (eval.h, eval.c, lexer.h, lexer.c, loop.h, string.c, vm.h)
 // NEEDS: libkernel (security.h, security.c, vdev.h, vdev.c)
 // Provides runtime implementation for the LOOP statement in BASIC++.
@@ -13,20 +13,25 @@
 #include "vm/vm.h"
 #include "lexer/lexer.h"
 #include "eval/eval.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "device/vdev.h"
 #include "security/security.h"
-#include <string.h>
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_loop_desc = {
+    .name = "LOOP",
+    .category = "Looping / Control Flow",
+    .syntax = "LOOP [{WHILE|UNTIL} condition] | LOOP (BASIC09 block opener)",
+    .description = "Terminates a DO...LOOP block, or opens a BASIC09 structured LOOP...ENDLOOP block.",
+    .error_summary = "Error 32: LOOP Without DO, Error 2: Syntax Error",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SAFE,
+    .type = FEATURE_STATEMENT
+};
 
 void stmt_loop_register(void) {
-    MicroLibMetadata meta = {
-        .name = "LOOP",
-        .category = "Looping / Control Flow",
-        .syntax = "LOOP [{WHILE|UNTIL} condition] | LOOP (BASIC09 block opener)",
-        .help_text = "Terminates a DO...LOOP block, or opens a BASIC09 structured LOOP...ENDLOOP block.",
-        .error_codes = "Error 32: LOOP Without DO, Error 2: Syntax Error"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_loop_desc);
 }
 
 static bool val_is_truthy(BValue val) {
@@ -60,9 +65,9 @@ static bool has_matching_endloop(VMContext *vm) {
         BppToken tok = lex_peek(scan_lex);
         while (tok.type != TOK_EOF) {
             bool is_loop = (tok.type == TOK_KEYWORD && tok.as.keyword == KW_LOOP) ||
-                           (tok.type == TOK_IDENT && tok.length == 4 && strncasecmp(tok.start, "LOOP", 4) == 0);
+                           (tok.type == TOK_IDENT && tok.length == 4 && runtime_strncasecmp(tok.start, "LOOP", 4) == 0);
             bool is_endloop = (tok.type == TOK_KEYWORD && tok.as.keyword == KW_ENDLOOP) ||
-                             (tok.type == TOK_IDENT && tok.length == 7 && strncasecmp(tok.start, "ENDLOOP", 7) == 0);
+                             (tok.type == TOK_IDENT && tok.length == 7 && runtime_strncasecmp(tok.start, "ENDLOOP", 7) == 0);
             if (is_loop && i > start_idx) {
                 loop_nesting++;
             } else if (is_endloop) {
@@ -84,7 +89,7 @@ static bool has_matching_endloop(VMContext *vm) {
 
 BppError stmt_loop_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     if (!vm || !lex) {
         err.code = 5; err.message = "Null VM or lexer context";
@@ -93,9 +98,9 @@ BppError stmt_loop_handler(VMContext *vm, LexerContext *lex) {
 
     BppToken tok = lex_peek(lex);
     bool is_while = (tok.type == TOK_KEYWORD && tok.as.keyword == KW_WHILE) ||
-                    (tok.type == TOK_IDENT && tok.length == 5 && strncasecmp(tok.start, "WHILE", 5) == 0);
+                    (tok.type == TOK_IDENT && tok.length == 5 && runtime_strncasecmp(tok.start, "WHILE", 5) == 0);
     bool is_until = (tok.type == TOK_KEYWORD && tok.as.keyword == KW_UNTIL) ||
-                    (tok.type == TOK_IDENT && tok.length == 5 && strncasecmp(tok.start, "UNTIL", 5) == 0);
+                    (tok.type == TOK_IDENT && tok.length == 5 && runtime_strncasecmp(tok.start, "UNTIL", 5) == 0);
 
     // 1. If followed by WHILE or UNTIL, it is strictly a closing DO...LOOP condition
     if (is_while || is_until) {

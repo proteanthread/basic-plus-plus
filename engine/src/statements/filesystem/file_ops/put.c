@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
 // NEEDS: libcore (arrays.h, arrays.c, file.h, file.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libengine (bgi.h, bgi.c, eval.h, eval.c, lexer.h, lexer.c)
 // NEEDS: libengine (map.h, map.c, put.h, string.c, vm.h)
 // NEEDS: libplatform (platform.h)
@@ -19,24 +19,29 @@
 #include "runtime/file.h"
 #include "runtime/arrays.h"
 #include "device/bgi.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "platform/platform.h"
-#include <string.h>
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_put_desc = {
+    .name = "PUT",
+    .category = "Filesystem I/O & Graphics",
+    .syntax = "PUT [#]file_num [, record_number] | PUT (x, y), array_name [, action]",
+    .description = "Writes a record from the FIELD buffer into a random-access file or draws a memory array onto the screen.",
+    .error_summary = "Error 2: Syntax Error, Error 52: Bad File Number, Error 63: Bad Record Number",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_STATEMENT
+};
 
 void stmt_put_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "PUT",
-        .category = "Filesystem I/O & Graphics",
-        .syntax = "PUT [#]file_num [, record_number] | PUT (x, y), array_name [, action]",
-        .help_text = "Writes a record from the FIELD buffer into a random-access file or draws a memory array onto the screen.",
-        .error_codes = "Error 2: Syntax Error, Error 52: Bad File Number, Error 63: Bad Record Number"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_put_desc);
 }
 
 BppError stmt_put_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BppToken tok = lex_peek(lex);
     if (tok.type == TOK_LPAREN) {
@@ -73,7 +78,7 @@ BppError stmt_put_handler(VMContext *vm, LexerContext *lex) {
 
         char arr_name[64];
         if (tok.length >= sizeof(arr_name)) tok.length = sizeof(arr_name) - 1;
-        memcpy(arr_name, tok.start, tok.length);
+        runtime_memcpy(arr_name, tok.start, tok.length);
         arr_name[tok.length] = '\0';
 
         BppToken peek_paren = lex_peek(lex);
@@ -95,7 +100,7 @@ BppError stmt_put_handler(VMContext *vm, LexerContext *lex) {
             tok = lex_next(lex);
             char act_str[32] = "";
             if (tok.length < sizeof(act_str)) {
-                memcpy(act_str, tok.start, tok.length);
+                runtime_memcpy(act_str, tok.start, tok.length);
                 act_str[tok.length] = '\0';
             }
             if (platform_strcasecmp(act_str, "PSET") == 0) action = 1;

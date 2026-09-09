@@ -1,0 +1,79 @@
+<!--
+Title:        BASIC++_Capabilities
+Tier:         1
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot, bppc, trans, detok)
+Authority:    engine/
+Generated:    no, manual system specification
+Status:       current
+-->
+
+# BASIC++ v6.5.2 System Capabilities & Architectural Guide
+
+## 1. Executive Architectural Blueprint & Mission
+
+BASIC++ is an industrial-grade, multi-paradigm programming language and virtual machine engineered to bridge vintage Microsoft BASIC (GW-BASIC 3.23, IBM BASICA, QuickBASIC 4.5, and Visual Basic for DOS 1.0) with ISO C17 systems programming, embedded microcontrollers, and modern cloud deployment targets. The architecture combines a zero-dependency C17 core virtual machine, dual execution evaluators (a linear VM runtime and a recursive AST evaluator), and a pluggable Hardware Abstraction Layer (HAL). It delivers deterministic, crash-resilient execution across hosted operating systems, standalone bare-metal UEFI stubs, 16-bit FreeDOS environments, and resource-constrained 32-bit microcontrollers.
+
+## 2. Structural Data Hierarchy & Delimiter Semantics
+
+The language organizes all data structures according to an immutable 4-tier structural containment hierarchy: BLOCK { SET [ GROUP ( OBJECT ) ] }. Delimiters are strictly non-interchangeable across the parser:
+- **Parentheses `( )`**: Dedicated exclusively to algebraic grouping, traditional function argument passing, and atomic scalar expressions: `(x + y) * 2`.
+- **Square Brackets `[ ]`**: Dedicated to prefix Polish notation, range slicing (`s$[1:5]`), anonymous array literals (`[1, 2, 3]`), memory width modifiers (`PEEK[addr, 4]`), and hardware port indexing (`PORT[0x3F8]`).
+- **Curly Braces `{ }`**: Dedicated to reverse Polish notation (RPN), structured JSON/dictionary map initializers (`{"key": val}`), UDT initializers (`Point{x: 10, y: 20}`), and variadic set collections (`MIN{1, 4, 2}`).
+
+## 3. Decoupled Executable Targets & Deployment Matrix
+
+The BASIC++ toolchain compiles to seven decoupled executable binaries tailored for distinct deployment environments:
+- **`baspp.exe` / `baspp` (Flagship Desktop Edition)**: Console and SDL2 combined environment featuring vintage `>` prompt and `Ok` status, delay-loading SDL2 for graphics and audio with a default 640 MB memory arena.
+- **`bpp.exe` / `bpp` (Lite Interactive Edition)**: Streamlined headless terminal REPL optimized for cloud shells, Linux servers, and Commodore/Apple II style `]` prompt and `Ready.` status with a 384 MB memory ceiling.
+- **`bs.exe` / `bs` (Batch Script Runner)**: Non-interactive batch runner with zero banner, zero prompt, and deterministic process exit codes, optimized for PowerShell, Bash, and CGI pipelines with a 64 MB arena.
+- **`iot.exe` / `iot` (Microcontroller & Embedded Edition)**: Micro-REPL engineered for microcontroller environments with a 2 MB static pool, hardware GPIO, I2C, SPI, and event loop drivers.
+- **`bppc.exe` / `bppc` (Ahead-of-Time Native Compiler)**: Compiles BASIC++ source code into standalone C17 translation units, standalone native binaries, or bare-metal UEFI stubs.
+- **`trans.exe` / `trans` (Universal Multi-Dialect Transpiler)**: Provides source-to-source translation between vintage BASIC dialects and modern programming languages including C17, Turbo Pascal, and Python.
+- **`detok.exe` / `detok` (Legacy Binary Detokenizer)**: Decodes tokenized binary `.BAS` files from IBM PC DOS, GW-BASIC, and vintage Microsoft compilers into human-readable source.
+
+## 4. Memory Management & Certified Allocation Models
+
+Memory in BASIC++ is governed by strict ISO C17 certified allocation models that permanently exclude uncontrolled heap fragmentation and bare `malloc` allocations. The runtime partitions process memory into four dedicated arenas: Program Memory (holding compiled ASTs and bytecode), Variable Memory (holding symbol descriptors and fast-path lookup tables), String Memory (a managed string arena with automatic garbage collection and string compaction), and Scratch Memory (temporary stack allocations for expression evaluation). For embedded and bare-metal environments, the engine implements static block-pool allocators with constant-time allocation and zero fragmentation guarantees. Hosted desktop builds utilize a bounds-checked arena allocator with virtual memory protection guards (`vmem`). All string descriptors maintain length-prefixed immutable byte slices with copy-on-write semantics, eliminating buffer overruns and memory leaks.
+
+## 5. Virtual Device Architecture & Hardware Abstraction Layer
+
+All external communications, filesystems, and peripherals in BASIC++ operate through a unified Virtual Device (`VDev`) architecture and Hardware Abstraction Layer (`libhal`). Devices are exposed to BASIC code through vintage channel semantics (`OPEN "DEV:" AS #1`) and dedicated device handles:
+- **`CON:` & `SCRN:`**: Virtual console display supporting ANSI escape sequences, VT100 cursor manipulation, color palettes, and keyboard buffers.
+- **`PRN:`, `LPT1:`..`LPT8:`, `PDF:`**: Virtual printer devices offering direct text spooling, raster print queues, and PDF document generation.
+- **`COM1:`..`COM8:`**: Serial communications channels with configurable baud rates, parity bits, and hardware handshaking.
+- **`N:`, `FUJI:`, `CLOCK:`**: FujiNet multi-bus network emulation channels supporting remote disk mounting, network time synchronization, and HTTP/FTP transport.
+- **`OPENRGB:`**: Hardware bus controller supporting real-time motherboard, RAM, and peripheral RGB LED manipulation.
+
+## 6. Dual-Engine Video & Borland Graphics Architecture
+
+BASIC++ provides a dual-layer graphics architecture that seamlessly reconciles heritage 1980s PC graphics with modern multi-monitor 4K displays:
+- **Heritage Screen Modes (0 through 13)**: Faithful emulation of IBM MDA, CGA, EGA, VGA, and MCGA video modes, including Mode 0 (80x25 text), Mode 1 (320x200 4-color), Mode 7 (monochrome text), Mode 9 (640x350 16-color), Mode 12 (640x480 16-color VGA), and Mode 13 (320x200 256-color VGA).
+- **Modern High-Resolution Modes (14 through 20)**: High-definition graphics extending through SVGA (800x600, 1024x768), Full HD (1920x1080), 1440p QHD, and 3840x2160 4K UHD with 32-bit true color and alpha blending.
+- **Borland Graphics Interface (BGI)**: A complete C17 implementation of the classic BGI standard, including stroke vector fonts, line styles, fill patterns, viewport clipping, and arbitrary aspect ratio transformations.
+
+## 7. Multi-Protocol Network & Internet Protocol Stack
+
+The networking subsystem provides native high-level statements and functions for both classic and modern network protocols:
+- **Vintage Protocols**: FujiNet virtual bus protocol, TNFS (Trivial Network File System) remote file mounting, and raw TCP/UDP stream sockets.
+- **Modern Minimalist Web**: Native Gemini (`gemini://`) and Gopher (`gopher://`) protocol clients, enabling lightweight document retrieval, text mining, and offline caching without heavy web engine overhead.
+- **Industrial IoT & Messaging**: Full support for MQTT publish/subscribe messaging, WebSockets client/server communication, raw socket polling, and UPnP automatic port forwarding for seamless NAT traversal.
+- **TLS Security**: Secure transport layer integration via embedded lightweight cryptography, enabling encrypted communications across embedded and desktop platforms.
+
+## 8. Multi-Language Interoperability & Source Transpilation
+
+Interoperability in BASIC++ is bidirectional and first-class across the runtime and compiler infrastructure:
+- **Foreign Function Interface (`EXTERN`)**: Allows BASIC++ programs to declare and invoke external C functions directly from host shared libraries (`.dll`, `.so`, `.dylib`) with automatic ABI argument marshalling, pointer boxing, and callback delegation.
+- **Universal Transpiler (`trans.exe`)**: Transpiles BASIC source trees directly into readable, idiomatic C17 source code, Borland/Free Pascal, or Python 3, preserving variable scopes and control flow constructs.
+- **IPC & JSON-RPC Services**: Headless background daemon mode (`baspp --server`) exposing full engine execution, variable inspection, and remote procedure execution over JSON-RPC 2.0 TCP sockets.
+
+## 9. Systems Programming, Bare-Metal & CRA Compliance
+
+BASIC++ v6.5.2 provides dedicated systems programming constructs enabling direct hardware access without sacrificing safety:
+- **Physical Memory Manipulation**: Direct address access via `MEM[...]`, `PEEK[...]`, and `POKE`, with hardware port access via `PORT[...]`, `INP`, and `OUT`.
+- **Compiler Memory Barriers**: All low-level hardware operations emit explicit volatile memory barriers (`sys_memory_barrier()`) to prevent optimizing compilers from reordering or eliding hardware register writes.
+- **Lexical Safety Blocks (`UNSAFE { ... }`)**: In compliance with the European Union Cyber Resilience Act (EU CRA 2024), all memory and array accesses are bounds-checked by default. Unchecked hardware access is strictly quarantined within explicit `UNSAFE { ... }` blocks or `'$RANGE_CHECK OFF` compiler directives, with full audit logging.
+- **Freestanding Bare-Metal & UEFI**: Emits self-contained C17 code conforming strictly to ISO C17 Section 4 Paragraph 6, requiring zero host OS syscalls or hosted standard library headers.
+
+## 10. Reflection, Docgen & Continuous Documentation
+
+The language features complete runtime self-reflection through the C `LanguageDescriptor` architecture. Every keyword, statement, function, and variable registers an authoritative metadata record capturing syntax, parameters, error conditions, safety guarantees, subsystem bindings, and source lineage. The built-in documentation generator (`baspp --export-docs`) continuously exports this registry to exhaustive Markdown pages (`docs/`) and 78-column plaintext files (`help/`), guaranteeing 100% documentation parity across the entire repository. Continuous documentation is an unbending project invariant: no language feature, dialect adjustment, or statement implementation is complete without simultaneous documentation synchronization across all five tiers.

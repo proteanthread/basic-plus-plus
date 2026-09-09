@@ -12,9 +12,43 @@
 #include "eval/functions/system/hardware/func_sock.h"
 #include "runtime/sock_engine.h"
 #include "runtime/strings.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/string/strops.h"
 #include "runtime/string/memops.h"
-#include <string.h>
+
+static const LangDesc g_sock_open_desc = {
+    .name = "SOCK.OPEN%", .category = "Hardware & Network", .syntax = "SOCK.OPEN%(proto$)",
+    .description = "Opens a network socket of specified protocol ('TCP', 'UDP', 'RAW') and returns handle.",
+    .error_summary = "Error 52 (Bad file number) on allocation failure", .subsystem = SUBSYSTEM_HARDWARE, .safety = SAFETY_IO, .type = FEATURE_FUNCTION
+};
+static const LangDesc g_sock_accept_desc = {
+    .name = "SOCK.ACCEPT%", .category = "Hardware & Network", .syntax = "SOCK.ACCEPT%(listen_h%)",
+    .description = "Accepts an incoming connection on a listening socket handle and returns client socket handle.",
+    .error_summary = "Error 5 (Illegal function call) on invalid handle", .subsystem = SUBSYSTEM_HARDWARE, .safety = SAFETY_IO, .type = FEATURE_FUNCTION
+};
+static const LangDesc g_sock_recv_desc = {
+    .name = "SOCK.RECV$", .category = "Hardware & Network", .syntax = "SOCK.RECV$(handle% [, max_len% [, timeout_ms%]])",
+    .description = "Receives binary or text payload from a socket handle.",
+    .error_summary = "Error 5 (Illegal function call) on invalid handle", .subsystem = SUBSYSTEM_HARDWARE, .safety = SAFETY_IO, .type = FEATURE_FUNCTION
+};
+static const LangDesc g_sock_poll_desc = {
+    .name = "SOCK.POLL%", .category = "Hardware & Network", .syntax = "SOCK.POLL%(handle% [, mask% [, timeout_ms%]])",
+    .description = "Polls a socket handle for readability or writability events.",
+    .error_summary = "None", .subsystem = SUBSYSTEM_HARDWARE, .safety = SAFETY_IO, .type = FEATURE_FUNCTION
+};
+static const LangDesc g_sock_status_desc = {
+    .name = "SOCK.STATUS%", .category = "Hardware & Network", .syntax = "SOCK.STATUS%(handle%)",
+    .description = "Returns 1 if socket handle has pending data, 0 otherwise.",
+    .error_summary = "None", .subsystem = SUBSYSTEM_HARDWARE, .safety = SAFETY_IO, .type = FEATURE_FUNCTION
+};
+
+void func_sock_register(void) {
+    lang_desc_register(&g_sock_open_desc);
+    lang_desc_register(&g_sock_accept_desc);
+    lang_desc_register(&g_sock_recv_desc);
+    lang_desc_register(&g_sock_poll_desc);
+    lang_desc_register(&g_sock_status_desc);
+}
 
 BValue func_sock_open(VMContext *vm, int argc, BValue *argv, BppError *err) {
     (void)vm;

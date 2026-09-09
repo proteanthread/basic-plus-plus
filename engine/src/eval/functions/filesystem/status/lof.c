@@ -2,26 +2,30 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (sys_fn.c)
-// NEEDS: libcore (file.h, file.c, micro_lib_metadata.h, micro_lib_metadata.c)
+// NEEDS: libcore (file.h, file.c, language_descriptor.h)
 // NEEDS: libengine (lof.h, vm.h)
 // Provides runtime implementation for the LOF built-in function in BASIC++.
 //
 // ---- Includes ----
 
 #include "eval/functions/filesystem/status/lof.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/file.h"
 #include "vm/vm.h"
 
+static const LangDesc g_lof_desc = {
+    .name = "LOF",
+    .category = "Filesystem Functions",
+    .syntax = "length& = LOF(file_num%)",
+    .description = "Returns the length of an open file in bytes.",
+    .error_summary = "Error 13: Type Mismatch (LOF expects numeric channel)",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_FUNCTION
+};
+
 void func_lof_register(void) {
-    MicroLibMetadata meta = {
-        .name = "LOF",
-        .category = "Filesystem Functions",
-        .syntax = "length& = LOF(file_num%)",
-        .help_text = "Returns the length of an open file in bytes.",
-        .error_codes = "Error 13: Type Mismatch (LOF expects numeric channel)"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_lof_desc);
 }
 
 BValue func_lof_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err) {

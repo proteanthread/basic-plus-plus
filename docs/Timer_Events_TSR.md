@@ -1,137 +1,61 @@
-# BASIC++ v6.5.2 Timer Events and TSR-Style Background Tasks
+<!--
+Title:        Timer_Events_TSR
+Tier:         2
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/statements/event/timer.c, engine/src/runtime/timer.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. TIMER EVENTS
+# BASIC++ v6.5.2 Timer Events & TSR Architecture
 
-The TIMER event trap executes a subroutine at regular intervals during program execution. The trap fires between statement executions, making it cooperative rather than preemptive.
+The authoritative specification for asynchronous timer event traps, interval handlers, and cooperative TSR-style background execution in BASIC++ v6.5.2.
 
-```basic
-10 Seconds = 0
-20 ON TIMER(1) GOSUB 1000
-30 TIMER ON
-40 FOR I = 1 TO 1000000
-50   ' Main work loop
-60 NEXT I
-70 TIMER OFF
-80 END
-1000 Seconds = Seconds + 1
-1010 LOCATE 1, 60 : PRINT "Elapsed:"; Seconds; "s"
-1020 RETURN
-```
+---
 
-The timer interval is specified in seconds. Fractional seconds are supported on modern builds: `ON TIMER(0.5) GOSUB 1000` fires twice per second.
+## 1. Event Trapping Model
 
-## 2. THE ALARM SYSTEM
+BASIC++ provides asynchronous timer event trapping modeled on vintage Microsoft BASIC and enhanced for modern real-time execution. Timer events execute cooperatively at statement dispatch boundaries:
+- Event handlers are invoked without interrupting long scalar math operations mid-instruction.
+- When an event triggers, the current program position is saved and execution jumps to the registered trap line or procedure.
+- Execution returns to the point of interruption upon encountering `RETURN` or `END EVENT`.
 
-The alarm system extends timer events with two modes:
+---
 
-**Countdown Alarms** fire once after a specified number of seconds:
+## 2. Timer Trapping Statements
 
-```basic
-10 ON ALARM GOSUB 2000
-20 ALARM 60              ' Fire in 60 seconds
-30 ALARM ON
-40 PRINT "Working... alarm in 1 minute"
-50 WHILE 1 : WEND
-2000 PRINT "One minute has passed!"
-2010 RETURN
-```
+- **`ON TIMER(interval) GOSUB line_num|label`**: Registers a periodic timer event trap that triggers every `interval` seconds (supports floating-point fractional seconds, e.g., `0.05` for 20 Hz).
+- **`TIMER ON`**: Enables active polling and triggering of the registered timer event trap.
+- **`TIMER OFF`**: Disables the timer event trap and clears any queued pending timer events.
+- **`TIMER STOP`**: Suspends timer event invocation while retaining queued events; when `TIMER ON` is subsequently executed, any pending event triggers immediately.
 
-**Daily Alarms** fire at a specific time of day:
+---
 
-```basic
-10 ON ALARM GOSUB 3000
-20 ALARM "17:00:00"       ' Fire at 5:00 PM
-30 ALARM ON
-40 PRINT "Waiting for 5 PM..."
-50 WHILE 1 : WEND
-3000 PRINT "Time to go home!"
-3010 RETURN
-```
+## 3. TSR-Style Background Execution
 
-ALARM$ returns the scheduled alarm time. SNOOZE n postpones the alarm by n seconds. UNSET cancels the alarm. ALARM OFF disables the alarm trap. ALARM STOP suspends it.
+In embedded microcontrollers (`iot`) and desktop consoles (`baspp`), timer event trapping allows writing non-blocking "Terminate and Stay Resident" (TSR) style utility loops:
+- Background telemetry loggers, watchdog heartbeats, and sensor polling tasks operate via `ON TIMER` while the main script executes foreground calculations or user input.
+- `SLEEP interval` or `YIELD` allows the VM to sleep in low-power mode while maintaining precise timer responsiveness.
 
-## 3. BACKGROUND TASKS
+---
 
-BASIC++ provides a cooperative background task system (engine/src/runtime/task.c) that allows multiple BASIC++ routines to execute in an interleaved fashion. Tasks are not OS threads — they run within the single BASIC++ VM and yield control at statement boundaries.
-
-TASK START line creates a new background task that begins execution at the specified line. TASK STOP id halts a running task. TASK LIST displays all active tasks. TASK STATUS id returns the state of a task.
+## 4. Example: Periodic Heartbeat Event Trap
 
 ```basic
-10 TASK START 1000          ' Start background logger
-20 FOR I = 1 TO 100
-30   PRINT "Main:"; I
-40   SLEEP 0.1
-50 NEXT I
-60 TASK STOP 1
-70 END
-1000 ' Background task: log timestamps
-1010 WHILE 1
-1020   PRINT #2, TIME$; " - Background tick"
-1030   WAIT 1
-1040 WEND
+10 REM Timer Event Trap Demo
+20 Ticks = 0
+30 ON TIMER(1) GOSUB 1000
+40 TIMER ON
+50 PRINT "Timer trap enabled. Main program running..."
+60 FOR I = 1 TO 5
+70   PRINT "Working in foreground loop: "; I
+80   SLEEP 1.5
+90 NEXT I
+100 TIMER OFF
+110 PRINT "Timer disabled. Final tick count: "; Ticks
+120 END
+1000 REM Timer Event Handler
+1010 Ticks = Ticks + 1
+1020 PRINT "  [HEARTBEAT] Tick event #"; Ticks; " at "; TIME$
+1030 RETURN
 ```
-
-The WAIT statement inside a task voluntarily yields execution for the specified number of seconds, allowing the main program and other tasks to run.
-
-## 4. TSR-STYLE PATTERNS
-
-The combination of timer events and background tasks enables TSR (Terminate and Stay Resident) style programming patterns familiar from DOS:
-
-### Status Bar
-
-```basic
-10 ON TIMER(1) GOSUB 9000
-20 TIMER ON
-30 ' ... main program ...
-9000 LOCATE 25, 1
-9010 PRINT TIME$; " | Free:"; FRE(0); "bytes";
-9020 LOCATE OldRow, OldCol
-9030 RETURN
-```
-
-### Autosave
-
-```basic
-10 ON TIMER(300) GOSUB 9100    ' Every 5 minutes
-20 TIMER ON
-9100 SAVE "AUTOSAVE.BAS"
-9110 RETURN
-```
-
-### Watchdog
-
-```basic
-10 ON TIMER(30) GOSUB 9200
-20 TIMER ON
-9200 IF ResponseTime > 10 THEN
-9210   PRINT "WARNING: System unresponsive"
-9220   ALARM 10             ' Follow-up alarm in 10 seconds
-9230   ALARM ON
-9240 END IF
-9250 RETURN
-```
-
-## 5. TRANSACTION SUPPORT
-
-For operations that must be atomic (all-or-nothing), BASIC++ provides transaction support through TXN, ATOMIC, COMMIT, and ROLLBACK:
-
-```basic
-10 TXN
-20   OPEN "DATA.TXT" FOR OUTPUT AS #1
-30   PRINT #1, "Record 1"
-40   PRINT #1, "Record 2"
-50   IF ERR THEN ROLLBACK ELSE COMMIT
-60 END TXN
-```
-
-TXN begins a transaction block. COMMIT finalizes the operations. ROLLBACK undoes all operations since TXN. ATOMIC marks a single statement as atomic. Transactions interact with the task system to ensure that background tasks cannot modify shared state during an atomic operation.
-
-## 6. SLEEP, PAUSE, AND DELAY
-
-SLEEP n pauses execution for n seconds. SLEEP without an argument pauses until a key is pressed.
-
-PAUSE displays "Press any key to continue..." and waits for a keypress.
-
-DELAY n introduces a delay of n milliseconds (finer resolution than SLEEP). DELAY 100 waits for 100 milliseconds.
-
-WAIT n in a background task context yields execution for n seconds while allowing other tasks to run. Outside a task context, WAIT behaves like SLEEP.

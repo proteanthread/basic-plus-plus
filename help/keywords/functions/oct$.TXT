@@ -1,17 +1,71 @@
-OCT$ Octal String Conversion Function
-======================================================================
+TITLE: OCT$
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/functions/string/conversion/oct.c
+GENERATED: no, hand-written
+STATUS: current
 
-The OCT$ function converts an integer to its base-8 octal string
-representation.
+==============================================================================
+OCT$ KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: oct.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (conversion_fn.c)
+    // NEEDS: libcore (memory.h, memory.c)
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libcore (strings.h, strings.c)
+    // NEEDS: libengine (oct.h, string.c)
+    // Provides runtime implementation for the OCT built-in function in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Returns the octal string representation of integer x.
 
-    oct_str$ = OCT$(numeric_expression)
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    OCT$(x)
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = OCT$(10)
+    20 PRINT "Result: "; Val
 
-CODE EXAMPLES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 13: Type Mismatch (OCT$ expects one numeric argument)
 
-    10 PRINT OCT$(24)   : REM Outputs "30"
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      String Functions
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_IO
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  OCT$
+Category              String Functions
+Syntax                OCT$(x)
+Description           Returns the octal string representation of integer x.
+Error Summary         Error 13: Type Mismatch (OCT$ expects one numeric a...
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_IO
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/eval/functions/string/conversion/oct.c

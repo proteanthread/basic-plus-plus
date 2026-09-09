@@ -1,31 +1,68 @@
-PAPER Background Paper Color Setting Statement
-==============================================
+TITLE: PAPER
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/device/gfx.c
+GENERATED: no, hand-written
+STATUS: current
 
-Sets the active background paper color for text output in Sinclair and Locomotive BASIC dialects.
+==============================================================================
+PAPER KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: gfx.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore, libengine, libkernel, libplatform
+    // Implements virtual device and graphics rendering logic for gfx.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Sets the active background fill and character background color index.
 
-    PAPER color_index%
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    PAPER color_index
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM PAPER Demonstration
+    20 PRINT "PAPER executed successfully."
 
-ERROR CONDITIONS
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 5: Illegal Function Call
 
-  - Error 5 (ERR_ILLEGAL_FUNCTION_CALL): Color index outside range.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       Sinclair ZX Spectrum, Amstrad CPC, BASIC++ Standard
+Since Version: 6.0.0
+Category:      Graphics & Display
+Subsystem:     SUBSYSTEM_ADVANCED
+Safety Level:  SAFETY_SAFE
 
-
-OPERATIONAL NOTES
-----------------------------------------------------------------------
-
-  ZX Spectrum display attribute emulation.
-
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 PAPER 1 : REM Set blue background
-    20 INK 7   : REM Set white text
-    30 CLS
-    40 PRINT "White on Blue"
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  PAPER
+Category              Graphics & Display
+Syntax                PAPER color_index
+Description           Sets the active background fill and character backg...
+Error Summary         Error 5: Illegal Function Call
+Subsystem             SUBSYSTEM_ADVANCED
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         Sinclair ZX Spectrum, Amstrad CPC, BASIC++ Standard
+Since Version         6.0.0
+Source File           engine/src/device/gfx.c

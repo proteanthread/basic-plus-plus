@@ -2,29 +2,35 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (math_fn.c)
-// NEEDS: libcore (math.h, micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (math.h, language_descriptor.h, string.h)
 // NEEDS: libengine (angle.h, math.c, string.c)
 // Provides runtime implementation for the ANGLE built-in function in BASIC++.
 //
 // ---- Includes ----
 
 #include "eval/functions/math/trig/angle.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/math.h"
 #include "runtime/string.h"
+#include "runtime/string/strops.h"
+#include "runtime/math/math.h"
+
+static const LangDesc g_angle_desc = {
+    .name = "ANGLE",
+    .category = "Math Functions",
+    .syntax = "ANGLE(x, y)",
+    .description = "Returns counterclockwise angle in radians from positive x-axis to (x, y) in [0, 2*pi) (ANSI Full BASIC 1987).",
+    .error_summary = "Error 13: Type Mismatch",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_PURE,
+    .type = FEATURE_FUNCTION
+};
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
 
 void func_angle_register(void) {
-    MicroLibMetadata meta = {
-        .name = "ANGLE",
-        .category = "Math Functions",
-        .syntax = "ANGLE(x, y)",
-        .help_text = "Returns counterclockwise angle in radians from positive x-axis to (x, y) in [0, 2*pi) (ANSI Full BASIC 1987).",
-        .error_codes = "Error 13: Type Mismatch"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_angle_desc);
 }
 
 BValue func_angle_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err) {

@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (sys_fn.c)
 // NEEDS: libcore (memory.h, memory.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libengine (csrlin.h, string.c, vm.h)
 // NEEDS: libkernel (vcon.h, vcon.c)
 // Provides runtime implementation for the CSRLIN built-in function in BASIC++.
@@ -11,21 +11,25 @@
 // ---- Includes ----
 
 #include "eval/functions/system/terminal/csrlin.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "vm/vm.h"
 #include "device/vcon.h"
 
 #include "runtime/string.h"
 #include "runtime/memory.h"
+
+static const LangDesc g_csrlin_desc = {
+    .name = "CSRLIN",
+    .category = "System / Screen Functions",
+    .syntax = "row% = CSRLIN",
+    .description = "Returns the current vertical line (row) position of the cursor (1-indexed).",
+    .error_summary = "Error 13: Type Mismatch (CSRLIN expects no arguments)",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_FUNCTION
+};
 void func_csrlin_register(void) {
-    MicroLibMetadata meta = {
-        .name = "CSRLIN",
-        .category = "System / Screen Functions",
-        .syntax = "row% = CSRLIN",
-        .help_text = "Returns the current vertical line (row) position of the cursor (1-indexed).",
-        .error_codes = "Error 13: Type Mismatch (CSRLIN expects no arguments)"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_csrlin_desc);
 }
 
 BValue func_csrlin_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err) {

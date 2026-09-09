@@ -1,26 +1,72 @@
-# `ATAN2` 2-Argument Arctangent (Universal Dual-Format)
+<!--
+Title:        ATAN2
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/eval/functions/math/trig/atan2.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Function/Operator Definition
+# `ATAN2` Keyword Reference
 
-The `ATAN2` keyword computes the angle $\theta$ in radians between the positive x-axis and the ray to point $(x, y)$, using the signs of both arguments to determine the correct quadrant ($-\pi \le \theta \le \pi$). It is supported in both **infix** (`y ATAN2 x`) and **prefix** (`ATAN2(y, x)`) notation.
+## Source Header
 
-### Syntax Signatures:
-```basic
-theta = y ATAN2 x
-theta = ATAN2(y, x)
+```c
+// FILENAME: runtime_atan2.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine (math_fn.c)
+// NEEDS: libcore (math.h, language_descriptor.h, string.h)
+// NEEDS: libengine (runtime_atan2.h, math.c, string.c)
+// Provides runtime implementation for the ATAN2 built-in function in BASIC++.
+//
+// ---- Includes ----
 ```
 
-### Operational Rules:
-- Returns $\operatorname{atan2}(y, x)$ in radians in range $[-\pi, \pi]$.
-- In RPN stack evaluation blocks: `{ y x ATAN2 }`.
+## 1. Description & Usage
+
+Returns the 2-argument arctangent of y and x in radians.
+
+## 2. Syntax
+
+```basic
+ATAN2(y, x)
+```
+
+## 3. Code Example
+
+```basic
+10 Val = ATAN2(y, 10)
+20 PRINT "Result: "; Val
+```
+
+## 4. Error Conditions
+
+Error 13: Type Mismatch (ATAN2 expects two numeric arguments)
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Math Functions
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_PURE
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 REM Infix notation
-20 PRINT "1 ATAN2 1 = "; 1 ATAN2 1 : REM Outputs 0.785398... (pi/4)
-30 REM Prefix functional notation
-40 PRINT "ATAN2(0, -1) = "; ATAN2(0, -1) : REM Outputs 3.14159... (pi)
-```
+| Field | Value |
+|---|---|
+| Name | ATAN2 |
+| Category | Math Functions |
+| Syntax | ATAN2(y, x) |
+| Description | Returns the 2-argument arctangent of y and x in radians. |
+| Error Summary | Error 13: Type Mismatch (ATAN2 expects two numeric arguments) |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_PURE |
+| Feature Type | FEATURE_FUNCTION |
+| Delimiter Mask | none |
+| Compatibility | none |
+| Since Version | none |
+| Source File | engine/src/eval/functions/math/trig/atan2.c |

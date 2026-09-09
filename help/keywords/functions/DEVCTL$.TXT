@@ -1,0 +1,68 @@
+TITLE: DEVCTL$
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/functions/system/hardware/func_devctl.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+DEVCTL$ KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: func_devctl.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, sys_fn.c
+    // NEEDS: libkernel (types.h, errors.h, vdev.h, dev_user.h), libcore (strings.
+    // Implementation for DEVCTL, DEVCTL$, and MESG built-in functions.
+    //
+    // ---- Includes ----
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Sends hardware device control command and returns response string.
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    DEVCTL$(dev$, cmd[, arg1, arg2])
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = DEVCTL$(dev$, cmd[, arg1, arg2])
+    20 PRINT "Result: "; Val
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 5: Illegal Function Call (invalid device or command)
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Device Control
+Subsystem:     SUBSYSTEM_KERNEL
+Safety Level:  SAFETY_UNSAFE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  DEVCTL$
+Category              Device Control
+Syntax                DEVCTL$(dev$, cmd[, arg1, arg2])
+Description           Sends hardware device control command and returns r...
+Error Summary         Error 5: Illegal Function Call (invalid device or c...
+Subsystem             SUBSYSTEM_KERNEL
+Safety Level          SAFETY_UNSAFE
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/eval/functions/system/hardware/func_devc...

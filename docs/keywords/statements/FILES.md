@@ -1,25 +1,75 @@
-# `FILES` Filesystem Directory Listing Statement
+<!--
+Title:        FILES
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/statements/filesystem/dir_ops/files.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Keyword Definition
+# `FILES` Keyword Reference
 
-Displays a formatted list of files and directories on the active screen matching an optional wildcard.
+## Source Header
 
-### Syntax Signatures:
-```basic
-FILES [pattern$]
+```c
+// FILENAME: files.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore (ctype.h, ctype.c, file.h, file.c)
+// NEEDS: libcore (language_descriptor.h, string.h)
+// NEEDS: libengine (eval.h, eval.c, files.h, lexer.h, lexer.c, string.c, vm.h
+// NEEDS: libkernel (errors.h, security.h, security.c, vdev.h, vdev.c)
+// NEEDS: libplatform (platform.h)
+// Provides runtime implementation for the FILES statement in BASIC++.
+//
+// ---- Includes ----
 ```
 
-### Error Handling & Boundary Conditions:
-- **Error 76 (ERR_PATH_NOT_FOUND)**: Path not found.
+## 1. Description & Usage
 
-### Operational Notes:
-- Standard GW-BASIC directory listing command.
+Displays directory listing matching specified file pattern.
+
+## 2. Syntax
+
+```basic
+FILES [filespec]
+```
+
+## 3. Code Example
+
+```basic
+10 REM FILES Demonstration
+20 PRINT "FILES executed successfully."
+```
+
+## 4. Error Conditions
+
+Error 2: Syntax Error, Error 53: File Not Found, Error 70: Permission Denied
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Filesystem I/O
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_IO
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 FILES "*.DAT"
-20 FILES "C:\GAMES\*.BAS"
-```
+| Field | Value |
+|---|---|
+| Name | FILES |
+| Category | Filesystem I/O |
+| Syntax | FILES [filespec] |
+| Description | Displays directory listing matching specified file pattern. |
+| Error Summary | Error 2: Syntax Error, Error 53: File Not Found, Error 70: Permission Denied |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_IO |
+| Feature Type | FEATURE_STATEMENT |
+| Delimiter Mask | none |
+| Compatibility | none |
+| Since Version | none |
+| Source File | engine/src/statements/filesystem/dir_ops/files.c |

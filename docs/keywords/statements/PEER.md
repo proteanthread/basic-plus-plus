@@ -1,0 +1,75 @@
+<!--
+Title:        PEER
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/statements/network/stmt_peer.c
+Generated:    no, hand-written
+Status:       current
+-->
+
+# `PEER` Keyword Reference
+
+## Source Header
+
+```c
+// FILENAME: stmt_peer.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore (memops.h, memops.c)
+// NEEDS: libcore (language_descriptor.h, peer.h, peer.c)
+// NEEDS: libcore (strings.h, strings.c, strops.h, strops.c)
+// NEEDS: libcore (variables.h, variables.c)
+// NEEDS: libengine (eval.h, eval.c, events_net.h, events_net.c, stmt_peer.h)
+// Implements the universal PEER statement for connectionless peer-to-peer lin
+//
+// ---- Includes ----
+```
+
+## 1. Description & Usage
+
+Controls connectionless peer-to-peer communication and mesh networking.
+
+## 2. Syntax
+
+```basic
+PEER.INIT [channel] | PEER.ADD peer_id$ [, mac$] | PEER.SEND target$, data$ | PEER ON|OFF|STOP
+```
+
+## 3. Code Example
+
+```basic
+10 REM PEER Demonstration
+20 PRINT "PEER executed successfully."
+```
+
+## 4. Error Conditions
+
+Error 5: Syntax error in PEER statement
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Hardware & Network
+- **Subsystem**: SUBSYSTEM_SERVER
+- **Safety Level**: SAFETY_IO
+
+---
+
+## LanguageDescriptor (LangDesc) Quick Reference
+
+| Field | Value |
+|---|---|
+| Name | PEER |
+| Category | Hardware & Network |
+| Syntax | PEER.INIT [channel] \| PEER.ADD peer_id$ [, mac$] \| PEER.SEND target$, data$ \| PEER ON\|OFF\|STOP |
+| Description | Controls connectionless peer-to-peer communication and mesh networking. |
+| Error Summary | Error 5: Syntax error in PEER statement |
+| Subsystem | SUBSYSTEM_SERVER |
+| Safety Level | SAFETY_IO |
+| Feature Type | FEATURE_STATEMENT |
+| Delimiter Mask | none |
+| Compatibility | none |
+| Since Version | none |
+| Source File | engine/src/statements/network/stmt_peer.c |

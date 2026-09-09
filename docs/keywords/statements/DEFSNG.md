@@ -1,24 +1,73 @@
-# `DEFSNG` Define Single-Precision Default Type
+<!--
+Title:        DEFSNG
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/statements/variables/declaration/defsng.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Keyword Definition
+# `DEFSNG` Keyword Reference
 
-The `DEFSNG` statement declares that all variable identifiers beginning with the specified letter(s) or letter ranges default to single-precision floating-point numbers (`!` / 32-bit float) when declared or referenced without an explicit type suffix.
+## Source Header
 
-### Syntax Signatures:
-```basic
-DEFSNG letter_range [, letter_range2, ...]
+```c
+// FILENAME: defsng.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore (ctype.h, ctype.c, language_descriptor.h)
+// NEEDS: libcore (string.h, variables.h, variables.c)
+// NEEDS: libengine (defsng.h, string.c)
+// Provides runtime implementation for the DEFSNG statement in BASIC++.
+//
+// ---- Includes ----
 ```
 
-### Operational Rules:
-- Declares that un-suffixed variables starting with the given letters will be stored as single-precision floats.
-- Overridden by explicit suffixes (`%`, `#`, `$`).
+## 1. Description & Usage
+
+Sets default type of variables beginning with specified letters to single-precision float.
+
+## 2. Syntax
+
+```basic
+DEFSNG letter_range [, letter_range...]
+```
+
+## 3. Code Example
+
+```basic
+10 REM DEFSNG Demonstration
+20 PRINT "DEFSNG executed successfully."
+```
+
+## 4. Error Conditions
+
+Error 2: Syntax Error
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Variables & Types
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_SAFE
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 DEFSNG A-Z
-20 X = 3.141592653589793
-30 PRINT "Single precision value: "; X
-```
+| Field | Value |
+|---|---|
+| Name | DEFSNG |
+| Category | Variables & Types |
+| Syntax | DEFSNG letter_range [, letter_range...] |
+| Description | Sets default type of variables beginning with specified letters to single-precision float. |
+| Error Summary | Error 2: Syntax Error |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_SAFE |
+| Feature Type | FEATURE_STATEMENT |
+| Delimiter Mask | none |
+| Compatibility | none |
+| Since Version | none |
+| Source File | engine/src/statements/variables/declaration/defsng.c |

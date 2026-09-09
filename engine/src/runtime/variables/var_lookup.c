@@ -4,13 +4,18 @@
 // NEEDED BY: libengine, BASIC++ runtime
 // NEEDS: libcore (variables_internal.h)
 // Provides core logic and interface definitions for var_lookup within BASIC++.
-//
-// ---- Includes ----
 
 #include "runtime/variables_internal.h"
+#include "runtime/format/snprintf.h"
+#include "runtime/string/strops.h"
+#include "runtime/string/memops.h"
+#include "runtime/ctype/ctype.h"
+#include "runtime/memory/alloc.h"
+#include "platform/platform.h"
 
 //
 // ---- String & Hash Helpers ----
+//
 
 int basic_strcasecmp(const char *s1, const char *s2) {
     while (*s1 && *s2) {
@@ -30,10 +35,10 @@ int basic_strcasecmp(const char *s1, const char *s2) {
 }
 
 char *basic_strdup(const char *src) {
-    size_t len = strlen(src);
-    char *dest = (char *)calloc(1, len + 1);
+    size_t len = runtime_strlen(src);
+    char *dest = (char *)runtime_calloc(1, len + 1);
     if (dest) {
-        memcpy(dest, src, len + 1);
+        runtime_memcpy(dest, src, len + 1);
     }
     return dest;
 }
@@ -41,7 +46,7 @@ char *basic_strdup(const char *src) {
 unsigned int hash_name(VariableContext *ctx, const char *name) {
     unsigned int hash = 2166136261u;
     while (*name) {
-        char c = (ctx && ctx->case_sensitive) ? *name : (char)toupper((unsigned char)*name);
+        char c = (ctx && ctx->case_sensitive) ? *name : (char)runtime_toupper((unsigned char)*name);
         hash ^= (unsigned char)c;
         hash *= 16777619u;
         name++;
@@ -52,7 +57,7 @@ unsigned int hash_name(VariableContext *ctx, const char *name) {
 void normalize_name(VariableContext *ctx, char *out, const char *in, size_t max_len) {
     size_t i = 0;
     while (in[i] && i < max_len - 1) {
-        out[i] = (ctx && ctx->case_sensitive) ? in[i] : (char)toupper((unsigned char)in[i]);
+        out[i] = (ctx && ctx->case_sensitive) ? in[i] : (char)runtime_toupper((unsigned char)in[i]);
         i++;
     }
     out[i] = '\0';
@@ -64,44 +69,184 @@ static void get_scoped_name(VariableContext *ctx, const char *name, char *out_bu
 
     bool is_shared = false;
     for (int i = 0; i < ctx->shared_count; ++i) {
-        if (strcmp(ctx->shared_vars[i], norm) == 0) {
+        if (runtime_strcmp(ctx->shared_vars[i], norm) == 0) {
             is_shared = true;
             break;
         }
     }
 
     if (!is_shared && ctx->active_scope[0] != '\0') {
-        snprintf(out_buf, out_max, "%s:%s", ctx->active_scope, norm);
-    } else if (!is_shared && ctx->active_namespace[0] != '\0' && strchr(norm, '.') == NULL) {
-        snprintf(out_buf, out_max, "%s.%s", ctx->active_namespace, norm);
+        runtime_snprintf(out_buf, out_max, "%s:%s", ctx->active_scope, norm);
+    } else if (!is_shared && ctx->active_namespace[0] != '\0' && runtime_strchr(norm, '.') == NULL) {
+        runtime_snprintf(out_buf, out_max, "%s.%s", ctx->active_namespace, norm);
     } else {
-        strncpy(out_buf, norm, out_max - 1);
+        runtime_strncpy(out_buf, norm, out_max - 1);
         out_buf[out_max - 1] = '\0';
     }
 }
 
 static char get_base_first_letter(const char *lookup_name) {
-    const char *p = strchr(lookup_name, ':');
+    const char *p = runtime_strchr(lookup_name, ':');
     if (p) {
         p++;
     } else {
         p = lookup_name;
     }
-    const char *dot = strchr(p, '.');
+    const char *dot = runtime_strchr(p, '.');
     if (dot) {
         p = dot + 1;
     }
-    while (*p && !isalpha((unsigned char)*p)) {
+    while (*p && !runtime_isalpha((unsigned char)*p)) {
         p++;
     }
     if (*p) {
-        return (char)toupper((unsigned char)*p);
+        return (char)runtime_toupper((unsigned char)*p);
     }
     return '\0';
 }
 
 //
+// ---- Magic & Dynamic Variable Helpers ----
+//
+
+static void update_magic_var_value(VariableContext *ctx, const char *name, BValue *res) {
+    if (!ctx || !name || !res) return;
+
+    if (basic_strcasecmp(name, "_CLIPBOARD$") == 0) {
+        char *clip = platform_clipboard_get();
+        if (clip) {
+            if (res->type == VAL_STRING && res->as.string) {
+                str_release(ctx->str, res->as.string);
+            }
+            res->type = VAL_STRING;
+            res->as.string = str_create(ctx->str, clip, runtime_strlen(clip));
+            platform_clipboard_free(clip);
+        }
+    } else if (basic_strcasecmp(name, "HMOUSE") == 0 || basic_strcasecmp(name, "_HMOUSE") == 0) {
+        int col = 1, row = 1;
+        platform_mouse_get_position(&col, &row);
+        res->type = VAL_NUMBER;
+        res->as.number = col;
+    } else if (basic_strcasecmp(name, "VMOUSE") == 0 || basic_strcasecmp(name, "_VMOUSE") == 0) {
+        int col = 1, row = 1;
+        platform_mouse_get_position(&col, &row);
+        res->type = VAL_NUMBER;
+        res->as.number = row;
+    } else if (basic_strcasecmp(name, "MOUSE") == 0 || basic_strcasecmp(name, "_MOUSE") == 0 ||
+               basic_strcasecmp(name, "MOUSE$") == 0 || basic_strcasecmp(name, "_MOUSE$") == 0) {
+        int col = 1, row = 1;
+        platform_mouse_get_position(&col, &row);
+        int hover_char = 32;
+        extern VConContext *g_vcon_context;
+        if (g_vcon_context) {
+            int active_idx = vcon_get_active_index(g_vcon_context);
+            hover_char = vcon_get_char_at(g_vcon_context, active_idx, row - 1, col - 1);
+        }
+        char buf[2] = {(char)hover_char, 0};
+        if (res->type == VAL_STRING && res->as.string) {
+            str_release(ctx->str, res->as.string);
+        }
+        res->type = VAL_STRING;
+        res->as.string = str_create(ctx->str, buf, 1);
+    } else if (basic_strcasecmp(name, "TRIG") == 0 || basic_strcasecmp(name, "_TRIG") == 0) {
+        int mask = 0;
+        if (platform_mouse_get_button(0)) mask |= 1;
+        if (platform_mouse_get_button(1)) mask |= 2;
+        if (platform_mouse_get_button(2)) mask |= 4;
+        res->type = VAL_NUMBER;
+        res->as.number = mask;
+    } else if (basic_strcasecmp(name, "ST") == 0 || basic_strcasecmp(name, "_ST") == 0) {
+        res->type = VAL_NUMBER;
+        res->as.number = 0.0;
+    } else if (basic_strcasecmp(name, "DSTATS") == 0 || basic_strcasecmp(name, "DSTAT") == 0) {
+        res->type = VAL_NUMBER;
+        res->as.number = 0.0;
+    } else if (basic_strcasecmp(name, "SOFTEV") == 0) {
+        res->type = VAL_NUMBER;
+        res->as.number = 1010.0;
+    } else if (basic_strcasecmp(name, "PWRED") == 0) {
+        res->type = VAL_NUMBER;
+        res->as.number = 165.0;
+    } else if (basic_strcasecmp(name, "RESET_VECTOR") == 0) {
+        res->type = VAL_NUMBER;
+        res->as.number = 64098.0;
+    } else if (basic_strcasecmp(name, "_BATTERY%") == 0 || basic_strcasecmp(name, "_BATTERY") == 0) {
+        res->type = VAL_INTEGER;
+        res->as.number = (double)platform_get_battery_level();
+    } else if (basic_strcasecmp(name, "_TEMPERATURE") == 0) {
+        res->type = VAL_NUMBER;
+        res->as.number = platform_get_temperature();
+    } else if (basic_strcasecmp(name, "_CPU_LOAD%") == 0 || basic_strcasecmp(name, "_CPU_LOAD") == 0) {
+        res->type = VAL_INTEGER;
+        res->as.number = (double)platform_get_cpu_load();
+    } else if (basic_strcasecmp(name, "_WIFI_RSSI%") == 0 || basic_strcasecmp(name, "_WIFI_RSSI") == 0) {
+        res->type = VAL_INTEGER;
+        res->as.number = (double)platform_get_wifi_rssi();
+    } else if (basic_strcasecmp(name, "_FREE_STACK") == 0) {
+        res->type = VAL_NUMBER;
+        res->as.number = 1048576.0;
+    } else if (basic_strcasecmp(name, "_TASK_ID") == 0) {
+        res->type = VAL_INTEGER;
+        res->as.number = 0.0;
+    } else if (basic_strcasecmp(name, "_TASK_COUNT") == 0) {
+        res->type = VAL_INTEGER;
+        res->as.number = 1.0;
+    } else if (basic_strcasecmp(name, "_ALARM_PENDING") == 0) {
+        res->type = VAL_INTEGER;
+        res->as.number = 0.0;
+    } else if (basic_strcasecmp(name, "_TRAP_FLAGS") == 0) {
+        res->type = VAL_INTEGER;
+        res->as.number = 0.0;
+    } else if (basic_strcasecmp(name, "MEM") == 0) {
+        res->type = VAL_NUMBER;
+        res->as.number = (double)(ctx->mem ? mem_get_total_ram(ctx->mem) : 671088640L);
+    }
+}
+
+DynamicVarEntry *var_find_dynamic(VariableContext *ctx, const char *name) {
+    if (!ctx || !name) return NULL;
+    DynamicVarEntry *cur = ctx->dynamic_vars;
+    while (cur) {
+        if (basic_strcasecmp(cur->name, name) == 0) return cur;
+        cur = cur->next;
+    }
+    return NULL;
+}
+
+bool var_register_dynamic(VariableContext *ctx, const char *name, BppVarGetter getter, BppVarSetter setter, void *user_data) {
+    if (!ctx || !name || !*name) return false;
+    DynamicVarEntry *entry = var_find_dynamic(ctx, name);
+    if (!entry) {
+        entry = (DynamicVarEntry *)runtime_calloc(1, sizeof(DynamicVarEntry));
+        if (!entry) return false;
+        runtime_strncpy(entry->name, name, sizeof(entry->name) - 1);
+        entry->next = ctx->dynamic_vars;
+        ctx->dynamic_vars = entry;
+    }
+    entry->getter = getter;
+    entry->setter = setter;
+    entry->user_data = user_data;
+    return true;
+}
+
+bool var_register_basic_dynamic(VariableContext *ctx, const char *name, const char *read_fn, const char *write_fn) {
+    if (!ctx || !name || !*name) return false;
+    DynamicVarEntry *entry = var_find_dynamic(ctx, name);
+    if (!entry) {
+        entry = (DynamicVarEntry *)runtime_calloc(1, sizeof(DynamicVarEntry));
+        if (!entry) return false;
+        runtime_strncpy(entry->name, name, sizeof(entry->name) - 1);
+        entry->next = ctx->dynamic_vars;
+        ctx->dynamic_vars = entry;
+    }
+    if (read_fn) runtime_strncpy(entry->read_fn, read_fn, sizeof(entry->read_fn) - 1);
+    if (write_fn) runtime_strncpy(entry->write_fn, write_fn, sizeof(entry->write_fn) - 1);
+    return true;
+}
+
+//
 // ---- Lookup & Assignment ----
+//
 
 BValue *var_lookup(VariableContext *ctx, const char *name, bool create_if_missing) {
     if (!ctx || !name || !*name) return NULL;
@@ -109,10 +254,43 @@ BValue *var_lookup(VariableContext *ctx, const char *name, bool create_if_missin
     bool is_special = is_magic_virtual_var(name);
     bool can_cache = (!is_special && ctx->active_scope[0] == '\0' && ctx->active_namespace[0] == '\0');
 
+    // 1. Ultra-fast path: Single-letter numeric variable (e.g. A..Z, i, j, k, x, y, r, c)
+    if (can_cache && ctx->shared_count == 0) {
+        char c0 = name[0];
+        char c1 = name[1];
+        if ((c0 >= 'A' && c0 <= 'Z') || (c0 >= 'a' && c0 <= 'z')) {
+            if (c1 == '\0' || ((c1 == '%' || c1 == '!' || c1 == '#' || c1 == '&') && name[2] == '\0')) {
+                int letter_idx = (c0 >= 'a') ? (c0 - 'a') : (c0 - 'A');
+                if (ctx->global_def_types[letter_idx] != VAL_STRING) {
+                    if (ctx->fast_scalars_valid[letter_idx]) {
+                        return &ctx->fast_scalars[letter_idx];
+                    }
+                    if (create_if_missing) {
+                        ValueType dt = ctx->global_def_types[letter_idx];
+                        bool is_int = (c1 == '%' || dt == VAL_INTEGER);
+                        ctx->fast_scalars[letter_idx].type = is_int ? VAL_INTEGER : VAL_NUMBER;
+                        ctx->fast_scalars[letter_idx].as.number = 0.0;
+                        ctx->fast_scalars_valid[letter_idx] = true;
+                        return &ctx->fast_scalars[letter_idx];
+                    }
+                    return NULL;
+                }
+            }
+        }
+    }
+
+    // 2. Direct-mapped 256-slot hash cache
+    uint32_t name_h = 2166136261u;
     if (can_cache) {
-        for (int i = 0; i < VAR_CACHE_SIZE; ++i) {
-            if (ctx->mru_cache[i].valid && basic_strcasecmp(ctx->mru_cache[i].name, name) == 0) {
-                return ctx->mru_cache[i].val_ptr;
+        for (const char *p = name; *p; p++) {
+            char c = (ctx->case_sensitive) ? *p : (char)runtime_toupper((unsigned char)*p);
+            name_h ^= (unsigned char)c;
+            name_h *= 16777619u;
+        }
+        uint32_t slot = name_h & (DIRECT_VAR_CACHE_SIZE - 1);
+        if (ctx->direct_cache[slot].valid && ctx->direct_cache[slot].hash == name_h) {
+            if (basic_strcasecmp(ctx->direct_cache[slot].name, name) == 0) {
+                return ctx->direct_cache[slot].val_ptr;
             }
         }
     }
@@ -124,82 +302,44 @@ BValue *var_lookup(VariableContext *ctx, const char *name, bool create_if_missin
     VarEntry *entry = ctx->buckets[bucket];
 
     while (entry) {
-        if (strcmp(entry->name, lookup_name) == 0) {
+        if (runtime_strcmp(entry->name, lookup_name) == 0) {
             BValue *res = &entry->value;
-            if (basic_strcasecmp(name, "_CLIPBOARD$") == 0) {
-                char *clip = platform_clipboard_get();
-                if (clip) {
-                    if (res->as.string) {
-                        str_release(ctx->str, res->as.string);
-                    }
-                    res->as.string = str_create(ctx->str, clip, strlen(clip));
-                    free(clip);
-                }
-            } else if (basic_strcasecmp(name, "HMOUSE") == 0 || basic_strcasecmp(name, "_HMOUSE") == 0) {
-                int col = 1, row = 1;
-                platform_mouse_get_position(&col, &row);
-                res->type = VAL_NUMBER;
-                res->as.number = col;
-            } else if (basic_strcasecmp(name, "VMOUSE") == 0 || basic_strcasecmp(name, "_VMOUSE") == 0) {
-                int col = 1, row = 1;
-                platform_mouse_get_position(&col, &row);
-                res->type = VAL_NUMBER;
-                res->as.number = row;
-            } else if (basic_strcasecmp(name, "MOUSE") == 0 || basic_strcasecmp(name, "_MOUSE") == 0 ||
-                       basic_strcasecmp(name, "MOUSE$") == 0 || basic_strcasecmp(name, "_MOUSE$") == 0) {
-                int col = 1, row = 1;
-                platform_mouse_get_position(&col, &row);
-                int hover_char = 32;
-                extern VConContext *g_vcon_context;
-                if (g_vcon_context) {
-                    int active_idx = vcon_get_active_index(g_vcon_context);
-                    hover_char = vcon_get_char_at(g_vcon_context, active_idx, row - 1, col - 1);
-                }
-                char buf[2] = {(char)hover_char, 0};
-                if (res->type == VAL_STRING && res->as.string) {
-                    str_release(ctx->str, res->as.string);
-                }
-                res->type = VAL_STRING;
-                res->as.string = str_create(ctx->str, buf, 1);
-            } else if (basic_strcasecmp(name, "TRIG") == 0 || basic_strcasecmp(name, "_TRIG") == 0) {
-                int mask = 0;
-                if (platform_mouse_get_button(0)) mask |= 1;
-                if (platform_mouse_get_button(1)) mask |= 2;
-                if (platform_mouse_get_button(2)) mask |= 4;
-                res->type = VAL_NUMBER;
-                res->as.number = mask;
+            update_magic_var_value(ctx, name, res);
+            DynamicVarEntry *dvar = var_find_dynamic(ctx, name);
+            if (dvar && dvar->getter) {
+                *res = dvar->getter(ctx, name, dvar->user_data);
             }
             if (can_cache) {
-                uint8_t slot = ctx->mru_head;
-                strncpy(ctx->mru_cache[slot].name, name, sizeof(ctx->mru_cache[slot].name) - 1);
-                ctx->mru_cache[slot].name[sizeof(ctx->mru_cache[slot].name) - 1] = '\0';
-                ctx->mru_cache[slot].val_ptr = res;
-                ctx->mru_cache[slot].valid = true;
-                ctx->mru_head = (slot + 1) & (VAR_CACHE_SIZE - 1);
+                uint32_t slot = name_h & (DIRECT_VAR_CACHE_SIZE - 1);
+                runtime_strncpy(ctx->direct_cache[slot].name, name, sizeof(ctx->direct_cache[slot].name) - 1);
+                ctx->direct_cache[slot].name[sizeof(ctx->direct_cache[slot].name) - 1] = '\0';
+                ctx->direct_cache[slot].hash = name_h;
+                ctx->direct_cache[slot].val_ptr = res;
+                ctx->direct_cache[slot].valid = true;
             }
             return res;
         }
         entry = entry->next;
     }
 
-    if (!create_if_missing) {
+    if (!create_if_missing && !is_special && !var_find_dynamic(ctx, name)) {
         return NULL;
     }
 
-    if (ctx->is_explicit) {
+    if (ctx->is_explicit && !is_special && !var_find_dynamic(ctx, name)) {
         return NULL;
     }
 
-    VarEntry *new_entry = (VarEntry *)calloc(1, sizeof(VarEntry));
+    VarEntry *new_entry = (VarEntry *)runtime_calloc(1, sizeof(VarEntry));
     if (!new_entry) return NULL;
 
     new_entry->name = basic_strdup(lookup_name);
     if (!new_entry->name) {
-        free(new_entry);
+        runtime_free(new_entry);
         return NULL;
     }
 
-    size_t len = strlen(lookup_name);
+    size_t len = runtime_strlen(lookup_name);
     char last = lookup_name[len - 1];
     if (last == '$' || basic_strcasecmp(name, "MOUSE") == 0 || basic_strcasecmp(name, "_MOUSE") == 0) {
         new_entry->value.type = VAL_STRING;
@@ -231,51 +371,19 @@ BValue *var_lookup(VariableContext *ctx, const char *name, bool create_if_missin
     new_entry->next = ctx->buckets[bucket];
     ctx->buckets[bucket] = new_entry;
 
-    if (basic_strcasecmp(name, "_CLIPBOARD$") == 0) {
-        char *clip = platform_clipboard_get();
-        if (clip) {
-            new_entry->value.as.string = str_create(ctx->str, clip, strlen(clip));
-            free(clip);
-        }
-    } else if (basic_strcasecmp(name, "HMOUSE") == 0 || basic_strcasecmp(name, "_HMOUSE") == 0) {
-        int col = 1, row = 1;
-        platform_mouse_get_position(&col, &row);
-        new_entry->value.type = VAL_NUMBER;
-        new_entry->value.as.number = col;
-    } else if (basic_strcasecmp(name, "VMOUSE") == 0 || basic_strcasecmp(name, "_VMOUSE") == 0) {
-        int col = 1, row = 1;
-        platform_mouse_get_position(&col, &row);
-        new_entry->value.type = VAL_NUMBER;
-        new_entry->value.as.number = row;
-    } else if (basic_strcasecmp(name, "MOUSE") == 0 || basic_strcasecmp(name, "_MOUSE") == 0 ||
-               basic_strcasecmp(name, "MOUSE$") == 0 || basic_strcasecmp(name, "_MOUSE$") == 0) {
-        int col = 1, row = 1;
-        platform_mouse_get_position(&col, &row);
-        int hover_char = 32;
-        extern VConContext *g_vcon_context;
-        if (g_vcon_context) {
-            int active_idx = vcon_get_active_index(g_vcon_context);
-            hover_char = vcon_get_char_at(g_vcon_context, active_idx, row - 1, col - 1);
-        }
-        char buf[2] = {(char)hover_char, 0};
-        new_entry->value.type = VAL_STRING;
-        new_entry->value.as.string = str_create(ctx->str, buf, 1);
-    } else if (basic_strcasecmp(name, "TRIG") == 0 || basic_strcasecmp(name, "_TRIG") == 0) {
-        int mask = 0;
-        if (platform_mouse_get_button(0)) mask |= 1;
-        if (platform_mouse_get_button(1)) mask |= 2;
-        if (platform_mouse_get_button(2)) mask |= 4;
-        new_entry->value.type = VAL_NUMBER;
-        new_entry->value.as.number = mask;
+    update_magic_var_value(ctx, name, &new_entry->value);
+    DynamicVarEntry *dvar = var_find_dynamic(ctx, name);
+    if (dvar && dvar->getter) {
+        new_entry->value = dvar->getter(ctx, name, dvar->user_data);
     }
 
     if (can_cache) {
-        uint8_t slot = ctx->mru_head;
-        strncpy(ctx->mru_cache[slot].name, name, sizeof(ctx->mru_cache[slot].name) - 1);
-        ctx->mru_cache[slot].name[sizeof(ctx->mru_cache[slot].name) - 1] = '\0';
-        ctx->mru_cache[slot].val_ptr = &new_entry->value;
-        ctx->mru_cache[slot].valid = true;
-        ctx->mru_head = (slot + 1) & (VAR_CACHE_SIZE - 1);
+        uint32_t slot = name_h & (DIRECT_VAR_CACHE_SIZE - 1);
+        runtime_strncpy(ctx->direct_cache[slot].name, name, sizeof(ctx->direct_cache[slot].name) - 1);
+        ctx->direct_cache[slot].name[sizeof(ctx->direct_cache[slot].name) - 1] = '\0';
+        ctx->direct_cache[slot].hash = name_h;
+        ctx->direct_cache[slot].val_ptr = &new_entry->value;
+        ctx->direct_cache[slot].valid = true;
     }
 
     return &new_entry->value;
@@ -283,6 +391,32 @@ BValue *var_lookup(VariableContext *ctx, const char *name, bool create_if_missin
 
 bool var_assign(VariableContext *ctx, const char *name, BValue val) {
     if (!ctx || !name || !*name) return false;
+
+    // Ultra-Fast Path: Single-letter global scalar assignment (e.g. X, Y, I, J, K, A..Z)
+    if (ctx->active_scope[0] == '\0' && ctx->active_namespace[0] == '\0' && ctx->shared_count == 0) {
+        char c0 = name[0];
+        char c1 = name[1];
+        if ((c0 >= 'A' && c0 <= 'Z') || (c0 >= 'a' && c0 <= 'z')) {
+            if (c1 == '\0' || ((c1 == '%' || c1 == '!' || c1 == '#' || c1 == '&') && name[2] == '\0')) {
+                if (val.type == VAL_NUMBER || val.type == VAL_INTEGER) {
+                    int idx = (c0 >= 'a') ? (c0 - 'a') : (c0 - 'A');
+                    ValueType dt = ctx->global_def_types[idx];
+                    if (dt != VAL_STRING) {
+                        bool is_int = (c1 == '%' || dt == VAL_INTEGER);
+                        ctx->fast_scalars[idx].type = is_int ? VAL_INTEGER : VAL_NUMBER;
+                        ctx->fast_scalars[idx].as.number = is_int ? (double)((int32_t)val.as.number) : val.as.number;
+                        ctx->fast_scalars_valid[idx] = true;
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+
+    DynamicVarEntry *dvar = var_find_dynamic(ctx, name);
+    if (dvar && dvar->setter) {
+        return dvar->setter(ctx, name, val, dvar->user_data);
+    }
 
     BValue *var = var_lookup(ctx, name, true);
     if (!var) {
@@ -312,11 +446,12 @@ bool var_assign(VariableContext *ctx, const char *name, BValue val) {
         }
     }
 
-    size_t name_len = strlen(name);
+    size_t name_len = runtime_strlen(name);
     char name_last = (name_len > 0) ? name[name_len - 1] : '\0';
     bool has_numeric_sigil = (name_last == '%' || name_last == '!' || name_last == '#' || name_last == '&');
+    bool has_string_sigil = (name_last == '$');
 
-    if (var->type == VAL_STRING || (val.type == VAL_STRING && !has_numeric_sigil && var_get_def_type(ctx, ctx->active_scope, get_base_first_letter(name)) != VAL_INTEGER)) {
+    if (has_string_sigil || var->type == VAL_STRING || (val.type == VAL_STRING && !has_numeric_sigil && var_get_def_type(ctx, ctx->active_scope, get_base_first_letter(name)) != VAL_INTEGER)) {
         if (val.type == VAL_FIELD_STRING) {
             if (var->type == VAL_STRING && var->as.string) str_release(ctx->str, var->as.string);
             var->type = VAL_FIELD_STRING;
@@ -332,14 +467,27 @@ bool var_assign(VariableContext *ctx, const char *name, BValue val) {
             map_release(ctx->str, var->as.map);
         }
         var->type = VAL_STRING;
-        var->as.string = val.as.string;
-        if (var->as.string) {
-            str_add_ref(var->as.string);
+        size_t max_len = var_get_max_len(ctx, name);
+        if (max_len > 0 && val.as.string != NULL && str_len(val.as.string) > max_len) {
+            var->as.string = str_create(ctx->str, str_data(val.as.string), max_len);
+        } else {
+            var->as.string = val.as.string;
+            if (var->as.string) {
+                str_add_ref(var->as.string);
+            }
         }
         return true;
     } else if (var->type == VAL_FIELD_STRING) {
         if (val.type == VAL_FIELD_STRING) {
             var->as.field_str = val.as.field_str;
+            return true;
+        } else if (val.type == VAL_STRING) {
+            // Authentic vintage GW-BASIC field detachment: unbind from sector buffer to dynamic string
+            var->type = VAL_STRING;
+            var->as.string = val.as.string;
+            if (var->as.string) {
+                str_add_ref(var->as.string);
+            }
             return true;
         }
         return false;
@@ -363,6 +511,54 @@ bool var_assign(VariableContext *ctx, const char *name, BValue val) {
         if (var->as.map) {
             map_add_ref(var->as.map);
         }
+    } else if (var->type == VAL_SET) {
+        if (val.type != VAL_SET) {
+            return false;
+        }
+        if (var->as.set) {
+            set_release(ctx->str, var->as.set);
+        }
+        var->as.set = val.as.set;
+        if (var->as.set) {
+            set_add_ref(var->as.set);
+        }
+    } else if (val.type == VAL_SET) {
+        if ((var->type == VAL_STRING && name_last == '$') || (var->type == VAL_INTEGER && name_last == '%')) {
+            return false;
+        }
+        if (var->type == VAL_STRING && var->as.string) str_release(ctx->str, var->as.string);
+        else if (var->type == VAL_MAP && var->as.map) map_release(ctx->str, var->as.map);
+        else if (var->type == VAL_SET && var->as.set) set_release(ctx->str, var->as.set);
+        else if (var->type == VAL_GROUP && var->as.group) group_release(ctx->str, var->as.group);
+        var->type = VAL_SET;
+        var->as.set = val.as.set;
+        if (var->as.set) {
+            set_add_ref(var->as.set);
+        }
+    } else if (var->type == VAL_GROUP) {
+        if (val.type != VAL_GROUP) {
+            return false;
+        }
+        if (var->as.group) {
+            group_release(ctx->str, var->as.group);
+        }
+        var->as.group = val.as.group;
+        if (var->as.group) {
+            group_add_ref(var->as.group);
+        }
+    } else if (val.type == VAL_GROUP) {
+        if ((var->type == VAL_STRING && name_last == '$') || (var->type == VAL_INTEGER && name_last == '%')) {
+            return false;
+        }
+        if (var->type == VAL_STRING && var->as.string) str_release(ctx->str, var->as.string);
+        else if (var->type == VAL_MAP && var->as.map) map_release(ctx->str, var->as.map);
+        else if (var->type == VAL_SET && var->as.set) set_release(ctx->str, var->as.set);
+        else if (var->type == VAL_GROUP && var->as.group) group_release(ctx->str, var->as.group);
+        var->type = VAL_GROUP;
+        var->as.group = val.as.group;
+        if (var->as.group) {
+            group_add_ref(var->as.group);
+        }
     } else if (val.type == VAL_ARRAY_REF) {
         if (var->type == VAL_STRING || var->type == VAL_INTEGER) {
             return false;
@@ -377,10 +573,16 @@ bool var_assign(VariableContext *ctx, const char *name, BValue val) {
         if (var->as.string) {
             str_add_ref(var->as.string);
         }
-    } else if (var->type == VAL_INTEGER) {
+    } else if (var->type == VAL_INTEGER || (!has_numeric_sigil && var_get_def_type(ctx, ctx->active_scope, get_base_first_letter(name)) == VAL_INTEGER)) {
         if (val.type == VAL_STRING) {
             return false;
         }
+        if (var->type == VAL_ARRAY_REF && var->as.string) {
+            str_release(ctx->str, var->as.string);
+        } else if (var->type == VAL_MAP && var->as.map) {
+            map_release(ctx->str, var->as.map);
+        }
+        var->type = VAL_INTEGER;
         var->as.number = (double)((int32_t)val.as.number);
     } else if (val.type == VAL_COMPLEX || var->type == VAL_COMPLEX) {
         if (val.type == VAL_STRING) {
@@ -424,22 +626,22 @@ BValue *var_declare(VariableContext *ctx, const char *name) {
     VarEntry *entry = ctx->buckets[bucket];
 
     while (entry) {
-        if (strcmp(entry->name, lookup_name) == 0) {
+        if (runtime_strcmp(entry->name, lookup_name) == 0) {
             return &entry->value;
         }
         entry = entry->next;
     }
 
-    VarEntry *new_entry = (VarEntry *)calloc(1, sizeof(VarEntry));
+    VarEntry *new_entry = (VarEntry *)runtime_calloc(1, sizeof(VarEntry));
     if (!new_entry) return NULL;
 
     new_entry->name = basic_strdup(lookup_name);
     if (!new_entry->name) {
-        free(new_entry);
+        runtime_free(new_entry);
         return NULL;
     }
 
-    size_t len = strlen(lookup_name);
+    size_t len = runtime_strlen(lookup_name);
     char last = lookup_name[len - 1];
 
     if (last == '$') {
@@ -461,3 +663,43 @@ BValue *var_declare(VariableContext *ctx, const char *name) {
 
     return &new_entry->value;
 }
+
+void var_set_max_len(VariableContext *ctx, const char *name, size_t max_len) {
+    if (!ctx || !name || !*name) return;
+    var_declare(ctx, name);
+    char lookup_name[512];
+    get_scoped_name(ctx, name, lookup_name, sizeof(lookup_name));
+    unsigned int bucket = hash_name(ctx, lookup_name);
+    VarEntry *entry = ctx->buckets[bucket];
+    while (entry) {
+        if (runtime_strcmp(entry->name, lookup_name) == 0) {
+            entry->max_len = max_len;
+            if (max_len > 0 && entry->value.type == VAL_STRING && entry->value.as.string) {
+                size_t slen = str_len(entry->value.as.string);
+                if (slen > max_len) {
+                    BppStringRef truncated = str_create(ctx->str, str_data(entry->value.as.string), max_len);
+                    str_release(ctx->str, entry->value.as.string);
+                    entry->value.as.string = truncated;
+                }
+            }
+            return;
+        }
+        entry = entry->next;
+    }
+}
+
+size_t var_get_max_len(VariableContext *ctx, const char *name) {
+    if (!ctx || !name || !*name) return 0;
+    char lookup_name[512];
+    get_scoped_name(ctx, name, lookup_name, sizeof(lookup_name));
+    unsigned int bucket = hash_name(ctx, lookup_name);
+    VarEntry *entry = ctx->buckets[bucket];
+    while (entry) {
+        if (runtime_strcmp(entry->name, lookup_name) == 0) {
+            return entry->max_len;
+        }
+        entry = entry->next;
+    }
+    return 0;
+}
+

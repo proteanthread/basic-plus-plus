@@ -17,10 +17,12 @@
 #include "runtime/vfs.h"
 #include "security/security.h"
 #include "device/vdev.h"
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <ctype.h>
+#include "runtime/format/snprintf.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "runtime/memory/alloc.h"
+#include "runtime/ctype/ctype.h"
+#include "platform/platform.h"
 
 #include "types/config.h"
 
@@ -41,14 +43,14 @@ static void safe_strcpy(char *dest, const char *src, size_t dest_max) {
 }
 
 void spec_registry_init(void) {
-    memset(spec_registry, 0, sizeof(spec_registry));
+    runtime_memset(spec_registry, 0, sizeof(spec_registry));
     spec_count = 0;
 }
 
 SpecObject *spec_find_by_name(const char *name) {
     if (!name) return NULL;
     for (int i = 0; i < spec_count; i++) {
-        if (strcasecmp(spec_registry[i].name, name) == 0) {
+        if (runtime_strcasecmp(spec_registry[i].name, name) == 0) {
             return &spec_registry[i];
         }
     }
@@ -76,7 +78,7 @@ int spec_register_inline(VMContext *vm, const char *name, SpecCategory cat, cons
     }
 
     SpecObject *spec = &spec_registry[spec_count];
-    memset(spec, 0, sizeof(SpecObject));
+    runtime_memset(spec, 0, sizeof(SpecObject));
 
     safe_strcpy(spec->name, name, sizeof(spec->name));
     spec->category = cat;
@@ -102,29 +104,25 @@ int spec_register_inline(VMContext *vm, const char *name, SpecCategory cat, cons
 
 static void trim_spaces(char *str) {
     // Trim trailing spaces/newlines
-    size_t len = strlen(str);
-    while (len > 0 && (isspace((unsigned char)str[len - 1]) || str[len - 1] == '\r' || str[len - 1] == '\n')) {
+    size_t len = runtime_strlen(str);
+    while (len > 0 && (runtime_isspace((unsigned char)str[len - 1]) || str[len - 1] == '\r' || str[len - 1] == '\n')) {
         str[len - 1] = '\0';
         len--;
-    }
-    // Trim leading spaces
-    char *start = str;
-    while (*start && isspace((unsigned char)*start)) {
-        start++;
-    }
-    if (start != str) {
-        memmove(str, start, strlen(start) + 1);
     }
 }
 
 static void extract_quoted(const char *src, char *dest, size_t dest_max) {
-    const char *quote1 = strchr(src, '"');
-    if (quote1) {
-        const char *quote2 = strchr(quote1 + 1, '"');
-        if (quote2) {
-            size_t len = (size_t)(quote2 - (quote1 + 1));
+    if (!src || !dest || dest_max == 0) return;
+    dest[0] = '\0';
+    const char *q1 = runtime_strchr(src, '"');
+    if (!q1) q1 = runtime_strchr(src, '\'');
+    if (q1) {
+        char quote = *q1;
+        const char *q2 = runtime_strchr(q1 + 1, quote);
+        if (q2) {
+            size_t len = (size_t)(q2 - (q1 + 1));
             if (len >= dest_max) len = dest_max - 1;
-            memcpy(dest, quote1 + 1, len);
+            runtime_strncpy(dest, q1 + 1, len);
             dest[len] = '\0';
             return;
         }
@@ -135,20 +133,20 @@ static void extract_quoted(const char *src, char *dest, size_t dest_max) {
 }
 
 static int parse_spec_yaml(VMContext *vm, const char *resolved_path) {
-    FILE *fp = fopen(resolved_path, "r");
+    void *fp = platform_file_open(resolved_path, "r");
     if (!fp) return -1;
 
     char line[512];
     SpecObject current_spec;
-    memset(&current_spec, 0, sizeof(SpecObject));
-    strcpy(current_spec.required_level, "STANDARD");
+    runtime_memset(&current_spec, 0, sizeof(SpecObject));
+    runtime_strcpy(current_spec.required_level, "STANDARD");
 
-    while (fgets(line, sizeof(line), fp)) {
+    while (platform_file_gets(line, sizeof(line), fp)) {
         char *p = line;
-        while (*p && isspace((unsigned char)*p)) p++;
+        while (*p && runtime_isspace((unsigned char)*p)) p++;
         if (*p == '\0' || *p == '#') continue;
 
-        char *colon = strchr(p, ':');
+        char *colon = runtime_strchr(p, ':');
         if (!colon) continue;
 
         *colon = '\0';
@@ -159,20 +157,20 @@ static int parse_spec_yaml(VMContext *vm, const char *resolved_path) {
         char val[256];
         extract_quoted(colon + 1, val, sizeof(val));
 
-        if (strcasecmp(key, "name") == 0) {
+        if (runtime_strcasecmp(key, "name") == 0) {
             safe_strcpy(current_spec.name, val, sizeof(current_spec.name));
-        } else if (strcasecmp(key, "version") == 0) {
+        } else if (runtime_strcasecmp(key, "version") == 0) {
             safe_strcpy(current_spec.version, val, sizeof(current_spec.version));
-        } else if (strcasecmp(key, "category") == 0) {
-            if (strcasecmp(val, "STATEMENT") == 0) current_spec.category = SPEC_CAT_STATEMENT;
-            else if (strcasecmp(val, "FUNCTION") == 0) current_spec.category = SPEC_CAT_FUNCTION;
-        } else if (strcasecmp(key, "lib") == 0 || strcasecmp(key, "lib_path") == 0) {
+        } else if (runtime_strcasecmp(key, "category") == 0) {
+            if (runtime_strcasecmp(val, "STATEMENT") == 0) current_spec.category = SPEC_CAT_STATEMENT;
+            else if (runtime_strcasecmp(val, "FUNCTION") == 0) current_spec.category = SPEC_CAT_FUNCTION;
+        } else if (runtime_strcasecmp(key, "lib") == 0 || runtime_strcasecmp(key, "lib_path") == 0) {
             safe_strcpy(current_spec.lib_path, val, sizeof(current_spec.lib_path));
-        } else if (strcasecmp(key, "security") == 0 || strcasecmp(key, "required_level") == 0) {
+        } else if (runtime_strcasecmp(key, "security") == 0 || runtime_strcasecmp(key, "required_level") == 0) {
             safe_strcpy(current_spec.required_level, val, sizeof(current_spec.required_level));
         }
     }
-    fclose(fp);
+    platform_file_close(fp);
 
     if (current_spec.name[0] != '\0') {
         return spec_register_inline(vm, current_spec.name, current_spec.category, current_spec.lib_path, current_spec.required_level);
@@ -181,52 +179,52 @@ static int parse_spec_yaml(VMContext *vm, const char *resolved_path) {
 }
 
 static int parse_spec_block(VMContext *vm, const char *resolved_path) {
-    FILE *fp = fopen(resolved_path, "r");
+    void *fp = platform_file_open(resolved_path, "r");
     if (!fp) return -1;
 
     char line[512];
     SpecObject current_spec;
     int in_spec = 0;
-    memset(&current_spec, 0, sizeof(SpecObject));
-    strcpy(current_spec.required_level, "STANDARD");
+    runtime_memset(&current_spec, 0, sizeof(SpecObject));
+    runtime_strcpy(current_spec.required_level, "STANDARD");
 
-    while (fgets(line, sizeof(line), fp)) {
+    while (platform_file_gets(line, sizeof(line), fp)) {
         char *p = line;
-        while (*p && isspace((unsigned char)*p)) p++;
+        while (*p && runtime_isspace((unsigned char)*p)) p++;
         if (*p == '\0' || *p == '#') continue;
 
-        if (strncmp(p, "DEFINE SPECIFICATION", 20) == 0) {
+        if (runtime_strncmp(p, "DEFINE SPECIFICATION", 20) == 0) {
             char name_val[64];
             extract_quoted(p + 20, name_val, sizeof(name_val));
             safe_strcpy(current_spec.name, name_val, sizeof(current_spec.name));
             in_spec = 1;
-        } else if (in_spec && strncmp(p, "END SPECIFICATION", 17) == 0) {
+        } else if (in_spec && runtime_strncmp(p, "END SPECIFICATION", 17) == 0) {
             spec_register_inline(vm, current_spec.name, current_spec.category, current_spec.lib_path, current_spec.required_level);
             in_spec = 0;
-            memset(&current_spec, 0, sizeof(SpecObject));
-            strcpy(current_spec.required_level, "STANDARD");
+            runtime_memset(&current_spec, 0, sizeof(SpecObject));
+            runtime_strcpy(current_spec.required_level, "STANDARD");
         } else if (in_spec) {
-            if (strncmp(p, "CATEGORY", 8) == 0) {
+            if (runtime_strncmp(p, "CATEGORY", 8) == 0) {
                 char val[64];
                 extract_quoted(p + 8, val, sizeof(val));
-                if (strcasecmp(val, "STATEMENT") == 0) current_spec.category = SPEC_CAT_STATEMENT;
-                else if (strcasecmp(val, "FUNCTION") == 0) current_spec.category = SPEC_CAT_FUNCTION;
-            } else if (strncmp(p, "VERSION", 7) == 0) {
+                if (runtime_strcasecmp(val, "STATEMENT") == 0) current_spec.category = SPEC_CAT_STATEMENT;
+                else if (runtime_strcasecmp(val, "FUNCTION") == 0) current_spec.category = SPEC_CAT_FUNCTION;
+            } else if (runtime_strncmp(p, "VERSION", 7) == 0) {
                 char val[64];
                 extract_quoted(p + 7, val, sizeof(val));
                 safe_strcpy(current_spec.version, val, sizeof(current_spec.version));
-            } else if (strncmp(p, "LIB", 3) == 0) {
+            } else if (runtime_strncmp(p, "LIB", 3) == 0) {
                 char val[256];
                 extract_quoted(p + 3, val, sizeof(val));
                 safe_strcpy(current_spec.lib_path, val, sizeof(current_spec.lib_path));
-            } else if (strncmp(p, "SECURITY", 8) == 0) {
+            } else if (runtime_strncmp(p, "SECURITY", 8) == 0) {
                 char val[64];
                 extract_quoted(p + 8, val, sizeof(val));
                 safe_strcpy(current_spec.required_level, val, sizeof(current_spec.required_level));
             }
         }
     }
-    fclose(fp);
+    platform_file_close(fp);
     return 0;
 }
 
@@ -241,8 +239,8 @@ int spec_load_file(VMContext *vm, const char *filename) {
 
     int parse_res = -1;
     // Check file extension
-    const char *ext = strrchr(resolved_path, '.');
-    if (ext && (strcasecmp(ext, ".yaml") == 0 || strcasecmp(ext, ".yml") == 0)) {
+    const char *ext = runtime_strrchr(resolved_path, '.');
+    if (ext && (runtime_strcasecmp(ext, ".yaml") == 0 || runtime_strcasecmp(ext, ".yml") == 0)) {
         parse_res = parse_spec_yaml(vm, resolved_path);
     } else {
         parse_res = parse_spec_block(vm, resolved_path);
@@ -251,13 +249,13 @@ int spec_load_file(VMContext *vm, const char *filename) {
     if (parse_res == 0) {
         // Extract directory part of the spec file to load companion libs relative to it
         char dir_part[512] = {0};
-        const char *last_slash = strrchr(resolved_path, '/');
-        const char *last_backslash = strrchr(resolved_path, '\\');
+        const char *last_slash = runtime_strrchr(resolved_path, '/');
+        const char *last_backslash = runtime_strrchr(resolved_path, '\\');
         const char *sep = (last_slash > last_backslash) ? last_slash : last_backslash;
         if (sep) {
             size_t dir_len = (size_t)(sep - resolved_path + 1);
             if (dir_len < sizeof(dir_part)) {
-                memcpy(dir_part, resolved_path, dir_len);
+                runtime_memcpy(dir_part, resolved_path, dir_len);
                 dir_part[dir_len] = '\0';
             }
         }
@@ -293,7 +291,7 @@ int spec_load_companion_libraries(VMContext *vm, const char *dir_part) {
         if (spec_registry[i].lib_path[0] != '\0' && !spec_registry[i].lib_loaded) {
             char full_path[1024];
             if (dir_part && dir_part[0] != '\0') {
-                snprintf(full_path, sizeof(full_path), "%s%s", dir_part, spec_registry[i].lib_path);
+                runtime_snprintf(full_path, sizeof(full_path), "%s%s", dir_part, spec_registry[i].lib_path);
             } else {
                 safe_strcpy(full_path, spec_registry[i].lib_path, sizeof(full_path));
             }

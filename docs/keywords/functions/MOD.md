@@ -1,25 +1,72 @@
-# `MOD` Modulo Remainder Operator (Universal Dual-Format)
+<!--
+Title:        MOD
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/eval/functions/math/algebra/mod.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Operator/Function Definition
+# `MOD` Keyword Reference
 
-The `MOD` keyword computes the integer remainder of division between two numeric expressions. It is supported in both **infix** and **prefix** notation.
+## Source Header
 
-### Syntax Signatures:
-```basic
-remainder = expr1 MOD expr2
-remainder = MOD(expr1, expr2)
+```c
+// FILENAME: mod.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine (math_fn.c)
+// NEEDS: libcore (math.h, language_descriptor.h, string.h)
+// NEEDS: libengine (math.c, mod.h, string.c)
+// Provides runtime implementation for the MOD built-in function in BASIC++.
+//
+// ---- Includes ----
 ```
 
-### Operational Rules:
-- Computes `(int64_t)expr1 % (int64_t)expr2`.
-- In RPN stack evaluation blocks: `{ expr1 expr2 MOD }`.
-- Division by zero returns `Error 11: Division by zero`.
+## 1. Description & Usage
+
+Returns the integer remainder of val1 divided by val2 (supports dual prefix & infix notation).
+
+## 2. Syntax
+
+```basic
+MOD(val1, val2) or val1 MOD val2
+```
+
+## 3. Code Example
+
+```basic
+10 Val = MOD(val1, val2) or val1 MOD val2
+20 PRINT "Result: "; Val
+```
+
+## 4. Error Conditions
+
+Error 11: Division by zero, Error 13: Type Mismatch (MOD expects numeric arguments)
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Math Functions
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_PURE
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 PRINT "Infix: "; 17 MOD 5 : REM Outputs 2
-20 PRINT "Prefix: "; MOD(17, 5) : REM Outputs 2
-```
+| Field | Value |
+|---|---|
+| Name | MOD |
+| Category | Math Functions |
+| Syntax | MOD(val1, val2) or val1 MOD val2 |
+| Description | Returns the integer remainder of val1 divided by val2 (supports dual prefix & infix notation). |
+| Error Summary | Error 11: Division by zero, Error 13: Type Mismatch (MOD expects numeric arguments) |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_PURE |
+| Feature Type | FEATURE_FUNCTION |
+| Delimiter Mask | none |
+| Compatibility | none |
+| Since Version | none |
+| Source File | engine/src/eval/functions/math/algebra/mod.c |

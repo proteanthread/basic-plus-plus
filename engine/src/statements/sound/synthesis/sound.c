@@ -2,7 +2,7 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libcore (strings.h, strings.c)
 // NEEDS: libengine (eval.h, eval.c, lexer.h, lexer.c, sound.h, string.c, vm.h)
 // NEEDS: libkernel (errors.h, security.h, security.c, vdev.h, vdev.c)
@@ -20,23 +20,28 @@
 #include "security/security.h"
 #include "platform/platform.h"
 #include "runtime/strings.h"
-#include "runtime/micro_lib_metadata.h"
-#include <string.h>
+#include "runtime/language_descriptor.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_sound_desc = {
+    .name = "SOUND",
+    .category = "Sound & Audio",
+    .syntax = "SOUND frequency, duration",
+    .description = "Generates a tone of specified frequency in Hertz for specified duration in clock ticks.",
+    .error_summary = "Error 2: Syntax Error, Error 5: Illegal Function Call",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_STATEMENT
+};
 
 void stmt_sound_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "SOUND",
-        .category = "Sound & Audio",
-        .syntax = "SOUND frequency, duration",
-        .help_text = "Generates a tone of specified frequency in Hertz for specified duration in clock ticks.",
-        .error_codes = "Error 2: Syntax Error, Error 5: Illegal Function Call"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_sound_desc);
 }
 
 BppError stmt_sound_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     if (security_check(SECOP_VDEV, 0) != 0) {
         err.code = 70;

@@ -1,0 +1,68 @@
+TITLE: MKDMBF$
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/functions/string/conversion/mkdmbf.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+MKDMBF$ KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: mkdmbf.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (common_reg_funcs.c, conversion_fn.c)
+    // NEEDS: libcore (language_descriptor.h, strings.h)
+    // NEEDS: libengine (mbf_common.h, mkdmbf.h)
+    // Provides runtime implementation for the MKDMBF$ function in BASIC++.
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Converts double-precision float to 8-byte Microsoft Binary Format (MBF)
+string.
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    s$ = MKDMBF$(x#)
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = s$ = MKDMBF$(10#)
+    20 PRINT "Result: "; Val
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 13: Type Mismatch
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Type Conversion
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_PURE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  MKDMBF$
+Category              Type Conversion
+Syntax                s$ = MKDMBF$(x#)
+Description           Converts double-precision float to 8-byte Microsoft...
+Error Summary         Error 13: Type Mismatch
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_PURE
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/eval/functions/string/conversion/mkdmbf.c

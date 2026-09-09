@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
 // NEEDS: libcore (esp32_hal.h, esp32_hal.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libengine (eval.h, eval.c, lexer.h, lexer.c, string.c, vm.h)
 // Implements the PINMODE statement for microcontroller pin configuration.
 //
@@ -12,13 +12,25 @@
 #include "vm/vm.h"
 #include "lexer/lexer.h"
 #include "eval/eval.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "esp32_hal.h"
-#include <string.h>
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_pinmode_desc = {
+    .name = "PINMODE",
+    .category = "Hardware & IoT",
+    .syntax = "PINMODE pin, mode",
+    .description = "Configures a microcontroller GPIO pin mode (INPUT, OUTPUT, PULLUP, PULLDOWN).",
+    .error_summary = "Error 2: Syntax Error, Error 13: Type Mismatch",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_STATEMENT
+};
 
 BppError stmt_pinmode_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BValue pin_val = eval_expression(vm, lex, &err);
     if (err.code != 0) return err;
@@ -41,11 +53,11 @@ BppError stmt_pinmode_handler(VMContext *vm, LexerContext *lex) {
     int mode = 0;
     if (mode_val.type == VAL_STRING) {
         const char *mstr = str_data(mode_val.as.string);
-        if (strcasecmp(mstr, "OUTPUT") == 0 || strcasecmp(mstr, "OUT") == 0) {
+        if (runtime_strcasecmp(mstr, "OUTPUT") == 0 || runtime_strcasecmp(mstr, "OUT") == 0) {
             mode = PIN_OUTPUT;
-        } else if (strcasecmp(mstr, "INPUT_PULLUP") == 0 || strcasecmp(mstr, "PULLUP") == 0) {
+        } else if (runtime_strcasecmp(mstr, "INPUT_PULLUP") == 0 || runtime_strcasecmp(mstr, "PULLUP") == 0) {
             mode = PIN_INPUT_PULLUP;
-        } else if (strcasecmp(mstr, "INPUT_PULLDOWN") == 0 || strcasecmp(mstr, "PULLDOWN") == 0) {
+        } else if (runtime_strcasecmp(mstr, "INPUT_PULLDOWN") == 0 || runtime_strcasecmp(mstr, "PULLDOWN") == 0) {
             mode = PIN_INPUT_PULLDOWN;
         } else {
             mode = PIN_INPUT;
@@ -61,12 +73,5 @@ BppError stmt_pinmode_handler(VMContext *vm, LexerContext *lex) {
 }
 
 void stmt_pinmode_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "PINMODE",
-        .category = "Hardware & IoT",
-        .syntax = "PINMODE pin, mode",
-        .help_text = "Configures a microcontroller GPIO pin mode (INPUT, OUTPUT, PULLUP, PULLDOWN).",
-        .error_codes = "Error 2: Syntax Error, Error 13: Type Mismatch"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_pinmode_desc);
 }

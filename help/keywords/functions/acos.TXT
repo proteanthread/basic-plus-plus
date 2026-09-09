@@ -1,24 +1,71 @@
-ACOS Arccosine Trigonometric Function
-======================================================================
+TITLE: ACOS
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/functions/math/trig/acos.c
+GENERATED: no, hand-written
+STATUS: current
 
-The ACOS function computes the inverse cosine of an expression in
-radians.
+==============================================================================
+ACOS KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: runtime_acos.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (math_fn.c)
+    // NEEDS: libcore (math.h, language_descriptor.h, string.h)
+    // NEEDS: libengine (runtime_acos.h, math.c, string.c)
+    // Provides runtime implementation for the ACOS built-in function in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Returns the arccosine of x (in radians, degrees, or grads depending on angle
+mode) for -1.0 <= x <= 1.0.
 
-    radians# = ACOS(numeric_expression)
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    ACOS(x)
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Angle = 0.5
+    20 PRINT "COS("; Angle; ") = "; COS(Angle)
 
-DOMAIN
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 5: Illegal Function Call (ACOS argument out of range [-1, 1]), Error 13:
+Type Mismatch (ACOS expects one numeric argument)
 
-  - -1.0 <= x <= 1.0 (Error 5 if outside domain).
-  - Returns range: 0 to PI radians.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Math Functions
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_PURE
 
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 PRINT ACOS(1.0)   : REM Outputs 0
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  ACOS
+Category              Math Functions
+Syntax                ACOS(x)
+Description           Returns the arccosine of x (in radians, degrees, or...
+Error Summary         Error 5: Illegal Function Call (ACOS argument out o...
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_PURE
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/eval/functions/math/trig/acos.c

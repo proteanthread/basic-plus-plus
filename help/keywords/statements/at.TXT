@@ -1,28 +1,73 @@
-AT Screen Cursor Positioning Clause
-===================================
+TITLE: AT
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/core/io/print.c
+GENERATED: no, hand-written
+STATUS: current
 
-Specifies 1-based text cursor coordinates directly within PRINT statements.
+==============================================================================
+AT KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: print.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (dialect.h, dialect.c, math.h)
+    // NEEDS: libcore (language_descriptor.h)
+    // NEEDS: libcore (num_format.h, num_format.c, string.h, using.h)
+    // NEEDS: libengine (eval.h, eval.c, math.c, stmt.h, string.c)
+    // NEEDS: libkernel (vcon.h, vcon.c, vdev.h, vdev.c)
+    // Provides runtime implementation for the PRINT statement in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Screen cursor positioning clause for 2D Cartesian grid, graphics pixel
+offload, and declarative property maps.
 
-    PRINT AT row%, col%; expression
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    PRINT AT x, y [, fg [, bg]] | AT(x, y [, fg [, bg]]) | AT[px, py] | AT{prop: val, ...}
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = PRINT AT 10, y [, fg [, bg]] | AT(10, y [, fg [, bg]]) | AT[p10, py] | AT{prop: val, ...}
+    20 PRINT "Result: "; Val
 
-ERROR CONDITIONS
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error
 
-  - Error 5 (ERR_ILLEGAL_FUNCTION_CALL): Coordinates outside screen bounds.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Console I/O
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SAFE
 
-
-OPERATIONAL NOTES
-----------------------------------------------------------------------
-
-  Common in Sinclair ZX Spectrum and Locomotive BASIC dialects.
-
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 PRINT AT 10, 20; "Hello at Row 10 Col 20"
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  AT
+Category              Console I/O
+Syntax                PRINT AT x, y [, fg [, bg]] | AT(x, y [, fg [, bg]]...
+Description           Screen cursor positioning clause for 2D Cartesian g...
+Error Summary         Error 2: Syntax Error
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/core/io/print.c

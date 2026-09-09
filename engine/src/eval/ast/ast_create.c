@@ -10,6 +10,10 @@
 
 #include "eval/ast_internal.h"
 #include "runtime/strings.h"
+#include "runtime/string/strops.h"
+#include "runtime/string/memops.h"
+#include "runtime/math/math.h"
+#include "vm/jit.h"
 
 //
 // ---- Node Allocators & Constructors ----
@@ -95,6 +99,27 @@ EvalAstNode *eval_ast_create_binary(MemoryContext *mem, BppTokenType op, EvalAst
             ast_free_node(right);
             BValue res = { .type = VAL_NUMBER, .as.number = ans };
             return eval_ast_create_literal(mem, res);
+        }
+    }
+
+    if (left && right && left->type == AST_NODE_LITERAL && right->type == AST_NODE_LITERAL &&
+        left->val.type == VAL_STRING && right->val.type == VAL_STRING && op == TOK_PLUS) {
+        if (left->val.as.string && right->val.as.string) {
+            const char *s1 = str_data(left->val.as.string);
+            size_t l1 = str_len(left->val.as.string);
+            const char *s2 = str_data(right->val.as.string);
+            size_t l2 = str_len(right->val.as.string);
+            char *buf = (char *)runtime_malloc(l1 + l2 + 1);
+            if (buf) {
+                runtime_memcpy(buf, s1, l1);
+                runtime_memcpy(buf + l1, s2, l2);
+                buf[l1 + l2] = '\0';
+                BValue res = { .type = VAL_STRING, .as.string = str_create(NULL, buf, l1 + l2) };
+                runtime_free(buf);
+                ast_free_node(left);
+                ast_free_node(right);
+                return eval_ast_create_literal(mem, res);
+            }
         }
     }
 
@@ -335,6 +360,76 @@ EvalAstNode *eval_ast_create_line_input(MemoryContext *mem, int channel, const c
     return node;
 }
 
+// creates a DIM array declaration AST node
+EvalAstNode *eval_ast_create_dim(MemoryContext *mem, const char *name, int dims, EvalAstNode *d1_expr, EvalAstNode *d2_expr) {
+    (void)mem;
+    if (!name || !*name) return NULL;
+    EvalAstNode *node = ast_alloc_node();
+    if (!node) return NULL;
+    node->type = AST_NODE_DIM;
+    node->dims = dims;
+    runtime_strncpy(node->var_name, name, sizeof(node->var_name) - 1);
+    node->var_name[sizeof(node->var_name) - 1] = '\0';
+    node->index_expr = d1_expr;
+    node->index2_expr = d2_expr;
+    return node;
+}
+
+// creates an OPEN file statement AST node
+EvalAstNode *eval_ast_create_file_open(MemoryContext *mem, EvalAstNode *filename_expr, int mode, int channel) {
+    (void)mem;
+    EvalAstNode *node = ast_alloc_node();
+    if (!node) return NULL;
+    node->type = AST_NODE_FILE_OPEN;
+    node->left = filename_expr;
+    node->file_mode = mode;
+    node->channel = channel;
+    return node;
+}
+
+// creates a CLOSE file statement AST node
+EvalAstNode *eval_ast_create_file_close(MemoryContext *mem, int channel) {
+    (void)mem;
+    EvalAstNode *node = ast_alloc_node();
+    if (!node) return NULL;
+    node->type = AST_NODE_FILE_CLOSE;
+    node->channel = channel;
+    return node;
+}
+
+// creates a KILL file statement AST node
+EvalAstNode *eval_ast_create_file_kill(MemoryContext *mem, EvalAstNode *filename_expr) {
+    (void)mem;
+    EvalAstNode *node = ast_alloc_node();
+    if (!node) return NULL;
+    node->type = AST_NODE_FILE_KILL;
+    node->left = filename_expr;
+    return node;
+}
+
+// creates an END statement AST node
+EvalAstNode *eval_ast_create_end(MemoryContext *mem) {
+    (void)mem;
+    EvalAstNode *node = ast_alloc_node();
+    if (!node) return NULL;
+    node->type = AST_NODE_END;
+    return node;
+}
+
+// creates a SWAP statement AST node
+EvalAstNode *eval_ast_create_swap(MemoryContext *mem, const char *var1, const char *var2) {
+    (void)mem;
+    if (!var1 || !var2) return NULL;
+    EvalAstNode *node = ast_alloc_node();
+    if (!node) return NULL;
+    node->type = AST_NODE_SWAP;
+    runtime_strncpy(node->var_name, var1, sizeof(node->var_name) - 1);
+    node->var_name[sizeof(node->var_name) - 1] = '\0';
+    runtime_strncpy(node->extra_var, var2, sizeof(node->extra_var) - 1);
+    node->extra_var[sizeof(node->extra_var) - 1] = '\0';
+    return node;
+}
+
 // frees an AST node and its sub-trees with context
 void eval_ast_free(MemoryContext *mem, EvalAstNode *node) {
     (void)mem;
@@ -355,7 +450,14 @@ void eval_ast_free_tree(void *node_ptr) {
     if (node->else_branch) eval_ast_free_tree(node->else_branch);
     if (node->index_expr) eval_ast_free_tree(node->index_expr);
     if (node->index2_expr) eval_ast_free_tree(node->index2_expr);
-    if (node->target_ast) eval_ast_free_tree(node->target_ast);
+    if (node->type == AST_NODE_FOR_LOOP) {
+        if (node->target_ast) {
+            jit_free_bytecode((JitBytecodeProgram *)node->target_ast);
+            node->target_ast = NULL;
+        }
+    } else if (node->target_ast) {
+        eval_ast_free_tree(node->target_ast);
+    }
     if (node->next) eval_ast_free_tree(node->next);
     ast_free_node(node);
 }

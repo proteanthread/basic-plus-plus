@@ -1,161 +1,71 @@
-======================================================================
-  BASIC++ V6.5.2 BUILDING BASIC++
-======================================================================
+Title:        Building BASIC++
+Tier:         1
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot, bppc, trans, detok)
+Authority:    CMakeLists.txt, engine/CMakeLists.txt
+Generated:    no
+Status:       Active
+
+BASIC++ V6.5.2 COMPILATION AND BUILD GUIDE
+
+A comprehensive technical guide for configuring, compiling, and deploying all
+BASIC++ v6.5.2 binary targets across Windows and Linux systems.
 
 
-======================================================================
-  1. PREREQUISITES
-======================================================================
+1. PREREQUISITES AND TOOLCHAIN REQUIREMENTS
 
 Building BASIC++ requires:
-
-- **CMake 3.16 or later** for the build system configuration.
-- **A C17-compliant compiler**: GCC 7+, Clang 5+, MSVC 2019+, or Open Watcom (for FreeDOS 16-bit targets).
-- **SDL2 development libraries** (optional, required only for baspp graphics support). On Linux: libsdl2-dev. On Windows: SDL2 development package from libsdl.org. On FreeDOS/embedded: not required.
-- **ncurses** (Linux only, required for TUI editor in libstandard): libncurses-dev.
-
-
-======================================================================
-  2. STANDARD BUILD (WINDOWS)
-======================================================================
-
-The standard Windows build produces baspp.exe, bpp.exe, and bs.exe:
-
-```bash
-cd basic-plus-plus
-mkdir build_win
-cd build_win
-cmake .. -G "Visual Studio 17 2022" -A x64
-cmake --build . --target baspp --config Release
-cmake --build . --target bpp --config Release
-cmake --build . --target bs --config Release
-
-For Debug builds with symbols and assertions enabled:
-
-```bash
-cmake --build . --target baspp --config Debug
-
-The built executables are located in build_win/Release/ (or build_win/Debug/ for debug builds).
+- CMake 3.16 or later: For build configuration and target generation.
+- ISO C17-Compliant C Compiler: MSVC 2019+ (MSVC 19.28+), GCC 7+, or Clang 5+.
+  Open Watcom is supported for 16-bit FreeDOS targets.
+- SDL2 Development Libraries (optional, required only for the baspp desktop
+  graphics edition): Bundled on Windows; libsdl2-dev on Linux.
+- System Libraries: On Windows, ws2_32 and winmm. On Linux, -lm and -lpthread.
 
 
-======================================================================
-  3. STANDARD BUILD (LINUX)
-======================================================================
+2. STANDARD BUILD WORKFLOWS
 
-```bash
-cd basic-plus-plus
-mkdir build_linux
-cd build_linux
-cmake .. -DCMAKE_C_STANDARD=17
-make -j$(nproc) baspp bpp bs
+2.1 Windows (MSVC x64)
 
-On Linux, libplatform links against the math library (-lm) and libstandard links against ncurses. These are resolved automatically by the CMake configuration.
+    cd basic-plus-plus
+    mkdir build_win
+    cd build_win
+    cmake .. -G "Visual Studio 17 2022" -A x64
+    cmake --build . --config Release --target baspp bpp bs iot bppc trans
+    cmake --build . --config Release --target detok
 
+2.2 Linux (GCC / Clang)
 
-======================================================================
-  4. BUILD TARGETS
-======================================================================
-
-The CMake configuration defines the following executable targets:
-
-| Target | Description | Links up to | Default Memory |
-|--------|-------------|-------------|----------------|
-| baspp | Standard Desktop Edition | libadvanced | 640 MB |
-| bpp | Lite Headless REPL | libcore | 384 MB |
-| bs | Batch Script Runner | libscript | 64 MB |
-| bppc | Compiler & Transpiler | libengine | N/A |
-| detok | GW-BASIC Detokenizer | libkernel | N/A |
-
-Each target links the specified library and all libraries below it in the 12-library chain. For example, baspp links libadvanced, which transitively includes libstandard, libflex, libcore, libscript, libserver, libhardware, libengine, libkernel, libplatform, and libboot.
+    cd basic-plus-plus
+    mkdir build_linux
+    cd build_linux
+    cmake .. -DCMAKE_C_STANDARD=17 -DCMAKE_BUILD_TYPE=Release
+    make -j$(nproc) baspp bpp bs iot bppc trans detok
 
 
-======================================================================
-  5. BUILD DEFINITIONS
-======================================================================
+3. BINARY BUILD TARGETS AND MEMORY ALLOCATIONS
 
-The build system defines several preprocessor macros that control edition behavior:
+BASIC++ defines seven distinct executable binary targets:
 
-**BASIC_LITE_BUILD** ? Defined when building the bpp lite edition. Changes the prompt from >  to ] , the status message from Ok to Ready., the banner name from "Standard" to "Lite", and disables SUPPORT_GRAPHICS, SUPPORT_BIOS, SUPPORT_JSON, SUPPORT_XML, SUPPORT_INI, and SUPPORT_EDITOR.
-
-**BASIC_STANDARD_BUILD** ? Defined when building the baspp standard edition. Enables the BGI graphics subsystem and AAlib ASCII art fallback.
-
-**BASIC_CORE_BUILD** ? Defined for all engine library targets. Indicates that engine headers are available.
-
-**BASIC_FREEDOS_16** ? Defined when cross-compiling for FreeDOS 16-bit using Open Watcom. Drastically reduces memory allocations (32 KB program, 16 KB variables, 16 KB strings).
-
-**BASIC_EMBEDDED** ? Defined when targeting microcontrollers (ESP32, Arduino, Pico). Minimal memory allocations (8 KB program, 4 KB variables, 4 KB strings).
-
-
-======================================================================
-  6. SDL2 CONFIGURATION
-======================================================================
-
-The baspp standard edition delay-loads SDL2 on demand when the SCREEN or graphics commands are first used. SDL2 is not required at startup and not required for text-mode programs.
-
-On Windows, place SDL2.dll in the same directory as baspp.exe or in the system PATH. On Linux, install libsdl2-2.0 via your package manager. If SDL2 is not found at runtime, graphics commands report Error 73 (Advanced feature disabled) and text-mode operation continues normally.
-
-To build without SDL2 entirely:
-
-```bash
-cmake .. -DSUPPORT_GRAPHICS=OFF
+- baspp : Flagship Desktop Edition (Console + SDL2). Links up to libadvanced.
+  Default memory pool: 640 MB (671088640L bytes).
+- bpp   : Lite Headless REPL Edition. Links up to libcore.
+  Default memory pool: 384 MB (402653184L bytes).
+- bs    : Batch Script Runner for pipelines. Links up to libscript.
+  Default memory pool: 64 MB (67108864L bytes). Zero prompt, zero banner.
+- iot   : Microcontroller & IoT micro-REPL. Links up to libkernel.
+  Default memory pool: 2 MB (2097152L bytes).
+- bppc  : Compiler and Bytecode Emitter. Dynamic memory.
+- trans : Source-to-Source ISO C17 Transpiler. Dynamic memory.
+- detok : GW-BASIC Binary File Detokenizer. Dynamic memory.
 
 
-======================================================================
-  7. CROSS-COMPILATION
-======================================================================
+4. POST-BUILD DEPLOYMENT AND CLEANUP
 
-
-----------------------------------------------------------------------
-  FreeDOS 16-bit
-----------------------------------------------------------------------
-
-Cross-compile with Open Watcom for 16-bit DOS:
-
-```bash
-cmake .. -DCMAKE_SYSTEM_NAME=DOS -DCMAKE_C_COMPILER=wcc -DBASIC_FREEDOS_16=ON
-
-This produces a 16-bit real-mode executable that fits within conventional memory limits. The stack depth is limited to 63 frames, named variables to 128, and DIM arrays to 32.
-
-
-----------------------------------------------------------------------
-  Embedded (ESP32, Arduino)
-----------------------------------------------------------------------
-
-Define BASIC_EMBEDDED to target microcontrollers with extremely constrained resources:
-
-```bash
-cmake .. -DBASIC_EMBEDDED=ON -DCMAKE_C_COMPILER=xtensa-esp32-elf-gcc
-
-The embedded build excludes all optional subsystems and limits memory to 8 KB program, 4 KB variables, 4 KB strings, and 2 KB scratch.
-
-
-======================================================================
-  8. VERIFYING THE BUILD
-======================================================================
-
-After building, verify correctness by running the self-test suite:
-
-```bash
-./baspp -c "SELFTEST"
-./bpp -c "SELFTEST"
-
-Both targets must pass SELFTEST with zero failures. The self-test exercises the lexer, parser, expression evaluator, control flow, string operations, array operations, file I/O, and error handling.
-
-Run the regression test suite:
-
-```bash
-./baspp tests/gwbasic/test_print.bas
-./baspp tests/gwbasic/test_for.bas
-./baspp tests/gwbasic/test_if.bas
-
-
-======================================================================
-  9. FEATURE GATE OVERRIDES
-======================================================================
-
-Individual features can be enabled or disabled at build time by passing -D flags to CMake:
-
-```bash
-cmake .. -DSUPPORT_GRAPHICS=OFF -DSUPPORT_NET=OFF -DSUPPORT_TASK=OFF
-
-This produces a custom build with only the desired subsystems. The feature gates are defined in engine/include/types/config.h and affect which source files are compiled into the micro-libraries.
+1. Root Binary Deployment: All compiled executables (baspp.exe, bpp.exe,
+   bs.exe, iot.exe, bppc.exe, trans.exe, detok.exe) and runtime DLLs
+   (basicpp.dll, SDL2.dll) are copied directly to the repository root for
+   immediate non-path execution.
+2. Synchronous Intermediate Cleanup: Intermediate compiler cruft (.obj, .o,
+   .tlog, .idb, .pdb, *.dir) is purged synchronously via
+   tools/clean_intermediates.ps1 on Windows or tools/clean_intermediates.sh on
+   Linux, keeping repository size minimal.

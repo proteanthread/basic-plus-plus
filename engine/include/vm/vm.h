@@ -66,6 +66,7 @@ void       vm_register_operator_alias(VMContext *vm, const char *op_name, const 
 const char *vm_lookup_operator_alias(VMContext *vm, const char *op_name);
 void       vm_clear_operator_aliases(VMContext *vm);
 BppError   vm_load_program_file(VMContext *vm, const char *filename);
+BppError   vm_load_program_file_ex(VMContext *vm, const char *filename, bool auto_renum);
 BppError   vm_bload_program_from_stream(VMContext *vm, void *fp);
 BppError   vm_load_bytecode_buffer(VMContext *vm, const unsigned char *buf, size_t len);
 void       vm_stop(VMContext *vm);
@@ -101,6 +102,16 @@ int              vm_get_margin(VMContext *vm);
 void             vm_set_margin(VMContext *vm, int margin);
 int              vm_get_zone_width(VMContext *vm);
 void             vm_set_zone_width(VMContext *vm, int zone_width);
+int              vm_get_angle_mode(VMContext *vm);
+void             vm_set_angle_mode(VMContext *vm, int mode);
+
+// JIT / AOT Subsystem Accessors
+int              vm_get_jit_mode(VMContext *vm);
+void             vm_set_jit_mode(VMContext *vm, int mode);
+bool             vm_get_jit_fast(VMContext *vm);
+void             vm_set_jit_fast(VMContext *vm, bool fast_mode);
+void            *vm_get_jit_context(VMContext *vm);
+void             vm_set_jit_context(VMContext *vm, void *ctx);
 
 // @brief Static DATA block position entry.
 typedef struct {

@@ -2,7 +2,7 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libboot, libcore, libengine, libkernel
-// NEEDS: libcore (ctype.h, ctype.c, micro_lib_metadata.h, micro_lib_metadata.c)
+// NEEDS: libcore (ctype.h, ctype.c, language_descriptor.h)
 // NEEDS: libcore (string.h)
 // NEEDS: libengine (lexer.h, lexer.c, stmt.h, string.c)
 // NEEDS: libkernel (security.h, vdev.h, vdev.c)
@@ -10,21 +10,39 @@
 //
 // ---- Includes ----
 
+#include "runtime/language_descriptor.h"
+
+static const LangDesc g_security_desc = {
+    .name = "SECURITY",
+    .category = "System & Environ",
+    .syntax = "SECURITY [level_number | LEVEL level_number]",
+    .description = "Queries or elevates the active engine security sandbox level.",
+    .error_summary = "Error 2: Syntax Error, Error 70: Permission Denied",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SYSTEM,
+    .type = FEATURE_STATEMENT
+};
+
 #ifndef BASIC_LITE_BUILD
 
 #include "stmt/stmt.h"
 #include "lexer/lexer.h"
 #include "security/security.h"
 #include "device/vdev.h"
-#include "runtime/micro_lib_metadata.h"
-#include <stdio.h>
-#include <string.h>
-#include <ctype.h>
+#include "runtime/format/snprintf.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "runtime/ctype/ctype.h"
+
+
+
+
+
 
 static int str_case_compare(const char *a, const char *b) {
     while (*a && *b) {
-        if (toupper((unsigned char)*a) != toupper((unsigned char)*b)) {
-            return toupper((unsigned char)*a) - toupper((unsigned char)*b);
+        if (runtime_toupper((unsigned char)*a) != runtime_toupper((unsigned char)*b)) {
+            return runtime_toupper((unsigned char)*a) - runtime_toupper((unsigned char)*b);
         }
         a++;
         b++;
@@ -34,7 +52,7 @@ static int str_case_compare(const char *a, const char *b) {
 
 BppError stmt_security_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     VDevContext *vdev = vm_get_vdev(vm);
 
     BppToken tok = lex_peek(lex);
@@ -74,7 +92,7 @@ BppError stmt_security_handler(VMContext *vm, LexerContext *lex) {
         lex_next(lex);
         char s_val[128];
         size_t len = (tok.length < sizeof(s_val) - 1) ? tok.length : sizeof(s_val) - 1;
-        memcpy(s_val, tok.as.string, len);
+        runtime_memcpy(s_val, tok.as.string, len);
         s_val[len] = '\0';
 
         // Subcommand: RESTRICT
@@ -88,7 +106,7 @@ BppError stmt_security_handler(VMContext *vm, LexerContext *lex) {
             lex_next(lex);
             char op_str[128];
             size_t op_len = (next_tok.length < sizeof(op_str) - 1) ? next_tok.length : sizeof(op_str) - 1;
-            memcpy(op_str, next_tok.as.string, op_len);
+            runtime_memcpy(op_str, next_tok.as.string, op_len);
             op_str[op_len] = '\0';
 
             // Check if keyword restriction
@@ -102,7 +120,7 @@ BppError stmt_security_handler(VMContext *vm, LexerContext *lex) {
                 lex_next(lex);
                 char kw_name[128];
                 size_t kw_len = (kw_tok.length < sizeof(kw_name) - 1) ? kw_tok.length : sizeof(kw_name) - 1;
-                memcpy(kw_name, kw_tok.as.string, kw_len);
+                runtime_memcpy(kw_name, kw_tok.as.string, kw_len);
                 kw_name[kw_len] = '\0';
 
                 // Map keyword name to ID
@@ -226,14 +244,7 @@ BppError stmt_security_handler(VMContext *vm, LexerContext *lex) {
 #endif // BASIC_LITE_BUILD
 
 void stmt_security_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "SECURITY",
-        .category = "System & Environ",
-        .syntax = "SECURITY [level_number | LEVEL level_number]",
-        .help_text = "Queries or elevates the active engine security sandbox level.",
-        .error_codes = "Error 2: Syntax Error, Error 70: Permission Denied"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_security_desc);
 }
 
 

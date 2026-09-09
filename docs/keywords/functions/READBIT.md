@@ -1,25 +1,72 @@
-# `READBIT` Bit Extraction (Universal Dual-Format)
+<!--
+Title:        READBIT
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/eval/functions/bits/manipulation/readbit.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Function/Operator Definition
+# `READBIT` Keyword Reference
 
-The `READBIT` keyword extracts the value (0 or 1) of a specific bit position (0 to 63) in a 64-bit integer. It is fully supported in both **infix** and **prefix** notation.
+## Source Header
 
-### Syntax Signatures:
-```basic
-result = value READBIT bit_pos
-result = READBIT(value, bit_pos)
+```c
+// FILENAME: readbit.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine (sys_fn.c)
+// NEEDS: libcore (language_descriptor.h)
+// NEEDS: libengine (readbit.h)
+// Provides runtime implementation for the READBIT built-in function in BASIC+
+//
+// ---- Includes ----
 ```
 
-### Operational Rules:
-- Returns `((uint64_t)value >> (uint64_t)bit_pos) & 1`.
-- `bit_pos` must be in the range 0 to 63.
-- In RPN stack evaluation blocks: `{ value bit_pos READBIT }`.
+## 1. Description & Usage
+
+Returns the boolean bit value (0 or 1) at the specified zero-based bit index.
+
+## 2. Syntax
+
+```basic
+READBIT(val, bit)
+```
+
+## 3. Code Example
+
+```basic
+10 Val = READBIT(val, bit)
+20 PRINT "Result: "; Val
+```
+
+## 4. Error Conditions
+
+Error 13: Type Mismatch
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Bitwise & Logical Functions
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_PURE
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 PRINT "Infix: "; 8 READBIT 3 : REM Outputs 1
-20 PRINT "Prefix: "; READBIT(34359738368, 35) : REM Outputs 1
-```
+| Field | Value |
+|---|---|
+| Name | READBIT |
+| Category | Bitwise & Logical Functions |
+| Syntax | READBIT(val, bit) |
+| Description | Returns the boolean bit value (0 or 1) at the specified zero-based bit index. |
+| Error Summary | Error 13: Type Mismatch |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_PURE |
+| Feature Type | FEATURE_FUNCTION |
+| Delimiter Mask | none |
+| Compatibility | none |
+| Since Version | none |
+| Source File | engine/src/eval/functions/bits/manipulation/readbit.c |

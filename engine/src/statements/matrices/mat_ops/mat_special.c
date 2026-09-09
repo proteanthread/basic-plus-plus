@@ -8,13 +8,14 @@
 // ---- Includes ----
 
 #include "statements/matrices/mat_internal.h"
+#include "runtime/string/memops.h"
 
 //
 // ---- Special Matrix Initializers ----
 
 BppError mat_op_zer(VMContext *vm, const char *dest, int dims, const int *bounds) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     ArrayContext *arr = vm_get_arr(vm);
     (void)dims;
     (void)bounds;
@@ -32,7 +33,7 @@ BppError mat_op_zer(VMContext *vm, const char *dest, int dims, const int *bounds
 
 BppError mat_op_con(VMContext *vm, const char *dest, int dims, const int *bounds) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     ArrayContext *arr = vm_get_arr(vm);
     (void)dims;
     (void)bounds;
@@ -50,7 +51,7 @@ BppError mat_op_con(VMContext *vm, const char *dest, int dims, const int *bounds
 
 BppError mat_op_idn(VMContext *vm, const char *dest, int dims, const int *bounds) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     ArrayContext *arr = vm_get_arr(vm);
     int base = arr_get_option_base(arr);
 
@@ -78,7 +79,7 @@ BppError mat_op_idn(VMContext *vm, const char *dest, int dims, const int *bounds
 
 BppError mat_op_nul(VMContext *vm, const char *dest, int dims, const int *bounds) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     ArrayContext *arr = vm_get_arr(vm);
     (void)dims;
     (void)bounds;

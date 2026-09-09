@@ -1,0 +1,70 @@
+TITLE: NET.UNPACK
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/network/stmt_nil_bead.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+NET.UNPACK KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: stmt_nil_bead.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (stmt_net_config.c)
+    // NEEDS: libcore (nil_bead.h, nil_bead.c, string.h, strings.h, strings.c)
+    // NEEDS: libcore (variables.h, variables.c)
+    // NEEDS: libengine (eval.h, eval.c, stmt_nil_bead.h, string.c)
+    // Implements NET.UNPACK and NIL.UNPACK statement handlers.
+    //
+    // ---- Includes ----
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Deserializes an RFC 51 compact bead byte stream into a destination variable.
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    NET.UNPACK packet$, dest_var
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM NET.UNPACK Demonstration
+    20 PRINT "NET.UNPACK executed successfully."
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Expected destination variable, Error 13: Type mismatch
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Hardware & Network
+Subsystem:     SUBSYSTEM_SERVER
+Safety Level:  SAFETY_IO
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  NET.UNPACK
+Category              Hardware & Network
+Syntax                NET.UNPACK packet$, dest_var
+Description           Deserializes an RFC 51 compact bead byte stream int...
+Error Summary         Error 2: Expected destination variable, Error 13: T...
+Subsystem             SUBSYSTEM_SERVER
+Safety Level          SAFETY_IO
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/network/stmt_nil_bead.c

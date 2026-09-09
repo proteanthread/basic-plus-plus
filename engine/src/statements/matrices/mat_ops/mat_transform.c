@@ -8,13 +8,16 @@
 // ---- Includes ----
 
 #include "statements/matrices/mat_internal.h"
+#include "runtime/string/memops.h"
+#include "runtime/memory/alloc.h"
+#include "runtime/math/basic.h"
 
 //
 // ---- Matrix Transpose ----
 
 BppError mat_op_trn(VMContext *vm, const char *dest, const char *src) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     ArrayContext *arr = vm_get_arr(vm);
     int base = arr_get_option_base(arr);
 
@@ -27,9 +30,8 @@ BppError mat_op_trn(VMContext *vm, const char *dest, const char *src) {
     }
     int rows = sbounds[0] - base + 1;
     int cols = sbounds[1] - base + 1;
-    int dbounds[2] = {base + cols - 1, base + rows - 1};
 
-    double *temp = (double *)calloc((size_t)(rows * cols), sizeof(double));
+    double *temp = (double *)runtime_calloc((size_t)(rows * cols), sizeof(double));
     if (!temp) {
         err.code = 14;
         err.message = "Out of memory in TRN";
@@ -40,10 +42,13 @@ BppError mat_op_trn(VMContext *vm, const char *dest, const char *src) {
         for (int c = 0; c < cols; c++) {
             int sidx[2] = {base + r, base + c};
             BValue *sp = arr_get_element(arr, src, 2, sidx, &err);
-            temp[c * rows + r] = (sp && sp->type == VAL_NUMBER) ? sp->as.number : 0.0;
+            if (sp && (sp->type == VAL_NUMBER || sp->type == VAL_INTEGER)) {
+                temp[c * rows + r] = sp->as.number;
+            }
         }
     }
 
+    int dbounds[2] = {base + cols - 1, base + rows - 1};
     ensure_array_dims(arr, dest, 2, dbounds, &err);
     for (int c = 0; c < cols; c++) {
         for (int r = 0; r < rows; r++) {
@@ -55,17 +60,17 @@ BppError mat_op_trn(VMContext *vm, const char *dest, const char *src) {
             }
         }
     }
-    free(temp);
+    runtime_free(temp);
     err.code = 0;
     return err;
 }
 
 //
-// ---- Matrix Inversion ----
+// ---- Matrix Inversion (General N x N Gaussian Elimination) ----
 
 BppError mat_op_inv(VMContext *vm, const char *dest, const char *src) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     ArrayContext *arr = vm_get_arr(vm);
     int base = arr_get_option_base(arr);
 
@@ -78,93 +83,103 @@ BppError mat_op_inv(VMContext *vm, const char *dest, const char *src) {
     }
 
     int n_size = sbounds[0] - base + 1;
-    double det = 0.0;
-    double *inv_buf = (double *)calloc((size_t)(n_size * n_size), sizeof(double));
+    double *inv_buf = (double *)runtime_calloc((size_t)(n_size * n_size), sizeof(double));
     if (!inv_buf) {
         err.code = 14;
         err.message = "Out of memory in INV";
         return err;
     }
 
-    if (n_size == 1) {
-        int idx[2] = {base, base};
-        BValue *sp = arr_get_element(arr, src, 2, idx, &err);
-        det = (sp && sp->type == VAL_NUMBER) ? sp->as.number : 0.0;
-        if (det == 0.0) {
-            free(inv_buf);
-            err.code = 11;
-            err.message = "Division by zero (Singular matrix)";
-            return err;
-        }
-        inv_buf[0] = 1.0 / det;
-    } else if (n_size == 2) {
-        int i11[2] = {base, base}, i12[2] = {base, base + 1};
-        int i21[2] = {base + 1, base}, i22[2] = {base + 1, base + 1};
-        BValue *e11 = arr_get_element(arr, src, 2, i11, &err);
-        BValue *e12 = arr_get_element(arr, src, 2, i12, &err);
-        BValue *e21 = arr_get_element(arr, src, 2, i21, &err);
-        BValue *e22 = arr_get_element(arr, src, 2, i22, &err);
-        double a = (e11 && e11->type == VAL_NUMBER) ? e11->as.number : 0.0;
-        double b = (e12 && e12->type == VAL_NUMBER) ? e12->as.number : 0.0;
-        double c = (e21 && e21->type == VAL_NUMBER) ? e21->as.number : 0.0;
-        double d = (e22 && e22->type == VAL_NUMBER) ? e22->as.number : 0.0;
-        det = a * d - b * c;
-        if (det == 0.0) {
-            free(inv_buf);
-            err.code = 11;
-            err.message = "Division by zero (Singular matrix)";
-            return err;
-        }
-        inv_buf[0] = d / det;    inv_buf[1] = -b / det;
-        inv_buf[2] = -c / det;   inv_buf[3] = a / det;
-    } else if (n_size == 3) {
-        int r1 = base, r2 = base + 1, r3 = base + 2;
-        int c1 = base, c2 = base + 1, c3 = base + 2;
-        int i11[2]={r1,c1}, i12[2]={r1,c2}, i13[2]={r1,c3};
-        int i21[2]={r2,c1}, i22[2]={r2,c2}, i23[2]={r2,c3};
-        int i31[2]={r3,c1}, i32[2]={r3,c2}, i33[2]={r3,c3};
-        BValue *e11 = arr_get_element(arr, src, 2, i11, &err);
-        BValue *e12 = arr_get_element(arr, src, 2, i12, &err);
-        BValue *e13 = arr_get_element(arr, src, 2, i13, &err);
-        BValue *e21 = arr_get_element(arr, src, 2, i21, &err);
-        BValue *e22 = arr_get_element(arr, src, 2, i22, &err);
-        BValue *e23 = arr_get_element(arr, src, 2, i23, &err);
-        BValue *e31 = arr_get_element(arr, src, 2, i31, &err);
-        BValue *e32 = arr_get_element(arr, src, 2, i32, &err);
-        BValue *e33 = arr_get_element(arr, src, 2, i33, &err);
-        double a = (e11 && e11->type == VAL_NUMBER) ? e11->as.number : 0.0;
-        double b = (e12 && e12->type == VAL_NUMBER) ? e12->as.number : 0.0;
-        double c = (e13 && e13->type == VAL_NUMBER) ? e13->as.number : 0.0;
-        double d = (e21 && e21->type == VAL_NUMBER) ? e21->as.number : 0.0;
-        double e = (e22 && e22->type == VAL_NUMBER) ? e22->as.number : 0.0;
-        double f = (e23 && e23->type == VAL_NUMBER) ? e23->as.number : 0.0;
-        double g = (e31 && e31->type == VAL_NUMBER) ? e31->as.number : 0.0;
-        double h = (e32 && e32->type == VAL_NUMBER) ? e32->as.number : 0.0;
-        double i_v = (e33 && e33->type == VAL_NUMBER) ? e33->as.number : 0.0;
-
-        det = a * (e * i_v - f * h) - b * (d * i_v - f * g) + c * (d * h - e * g);
-        if (det == 0.0) {
-            free(inv_buf);
-            err.code = 11;
-            err.message = "Division by zero (Singular matrix)";
-            return err;
-        }
-
-        inv_buf[0] = (e * i_v - f * h) / det;
-        inv_buf[1] = (c * h - b * i_v) / det;
-        inv_buf[2] = (b * f - c * e) / det;
-        inv_buf[3] = (f * g - d * i_v) / det;
-        inv_buf[4] = (a * i_v - c * g) / det;
-        inv_buf[5] = (c * d - a * f) / det;
-        inv_buf[6] = (d * h - e * g) / det;
-        inv_buf[7] = (b * g - a * h) / det;
-        inv_buf[8] = (a * e - b * d) / det;
-    } else {
-        free(inv_buf);
-        err.code = 5;
-        err.message = "INV supports up to 3x3 matrices";
+    size_t aug_cols = (size_t)(2 * n_size);
+    double *aug = (double *)runtime_calloc((size_t)n_size * aug_cols, sizeof(double));
+    if (!aug) {
+        runtime_free(inv_buf);
+        err.code = 14;
+        err.message = "Out of memory in INV";
         return err;
     }
+
+    // Initialize augmented matrix [A | I]
+    for (int r = 0; r < n_size; r++) {
+        for (int c = 0; c < n_size; c++) {
+            int idx[2] = {base + r, base + c};
+            BValue *sp = arr_get_element(arr, src, 2, idx, &err);
+            double val = (sp && (sp->type == VAL_NUMBER || sp->type == VAL_INTEGER)) ? sp->as.number : 0.0;
+            aug[r * aug_cols + c] = val;
+        }
+        aug[r * aug_cols + (n_size + r)] = 1.0;
+    }
+
+    double det = 1.0;
+    int sign = 1;
+    bool singular = false;
+
+    for (int k = 0; k < n_size; k++) {
+        // Find pivot in column k
+        int pivot = k;
+        double max_val = runtime_fabs(aug[k * aug_cols + k]);
+        for (int r = k + 1; r < n_size; r++) {
+            double v = runtime_fabs(aug[r * aug_cols + k]);
+            if (v > max_val) {
+                max_val = v;
+                pivot = r;
+            }
+        }
+
+        if (max_val < 1e-15) {
+            singular = true;
+            det = 0.0;
+            break;
+        }
+
+        if (pivot != k) {
+            // Swap row k and pivot
+            for (size_t c = 0; c < aug_cols; c++) {
+                double tmp = aug[k * aug_cols + c];
+                aug[k * aug_cols + c] = aug[pivot * aug_cols + c];
+                aug[pivot * aug_cols + c] = tmp;
+            }
+            sign = -sign;
+        }
+
+        double pv = aug[k * aug_cols + k];
+        det *= pv;
+
+        // Normalize pivot row
+        for (size_t c = 0; c < aug_cols; c++) {
+            aug[k * aug_cols + c] /= pv;
+        }
+
+        // Eliminate other rows
+        for (int r = 0; r < n_size; r++) {
+            if (r != k) {
+                double factor = aug[r * aug_cols + k];
+                if (factor != 0.0) {
+                    for (size_t c = 0; c < aug_cols; c++) {
+                        aug[r * aug_cols + c] -= factor * aug[k * aug_cols + c];
+                    }
+                }
+            }
+        }
+    }
+
+    det *= sign;
+
+    if (singular || runtime_fabs(det) < 1e-15) {
+        runtime_free(aug);
+        runtime_free(inv_buf);
+        err.code = 11;
+        err.message = "Division by zero (Singular matrix)";
+        return err;
+    }
+
+    // Extract inverse matrix
+    for (int r = 0; r < n_size; r++) {
+        for (int c = 0; c < n_size; c++) {
+            inv_buf[r * n_size + c] = aug[r * aug_cols + (n_size + c)];
+        }
+    }
+    runtime_free(aug);
 
     arr_set_last_det(arr, det);
     ensure_array_dims(arr, dest, 2, sbounds, &err);
@@ -178,7 +193,7 @@ BppError mat_op_inv(VMContext *vm, const char *dest, const char *src) {
             }
         }
     }
-    free(inv_buf);
+    runtime_free(inv_buf);
     err.code = 0;
     return err;
 }
@@ -188,7 +203,7 @@ BppError mat_op_inv(VMContext *vm, const char *dest, const char *src) {
 
 BppError mat_op_cross(VMContext *vm, const char *dest, const char *v1_name, const char *v2_name) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     ArrayContext *arr = vm_get_arr(vm);
     int base = arr_get_option_base(arr);
 

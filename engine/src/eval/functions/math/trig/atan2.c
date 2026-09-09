@@ -1,26 +1,32 @@
-// FILENAME: atan2.c
+// FILENAME: runtime_atan2.c
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (math_fn.c)
-// NEEDS: libcore (math.h, micro_lib_metadata.h, micro_lib_metadata.c, string.h)
-// NEEDS: libengine (atan2.h, math.c, string.c)
+// NEEDS: libcore (math.h, language_descriptor.h, string.h)
+// NEEDS: libengine (runtime_atan2.h, math.c, string.c)
 // Provides runtime implementation for the ATAN2 built-in function in BASIC++.
 //
 // ---- Includes ----
 
 #include "eval/functions/math/trig/atan2.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/math.h"
 #include "runtime/string.h"
+#include "runtime/string/strops.h"
+#include "runtime/math/math.h"
+
+static const LangDesc g_atan2_desc = {
+    .name = "ATAN2",
+    .category = "Math Functions",
+    .syntax = "ATAN2(y, x)",
+    .description = "Returns the 2-argument arctangent of y and x in radians.",
+    .error_summary = "Error 13: Type Mismatch (ATAN2 expects two numeric arguments)",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_PURE,
+    .type = FEATURE_FUNCTION
+};
 void func_atan2_register(void) {
-    MicroLibMetadata meta = {
-        .name = "ATAN2",
-        .category = "Math Functions",
-        .syntax = "ATAN2(y, x)",
-        .help_text = "Returns the 2-argument arctangent of y and x in radians.",
-        .error_codes = "Error 13: Type Mismatch (ATAN2 expects two numeric arguments)"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_atan2_desc);
 }
 
 BValue func_atan2_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err) {

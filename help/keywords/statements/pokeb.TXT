@@ -1,33 +1,68 @@
-POKEB Write Banked Memory Byte Statement
-======================================================================
+TITLE: POKEB
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/runtime/memory/alloc.c
+GENERATED: no, hand-written
+STATUS: current
 
-The POKEB statement writes an 8-bit byte value (0 to 255) into an
-explicit 64KB memory bank and offset.
+==============================================================================
+POKEB KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: alloc.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libboot, libcore, libengine, libkernel
+    // NEEDS: libcore (alloc.h, memops.h, memops.c)
+    // Freestanding allocator bridge implementation.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Writes an unsigned 8-bit byte directly to physical or virtual memory address.
 
-    POKEB bank_number%, offset_address, byte_value%
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    POKEB address, byte_val
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM POKEB Demonstration
+    20 PRINT "POKEB executed successfully."
 
-OPERATIONAL RULES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 5: Illegal Function Call, Error 70: Permission Denied
 
-  - Writes directly to target bank without modifying BANK register.
-  - Byte value must be in range 0..255.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Hardware & Memory
+Subsystem:     SUBSYSTEM_PLATFORM
+Safety Level:  SAFETY_UNSAFE
 
-
-ERROR CODES
-----------------------------------------------------------------------
-
-  Error Code  Name                  Condition
-  ----------  --------------------  ----------------------------------
-  5           ERR_ILLEGAL_FUNCTION  Byte out of range
-  70          ERR_PERMISSION_DENIED Memory write restricted
-
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 POKEB 2, &H2000, 128
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  POKEB
+Category              Hardware & Memory
+Syntax                POKEB address, byte_val
+Description           Writes an unsigned 8-bit byte directly to physical ...
+Error Summary         Error 5: Illegal Function Call, Error 70: Permissio...
+Subsystem             SUBSYSTEM_PLATFORM
+Safety Level          SAFETY_UNSAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         BASIC++ Standard
+Since Version         6.0.0
+Source File           engine/src/runtime/memory/alloc.c

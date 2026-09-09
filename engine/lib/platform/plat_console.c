@@ -24,6 +24,18 @@
 #include <signal.h>
 #ifndef STANDALONE_EDITOR
 #include "vm/vm.h"
+#if defined(_MSC_VER)
+#pragma comment(linker, "/alternatename:vm_break_triggered=platform_default_vm_break_triggered")
+bool platform_default_vm_break_triggered(VMContext *vm) {
+    (void)vm;
+    return false;
+}
+#elif defined(__GNUC__) || defined(__clang__)
+__attribute__((weak)) bool vm_break_triggered(VMContext *vm) {
+    (void)vm;
+    return false;
+}
+#endif
 #endif
 
 #if defined(_WIN32)
@@ -110,10 +122,16 @@ static void platform_poll_console_events(void) {
                 KEY_EVENT_RECORD ker = recs[i].Event.KeyEvent;
                 if (ker.bKeyDown) {
                     int ch = (unsigned char)ker.uChar.AsciiChar;
+                    int vk = ker.wVirtualKeyCode;
+                    bool is_ctrl = (ker.dwControlKeyState & (LEFT_CTRL_PRESSED | RIGHT_CTRL_PRESSED)) != 0;
+                    if (ch == 3 || (is_ctrl && (vk == 'C' || vk == 'c')) || vk == VK_CANCEL || vk == VK_PAUSE) {
+                        push_key(3);
+                        platform_trigger_break();
+                        continue;
+                    }
                     if (ch != 0) {
                         push_key(ch);
                     } else {
-                        int vk = ker.wVirtualKeyCode;
                         if (vk >= VK_F1 && vk <= VK_F12) {
                             int scan = (vk <= VK_F10) ? (59 + (vk - VK_F1)) : (133 + (vk - VK_F11));
                             int mods = platform_get_modifiers();
@@ -252,6 +270,9 @@ static void platform_poll_console_events(void) {
             return;
         }
     } else {
+        if (ch == 3) {
+            platform_trigger_break();
+        }
         push_key(ch);
     }
 }
@@ -259,15 +280,30 @@ static void platform_poll_console_events(void) {
 
 bool platform_stdin_is_console(void) {
 #if defined(_WIN32)
+    static int s_cached_console = -1;
+    if (s_cached_console >= 0) return s_cached_console != 0;
     HANDLE hIn = GetStdHandle(STD_INPUT_HANDLE);
-    if (hIn == INVALID_HANDLE_VALUE || hIn == NULL) return false;
+    if (hIn == INVALID_HANDLE_VALUE || hIn == NULL) {
+        s_cached_console = 0;
+        return false;
+    }
     DWORD mode = 0;
-    if (!GetConsoleMode(hIn, &mode)) return false;
-    return (GetFileType(hIn) & ~FILE_TYPE_REMOTE) == FILE_TYPE_CHAR;
+    if (!GetConsoleMode(hIn, &mode)) {
+        s_cached_console = 0;
+        return false;
+    }
+    s_cached_console = (((GetFileType(hIn) & ~FILE_TYPE_REMOTE) == FILE_TYPE_CHAR) ? 1 : 0);
+    return s_cached_console != 0;
 #elif defined(__WATCOMC__) || defined(MSDOS)
-    return isatty(0) != 0;
+    static int s_cached_console = -1;
+    if (s_cached_console >= 0) return s_cached_console != 0;
+    s_cached_console = (isatty(0) != 0 ? 1 : 0);
+    return s_cached_console != 0;
 #else
-    return isatty(STDIN_FILENO) != 0;
+    static int s_cached_console = -1;
+    if (s_cached_console >= 0) return s_cached_console != 0;
+    s_cached_console = (isatty(STDIN_FILENO) != 0 ? 1 : 0);
+    return s_cached_console != 0;
 #endif
 }
 
@@ -296,6 +332,12 @@ int platform_getch(void) {
     }
     while (g_kb_head == g_kb_tail) {
         platform_poll_console_events();
+#ifndef STANDALONE_EDITOR
+        void *vm_ptr = platform_get_active_vm();
+        if (vm_ptr && vm_break_triggered((VMContext *)vm_ptr)) {
+            return 3;
+        }
+#endif
         Sleep(10);
     }
     int ch = g_kb_queue[g_kb_head];
@@ -309,6 +351,12 @@ int platform_getch(void) {
     }
     while (g_kb_head == g_kb_tail) {
         platform_poll_console_events();
+#ifndef STANDALONE_EDITOR
+        void *vm_ptr = platform_get_active_vm();
+        if (vm_ptr && vm_break_triggered((VMContext *)vm_ptr)) {
+            return 3;
+        }
+#endif
         usleep(10000);
     }
     int ch = g_kb_queue[g_kb_head];
@@ -527,6 +575,13 @@ bool platform_mouse_is_visible(void) {
     return g_mouse_cursor_visible;
 }
 
+int platform_peek_key(void) {
+    if (!platform_stdin_is_console()) return 0;
+    platform_poll_console_events();
+    if (g_kb_head == g_kb_tail) return 0;
+    return g_kb_queue[g_kb_head];
+}
+
 int platform_inkey_char(void) {
     if (platform_kbhit()) {
         return platform_getch();
@@ -556,4 +611,49 @@ int gfx_get_char_at(int row, int col) {
 
 int gfx_get_attr_at(int row, int col) {
     return platform_screen_get_attr(row, col);
+}
+
+int platform_console_putchar(int c) {
+    return putchar(c);
+}
+
+int platform_console_getchar(void) {
+    return getchar();
+}
+
+char *platform_console_gets(char *buf, size_t size) {
+    if (!buf || size == 0) return NULL;
+    return fgets(buf, (int)size, stdin);
+}
+
+int platform_console_puts(const char *str) {
+    if (!str) return 0;
+    return fputs(str, stdout);
+}
+
+int platform_console_printf(const char *fmt, ...) {
+    if (!fmt) return 0;
+    va_list args;
+    va_start(args, fmt);
+    int res = vfprintf(stdout, fmt, args);
+    va_end(args);
+    return res;
+}
+
+int platform_console_eputs(const char *str) {
+    if (!str) return 0;
+    return fputs(str, stderr);
+}
+
+void platform_console_eprintf(const char *fmt, ...) {
+    if (!fmt) return;
+    va_list args;
+    va_start(args, fmt);
+    vfprintf(stderr, fmt, args);
+    va_end(args);
+}
+
+void platform_console_flush(void) {
+    fflush(stdout);
+    fflush(stderr);
 }

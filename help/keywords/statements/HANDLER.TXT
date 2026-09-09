@@ -1,0 +1,69 @@
+TITLE: HANDLER
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/control/branch/handler.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+HANDLER KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: handler.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libengine (handler.h, lexer.h, lexer.c, string.c, vm.h)
+    // Provides runtime implementation for the HANDLER statement in BASIC++.
+    //
+    // ---- Includes ----
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+ECMA-116 standard detached exception handler definition.
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    HANDLER name$ ... END HANDLER
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM HANDLER Demonstration
+    20 PRINT "HANDLER executed successfully."
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Control Flow
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SAFE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  HANDLER
+Category              Control Flow
+Syntax                HANDLER name$ ... END HANDLER
+Description           ECMA-116 standard detached exception handler defini...
+Error Summary         Error 2: Syntax Error
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/control/branch/handler.c

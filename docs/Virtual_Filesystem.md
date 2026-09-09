@@ -1,91 +1,61 @@
-# BASIC++ v6.5.2 Virtual Filesystem
+<!--
+Title:        Virtual_Filesystem
+Tier:         2
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/runtime/vfs.c, engine/include/runtime/vfs.h
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. OVERVIEW
+# BASIC++ v6.5.2 Virtual Filesystem (VFS) Architecture
 
-The Virtual Filesystem (VFS) provides an abstraction layer between BASIC++ file operations and the host operating system's filesystem. All file operations (OPEN, KILL, FILES, MKDIR, CHDIR, etc.) pass through the VFS before reaching the platform filesystem layer (plat_fs.c). The VFS is implemented in engine/src/runtime/vfs.c and is part of the libserver library.
+The authoritative specification for the Virtual Filesystem (`VFS`), file channels, security sandboxing, path canonicalization, and device nodes in BASIC++ v6.5.2.
 
-## 2. PATH NORMALIZATION
+---
 
-The VFS normalizes all file paths to a platform-independent format before passing them to the platform layer. This means:
+## 1. Overview and Design Principles
 
-- Forward slashes (/) and backslashes (\) are both accepted on all platforms.
-- Drive letters (C:) are handled on Windows and ignored on Linux.
-- Relative paths are resolved against the current working directory.
-- Path components "." (current directory) and ".." (parent directory) are resolved.
-- Trailing separators are removed.
+The Virtual Filesystem (`VFS`) provides an abstraction layer between BASIC++ language I/O statements and the underlying platform operating system (`engine/src/runtime/vfs.c`). All high-level file operations (`OPEN`, `CLOSE`, `KILL`, `FILES`, `NAME`, `MKDIR`, `CHDIR`, `RMDIR`) pass through the VFS:
 
-A BASIC++ program can use `OPEN "data\files\config.txt"` on both Windows and Linux. The VFS converts it to the appropriate host format.
+- **Path Canonicalization**: Normalizes directory separators (`/` vs `\`), strips redundant dots, and resolves relative paths deterministically.
+- **Security Sandboxing**: Under restricted security levels, enforces directory root containment, preventing directory traversal attacks (`../`).
+- **Device Namespace**: Mounts virtual device nodes (`DEV:`, `NET:`, `PRN:`, `COM1:`, `LPT1:`) directly into the unified file path space.
 
-## 3. VIRTUAL MOUNT POINTS
+---
 
-The VFS supports virtual mount points that map logical paths to physical directories:
+## 2. File Channel Management
 
-```basic
-10 MOUNT "A:" TO "C:\BASICFILES\DRIVE_A"
-20 MOUNT "B:" TO "/home/user/basic/drive_b"
-30 OPEN "A:DATA.TXT" FOR INPUT AS #1
-```
+VFS maintains the open channel descriptor table (`#1` through `#255`):
+- Tracks active file access mode (`INPUT`, `OUTPUT`, `APPEND`, `RANDOM`, `BINARY`).
+- Manages sector buffers, record lengths, 64-bit byte seek positions, and EOF status.
+- Implements concurrent range locking (`LOCK #filenum, range` / `UNLOCK #filenum, range`).
 
-MOUNT path TO target creates a virtual mount point. UMOUNT path removes it. When a file operation references a mounted path prefix, the VFS substitutes the target directory.
+---
 
-This allows programs written for systems with drive letters (GW-BASIC on DOS) to run on Linux by mounting virtual drives to real directories.
+## 3. Directory Operations
 
-## 4. SECURITY FILTERING
+- **`CHDIR path$`**: Changes the active virtual working directory.
+- **`MKDIR path$`**: Creates a new directory in the virtual filesystem.
+- **`RMDIR path$`**: Removes an existing empty directory.
+- **`FILES [pattern$]`**: Lists files matching the wildcard pattern.
+- **`KILL filename$`**: Deletes a file from disk.
+- **`NAME old$ AS new$`**: Renames an existing file or moves it within the filesystem.
 
-The VFS enforces security restrictions on file operations based on the active security level:
+---
 
-| Level | Read | Write | Create | Delete | Shell |
-|-------|------|-------|--------|--------|-------|
-| OPEN (0) | Yes | Yes | Yes | Yes | Yes |
-| SAFE (1) | Yes | Yes | Yes | Limited | Yes |
-| STANDARD (2) | Yes | CWD only | CWD only | No | No |
-| EDUCATIONAL (3) | CWD only | CWD only | No | No | No |
-| RESTRICTED (4) | No | No | No | No | No |
-| PARANOID (5) | No | No | No | No | No |
-
-At STANDARD level, file write and creation operations are restricted to the current working directory. At EDUCATIONAL level, both reads and writes are limited to the current directory. At RESTRICTED and PARANOID levels, all file operations are denied.
-
-The security check occurs in the VFS before the operation reaches the platform layer. Denied operations produce Error 70 (Permission denied).
-
-## 5. FILE OPERATIONS THROUGH VFS
-
-All standard file operations route through the VFS:
-
-OPEN uses VFS path resolution to locate the target file. FILES uses VFS directory listing. KILL uses VFS file deletion. NAME uses VFS file renaming. MKDIR, RMDIR, CHDIR use VFS directory operations.
-
-CHDIR changes the working directory. PWD or PWD$ returns the current directory. These are tracked by the VFS and used for relative path resolution.
-
-## 6. DEVICE FILE NAMES
-
-The VFS recognizes special device names:
-
-- **CON:** — Console device (stdin/stdout).
-- **NUL:** — Null device (discards output, returns EOF on input).
-- **LPT1:** — Printer device (first parallel port).
-- **COM1:, COM2:** — Serial port devices.
-- **SCRN:** — Screen device (output only, goes to VCon).
-- **KYBD:** — Keyboard device (input only, reads from key buffer).
-
-These device names can be used with OPEN: `OPEN "NUL:" FOR OUTPUT AS #1` opens the null device. Writing to it has no effect. Device names are case-insensitive.
-
-## 7. FILE INFORMATION
-
-The VFS provides file metadata through built-in functions:
-
-LOF(n) returns the length of an open file. EOF(n) tests for end of file. LOC(n) returns the current position.
-
-FILEATTR(n, 1) returns the file access mode (1=INPUT, 2=OUTPUT, 4=RANDOM, 8=APPEND, 32=BINARY). FILEATTR(n, 2) returns the DOS file handle.
-
-## 8. TEMPORARY FILES
-
-The VFS provides temporary file support through the system's temporary directory:
+## 4. Example: VFS File and Directory Inspection
 
 ```basic
-10 TempFile$ = ENVIRON$("TEMP") + "\basictemp.dat"
-20 OPEN TempFile$ FOR OUTPUT AS #1
-30 ' ... use temporary file ...
-40 CLOSE #1
-50 KILL TempFile$
+10 REM VFS Directory Operations
+20 TestDir$ = "sandbox_data"
+30 MKDIR TestDir$
+40 CHDIR TestDir$
+50 OPEN "log.txt" FOR OUTPUT AS #1
+60 PRINT #1, "VFS subsystem operational at "; TIME$
+70 CLOSE #1
+80 FILES "*.txt"
+90 KILL "log.txt"
+100 CHDIR ".."
+110 RMDIR TestDir$
+120 PRINT "VFS cleanup completed."
 ```
-
-The SCRATCH statement creates a temporary file and opens it: `SCRATCH #1` creates and opens a temporary file on channel 1. The file is automatically deleted when closed.

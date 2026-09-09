@@ -1,23 +1,70 @@
-IMAGE Print Using Format Template Definition Statement
-======================================================
+TITLE: IMAGE
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/io/image.c
+GENERATED: no, hand-written
+STATUS: current
 
-Defines a format string template referenced by formatted PRINT USING operations.
+==============================================================================
+IMAGE KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: image.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libengine (image.h, string.c)
+    // Provides runtime implementation for the IMAGE statement in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Declares a line format template referenced by PRINT USING or PRINT IN FORM
+(SDS 940 / DEC PDP-10 Super BASIC).
 
-    IMAGE format_string$
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    IMAGE: format_template_specifiers
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM IMAGE Demonstration
+    20 PRINT "IMAGE executed successfully."
 
-OPERATIONAL NOTES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error
 
-  ECMA-116 standard dialect feature.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Input / Output
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_IO
 
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 IMAGE "Total: $$###.##"
-    20 PRINT USING 10; 123.45
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  IMAGE
+Category              Input / Output
+Syntax                IMAGE: format_template_specifiers
+Description           Declares a line format template referenced by PRINT...
+Error Summary         Error 2: Syntax Error
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_IO
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/io/image.c

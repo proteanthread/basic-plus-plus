@@ -1,0 +1,71 @@
+TITLE: VIEWPORT
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/bgi/viewport.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+VIEWPORT KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: viewport.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libengine (eval.h, eval.c, lexer.h, lexer.c, string.c, viewport.h)
+    // NEEDS: libengine (vm.h)
+    // Provides runtime implementation for the VIEWPORT statement in BASIC++.
+    //
+    // ---- Includes ----
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+ECMA-116 standard statement to specify a normalized graphics viewport
+boundary.
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    VIEWPORT xmin, xmax, ymin, ymax
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM VIEWPORT Demonstration
+    20 PRINT "VIEWPORT executed successfully."
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error, Error 5: Illegal Function Call
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Graphics & Sound
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SAFE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  VIEWPORT
+Category              Graphics & Sound
+Syntax                VIEWPORT xmin, xmax, ymin, ymax
+Description           ECMA-116 standard statement to specify a normalized...
+Error Summary         Error 2: Syntax Error, Error 5: Illegal Function Call
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/bgi/viewport.c

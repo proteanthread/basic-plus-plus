@@ -2,24 +2,29 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (sys_fn.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c)
+// NEEDS: libcore (language_descriptor.h)
 // NEEDS: libengine (shr.h)
 // Provides runtime implementation for the SHR built-in function in BASIC++.
 //
 // ---- Includes ----
 
 #include "eval/functions/bits/shift/shr.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_shr_desc = {
+    .name = "SHR",
+    .category = "Bitwise & Logical Functions",
+    .syntax = "SHR(val, count) or val SHR count",
+    .description = "Shifts an unsigned integer value right logically by the specified bit count.",
+    .error_summary = "Error 13: Type Mismatch",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_PURE,
+    .type = FEATURE_FUNCTION
+};
 
 void func_shr_register(void) {
-    MicroLibMetadata meta = {
-        .name = "SHR",
-        .category = "Bitwise & Logical Functions",
-        .syntax = "SHR(val, count) or val SHR count",
-        .help_text = "Shifts an unsigned integer value right logically by the specified bit count.",
-        .error_codes = "Error 13: Type Mismatch"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_shr_desc);
 }
 
 BValue func_shr_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err) {

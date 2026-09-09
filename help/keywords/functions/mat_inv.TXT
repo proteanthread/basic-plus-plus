@@ -1,17 +1,70 @@
-MAT_INV Matrix Inversion Function & Statement
-======================================================================
+TITLE: MAT_INV
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/module/mathext.c
+GENERATED: no, hand-written
+STATUS: current
 
-The MAT INV statement computes the matrix inverse of a non-singular
-square matrix.
+==============================================================================
+MAT_INV KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: mathext.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (funcreg.h, funcreg.c, math.h)
+    // NEEDS: libengine (math.c)
+    // Provides core logic and interface definitions for mathext within BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Computes the multiplicative inverse of square matrix using Gaussian
+elimination.
 
-    MAT B = INV(A)
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    MAT_INV(matrix)
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = MAT_INV(matri10)
+    20 PRINT "Result: "; Val
 
-CODE EXAMPLES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 5: Illegal Function Call (singular matrix)
 
-    10 MAT B = INV(A) : PRINT "Determinant: "; DET
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Matrix Operations
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_PURE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  MAT_INV
+Category              Matrix Operations
+Syntax                MAT_INV(matrix)
+Description           Computes the multiplicative inverse of square matri...
+Error Summary         Error 5: Illegal Function Call (singular matrix)
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_PURE
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         BASIC++ Standard
+Since Version         6.0.0
+Source File           engine/src/module/mathext.c

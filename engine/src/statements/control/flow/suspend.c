@@ -2,7 +2,7 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
-// NEEDS: libcore (ctype.h, ctype.c, micro_lib_metadata.h, micro_lib_metadata.c)
+// NEEDS: libcore (ctype.h, ctype.c, language_descriptor.h)
 // NEEDS: libcore (string.h)
 // NEEDS: libengine (eval.h, eval.c, string.c, suspend.h, task.h, task.c, vm.h)
 // NEEDS: libkernel (errors.h)
@@ -13,30 +13,36 @@
 
 #include "statements/control/flow/suspend.h"
 #include "eval/eval.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/task.h"
 #include "types/errors.h"
 #include "platform/platform.h"
 #include "vm/vm.h"
-#include <string.h>
-#include <ctype.h>
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "runtime/format/snprintf.h"
+#include "runtime/ctype/ctype.h"
 #include <stdbool.h>
 
+static const LangDesc g_suspend_desc = {
+    .name = "SUSPEND",
+    .category = "Control Flow",
+    .syntax = "SUSPEND [TIMER | KEY | COM | TASK id | EVENT name$ | expr] [, timeout]",
+    .description = "Suspends execution until the specified event occurs, key is pressed, timer triggers, or timeout expires.",
+    .error_summary = "Error 2: Syntax Error, Error 13: Type Mismatch, Error 70: Permission Denied",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SAFE,
+    .type = FEATURE_STATEMENT
+};
+
 #ifdef _WIN32
-#define strncasecmp _strnicmp
+#define runtime_strncasecmp runtime_strncasecmp
 #endif
 
 extern int platform_inkey_char(void);
 
 void stmt_suspend_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "SUSPEND",
-        .category = "Control Flow",
-        .syntax = "SUSPEND [TIMER | KEY | COM | TASK id | EVENT name$ | expr] [, timeout]",
-        .help_text = "Suspends execution until the specified event occurs, key is pressed, timer triggers, or timeout expires.",
-        .error_codes = "Error 2: Syntax Error, Error 13: Type Mismatch, Error 70: Permission Denied"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_suspend_desc);
 }
 
 typedef enum {
@@ -50,7 +56,7 @@ typedef enum {
 
 BppError stmt_suspend_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     SuspendMode mode = SUSPEND_MODE_ANY;
     int target_task_pid = 0;
@@ -65,19 +71,19 @@ BppError stmt_suspend_handler(VMContext *vm, LexerContext *lex) {
 
     if (tok.type != TOK_EOL && tok.type != TOK_EOF && tok.type != TOK_BACKSLASH) {
         if ((tok.type == TOK_KEYWORD && tok.as.keyword == KW_TIMER) ||
-            (tok.type == TOK_IDENT && tok.length == 5 && strncasecmp(tok.start, "TIMER", 5) == 0)) {
+            (tok.type == TOK_IDENT && tok.length == 5 && runtime_strncasecmp(tok.start, "TIMER", 5) == 0)) {
             mode = SUSPEND_MODE_TIMER;
             lex_next(lex);
         } else if ((tok.type == TOK_KEYWORD && tok.as.keyword == KW_KEY) ||
-                   (tok.type == TOK_IDENT && tok.length == 3 && strncasecmp(tok.start, "KEY", 3) == 0)) {
+                   (tok.type == TOK_IDENT && tok.length == 3 && runtime_strncasecmp(tok.start, "KEY", 3) == 0)) {
             mode = SUSPEND_MODE_KEY;
             lex_next(lex);
         } else if ((tok.type == TOK_KEYWORD && tok.as.keyword == KW_COM) ||
-                   (tok.type == TOK_IDENT && tok.length == 3 && strncasecmp(tok.start, "COM", 3) == 0)) {
+                   (tok.type == TOK_IDENT && tok.length == 3 && runtime_strncasecmp(tok.start, "COM", 3) == 0)) {
             mode = SUSPEND_MODE_COM;
             lex_next(lex);
         } else if ((tok.type == TOK_KEYWORD && tok.as.keyword == KW_TASK) ||
-                   (tok.type == TOK_IDENT && tok.length == 4 && strncasecmp(tok.start, "TASK", 4) == 0)) {
+                   (tok.type == TOK_IDENT && tok.length == 4 && runtime_strncasecmp(tok.start, "TASK", 4) == 0)) {
             mode = SUSPEND_MODE_TASK;
             lex_next(lex);
             BValue pid_val = eval_expression(vm, lex, &err);
@@ -89,14 +95,14 @@ BppError stmt_suspend_handler(VMContext *vm, LexerContext *lex) {
             }
             target_task_pid = (int)pid_val.as.number;
         } else if ((tok.type == TOK_KEYWORD && tok.as.keyword == KW_EVENT) ||
-                   (tok.type == TOK_IDENT && tok.length == 5 && strncasecmp(tok.start, "EVENT", 5) == 0)) {
+                   (tok.type == TOK_IDENT && tok.length == 5 && runtime_strncasecmp(tok.start, "EVENT", 5) == 0)) {
             mode = SUSPEND_MODE_EVENT;
             lex_next(lex);
             BValue ev_val = eval_expression(vm, lex, &err);
             if (err.code != 0) return err;
             if (ev_val.type == VAL_STRING && ev_val.as.string) {
                 const char *s = str_data(ev_val.as.string);
-                snprintf(target_event_name, sizeof(target_event_name), "%s", s ? s : "");
+                runtime_snprintf(target_event_name, sizeof(target_event_name), "%s", s ? s : "");
                 str_release(vm_get_str(vm), ev_val.as.string);
             }
         } else {
@@ -108,7 +114,7 @@ BppError stmt_suspend_handler(VMContext *vm, LexerContext *lex) {
             } else if (val.type == VAL_STRING && val.as.string) {
                 mode = SUSPEND_MODE_EVENT;
                 const char *s = str_data(val.as.string);
-                snprintf(target_event_name, sizeof(target_event_name), "%s", s ? s : "");
+                runtime_snprintf(target_event_name, sizeof(target_event_name), "%s", s ? s : "");
                 str_release(vm_get_str(vm), val.as.string);
             }
         }

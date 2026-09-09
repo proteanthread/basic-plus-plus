@@ -1,21 +1,77 @@
-# `MOUNTS` Display Active VFS Mounts Statement
+<!--
+Title:        MOUNTS
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/runtime/vfs.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Keyword Definition
+# `MOUNTS` Keyword Reference
 
-Displays a table of all currently active virtual filesystem mount points and devices.
+## Source Header
 
-### Syntax Signatures:
+```c
+// FILENAME: vfs.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: baspp.exe (desktop.c)
+// NEEDED BY: libcore (error.c, spec.c)
+// NEEDED BY: libengine (context.c, control.c, data.c, events_internal.h)
+// NEEDED BY: libengine (exec_internal.h, vm_internal.h)
+// NEEDS: libcore (hal.h, memops.h, memops.c, runtime_snprintf.h, runtime_snpr
+// NEEDS: libcore (strops.h, strops.c, vfs.h)
+// NEEDS: libkernel (vdev.h, vdev.c)
+// NEEDS: libplatform (platform.h)
+// Provides core logic and interface definitions for vfs within BASIC++.
+//
+// ---- Includes ----
+```
+
+## 1. Description & Usage
+
+Lists all currently active mounted virtual filesystem mount points and device types.
+
+## 2. Syntax
+
 ```basic
 MOUNTS
 ```
 
-### Operational Notes:
-- Diagnostic utility statement.
+## 3. Code Example
+
+```basic
+10 REM MOUNTS Demonstration
+20 PRINT "MOUNTS executed successfully."
+```
+
+## 4. Error Conditions
+
+None
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Virtual Filesystems
+- **Subsystem**: SUBSYSTEM_PLATFORM
+- **Safety Level**: SAFETY_SAFE
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 MOUNTS : REM Prints active mount table
-```
+| Field | Value |
+|---|---|
+| Name | MOUNTS |
+| Category | Virtual Filesystems |
+| Syntax | MOUNTS |
+| Description | Lists all currently active mounted virtual filesystem mount points and device types. |
+| Error Summary | None |
+| Subsystem | SUBSYSTEM_PLATFORM |
+| Safety Level | SAFETY_SAFE |
+| Feature Type | FEATURE_STATEMENT |
+| Delimiter Mask | none |
+| Compatibility | BASIC++ Standard |
+| Since Version | 6.0.0 |
+| Source File | engine/src/runtime/vfs.c |

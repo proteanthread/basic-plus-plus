@@ -1,0 +1,67 @@
+TITLE: DATEVALUE
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/functions/datetime/datevalue.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+DATEVALUE KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: datevalue.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (common_reg_funcs.c, sys_fn.c)
+    // NEEDS: libcore (language_descriptor.h, strings.h)
+    // NEEDS: libengine (datevalue.h, datetime_common.h)
+    // Provides runtime implementation for the DATEVALUE function in BASIC++.
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Parses date string and returns Microsoft Serial Date double-precision number.
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    DATEVALUE(date_str$)
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = DATEVALUE(date_str$)
+    20 PRINT "Result: "; Val
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 13: Type Mismatch
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Date and Time
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_PURE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  DATEVALUE
+Category              Date and Time
+Syntax                DATEVALUE(date_str$)
+Description           Parses date string and returns Microsoft Serial Dat...
+Error Summary         Error 13: Type Mismatch
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_PURE
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/eval/functions/datetime/datevalue.c

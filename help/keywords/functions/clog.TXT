@@ -1,17 +1,69 @@
-CLOG Complex Natural Logarithm Function
-======================================================================
+TITLE: CLOG
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/module/mathext.c
+GENERATED: no, hand-written
+STATUS: current
 
-The CLOG function computes the natural logarithm ln(z) of a complex
-number.
+==============================================================================
+CLOG KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: mathext.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (funcreg.h, funcreg.c, math.h)
+    // NEEDS: libengine (math.c)
+    // Provides core logic and interface definitions for mathext within BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Computes the complex natural logarithm ln(z) of complex number z.
 
-    res = CLOG(complex_val)
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    CLOG(z)
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = CLOG(z)
+    20 PRINT "Result: "; Val
 
-CODE EXAMPLES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 5: Illegal Function Call (z=0), Error 13: Type Mismatch
 
-    10 PRINT REAL(CLOG(COMPLEX(1, 0)))   : REM Outputs 0
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Math & Complex Numbers
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_PURE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  CLOG
+Category              Math & Complex Numbers
+Syntax                CLOG(z)
+Description           Computes the complex natural logarithm ln(z) of com...
+Error Summary         Error 5: Illegal Function Call (z=0), Error 13: Typ...
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_PURE
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         BASIC++ Standard
+Since Version         6.0.0
+Source File           engine/src/module/mathext.c

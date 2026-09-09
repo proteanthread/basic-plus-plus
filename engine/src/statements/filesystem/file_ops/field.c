@@ -2,7 +2,7 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
-// NEEDS: libcore (file.h, file.c, micro_lib_metadata.h, micro_lib_metadata.c)
+// NEEDS: libcore (file.h, file.c, language_descriptor.h)
 // NEEDS: libcore (string.h, strings.h, strings.c, variables.h, variables.c)
 // NEEDS: libengine (eval.h, eval.c, field.h, lexer.h, lexer.c, string.c, vm.h)
 // NEEDS: libplatform (platform.h)
@@ -17,24 +17,29 @@
 #include "runtime/file.h"
 #include "runtime/variables.h"
 #include "runtime/strings.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "platform/platform.h"
-#include <string.h>
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_field_desc = {
+    .name = "FIELD",
+    .category = "Filesystem I/O",
+    .syntax = "FIELD [#]file_num, width AS string_var [, width AS string_var...]",
+    .description = "Allocates space in a random file buffer for record variables.",
+    .error_summary = "Error 2: Syntax Error, Error 50: Field Overflow, Error 52: Bad File Number",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_STATEMENT
+};
 
 void stmt_field_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "FIELD",
-        .category = "Filesystem I/O",
-        .syntax = "FIELD [#]file_num, width AS string_var [, width AS string_var...]",
-        .help_text = "Allocates space in a random file buffer for record variables.",
-        .error_codes = "Error 2: Syntax Error, Error 50: Field Overflow, Error 52: Bad File Number"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_field_desc);
 }
 
 BppError stmt_field_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BppToken hash = lex_peek(lex);
     if (hash.type == TOK_HASH) {
@@ -70,7 +75,7 @@ BppError stmt_field_handler(VMContext *vm, LexerContext *lex) {
         if (tok.type == TOK_IDENT || tok.type == TOK_KEYWORD) {
             char kw[32];
             if (tok.length >= sizeof(kw)) tok.length = sizeof(kw) - 1;
-            memcpy(kw, tok.start, tok.length);
+            runtime_memcpy(kw, tok.start, tok.length);
             kw[tok.length] = '\0';
             if (platform_strcasecmp(kw, "AS") == 0) {
                 tok = lex_next(lex);
@@ -85,7 +90,7 @@ BppError stmt_field_handler(VMContext *vm, LexerContext *lex) {
 
         char var_name[64];
         if (tok.length >= sizeof(var_name)) tok.length = sizeof(var_name) - 1;
-        memcpy(var_name, tok.start, tok.length);
+        runtime_memcpy(var_name, tok.start, tok.length);
         var_name[tok.length] = '\0';
 
         if (offset + width > rec_len) {
@@ -95,7 +100,7 @@ BppError stmt_field_handler(VMContext *vm, LexerContext *lex) {
         }
 
         BValue val;
-        memset(&val, 0, sizeof(val));
+        runtime_memset(&val, 0, sizeof(val));
         val.type = VAL_FIELD_STRING;
         val.as.field_str.channel = channel;
         val.as.field_str.offset = offset;

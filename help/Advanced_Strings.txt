@@ -1,149 +1,115 @@
-======================================================================
-  BASIC++ V6.5.2 ADVANCED STRING HANDLING
-======================================================================
+==============================================================================
+Title:        Advanced_Strings
+Tier:         1
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/include/runtime/strings.h, engine/src/runtime/strings.c
+Generated:    no, hand-written
+Status:       current
+==============================================================================
+
+BASIC++ v6.5.2 ADVANCED STRING HANDLING
+
+The technical specification of the BASIC++ reference-counted string heap,
+substring operators, search functions, case conversion, formatting radices,
+and string interpolation.
 
 
-======================================================================
-  1. THE STRING SUBSYSTEM
-======================================================================
+1. THE STRING SUBSYSTEM
 
-Strings in BASIC++ are managed by the StringContext subsystem (engine/include/runtime/strings.h). Unlike many BASIC implementations that use a simple bump allocator, BASIC++ uses reference-counted string handles (BppStringRef) on an isolated heap. Each string object tracks its reference count, and the garbage collector (str_gc) reclaims unreferenced strings when the heap approaches capacity.
+Strings in BASIC++ are managed by the StringContext subsystem
+(engine/include/runtime/strings.h). Unlike many vintage BASIC implementations
+that use a simple bump allocator, BASIC++ uses reference-counted string
+handles (BppStringRef) on an isolated heap. Each string object tracks its
+reference count, and the garbage collector (str_gc) reclaims unreferenced
+strings when the heap approaches capacity.
 
-The string heap size depends on the build profile: 256 MB on modern builds, 192 MB on lite builds, 16 KB on FreeDOS 16-bit, and 4 KB on embedded targets. These values are set by BASIC_DEFAULT_STR_MEM in engine/include/types/config.h.
+The string heap size depends on the active build profile:
+- Standard Desktop (baspp): 256 MB string memory pool.
+- Lite REPL (bpp): 192 MB string memory pool.
+- Batch Script (bs): 32 MB string memory pool.
+- Microcontroller IoT (iot): 512 KB string memory pool.
+- FreeDOS 16-bit: 16 KB string pool.
 
-
-======================================================================
-  2. STRING CREATION AND LIFECYCLE
-======================================================================
-
-When the evaluator produces a string result ? whether from a string literal, a function return, or a concatenation ? it calls str_create(ctx, data, length) to allocate a new BppStringRef. The reference count starts at 1. The caller owns this reference and is responsible for releasing it.
-
-When a string is assigned to a variable, str_add_ref() increments the reference count. The variable system tracks its reference. When the variable is reassigned or cleared, str_release() decrements the count. When the count reaches zero, the string memory is freed.
-
-This lifecycle applies to all string operations. Statement handlers that evaluate string expressions must release the returned string on both success and error paths. Failing to release on an error path is the most common source of string heap leaks.
-
-
-======================================================================
-  3. CONCATENATION
-======================================================================
-
-The + operator concatenates two strings: A$ = "HELLO" + " " + "WORLD". Internally, str_concat(ctx, a, b) allocates a new string whose length is the sum of the two operands, copies both payloads, and returns a new BppStringRef. The two input strings are not modified and their reference counts are not affected by the concatenation itself.
-
-Chained concatenation in a single expression (A$ + B$ + C$ + D$) produces intermediate strings for each + operation. The evaluator releases each intermediate after the next concatenation consumes it. Programs that concatenate many strings in a tight loop should be aware that each iteration produces a new string allocation.
-
-For high-performance string building, use MID$ assignment to write characters into a pre-allocated string, or use MICROPLEX$ for template-based string construction.
+These values are configured by BASIC_DEFAULT_STR_MEM in
+engine/include/types/config.h.
 
 
-======================================================================
-  4. SUBSTRING OPERATIONS
-======================================================================
+2. STRING CREATION AND LIFECYCLE
 
-LEFT$(s$, n) ? Returns the leftmost n characters. If n exceeds the string length, returns the entire string. If n is zero, returns an empty string. If n is negative, Error 5 (Illegal function call).
+When the evaluator produces a string result--from a string literal, function
+return, or concatenation--it calls str_create(ctx, data, length) to allocate
+a new BppStringRef. The reference count starts at 1. The caller owns this
+reference and is responsible for releasing it.
 
-RIGHT$(s$, n) ? Returns the rightmost n characters. Same boundary behavior as LEFT$.
-
-MID$(s$, start [, length]) ? Returns length characters starting at position start (1-based). If length is omitted, returns from start to the end. If start is beyond the string length, returns an empty string.
-
-MID$ assignment ? MID$(s$, start, length) = replacement$ ? Replaces characters within an existing string variable without creating a new string. The replacement does not change the length of the target string. If the replacement is shorter than length, only replacement length characters are overwritten. If longer, excess characters are truncated.
-
-
-======================================================================
-  5. SEARCHING
-======================================================================
-
-INSTR([start,] haystack$, needle$) ? Returns the 1-based position of needle$ within haystack$. Returns 0 if not found. The optional start argument specifies the position to begin searching (default 1). The search is case-sensitive.
+When a string is assigned to a variable, str_add_ref() increments the
+reference count. When the variable is reassigned or cleared, str_release()
+decrements the count. When the count reaches zero, the string memory is
+freed.
 
 
-======================================================================
-  6. CASE CONVERSION
-======================================================================
+3. CONCATENATION AND PERFORMANCE
 
-UCASE$(s$) ? Converts all lowercase letters (a-z) to uppercase (A-Z). Non-alphabetic characters are unchanged.
+The + operator concatenates two strings: A$ = "HELLO" + " " + "WORLD".
+Internally, str_concat(ctx, a, b) allocates a new string whose length is the
+sum of the two operands, copies both payloads, and returns a new BppStringRef.
 
-LCASE$(s$) ? Converts all uppercase letters (A-Z) to lowercase (a-z).
+Chained concatenation in a single expression (A$ + B$ + C$ + D$) produces
+intermediate strings for each + operation. The evaluator releases each
+intermediate after the next concatenation consumes it.
 
-TCASE$(s$) ? Converts to title case: the first letter of each word is uppercase, remaining letters are lowercase. Word boundaries are detected at spaces, tabs, and punctuation.
-
-
-======================================================================
-  7. TRIMMING
-======================================================================
-
-LTRIM$(s$) ? Removes leading spaces (ASCII 32) from the string.
-
-RTRIM$(s$) ? Removes trailing spaces.
-
-TRIM$(s$) ? Removes both leading and trailing spaces. Equivalent to LTRIM$(RTRIM$(s$)).
+For high-performance string building, use MID$ assignment to overwrite
+characters within a pre-allocated buffer, or use MICROPLEX$ for template-based
+string construction.
 
 
-======================================================================
-  8. FORMAT CONVERSION
-======================================================================
+4. SUBSTRING OPERATIONS & SEARCH
 
-HEX$(n) ? Returns the hexadecimal representation of n as an uppercase string. Negative numbers produce the two's complement representation.
-
-OCT$(n) ? Returns the octal representation of n.
-
-BIN$(n) ? Returns the binary representation of n.
-
-STR$(n) ? Converts a number to its string representation. Positive numbers are preceded by a space. Negative numbers are preceded by a minus sign.
-
-VAL(s$) ? Parses a string as a number. Ignores leading spaces. Stops at the first non-numeric character. Returns 0 if the string does not begin with a numeric character.
-
-CHR$(n) ? Returns the single character with ASCII code n (0-255). CHR$(7) produces a bell, CHR$(10) a line feed, CHR$(13) a carriage return.
-
-ASC(s$) ? Returns the ASCII code of the first character of s$. If s$ is empty, Error 5 (Illegal function call).
+- LEFT$(s$, n): Returns leftmost n characters. If n exceeds length,
+  returns s$.
+- RIGHT$(s$, n): Returns rightmost n characters.
+- MID$(s$, start [, length]): Returns length characters starting at 1-based
+  start.
+- MID$ Assignment: MID$(s$, start, length) = replacement$ replaces characters
+  in-place without reallocating string descriptors.
+- INSTR([start,] haystack$, needle$): Returns 1-based index of needle$ within
+  haystack$, or 0 if not found. Case-sensitive.
 
 
-======================================================================
-  9. STRING GENERATION
-======================================================================
+5. CASE CONVERSION & TRIMMING
 
-SPACE$(n) ? Returns a string of n space characters.
-
-STRING$(n, char) ? Returns a string of n copies of char. If char is a number, it is treated as an ASCII code: STRING$(10, 42) produces 10 asterisks. If char is a string, the first character is used: STRING$(10, "*") also produces 10 asterisks.
-
-
-======================================================================
-  10. BINARY PACK AND UNPACK
-======================================================================
-
-PACK$(format$, value, ...) ? Packs numeric values into a binary string according to a format specification. Format characters specify the byte layout: "b" for byte (1 byte), "w" for word (2 bytes, little-endian), "d" for double word (4 bytes), "q" for quad word (8 bytes), "f" for float (4 bytes IEEE 754), "D" for double (8 bytes IEEE 754).
-
-UNPACK format$, data$, var, ... ? Unpacks a binary string into variables according to the same format specification. Each format character extracts the corresponding number of bytes and assigns the value to the next variable.
+- UCASE$(s$): Converts lowercase ASCII characters to uppercase.
+- LCASE$(s$): Converts uppercase ASCII characters to lowercase.
+- TCASE$(s$): Converts string to Title Case (capitalizing word boundaries).
+- LTRIM$(s$): Strips leading whitespace (spaces and tabs).
+- RTRIM$(s$): Strips trailing whitespace.
+- TRIM$(s$): Strips both leading and trailing whitespace.
 
 
-======================================================================
-  11. MICROPLEX$ STRING INTERPOLATION
-======================================================================
+6. RADIX CONVERSION & NUMERIC FORMATTING
 
-MICROPLEX$(template$, values...) ? Performs string interpolation using a template with numbered placeholders. Placeholders are {0}, {1}, {2}, etc., referring to the subsequent arguments by position. This function is implemented in engine/src/eval/microplex.c.
-
-10 NAME$ = "World"
-20 RESULT$ = MICROPLEX$("Hello, {0}! You are {1} years old.", NAME$, 25)
-30 PRINT RESULT$
-
-Output: Hello, World! You are 25 years old.
-
-
-======================================================================
-  12. GW-BASIC FIELD STRING CONVERSION
-======================================================================
-
-For random-access file operations, BASIC++ provides binary-to-numeric conversion functions:
-
-CVI(s$) ? Converts a 2-byte string to a 16-bit integer.
-CVS(s$) ? Converts a 4-byte string to a single-precision float.
-CVD(s$) ? Converts an 8-byte string to a double-precision float.
-MKI$(n) ? Converts an integer to a 2-byte string.
-MKS$(n) ? Converts a single to a 4-byte string.
-MKD$(n) ? Converts a double to an 8-byte string.
-
-These functions operate on the raw binary representation, not human-readable strings. They are used with FIELD, LSET, RSET, GET, and PUT for random file record access.
+- HEX$(n): Returns hexadecimal string representation of n.
+- OCT$(n): Returns octal string representation of n.
+- BIN$(n): Returns binary string representation of n.
+- STR$(n): Converts number n to formatted string (positive numbers prefixed
+  with a leading space).
+- VAL(s$): Parses string s$ to double-precision numeric value.
+- CHR$(n): Returns single ASCII character for code n (0..255).
+- ASC(s$): Returns numeric ASCII code of first character in s$.
 
 
-======================================================================
-  13. STRING MEMORY MONITORING
-======================================================================
+7. MICROPLEX$ STRING INTERPOLATION
 
-FRE(0) returns the number of free bytes in the string heap. FRE(-1) returns the largest contiguous free block. Programs that create many temporary strings should monitor FRE(0) to detect heap pressure. When the heap is near capacity, the garbage collector runs automatically, but programs may experience a brief pause during collection.
+MICROPLEX$(template$, values...) performs high-speed string interpolation
+using numbered placeholders ({0}, {1}, {2}) without intermediate allocations:
+
+    10 NAME$ = "Alice" : AGE% = 30
+    20 MSG$ = MICROPLEX$("User {0} is {1} years old.", NAME$, AGE%)
+    30 PRINT MSG$
+
+
+8. RANDOM-ACCESS FILE BUFFER CONVERSION (GW-BASIC HERITAGE)
+
+For binary file record access (FIELD, LSET, RSET, GET, PUT):
+- MKI$(n) / CVI(s$): 16-bit integer to/from 2-byte binary string.
+- MKS$(n) / CVS(s$): 32-bit single float to/from 4-byte binary string.
+- MKD$(n) / CVD(s$): 64-bit double float to/from 8-byte binary string.

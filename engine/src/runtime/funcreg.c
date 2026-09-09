@@ -9,8 +9,9 @@
 // ---- Includes ----
 
 #include "runtime/funcreg.h"
-#include <string.h>
-#include <ctype.h>
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "runtime/ctype/ctype.h"
 
 static FunctionEntry funcreg_table[MAX_FUNCTIONS];
 static int           funcreg_table_count = 0;
@@ -19,7 +20,7 @@ static const char   *current_registering_module = NULL;
 static int str_iequal(const char *a, const char *b) {
     if (!a || !b) return 0;
     while (*a && *b) {
-        if (toupper((unsigned char)*a) != toupper((unsigned char)*b)) {
+        if (runtime_toupper((unsigned char)*a) != runtime_toupper((unsigned char)*b)) {
             return 0;
         }
         a++;
@@ -29,7 +30,7 @@ static int str_iequal(const char *a, const char *b) {
 }
 
 void funcreg_init(void) {
-    memset(funcreg_table, 0, sizeof(funcreg_table));
+    runtime_memset(funcreg_table, 0, sizeof(funcreg_table));
     funcreg_table_count = 0;
     current_registering_module = NULL;
 }

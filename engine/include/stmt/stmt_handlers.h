@@ -116,6 +116,7 @@ BppError stmt_data_handler(VMContext *vm, LexerContext *lex);
 BppError stmt_read_handler(VMContext *vm, LexerContext *lex);
 BppError stmt_restore_handler(VMContext *vm, LexerContext *lex);
 BppError stmt_randomize_handler(VMContext *vm, LexerContext *lex);
+BppError stmt_shuffle_handler(VMContext *vm, LexerContext *lex);
 BppError stmt_change_handler(VMContext *vm, LexerContext *lex);
 BppError stmt_complex_handler(VMContext *vm, LexerContext *lex);
 BppError stmt_arrayfill_handler(VMContext *vm, LexerContext *lex);
@@ -133,6 +134,7 @@ BppError stmt_destroy_handler(VMContext *vm, LexerContext *lex);
 BppError stmt_print_handler(VMContext *vm, LexerContext *lex);
 BppError stmt_display_handler(VMContext *vm, LexerContext *lex);
 BppError stmt_input_handler(VMContext *vm, LexerContext *lex);
+BppError stmt_demand_handler(VMContext *vm, LexerContext *lex);
 BppError stmt_linput_handler(VMContext *vm, LexerContext *lex);
 BppError stmt_line_input_handler(VMContext *vm, LexerContext *lex);
 BppError stmt_lprint_handler(VMContext *vm, LexerContext *lex);
@@ -158,6 +160,8 @@ BppError stmt_pos_handler(VMContext *vm, LexerContext *lex);
 BppError stmt_spc_handler(VMContext *vm, LexerContext *lex);
 BppError stmt_poke_handler(VMContext *vm, LexerContext *lex);
 BppError stmt_out_handler(VMContext *vm, LexerContext *lex);
+BppError stmt_baud_handler(VMContext *vm, LexerContext *lex);
+BppError stmt_speed_handler(VMContext *vm, LexerContext *lex);
 BppError stmt_defseg_handler(VMContext *vm, LexerContext *lex);
 BppError stmt_key_handler(VMContext *vm, LexerContext *lex);
 BppError stmt_timer_handler(VMContext *vm, LexerContext *lex);
@@ -188,6 +192,9 @@ BppError stmt_unlock_handler(VMContext *vm, LexerContext *lex);
 BppError stmt_write_file_handler(VMContext *vm, LexerContext *lex);
 BppError stmt_bload_handler(VMContext *vm, LexerContext *lex);
 BppError stmt_bsave_handler(VMContext *vm, LexerContext *lex);
+BppError stmt_qload_handler(VMContext *vm, LexerContext *lex);
+BppError stmt_qsave_handler(VMContext *vm, LexerContext *lex);
+BppError stmt_qrun_handler(VMContext *vm, LexerContext *lex);
 BppError stmt_vdim_handler(VMContext *vm, LexerContext *lex);
 BppError stmt_devices_handler(VMContext *vm, LexerContext *lex);
 BppError stmt_dir_handler(VMContext *vm, LexerContext *lex);
@@ -368,6 +375,8 @@ BppError stmt_cont_handler(VMContext *vm, LexerContext *lex);
 BppError stmt_auto_handler(VMContext *vm, LexerContext *lex);
 BppError stmt_renum_handler(VMContext *vm, LexerContext *lex);
 BppError stmt_reformat_handler(VMContext *vm, LexerContext *lex);
+BppError stmt_rename_handler(VMContext *vm, LexerContext *lex);
+BppError stmt_revert_handler(VMContext *vm, LexerContext *lex);
 BppError stmt_delete_handler(VMContext *vm, LexerContext *lex);
 BppError stmt_edit_handler(VMContext *vm, LexerContext *lex);
 BppError stmt_tron_handler(VMContext *vm, LexerContext *lex);
@@ -429,5 +438,17 @@ BppError stmt_sock_handler(VMContext *vm, LexerContext *lex);
 BppError stmt_port_trigger_handler(VMContext *vm, LexerContext *lex);
 BppError stmt_sniff_handler(VMContext *vm, LexerContext *lex);
 BppError stmt_net_config_handler(VMContext *vm, LexerContext *lex);
+
+// ---- Interop, Stream & Concurrency Statement Handlers ----
+BppError stmt_pipe_handler(VMContext *vm, LexerContext *lex);
+BppError stmt_extern_handler(VMContext *vm, LexerContext *lex);
+BppError stmt_yield_handler(VMContext *vm, LexerContext *lex);
+
+// ---- UDX, Hardware & Math Register Statement Handlers ----
+BppError stmt_udx_handler(VMContext *vm, LexerContext *lex);
+BppError stmt_push_handler(VMContext *vm, LexerContext *lex);
+BppError stmt_pop_handler(VMContext *vm, LexerContext *lex);
+BppError stmt_stack_handler(VMContext *vm, LexerContext *lex);
+BppError stmt_bios_handler(VMContext *vm, LexerContext *lex);
 
 #endif // STMT_HANDLERS_H

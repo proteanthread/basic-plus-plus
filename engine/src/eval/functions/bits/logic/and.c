@@ -2,24 +2,29 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (sys_fn.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c)
+// NEEDS: libcore (language_descriptor.h)
 // NEEDS: libengine (and.h)
 // Provides runtime implementation for the AND built-in function in BASIC++.
 //
 // ---- Includes ----
 
 #include "eval/functions/bits/logic/and.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_and_desc = {
+    .name = "AND",
+    .category = "Bitwise & Logical Functions",
+    .syntax = "AND(val1, val2 [, ...]) or val1 AND val2",
+    .description = "Performs bitwise and logical AND conjunction on integers or boolean values (supports dual prefix & infix notation).",
+    .error_summary = "Error 13: Type Mismatch (AND expects numeric arguments)",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_PURE,
+    .type = FEATURE_FUNCTION
+};
 
 void func_and_register(void) {
-    MicroLibMetadata meta = {
-        .name = "AND",
-        .category = "Bitwise & Logical Functions",
-        .syntax = "AND(val1, val2 [, ...]) or val1 AND val2",
-        .help_text = "Performs bitwise and logical AND conjunction on integers or boolean values (supports dual prefix & infix notation).",
-        .error_codes = "Error 13: Type Mismatch (AND expects numeric arguments)"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_and_desc);
 }
 
 BValue func_and_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err) {

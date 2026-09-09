@@ -1,16 +1,70 @@
-XOR Bitwise and Logical Exclusive OR Operator
-======================================================================
+TITLE: XOR
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/functions/bits/logic/xor.c
+GENERATED: no, hand-written
+STATUS: current
 
-The XOR operator performs logical or bitwise exclusive disjunction.
+==============================================================================
+XOR KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: xor.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (sys_fn.c)
+    // NEEDS: libcore (language_descriptor.h)
+    // NEEDS: libengine (xor.h)
+    // Provides runtime implementation for the XOR built-in function in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Performs bitwise and logical exclusive OR disjunction on integers or boolean
+values.
 
-    result = expr1 XOR expr2
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    XOR(val1, val2 [, ...]) or val1 XOR val2
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = XOR(val1, val2 [, ...]) or val1 XOR val2
+    20 PRINT "Result: "; Val
 
-CODE EXAMPLES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 13: Type Mismatch
 
-    10 PRINT (5 XOR 3)   : REM Outputs 6
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Bitwise & Logical Functions
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_PURE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  XOR
+Category              Bitwise & Logical Functions
+Syntax                XOR(val1, val2 [, ...]) or val1 XOR val2
+Description           Performs bitwise and logical exclusive OR disjuncti...
+Error Summary         Error 13: Type Mismatch
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_PURE
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/eval/functions/bits/logic/xor.c

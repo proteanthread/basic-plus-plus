@@ -13,8 +13,9 @@
 #include "vm/vm.h"
 #include "runtime/arrays.h"
 #include "runtime/strings.h"
-#include <stdlib.h>
-#include <string.h>
+#include "runtime/memory/alloc.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
 
 static int cmp_numeric_asc(const void *a, const void *b) {
     const BValue *va = (const BValue *)a;
@@ -35,11 +36,34 @@ static int cmp_string_asc(const void *a, const void *b) {
     const BValue *vb = (const BValue *)b;
     const char *sa = (va->type == VAL_STRING && va->as.string) ? str_data(va->as.string) : "";
     const char *sb = (vb->type == VAL_STRING && vb->as.string) ? str_data(vb->as.string) : "";
-    return strcmp(sa, sb);
+    return runtime_strcmp(sa, sb);
 }
 
 static int cmp_string_desc(const void *a, const void *b) {
     return cmp_string_asc(b, a);
+}
+
+static void swap_elements(BValue *a, BValue *b) {
+    BValue tmp = *a;
+    *a = *b;
+    *b = tmp;
+}
+
+static void quicksort_bvalue(BValue *arr, int low, int high, int (*cmp)(const void *, const void *)) {
+    if (low < high) {
+        BValue pivot = arr[high];
+        int i = low - 1;
+        for (int j = low; j < high; j++) {
+            if (cmp(&arr[j], &pivot) <= 0) {
+                i++;
+                swap_elements(&arr[i], &arr[j]);
+            }
+        }
+        swap_elements(&arr[i + 1], &arr[high]);
+        int pi = i + 1;
+        if (pi > 0) quicksort_bvalue(arr, low, pi - 1, cmp);
+        quicksort_bvalue(arr, pi + 1, high, cmp);
+    }
 }
 
 bool arr_sort_inplace(ArrayContext *ctx, const char *name, bool is_string, bool ascending) {
@@ -50,9 +74,9 @@ bool arr_sort_inplace(ArrayContext *ctx, const char *name, bool is_string, bool 
     }
     
     if (is_string) {
-        qsort(elements, total_size, sizeof(BValue), ascending ? cmp_string_asc : cmp_string_desc);
+        quicksort_bvalue(elements, 0, total_size - 1, ascending ? cmp_string_asc : cmp_string_desc);
     } else {
-        qsort(elements, total_size, sizeof(BValue), ascending ? cmp_numeric_asc : cmp_numeric_desc);
+        quicksort_bvalue(elements, 0, total_size - 1, ascending ? cmp_numeric_asc : cmp_numeric_desc);
     }
     
     return true;
@@ -83,7 +107,7 @@ BValue array_sort_str_func(BValue *args, int argc, void *rt) {
 
 void register_array_sort_functions(void) {
     FunctionEntry fe;
-    memset(&fe, 0, sizeof(fe));
+    runtime_memset(&fe, 0, sizeof(fe));
     fe.module_name = "array_sort";
     fe.overridable = 1;
     fe.category = FCAT_UTIL;

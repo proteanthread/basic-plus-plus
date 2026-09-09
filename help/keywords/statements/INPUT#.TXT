@@ -1,0 +1,69 @@
+TITLE: INPUT#
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/filesystem/file_ops/input_file.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+INPUT# KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: input_file.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (line.c)
+    // NEEDS: libcore, libengine, libkernel
+    // Provides runtime implementation for the INPUT_FILE statement in BASIC++.
+    //
+    // ---- Includes ----
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Reads data items or full line text strings from an open sequential disk file
+channel or console.
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    INPUT #file_num, var1 [, var2...] | LINE INPUT [#file_num,] string_var
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM INPUT# Demonstration
+    20 PRINT "INPUT# executed successfully."
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error, Error 52: Bad File Number, Error 62: Input Past End
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Filesystem I/O
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_IO
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  INPUT#
+Category              Filesystem I/O
+Syntax                INPUT #file_num, var1 [, var2...] | LINE INPUT [#fi...
+Description           Reads data items or full line text strings from an ...
+Error Summary         Error 2: Syntax Error, Error 52: Bad File Number, E...
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_IO
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/filesystem/file_ops/input_file.c

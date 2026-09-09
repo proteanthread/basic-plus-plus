@@ -2,7 +2,7 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
-// NEEDS: libcore (file.h, file.c, micro_lib_metadata.h, micro_lib_metadata.c)
+// NEEDS: libcore (file.h, file.c, language_descriptor.h)
 // NEEDS: libcore (string.h, strings.h, strings.c, variables.h, variables.c)
 // NEEDS: libengine (eval.h, eval.c, lexer.h, lexer.c, lset.h, string.c, vm.h)
 // Provides runtime implementation for the LSET statement in BASIC++.
@@ -16,23 +16,28 @@
 #include "runtime/variables.h"
 #include "runtime/strings.h"
 #include "runtime/file.h"
-#include "runtime/micro_lib_metadata.h"
-#include <string.h>
+#include "runtime/language_descriptor.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_lset_desc = {
+    .name = "LSET",
+    .category = "Variables & Memory",
+    .syntax = "LSET string_var = string_expression",
+    .description = "Left justifies a string in a fixed-length string variable or FIELD buffer.",
+    .error_summary = "Error 2: Syntax Error, Error 13: Type Mismatch",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SYSTEM,
+    .type = FEATURE_STATEMENT
+};
 
 void stmt_lset_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "LSET",
-        .category = "Variables & Memory",
-        .syntax = "LSET string_var = string_expression",
-        .help_text = "Left justifies a string in a fixed-length string variable or FIELD buffer.",
-        .error_codes = "Error 2: Syntax Error, Error 13: Type Mismatch"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_lset_desc);
 }
 
 BppError stmt_lset_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BppToken tok = lex_next(lex);
     if (tok.type != TOK_IDENT) {
@@ -43,7 +48,7 @@ BppError stmt_lset_handler(VMContext *vm, LexerContext *lex) {
 
     char var_name[64];
     if (tok.length >= sizeof(var_name)) tok.length = sizeof(var_name) - 1;
-    memcpy(var_name, tok.start, tok.length);
+    runtime_memcpy(var_name, tok.start, tok.length);
     var_name[tok.length] = '\0';
 
     tok = lex_next(lex);
@@ -77,10 +82,10 @@ BppError stmt_lset_handler(VMContext *vm, LexerContext *lex) {
         if (rec_buf) {
             char buf[1024];
             if (len >= (int)sizeof(buf)) len = (int)sizeof(buf) - 1;
-            memset(buf, ' ', len);
+            runtime_memset(buf, ' ', len);
             size_t copy_len = (src_len < (size_t)len) ? src_len : (size_t)len;
-            memcpy(buf, src, copy_len);
-            memcpy(rec_buf + off, buf, len);
+            runtime_memcpy(buf, src, copy_len);
+            runtime_memcpy(rec_buf + off, buf, len);
         }
         str_release(str_ctx, val.as.string);
         return err;
@@ -92,14 +97,14 @@ BppError stmt_lset_handler(VMContext *vm, LexerContext *lex) {
     char buf[1024];
     if (target_len >= sizeof(buf)) target_len = sizeof(buf) - 1;
 
-    memset(buf, ' ', target_len);
+    runtime_memset(buf, ' ', target_len);
     if (src_len > target_len) src_len = target_len;
-    memcpy(buf, src, src_len);
+    runtime_memcpy(buf, src, src_len);
     buf[target_len] = '\0';
 
     BppString *res = str_create(str_ctx, buf, target_len);
     BValue new_val;
-    memset(&new_val, 0, sizeof(new_val));
+    runtime_memset(&new_val, 0, sizeof(new_val));
     new_val.type = VAL_STRING;
     new_val.as.string = res;
     var_assign(vc, var_name, new_val);

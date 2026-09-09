@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
 // NEEDS: libcore (memory.h, memory.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libengine (auto.h, lexer.h, lexer.c, string.c, vm.h)
 // NEEDS: libkernel (errors.h)
 // Provides runtime implementation for the AUTO statement in BASIC++.
@@ -14,14 +14,26 @@
 #include "types/errors.h"
 #include "vm/vm.h"
 #include "lexer/lexer.h"
-#include "runtime/micro_lib_metadata.h"
-#include <string.h>
+#include "runtime/language_descriptor.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
 
 #include "memory/memory.h"
 
+static const LangDesc g_auto_desc = {
+    .name = "AUTO",
+    .category = "Program Mgmt & Editing",
+    .syntax = "AUTO [start_line] [,step]",
+    .description = "Enables automatic line number generation starting at start_line with step interval.",
+    .error_summary = "Error 2: Syntax Error, Error 5: Illegal Function Call",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SAFE,
+    .type = FEATURE_STATEMENT
+};
+
 BppError stmt_auto_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     if (!vm || !lex) {
         err.code = ERR_ILLEGAL_FUNCTION_CALL;
         return err;
@@ -77,12 +89,5 @@ BppError stmt_auto_handler(VMContext *vm, LexerContext *lex) {
 }
 
 void stmt_auto_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "AUTO",
-        .category = "Program Mgmt & Editing",
-        .syntax = "AUTO [start_line] [,step]",
-        .help_text = "Enables automatic line number generation starting at start_line with step interval.",
-        .error_codes = "Error 2: Syntax Error, Error 5: Illegal Function Call"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_auto_desc);
 }

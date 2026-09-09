@@ -57,22 +57,32 @@
     #include <direct.h>
 #endif
 
-// Threading and Mutex Abstractions
+// Threading and Mutex Abstractions (Model 1 & 3: Pool Allocator)
+#define MAX_PLATFORM_MUTEXES 16
+
+#if defined(_WIN32)
+static CRITICAL_SECTION s_cs_pool[MAX_PLATFORM_MUTEXES];
+#elif defined(__linux__) || defined(__APPLE__) || defined(__unix__)
+static pthread_mutex_t s_pm_pool[MAX_PLATFORM_MUTEXES];
+#endif
+static int s_mutex_used[MAX_PLATFORM_MUTEXES];
+
 void platform_mutex_init(BppMutex *mutex) {
     if (!mutex) return;
-#if defined(_WIN32)
-    mutex->lock = (void *)calloc(1, sizeof(CRITICAL_SECTION));
-    if (mutex->lock) {
-        InitializeCriticalSection((CRITICAL_SECTION *)mutex->lock);
-    }
-#elif defined(__linux__) || defined(__APPLE__) || defined(__unix__)
-    mutex->lock = (void *)calloc(1, sizeof(pthread_mutex_t));
-    if (mutex->lock) {
-        pthread_mutex_init((pthread_mutex_t *)mutex->lock, NULL);
-    }
-#else
     mutex->lock = NULL;
+    for (int i = 0; i < MAX_PLATFORM_MUTEXES; i++) {
+        if (!s_mutex_used[i]) {
+            s_mutex_used[i] = 1;
+#if defined(_WIN32)
+            InitializeCriticalSection(&s_cs_pool[i]);
+            mutex->lock = (void *)&s_cs_pool[i];
+#elif defined(__linux__) || defined(__APPLE__) || defined(__unix__)
+            pthread_mutex_init(&s_pm_pool[i], NULL);
+            mutex->lock = (void *)&s_pm_pool[i];
 #endif
+            return;
+        }
+    }
 }
 
 void platform_mutex_lock(BppMutex *mutex) {
@@ -97,57 +107,88 @@ void platform_mutex_destroy(BppMutex *mutex) {
     if (!mutex || !mutex->lock) return;
 #if defined(_WIN32)
     DeleteCriticalSection((CRITICAL_SECTION *)mutex->lock);
+    for (int i = 0; i < MAX_PLATFORM_MUTEXES; i++) {
+        if (&s_cs_pool[i] == (CRITICAL_SECTION *)mutex->lock) {
+            s_mutex_used[i] = 0;
+            break;
+        }
+    }
 #elif defined(__linux__) || defined(__APPLE__) || defined(__unix__)
     pthread_mutex_destroy((pthread_mutex_t *)mutex->lock);
+    for (int i = 0; i < MAX_PLATFORM_MUTEXES; i++) {
+        if (&s_pm_pool[i] == (pthread_mutex_t *)mutex->lock) {
+            s_mutex_used[i] = 0;
+            break;
+        }
+    }
 #endif
-    free(mutex->lock);
     mutex->lock = NULL;
 }
 
+#define MAX_PLATFORM_THREADS 8
+
+typedef struct {
+    void *(*start_routine)(void *);
+    void *arg;
+    int in_use;
+#if defined(__linux__) || defined(__APPLE__) || defined(__unix__)
+    pthread_t pth;
+#endif
+} PlatThreadSlot;
+
+static PlatThreadSlot s_thread_pool[MAX_PLATFORM_THREADS];
+
 #if defined(_WIN32)
 static DWORD WINAPI win32_thread_adapter(LPVOID lpParam) {
-    struct {
-        void *(*start_routine)(void *);
-        void *arg;
-    } *args = lpParam;
-    void *(*routine)(void *) = args->start_routine;
-    void *arg = args->arg;
-    free(args);
-    routine(arg);
+    PlatThreadSlot *slot = (PlatThreadSlot *)lpParam;
+    if (!slot) return 0;
+    void *(*routine)(void *) = slot->start_routine;
+    void *arg = slot->arg;
+    slot->in_use = 0;
+    if (routine) {
+        routine(arg);
+    }
     return 0;
 }
 #endif
 
 int platform_thread_create(BppThread *thread, void *(*start_routine)(void *), void *arg) {
     if (!thread) return -1;
+    thread->handle = NULL;
+    thread->has_thread = 0;
+
+    int slot_idx = -1;
+    for (int i = 0; i < MAX_PLATFORM_THREADS; i++) {
+        if (!s_thread_pool[i].in_use) {
+            s_thread_pool[i].in_use = 1;
+            slot_idx = i;
+            break;
+        }
+    }
+    if (slot_idx < 0) return -1;
+
+    s_thread_pool[slot_idx].start_routine = start_routine;
+    s_thread_pool[slot_idx].arg = arg;
+
 #if defined(_WIN32)
-    struct {
-        void *(*start_routine)(void *);
-        void *arg;
-    } *args = (void *)calloc(1, sizeof(*args));
-    if (!args) return -1;
-    args->start_routine = start_routine;
-    args->arg = arg;
-    thread->handle = CreateThread(NULL, 0, win32_thread_adapter, args, 0, &thread->id);
+    thread->handle = CreateThread(NULL, 0, win32_thread_adapter, &s_thread_pool[slot_idx], 0, &thread->id);
     if (!thread->handle) {
-        free(args);
+        s_thread_pool[slot_idx].in_use = 0;
         return -1;
     }
     thread->has_thread = 1;
     return 0;
 #elif defined(__linux__) || defined(__APPLE__) || defined(__unix__)
-    pthread_t thread_id;
-    int rc = pthread_create(&thread_id, NULL, start_routine, arg);
+    int rc = pthread_create(&s_thread_pool[slot_idx].pth, NULL, start_routine, arg);
     if (rc == 0) {
-        thread->handle = (void *)calloc(1, sizeof(pthread_t));
-        if (thread->handle) {
-            *(pthread_t *)thread->handle = thread_id;
-        }
+        thread->handle = (void *)&s_thread_pool[slot_idx].pth;
         thread->has_thread = 1;
         return 0;
     }
+    s_thread_pool[slot_idx].in_use = 0;
     return -1;
 #else
+    s_thread_pool[slot_idx].in_use = 0;
     (void)start_routine; (void)arg;
     return -1;
 #endif
@@ -165,8 +206,14 @@ int platform_thread_join(BppThread *thread) {
     return 0;
 #elif defined(__linux__) || defined(__APPLE__) || defined(__unix__)
     if (thread->handle) {
-        pthread_join(*(pthread_t *)thread->handle, NULL);
-        free(thread->handle);
+        pthread_t *pth = (pthread_t *)thread->handle;
+        pthread_join(*pth, NULL);
+        for (int i = 0; i < MAX_PLATFORM_THREADS; i++) {
+            if (&s_thread_pool[i].pth == pth) {
+                s_thread_pool[i].in_use = 0;
+                break;
+            }
+        }
         thread->handle = NULL;
     }
     thread->has_thread = 0;

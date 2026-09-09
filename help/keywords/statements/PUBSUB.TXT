@@ -1,0 +1,69 @@
+TITLE: PUBSUB
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/system/stmt_publish.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+PUBSUB KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: stmt_publish.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: exec_dispatch.c, common_reg_stmts.c
+    // NEEDS: libkernel (types/types.h, lexer/lexer.h, types/errors.h, msg_broker.
+    // Implementation for Publish / Subscribe Broadcast Statements (PUBLISH, PUBSU
+    //
+    // ---- Includes ----
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Universal publish/subscribe statement supporting topic broadcast,
+subscription, and unsubscription.
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    PUBSUB topic$, payload$ | PUBSUB.SUB topic$ | PUBSUB.UNSUB topic$
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM PUBSUB Demonstration
+    20 PRINT "PUBSUB executed successfully."
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+None
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Communications & PubSub
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_IO
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  PUBSUB
+Category              Communications & PubSub
+Syntax                PUBSUB topic$, payload$ | PUBSUB.SUB topic$ | PUBSU...
+Description           Universal publish/subscribe statement supporting to...
+Error Summary         None
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_IO
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/system/stmt_publish.c

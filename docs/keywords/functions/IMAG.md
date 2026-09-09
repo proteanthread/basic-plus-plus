@@ -1,22 +1,72 @@
-# `IMAG` Imaginary Component Extractor Function
+<!--
+Title:        IMAG
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/module/mathext.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Function Definition
+# `IMAG` Keyword Reference
 
-The `IMAG` function extracts the imaginary component $y$ from a complex number $z = x + iy$.
+## Source Header
 
-### Syntax Signatures:
-```basic
-imag_part# = IMAG(complex_val)
+```c
+// FILENAME: mathext.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore (funcreg.h, funcreg.c, math.h)
+// NEEDS: libengine (math.c)
+// Provides core logic and interface definitions for mathext within BASIC++.
+//
+// ---- Includes ----
 ```
 
-### Operational Rules:
-- Returns real double-precision floating-point value.
+## 1. Description & Usage
+
+Returns the imaginary component of complex number or scalar z.
+
+## 2. Syntax
+
+```basic
+IMAG(z)
+```
+
+## 3. Code Example
+
+```basic
+10 Val = IMAG(z)
+20 PRINT "Result: "; Val
+```
+
+## 4. Error Conditions
+
+Error 13: Type Mismatch
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Math & Complex Numbers
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_PURE
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 Z = COMPLEX(3, -4.5)
-20 PRINT "Imaginary part: "; IMAG(Z) : REM Outputs -4.5
-```
+| Field | Value |
+|---|---|
+| Name | IMAG |
+| Category | Math & Complex Numbers |
+| Syntax | IMAG(z) |
+| Description | Returns the imaginary component of complex number or scalar z. |
+| Error Summary | Error 13: Type Mismatch |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_PURE |
+| Feature Type | FEATURE_FUNCTION |
+| Delimiter Mask | none |
+| Compatibility | BASIC++ Standard |
+| Since Version | 6.0.0 |
+| Source File | engine/src/module/mathext.c |

@@ -1,29 +1,69 @@
-BORDER Screen Border Color Attribute Statement
-==============================================
+TITLE: BORDER
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/device/gfx.c
+GENERATED: no, hand-written
+STATUS: current
 
-Sets the color of the outer screen border on supported graphics modes.
+==============================================================================
+BORDER KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: gfx.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore, libengine, libkernel, libplatform
+    // Implements virtual device and graphics rendering logic for gfx.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Sets the color of the overscan screen border area surrounding active display
+text/graphics.
 
-    BORDER color_index%
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    BORDER color_index
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM BORDER Demonstration
+    20 PRINT "BORDER executed successfully."
 
-ERROR CONDITIONS
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 5: Illegal Function Call
 
-  - Error 5 (ERR_ILLEGAL_FUNCTION_CALL): Color index out of range for active screen mode.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       Commodore BASIC, Amstrad CPC, BASIC++ Standard
+Since Version: 6.0.0
+Category:      Graphics & Display
+Subsystem:     SUBSYSTEM_ADVANCED
+Safety Level:  SAFETY_SAFE
 
-
-OPERATIONAL NOTES
-----------------------------------------------------------------------
-
-  Full support in Commodore, ZX Spectrum, and Amstrad display modes.
-
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 BORDER 1 : REM Set blue border
-    20 COLOR 14, 0 : CLS
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  BORDER
+Category              Graphics & Display
+Syntax                BORDER color_index
+Description           Sets the color of the overscan screen border area s...
+Error Summary         Error 5: Illegal Function Call
+Subsystem             SUBSYSTEM_ADVANCED
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         Commodore BASIC, Amstrad CPC, BASIC++ Standard
+Since Version         6.0.0
+Source File           engine/src/device/gfx.c

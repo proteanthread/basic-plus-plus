@@ -1,24 +1,72 @@
-# `IMP` Logical and Bitwise Implication Operator (Universal Dual-Format)
+<!--
+Title:        IMP
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/eval/functions/bits/logic/imp.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Operator/Function Definition
+# `IMP` Keyword Reference
 
-The `IMP` keyword performs bitwise implication on 64-bit integer operands or logical implication on boolean expressions. It is supported in both **infix** and **prefix** notation.
+## Source Header
 
-### Syntax Signatures:
-```basic
-result = expr1 IMP expr2
-result = IMP(expr1, expr2)
+```c
+// FILENAME: imp.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine (sys_fn.c)
+// NEEDS: libcore (language_descriptor.h)
+// NEEDS: libengine (imp.h)
+// Provides runtime implementation for the IMP built-in function in BASIC++.
+//
+// ---- Includes ----
 ```
 
-### Operational Rules:
-- Performs bitwise implication: `~(int64_t)expr1 | (int64_t)expr2`.
-- In RPN stack evaluation blocks: `{ expr1 expr2 IMP }`.
+## 1. Description & Usage
+
+Performs bitwise and logical implication (NOT val1 OR val2) on integers or boolean values.
+
+## 2. Syntax
+
+```basic
+IMP(val1, val2) or val1 IMP val2
+```
+
+## 3. Code Example
+
+```basic
+10 Val = IMP(val1, val2) or val1 IMP val2
+20 PRINT "Result: "; Val
+```
+
+## 4. Error Conditions
+
+Error 13: Type Mismatch
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Bitwise & Logical Functions
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_PURE
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 PRINT "Infix: "; 0 IMP 1 : REM Outputs -1 (True)
-20 PRINT "Prefix: "; IMP(0, 1) : REM Outputs -1 (True)
-```
+| Field | Value |
+|---|---|
+| Name | IMP |
+| Category | Bitwise & Logical Functions |
+| Syntax | IMP(val1, val2) or val1 IMP val2 |
+| Description | Performs bitwise and logical implication (NOT val1 OR val2) on integers or boolean values. |
+| Error Summary | Error 13: Type Mismatch |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_PURE |
+| Feature Type | FEATURE_FUNCTION |
+| Delimiter Mask | none |
+| Compatibility | none |
+| Since Version | none |
+| Source File | engine/src/eval/functions/bits/logic/imp.c |

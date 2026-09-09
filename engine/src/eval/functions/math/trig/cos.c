@@ -1,30 +1,36 @@
-// FILENAME: cos.c
+// FILENAME: runtime_cos.c
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (math_fn.c)
-// NEEDS: libcore (math.h, micro_lib_metadata.h, micro_lib_metadata.c, string.h)
-// NEEDS: libengine (cos.h, math.c, string.c)
+// NEEDS: libcore (math.h, language_descriptor.h, string.h)
+// NEEDS: libengine (runtime_cos.h, math.c, string.c)
 // Provides runtime implementation for the COS built-in function in BASIC++.
 //
 // ---- Includes ----
 
 #include "eval/functions/math/trig/cos.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/math.h"
 #include "runtime/string.h"
+#include "runtime/string/strops.h"
+#include "runtime/math/math.h"
+#include "vm/vm.h"
+
+static const LangDesc g_cos_desc = {
+    .name = "COS",
+    .category = "Math Functions",
+    .syntax = "COS(angle)",
+    .description = "Returns the trigonometric cosine of an angle (radians by default, degrees or grads if DEGREE/GRAD mode).",
+    .error_summary = "Error 13: Type Mismatch (COS expects one numeric argument)",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_PURE,
+    .type = FEATURE_FUNCTION
+};
 void func_cos_register(void) {
-    MicroLibMetadata meta = {
-        .name = "COS",
-        .category = "Math Functions",
-        .syntax = "COS(radians)",
-        .help_text = "Returns the trigonometric cosine of an angle given in radians.",
-        .error_codes = "Error 13: Type Mismatch (COS expects one numeric argument)"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_cos_desc);
 }
 
 BValue func_cos_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err) {
-    (void)vm;
     BValue res;
     res.type = VAL_NONE;
     res.as.number = 0.0;
@@ -39,7 +45,15 @@ BValue func_cos_eval(VMContext *vm, const char *uname, int arg_count, BValue *ar
         return res;
     }
 
+    double angle = args[0].as.number;
+    int mode = vm_get_angle_mode(vm);
+    if (mode == 1) {
+        angle = angle * (3.14159265358979323846 / 180.0);
+    } else if (mode == 2) {
+        angle = angle * (3.14159265358979323846 / 200.0);
+    }
+
     res.type = VAL_NUMBER;
-    res.as.number = runtime_cos(args[0].as.number);
+    res.as.number = runtime_cos(angle);
     return res;
 }

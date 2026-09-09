@@ -1,0 +1,99 @@
+Title:        Virtual Machine Tutorial
+Tier:         2
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/vm/, engine/include/vm/vm.h
+Generated:    no
+Status:       Active
+
+BASIC++ VIRTUAL MACHINE EXECUTION TUTORIAL
+
+A step-by-step hands-on tutorial demonstrating how the BASIC++ Virtual Machine
+processes, tokenizes, evaluates, and executes programs across its internal
+execution pipeline.
+
+
+1. THE EXECUTION PIPELINE
+
+Every statement in a BASIC++ program moves through a 4-stage pipeline:
+
+    [Source Code] --> [Lexer Tokens] --> [AST Parser] --> [Statement Dispatch]
+
+Unlike classic interpreted BASICs that tokenize the entire source file in
+advance or re-read raw ASCII strings, BASIC++ uses ephemeral tokenization:
+lines are scanned on demand and token streams are discarded immediately upon
+execution.
+
+
+2. STEP 1: LOADING AND LINE STORAGE
+
+When code is loaded into the interpreter, lines are sorted numerically into
+the ProgramStore (engine/src/memory/):
+
+    10 LET X = 10
+    20 LET Y = 20
+    30 PRINT "SUM: "; X + Y
+    40 END
+
+The VM initializes a ProgramLine struct for each line. At this stage, no
+parsing has occurred; lines reside in memory as clean ASCII strings.
+
+
+3. STEP 2: STATEMENT DISPATCH AND EXECUTION
+
+When RUN is issued:
+1. Line Fetch: The VM sets the program counter to line 10.
+2. Lexer Pass: Scans "10 LET X = 10" into tokens.
+3. Dispatch: The leading token TOK_LET triggers the assignment handler in
+   engine/src/statements/core/assign.c.
+4. Variable Assignment: Records the variable in VariableContext.
+5. Advancement: The VM advances to line 20, assigns Y = 20, then line 30.
+
+
+4. STEP 3: EXPRESSION EVALUATION VIA RPN STACK
+
+Line 30 contains an expression X + Y. The expression evaluator
+(engine/src/eval/):
+1. Converts infix X + Y into Reverse Polish Notation: X Y +.
+2. Pushes value of X (10.0) to the operand stack.
+3. Pushes value of Y (20.0) to the operand stack.
+4. Evaluates + via eval_execute_op(OP_ADD), producing 30.0.
+5. Passes the result to stmt_print(), which emits "SUM: 30" to CON:.
+
+
+5. STEP 4: PROCEDURE CALLS AND STACK FRAMES
+
+Consider structured procedures:
+
+    10 PRINT "Starting..."
+    20 CALL AddNumbers(5, 7)
+    30 PRINT "Done."
+    40 END
+
+    SUB AddNumbers(A, B)
+        PRINT "Result: "; A + B
+    END SUB
+
+When line 20 executes:
+1. SubStack pushes a new frame recording the caller return line (30).
+2. A new local scope is established in VariableContext, binding A = 5, B = 7.
+3. Execution jumps to SUB AddNumbers.
+4. Upon reaching END SUB, the VM pops the SubStack frame, restores global
+   scope, and resumes execution at line 30.
+
+
+6. STEP 5: EXCEPTION UNWINDING WITH TRY/CATCH
+
+When errors occur inside a TRY block:
+
+    10 TRY
+    20   LET D = 10 / 0
+    30   PRINT "Not reached"
+    40 CATCH
+    50   PRINT "Caught error code: "; ERR
+    60 END TRY
+
+1. Line 10 pushes a frame to TryStack recording current stack depths.
+2. Line 20 triggers Error 11 (Division by zero).
+3. Rather than halting, vm_handle_error() consults TryStack.
+4. The VM unwinds GosubStack and ForStack back to the saved snapshot.
+5. Control transfers to line 40 (CATCH), setting ERR = 11.

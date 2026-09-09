@@ -1,30 +1,68 @@
-FLASH Retro Text Blinking Attribute Statement
-=============================================
+TITLE: FLASH
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/device/gfx.c
+GENERATED: no, hand-written
+STATUS: current
 
-Toggles text character blinking mode in retro and ANSI display systems.
+==============================================================================
+FLASH KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: gfx.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore, libengine, libkernel, libplatform
+    // Implements virtual device and graphics rendering logic for gfx.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Controls blinking text attribute on vintage video displays (0=off, 1=on).
 
-    FLASH flash_flag%
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    FLASH state%
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM FLASH Demonstration
+    20 PRINT "FLASH executed successfully."
 
-ERROR CONDITIONS
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 5: Illegal Function Call
 
-  - Error 5 (ERR_ILLEGAL_FUNCTION_CALL): Flag must be 0 or 1.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       Sinclair ZX Spectrum, Apple II, BASIC++ Standard
+Since Version: 6.0.0
+Category:      Graphics & Display
+Subsystem:     SUBSYSTEM_ADVANCED
+Safety Level:  SAFETY_SAFE
 
-
-OPERATIONAL NOTES
-----------------------------------------------------------------------
-
-  ZX Spectrum attribute emulation.
-
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 FLASH 1
-    20 PRINT "WARNING: SYSTEM OVERLOAD"
-    30 FLASH 0
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  FLASH
+Category              Graphics & Display
+Syntax                FLASH state%
+Description           Controls blinking text attribute on vintage video d...
+Error Summary         Error 5: Illegal Function Call
+Subsystem             SUBSYSTEM_ADVANCED
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         Sinclair ZX Spectrum, Apple II, BASIC++ Standard
+Since Version         6.0.0
+Source File           engine/src/device/gfx.c

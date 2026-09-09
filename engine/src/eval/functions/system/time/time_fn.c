@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (sys_fn.c)
 // NEEDS: libcore (hal.h, memory.h, memory.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libengine (string.c, time_fn.h)
 // NEEDS: libplatform (platform.h)
 // Provides runtime implementation for the TIME_FN built-in function in BASIC++.
@@ -11,20 +11,24 @@
 // ---- Includes ----
 
 #include "eval/functions/system/time/time_fn.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "platform/platform.h"
 #include "runtime/string.h"
 #include "runtime/memory.h"
 #include "hal/hal.h"
+
+static const LangDesc g_time_desc = {
+    .name = "TIME",
+    .category = "System Functions",
+    .syntax = "TIME(code)",
+    .description = "Returns DEC PDP-10 timesharing CPU execution seconds (0), seconds since midnight (1), or minutes since midnight (2).",
+    .error_summary = "Error 13: Type Mismatch",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_FUNCTION
+};
 void func_time_fn_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "TIME",
-        .category = "System Functions",
-        .syntax = "TIME(code)",
-        .help_text = "Returns DEC PDP-10 timesharing CPU execution seconds (0), seconds since midnight (1), or minutes since midnight (2).",
-        .error_codes = "Error 13: Type Mismatch"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_time_desc);
 }
 
 BValue func_time_fn_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err) {

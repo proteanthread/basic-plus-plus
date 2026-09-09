@@ -52,7 +52,9 @@ bool        scan_try_radix_number(LexerContext *ctx, BppToken *tok);
 bool        scan_try_decimal_number(LexerContext *ctx, BppToken *tok);
 bool        scan_try_docstring(LexerContext *ctx, BppToken *tok);
 bool        scan_try_directive_or_label(LexerContext *ctx, BppToken *tok);
+bool        scan_try_pragma(LexerContext *ctx, BppToken *tok);
 bool        scan_try_string_literal(LexerContext *ctx, BppToken *tok);
 bool        scan_try_rpn_literal(LexerContext *ctx, BppToken *tok);
+bool        scan_try_pn_literal(LexerContext *ctx, BppToken *tok);
 
 #endif // LEXER_INTERNAL_H

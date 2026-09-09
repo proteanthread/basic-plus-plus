@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
 // NEEDS: libcore (ctype.h, ctype.c, memory.h, memory.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libengine (do.h, eval.h, eval.c, lexer.h, lexer.c, string.c, vm.h)
 // NEEDS: libkernel (security.h, security.c, vdev.h, vdev.c)
 // Provides runtime implementation for the DO statement in BASIC++.
@@ -14,24 +14,30 @@
 #include "vm/vm.h"
 #include "lexer/lexer.h"
 #include "eval/eval.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 
-void stmt_do_register(void) {
-    MicroLibMetadata meta = {
-        .name = "DO",
-        .category = "Looping / Control Flow",
-        .syntax = "DO [{WHILE|UNTIL} condition]",
-        .help_text = "Initiates a structured DO...LOOP block, optionally evaluating a WHILE or UNTIL pre-condition.",
-        .error_codes = "Error 2: Syntax Error, Error 31: DO Without LOOP"
-    };
-    microlib_register(&meta);
-}
+
 #include "device/vdev.h"
 #include "security/security.h"
 #include "memory/memory.h"
-#include <string.h>
-#include <ctype.h>
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "runtime/ctype/ctype.h"
 
+static const LangDesc g_do_desc = {
+    .name = "DO",
+    .category = "Looping / Control Flow",
+    .syntax = "DO [{WHILE|UNTIL} condition]",
+    .description = "Initiates a structured DO...LOOP block, optionally evaluating a WHILE or UNTIL pre-condition.",
+    .error_summary = "Error 2: Syntax Error, Error 31: DO Without LOOP",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SAFE,
+    .type = FEATURE_STATEMENT
+};
+
+void stmt_do_register(void) {
+    lang_desc_register(&g_do_desc);
+}
 static bool val_is_truthy(BValue val) {
     if (val.type == VAL_STRING) {
         return (val.as.string && str_len(val.as.string) > 0);
@@ -39,27 +45,27 @@ static bool val_is_truthy(BValue val) {
     return val.as.number != 0.0;
 }static bool is_token_do(BppToken tok) {
     return (tok.type == TOK_KEYWORD && tok.as.keyword == KW_DO) ||
-           (tok.type == TOK_IDENT && tok.length == 2 && strncasecmp(tok.start, "DO", 2) == 0);
+           (tok.type == TOK_IDENT && tok.length == 2 && runtime_strncasecmp(tok.start, "DO", 2) == 0);
 }
 
 static bool is_token_loop(BppToken tok) {
     return (tok.type == TOK_KEYWORD && tok.as.keyword == KW_LOOP) ||
-           (tok.type == TOK_IDENT && tok.length == 4 && strncasecmp(tok.start, "LOOP", 4) == 0);
+           (tok.type == TOK_IDENT && tok.length == 4 && runtime_strncasecmp(tok.start, "LOOP", 4) == 0);
 }
 
 static bool is_token_while(BppToken tok) {
     return (tok.type == TOK_KEYWORD && tok.as.keyword == KW_WHILE) ||
-           (tok.type == TOK_IDENT && tok.length == 5 && strncasecmp(tok.start, "WHILE", 5) == 0);
+           (tok.type == TOK_IDENT && tok.length == 5 && runtime_strncasecmp(tok.start, "WHILE", 5) == 0);
 }
 
 static bool is_token_until(BppToken tok) {
     return (tok.type == TOK_KEYWORD && tok.as.keyword == KW_UNTIL) ||
-           (tok.type == TOK_IDENT && tok.length == 5 && strncasecmp(tok.start, "UNTIL", 5) == 0);
+           (tok.type == TOK_IDENT && tok.length == 5 && runtime_strncasecmp(tok.start, "UNTIL", 5) == 0);
 }
 
 static BppError skip_to_matching_loop(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     int do_nesting = 0;
 
@@ -81,7 +87,7 @@ static BppError skip_to_matching_loop(VMContext *vm, LexerContext *lex) {
                     if (dummy.type == VAL_STRING) {
                         str_release(vm_get_str(vm), dummy.as.string);
                     }
-                    memset(&err, 0, sizeof(err));
+                    runtime_memset(&err, 0, sizeof(err));
                 }
                 return err;
             }
@@ -131,7 +137,7 @@ static BppError skip_to_matching_loop(VMContext *vm, LexerContext *lex) {
                         if (dummy.type == VAL_STRING) {
                             str_release(vm_get_str(vm), dummy.as.string);
                         }
-                        memset(&err, 0, sizeof(err));
+                        runtime_memset(&err, 0, sizeof(err));
                     }
                     BppToken after_tok = lex_peek(scan_lex);
                     if (after_tok.type == TOK_EOL || after_tok.type == TOK_BACKSLASH) {
@@ -164,7 +170,7 @@ static BppError skip_to_matching_loop(VMContext *vm, LexerContext *lex) {
 
 BppError stmt_do_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     if (!vm || !lex) {
         err.code = 5; err.message = "Null VM or lexer context";

@@ -1,28 +1,72 @@
-DO Structured Loop Initiation Statement
-=======================================
+TITLE: DO
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/loops/conditional/do.c
+GENERATED: no, hand-written
+STATUS: current
 
-Initiates a structured loop block with optional entry or exit test conditions.
+==============================================================================
+DO KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: do.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (ctype.h, ctype.c, memory.h, memory.c)
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libengine (do.h, eval.h, eval.c, lexer.h, lexer.c, string.c, vm.h)
+    // NEEDS: libkernel (security.h, security.c, vdev.h, vdev.c)
+    // Provides runtime implementation for the DO statement in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Initiates a structured DO...LOOP block, optionally evaluating a WHILE or UNTIL
+pre-condition.
 
-    DO [{WHILE | UNTIL} condition]
-      [statements]
-    LOOP [{WHILE | UNTIL} condition]
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    DO [{WHILE|UNTIL} condition]
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM DO Demonstration
+    20 PRINT "DO executed successfully."
 
-OPERATIONAL NOTES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error, Error 31: DO Without LOOP
 
-  Non-recursive VM loop state tracked on heap control stack.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Looping / Control Flow
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SAFE
 
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 I = 1
-    20 DO WHILE I <= 5
-    30   PRINT "Count: "; I
-    40   I = I + 1
-    50 LOOP
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  DO
+Category              Looping / Control Flow
+Syntax                DO [{WHILE|UNTIL} condition]
+Description           Initiates a structured DO...LOOP block, optionally ...
+Error Summary         Error 2: Syntax Error, Error 31: DO Without LOOP
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/loops/conditional/do.c

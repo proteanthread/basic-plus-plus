@@ -1,0 +1,73 @@
+TITLE: NET.CONFIG
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/network/stmt_net_config.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+NET.CONFIG KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: stmt_net_config.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (memops.h, memops.c)
+    // NEEDS: libcore (language_descriptor.h)
+    // NEEDS: libcore (strops.h, strops.c)
+    // NEEDS: libengine (eval.h, eval.c, events_net.h, events_net.c)
+    // NEEDS: libengine (stmt_net_config.h, stmt_nil_bead.h, stmt_nil_bead.c)
+    // Implements NET.CONFIG statement for network interface and IP setup.
+    //
+    // ---- Includes ----
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Configures network interface TCP/IP settings or controls network event
+trapping.
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    NET.CONFIG iface$, ip$, netmask$, gateway$, dns$ | NET ON|OFF|STOP
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM NET.CONFIG Demonstration
+    20 PRINT "NET.CONFIG executed successfully."
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 5: Syntax error in NET statement
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Hardware & Network
+Subsystem:     SUBSYSTEM_SERVER
+Safety Level:  SAFETY_IO
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  NET.CONFIG
+Category              Hardware & Network
+Syntax                NET.CONFIG iface$, ip$, netmask$, gateway$, dns$ | ...
+Description           Configures network interface TCP/IP settings or con...
+Error Summary         Error 5: Syntax error in NET statement
+Subsystem             SUBSYSTEM_SERVER
+Safety Level          SAFETY_IO
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/network/stmt_net_config.c

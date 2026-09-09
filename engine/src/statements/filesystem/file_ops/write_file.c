@@ -2,7 +2,7 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
-// NEEDS: libcore (file.h, file.c, micro_lib_metadata.h, micro_lib_metadata.c)
+// NEEDS: libcore (file.h, file.c, language_descriptor.h)
 // NEEDS: libcore (string.h, strings.h, strings.c)
 // NEEDS: libengine (eval.h, eval.c, lexer.h, lexer.c, string.c, vm.h)
 // NEEDS: libengine (write_file.h)
@@ -16,23 +16,28 @@
 #include "eval/eval.h"
 #include "runtime/file.h"
 #include "runtime/strings.h"
-#include "runtime/micro_lib_metadata.h"
-#include <string.h>
+#include "runtime/language_descriptor.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_write_desc = {
+    .name = "WRITE#",
+    .category = "Filesystem I/O",
+    .syntax = "WRITE #file_num, expression_list",
+    .description = "Outputs CSV delimited double-quoted strings and formatted numbers to a disk file channel.",
+    .error_summary = "Error 2: Syntax Error, Error 52: Bad File Number, Error 54: Bad File Mode",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_STATEMENT
+};
 
 void stmt_write_file_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "WRITE#",
-        .category = "Filesystem I/O",
-        .syntax = "WRITE #file_num, expression_list",
-        .help_text = "Outputs CSV delimited double-quoted strings and formatted numbers to a disk file channel.",
-        .error_codes = "Error 2: Syntax Error, Error 52: Bad File Number, Error 54: Bad File Mode"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_write_desc);
 }
 
 BppError stmt_write_file_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BppToken hash = lex_peek(lex);
     if (hash.type == TOK_HASH) {

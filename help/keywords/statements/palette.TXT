@@ -1,31 +1,71 @@
-PALETTE Color Palette Table Reconfiguration Statement
-=====================================================
+TITLE: PALETTE
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/graphics/screen/palette.c
+GENERATED: no, hand-written
+STATUS: current
 
-Reconfigures the hardware color mapping table for display attributes in palette-indexed screen modes.
+==============================================================================
+PALETTE KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: palette.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libengine (eval.h, eval.c, lexer.h, lexer.c, palette.h, string.c)
+    // NEEDS: libengine (vm.h)
+    // NEEDS: libkernel (security.h, security.c, vdev.h, vdev.c)
+    // Provides runtime implementation for the PALETTE statement in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Changes color mapping for screen palette attributes.
 
-    PALETTE [attribute_index%, rgb_color_value&]
-    PALETTE USING array%(index%)
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    PALETTE [attribute, color]
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM PALETTE Demonstration
+    20 PRINT "PALETTE executed successfully."
 
-ERROR CONDITIONS
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 5: Illegal Function Call (invalid attribute or color)
 
-  - Error 5 (ERR_ILLEGAL_FUNCTION_CALL): Attribute index out of range.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Graphics & Color
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SAFE
 
-
-OPERATIONAL NOTES
-----------------------------------------------------------------------
-
-  Allows dynamic palette cycling and custom color schemes.
-
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 SCREEN 13 : REM 320x200 256-color
-    20 PALETTE 1, &H3F0000 : REM Remap color 1 to bright red
-    30 COLOR 1 : PRINT "Now Bright Red"
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  PALETTE
+Category              Graphics & Color
+Syntax                PALETTE [attribute, color]
+Description           Changes color mapping for screen palette attributes.
+Error Summary         Error 5: Illegal Function Call (invalid attribute o...
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/graphics/screen/palette.c

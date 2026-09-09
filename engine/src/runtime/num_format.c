@@ -14,16 +14,17 @@
 
 #include "runtime/num_format.h"
 
-#include <stdio.h>
+#include "runtime/format/snprintf.h"
 #include <stdint.h>
 #include <stdbool.h>
-#include <math.h>
-#include <string.h>
+#include "runtime/math/math.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
 
 // @brief Internal helper: strip trailing zeros and trailing decimal point
 // from a fixed-point formatted string.
 //
-// Operates on a null-terminated string produced by snprintf with %f or %.Nf.
+// Operates on a null-terminated string produced by runtime_snprintf with %f or %.Nf.
 // Only strips if a decimal point is present (avoids mangling integer strings).
 //
 // @param s  Null-terminated string buffer to modify in-place.
@@ -94,9 +95,9 @@ void num_format_display(char *buf, size_t buf_size, double val,
     }
 
     // Fast Path: Exact integer display.
-// Use ultra-fast direct conversion (0.003 microseconds vs 15 microseconds snprintf).
+// Use ultra-fast direct conversion (0.003 microseconds vs 15 microseconds runtime_snprintf).
     if (val == (double)(long long)val &&
-        fabs(val) <= NUM_FORMAT_MAX_EXACT_INT) {
+        runtime_fabs(val) <= NUM_FORMAT_MAX_EXACT_INT) {
         fast_i64toa_buf((long long)val, buf, leading_space, trailing_space);
         return;
     }
@@ -104,31 +105,31 @@ void num_format_display(char *buf, size_t buf_size, double val,
     // Tier 2: Fixed-point decimal display.
 // For values within [0.000001, 2^53] that have fractional parts,
 // format with %.15f and strip trailing zeros for clean output.
-    if (fabs(val) <= NUM_FORMAT_MAX_EXACT_INT && fabs(val) >= 0.000001) {
+    if (runtime_fabs(val) <= NUM_FORMAT_MAX_EXACT_INT && runtime_fabs(val) >= 0.000001) {
         char temp[64];
-        snprintf(temp, sizeof(temp), "%.15f", val);
+        runtime_snprintf(temp, sizeof(temp), "%.10f", val);
         strip_trailing_zeros(temp);
-        snprintf(buf, buf_size, "%s%s%s", prefix, temp, suffix);
+        runtime_snprintf(buf, buf_size, "%s%s%s", prefix, temp, suffix);
         return;
     }
 
     // Tier 3: Scientific notation fallback.
 // For very large (> 2^53) or very small (< 0.000001) values,
 // use %.15g for 15 significant digits.
-    snprintf(buf, buf_size, "%s%.15g%s", prefix, val, suffix);
+    runtime_snprintf(buf, buf_size, "%s%.15g%s", prefix, val, suffix);
 }
 
 void num_format_serialize(char *buf, size_t buf_size, double val) {
     if (buf_size < 32) return;
     // Fast Path: Exact integer serialization.
     if (val == (double)(long long)val &&
-        fabs(val) <= NUM_FORMAT_MAX_EXACT_INT) {
+        runtime_fabs(val) <= NUM_FORMAT_MAX_EXACT_INT) {
         fast_i64toa_buf((long long)val, buf, false, false);
         return;
     }
 
     // Tier 2+3: Full precision serialization.
-// Use %.16g for maximum IEEE 754 double round-trip fidelity.
+// Use %.16g for maximum IEEE 754 double runtime_round-trip fidelity.
 // No trailing-zero stripping -- data integrity is paramount.
-    snprintf(buf, buf_size, "%.16g", val);
+    runtime_snprintf(buf, buf_size, "%.16g", val);
 }

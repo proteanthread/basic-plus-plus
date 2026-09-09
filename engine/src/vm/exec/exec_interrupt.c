@@ -10,9 +10,10 @@
 //
 // ---- Includes ----
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include "runtime/format/snprintf.h"
+#include "runtime/memory/alloc.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
 
 #include "../vm_internal.h"
 #include "debug/logger.h"
@@ -22,6 +23,7 @@
 #include "runtime/variables.h"
 #include "vm/exec_internal.h"
 #include "vm/vm.h"
+#include "vm/jit.h"
 
 //
 // ---- Debugger & Breakpoint Management ----
@@ -62,25 +64,30 @@ void vm_trigger_breakpoint(VMContext *vm, const char *reason) {
             vdev_printf(vdev, "debug> ");
         }
         char cmd_line[128] = {0};
-        if (!fgets(cmd_line, sizeof(cmd_line), stdin)) {
+        if (vdev) {
+            if (!vdev_gets(vdev, cmd_line, sizeof(cmd_line))) {
+                vm_halt(vm);
+                break;
+            }
+        } else {
             vm_halt(vm);
             break;
         }
-        size_t len = strlen(cmd_line);
+        size_t len = runtime_strlen(cmd_line);
         while (len > 0 && (cmd_line[len - 1] == '\n' || cmd_line[len - 1] == '\r')) {
             cmd_line[len - 1] = '\0';
             len--;
         }
 
-        if (strcmp(cmd_line, "s") == 0 || strcmp(cmd_line, "S") == 0 || len == 0) {
+        if (runtime_strcmp(cmd_line, "s") == 0 || runtime_strcmp(cmd_line, "S") == 0 || len == 0) {
             vm->debug_single_step = true;
             break;
-        } else if (strcmp(cmd_line, "c") == 0 || strcmp(cmd_line, "C") == 0) {
+        } else if (runtime_strcmp(cmd_line, "c") == 0 || runtime_strcmp(cmd_line, "C") == 0) {
             vm->debug_single_step = false;
             break;
-        } else if (strcmp(cmd_line, "v") == 0 || strcmp(cmd_line, "V") == 0) {
+        } else if (runtime_strcmp(cmd_line, "v") == 0 || runtime_strcmp(cmd_line, "V") == 0) {
             var_print_all(vm->var, vdev);
-        } else if (strcmp(cmd_line, "q") == 0 || strcmp(cmd_line, "Q") == 0) {
+        } else if (runtime_strcmp(cmd_line, "q") == 0 || runtime_strcmp(cmd_line, "Q") == 0) {
             vm_halt(vm);
             break;
         } else {
@@ -134,7 +141,23 @@ void vm_run_program(VMContext *vm) {
     vm->current_pos = NULL;
     size_t idx_hint = 0;
 
+    if (jit_get_mode(vm) != JIT_MODE_OFF) {
+        for (size_t i = 0; i < count; i++) {
+            if (lines[i].ast_valid && lines[i].ast_cache) {
+                EvalAstNode *node = (EvalAstNode *)lines[i].ast_cache;
+                if (node->type == AST_NODE_FOR_LOOP && !node->target_ast) {
+                    node->target_ast = (EvalAstNode *)jit_compile_ast(vm, node);
+                }
+            }
+        }
+    }
+
     while (vm->running && !vm_has_error(vm)) {
+        if (vm->break_triggered) {
+            vm->running = false;
+            break;
+        }
+
         if (vm->jump_active) {
             vm->current_line = vm->next_line;
             vm->current_pos = vm->next_pos;
@@ -212,7 +235,7 @@ void vm_run_program(VMContext *vm) {
 
         if (vm->debug_single_step) {
             char reason_buf[128];
-            snprintf(reason_buf, sizeof(reason_buf), "Line %lld: %s", (long long)vm->current_line, active_lines[idx].text);
+            runtime_snprintf(reason_buf, sizeof(reason_buf), "Line %lld: %s", (long long)vm->current_line, active_lines[idx].text);
             vm_trigger_breakpoint(vm, reason_buf);
         }
 
@@ -221,7 +244,7 @@ void vm_run_program(VMContext *vm) {
         }
 
         BppError err;
-        memset(&err, 0, sizeof(err));
+        runtime_memset(&err, 0, sizeof(err));
 
         if (active_lines[idx].ast_valid && active_lines[idx].ast_cache) {
             err = eval_ast_execute(vm, (EvalAstNode *)active_lines[idx].ast_cache);
@@ -257,13 +280,13 @@ void vm_run_program(VMContext *vm) {
         if (err.code != 0) {
             if (try_stack_count(vm->try_stack) > 0) {
                 vm_trigger_try_catch_handler(vm, err.code, err.message);
-                memset(&vm->last_error, 0, sizeof(BppError));
+                runtime_memset(&vm->last_error, 0, sizeof(BppError));
                 vm->jump_active = true;
                 err.code = 0;
             } else if (vm->error_trap_line > 0.0 && !vm->in_error_handler) {
                 BppLineNumber err_ln = (err.line != 0.0) ? err.line : vm->current_line;
                 vm_trigger_error_trap(vm, err.code, err_ln, vm->current_pos, vm->next_pos);
-                memset(&vm->last_error, 0, sizeof(BppError));
+                runtime_memset(&vm->last_error, 0, sizeof(BppError));
                 vm->jump_active = true;
                 err.code = 0;
             } else {
@@ -293,7 +316,11 @@ void vm_run_program(VMContext *vm) {
     }
 
     if (vm->break_triggered) {
-        vdev_printf(vm->vdev, "Break at line %lld\n", (long long)vm->current_line);
+        if (vm->current_line > 0.0) {
+            vdev_printf(vm->vdev, "\nBreak in line %lld\n", (long long)vm->current_line);
+        } else {
+            vdev_printf(vm->vdev, "\nBreak\n");
+        }
         vm->break_triggered = false;
     }
 

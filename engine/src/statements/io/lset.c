@@ -2,7 +2,7 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
-// NEEDS: libcore (file.h, file.c, micro_lib_metadata.h, micro_lib_metadata.c)
+// NEEDS: libcore (file.h, file.c, language_descriptor.h)
 // NEEDS: libcore (string.h, strings.h, strings.c)
 // NEEDS: libengine (eval.h, eval.c, map.h, map.c, stmt.h, string.c)
 // Provides runtime implementation for the LSET statement in BASIC++.
@@ -10,18 +10,30 @@
 // ---- Includes ----
 
 #include "stmt/stmt.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "eval/eval.h"
 #include "runtime/map.h"
 #include "runtime/strings.h"
 #include "runtime/file.h"
-#include <string.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "runtime/format/snprintf.h"
+#include "runtime/memory/alloc.h"
+
+static const LangDesc g_lset_desc = {
+    .name = "LSET",
+    .category = "String & File Records",
+    .syntax = "LSET string_var = expr$",
+    .description = "Left-justifies a string value into a fixed-length string variable or field buffer.",
+    .error_summary = "Error 13: Type Mismatch, Error 5: Illegal Function Call",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_STATEMENT
+};
 
 static BppError stmt_xset_handler(VMContext *vm, LexerContext *lex, bool is_rset) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BppToken tok = lex_peek(lex);
     if (tok.type != TOK_IDENT) {
@@ -32,7 +44,7 @@ static BppError stmt_xset_handler(VMContext *vm, LexerContext *lex, bool is_rset
 
     char var_name[256];
     size_t clen = (tok.length < sizeof(var_name) - 1) ? tok.length : sizeof(var_name) - 1;
-    memcpy(var_name, tok.start, clen);
+    runtime_memcpy(var_name, tok.start, clen);
     var_name[clen] = '\0';
     lex_next(lex); // Consume identifier
 
@@ -85,7 +97,7 @@ static BppError stmt_xset_handler(VMContext *vm, LexerContext *lex, bool is_rset
     const char *src_str = val.as.string ? str_data(val.as.string) : "";
     size_t src_len = val.as.string ? str_len(val.as.string) : 0;
 
-    char *padded = (char*)calloc(1, target_len + 1);
+    char *padded = (char*)runtime_calloc(1, target_len + 1);
     if (!padded) {
         if (val.type == VAL_STRING && val.as.string) str_release(vm_get_str(vm), val.as.string);
         err.code = 7; // Out of memory
@@ -93,7 +105,7 @@ static BppError stmt_xset_handler(VMContext *vm, LexerContext *lex, bool is_rset
         return err;
     }
     
-    memset(padded, ' ', target_len);
+    runtime_memset(padded, ' ', target_len);
     padded[target_len] = '\0';
 
     if (target_len > 0) {
@@ -101,11 +113,11 @@ static BppError stmt_xset_handler(VMContext *vm, LexerContext *lex, bool is_rset
             // Right justify: copy to end of buffer
             size_t copy_len = (src_len < target_len) ? src_len : target_len;
             size_t offset = target_len - copy_len;
-            memcpy(padded + offset, src_str, copy_len);
+            runtime_memcpy(padded + offset, src_str, copy_len);
         } else {
             // Left justify: copy to beginning of buffer
             size_t copy_len = (src_len < target_len) ? src_len : target_len;
-            memcpy(padded, src_str, copy_len);
+            runtime_memcpy(padded, src_str, copy_len);
         }
     }
 
@@ -114,14 +126,14 @@ static BppError stmt_xset_handler(VMContext *vm, LexerContext *lex, bool is_rset
         int ch = var->as.field_str.channel;
         unsigned char *rec_buf = file_get_record_buffer(vm_get_file(vm), ch);
         if (rec_buf) {
-            memcpy(rec_buf + var->as.field_str.offset, padded, target_len);
+            runtime_memcpy(rec_buf + var->as.field_str.offset, padded, target_len);
         }
-        free(padded);
+        runtime_free(padded);
     } else {
         BValue new_val;
         new_val.type = VAL_STRING;
         new_val.as.string = str_create(vm_get_str(vm), padded, target_len);
-        free(padded);
+        runtime_free(padded);
 
         if (var->as.string) {
             str_release(vm_get_str(vm), var->as.string);
@@ -146,12 +158,5 @@ BppError stmt_rset_handler(VMContext *vm, LexerContext *lex) {
 }
 
 void stmt_lset_register(void) {
-    MicroLibMetadata meta = {
-        .name = "LSET",
-        .category = "String & File Records",
-        .syntax = "LSET string_var = expr$",
-        .help_text = "Left-justifies a string value into a fixed-length string variable or field buffer.",
-        .error_codes = "Error 13: Type Mismatch, Error 5: Illegal Function Call"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_lset_desc);
 }

@@ -1,0 +1,70 @@
+TITLE: CROSS
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/functions/math/linear_algebra/cross.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+CROSS KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: cross.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (math_fn.c)
+    // NEEDS: libcore (math.h, language_descriptor.h, string.h)
+    // NEEDS: libengine (cross.h, math.c, string.c)
+    // Provides runtime implementation for the CROSS built-in function in BASIC++.
+    //
+    // ---- Includes ----
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+ECMA-116 standard function returning the cross product vector of 3D vectors u
+and v.
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    CROSS(u, v)
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = CROSS(u, v)
+    20 PRINT "Result: "; Val
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 13: Type Mismatch
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Math Functions
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_PURE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  CROSS
+Category              Math Functions
+Syntax                CROSS(u, v)
+Description           ECMA-116 standard function returning the cross prod...
+Error Summary         Error 13: Type Mismatch
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_PURE
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/eval/functions/math/linear_algebra/cross.c

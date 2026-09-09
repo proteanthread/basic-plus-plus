@@ -1,28 +1,70 @@
-PEN Light Pen Status Query Function
-===================================
+TITLE: PEN
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/system/pen.c
+GENERATED: no, hand-written
+STATUS: current
 
-Returns coordinates, trigger status, and character positions from the light pen input device.
+==============================================================================
+PEN KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: pen.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libengine (eval.h, eval.c, lexer.h, lexer.c, pen.h, string.c, vm.h)
+    // NEEDS: libkernel (security.h, security.c, vdev.h, vdev.c)
+    // Provides runtime implementation for the PEN statement in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Enables, disables, or suspends lightpen / touch-screen event trapping.
 
-    status% = PEN(function_code%)
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    PEN ON | OFF | STOP
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM PEN Demonstration
+    20 PRINT "PEN executed successfully."
 
-ERROR CONDITIONS
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error, Error 5: Illegal Function Call
 
-  - Error 5 (ERR_ILLEGAL_FUNCTION_CALL): Function code outside range (0..9).
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Devices & Network
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SAFE
 
-
-OPERATIONAL NOTES
-----------------------------------------------------------------------
-
-  Emulated through mouse click and position events.
-
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 IF PEN(0) THEN PRINT "Pen down at: "; PEN(1); ", "; PEN(2)
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  PEN
+Category              Devices & Network
+Syntax                PEN ON | OFF | STOP
+Description           Enables, disables, or suspends lightpen / touch-scr...
+Error Summary         Error 2: Syntax Error, Error 5: Illegal Function Call
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/system/pen.c

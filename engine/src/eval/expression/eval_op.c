@@ -8,6 +8,7 @@
 // ---- Includes ----
 
 #include "eval/eval_expr_internal.h"
+#include "runtime/string/strops.h"
 
 //
 // ---- Clause Delimiters and Operator Processing ----
@@ -17,14 +18,13 @@ bool eval_is_clause_delimiter(BppToken tok) {
         BppKeywordId kw = tok.as.keyword;
         return (kw == KW_THEN || kw == KW_ELSE || kw == KW_TO || kw == KW_STEP ||
                 kw == KW_AS || kw == KW_GOTO || kw == KW_GOSUB || kw == KW_IF ||
-                kw == KW_UNLESS || kw == KW_UNTIL || kw == KW_BY || kw == KW_FOR ||
+                kw == KW_UNLESS || kw == KW_UNTIL || kw == KW_FOR ||
                 kw == KW_WHILE);
     }
     if (tok.type == TOK_IDENT && tok.start && tok.length > 0) {
         if (tok.length == 2 && runtime_strncasecmp(tok.start, "TO", 2) == 0) return true;
         if (tok.length == 2 && runtime_strncasecmp(tok.start, "AS", 2) == 0) return true;
         if (tok.length == 2 && runtime_strncasecmp(tok.start, "IF", 2) == 0) return true;
-        if (tok.length == 2 && runtime_strncasecmp(tok.start, "BY", 2) == 0) return true;
         if (tok.length == 3 && runtime_strncasecmp(tok.start, "FOR", 3) == 0) return true;
         if (tok.length == 4 && runtime_strncasecmp(tok.start, "THEN", 4) == 0) return true;
         if (tok.length == 4 && runtime_strncasecmp(tok.start, "ELSE", 4) == 0) return true;

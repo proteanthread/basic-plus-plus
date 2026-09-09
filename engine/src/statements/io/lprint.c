@@ -2,7 +2,7 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c)
+// NEEDS: libcore (language_descriptor.h)
 // NEEDS: libcore (num_format.h, num_format.c, string.h, strings.h, strings.c)
 // NEEDS: libcore (using.h)
 // NEEDS: libengine (eval.h, eval.c, lprint.h, string.c)
@@ -17,24 +17,29 @@
 #include "runtime/strings.h"
 #include "runtime/num_format.h"
 #include "runtime/using.h"
-#include "runtime/micro_lib_metadata.h"
-#include <string.h>
-#include <stdio.h>
+#include "runtime/language_descriptor.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "runtime/format/snprintf.h"
+
+static const LangDesc g_lprint_desc = {
+    .name = "LPRINT",
+    .category = "Line Printer I/O",
+    .syntax = "LPRINT [USING format$;] expression_list [; | ,]",
+    .description = "Prints formatted or unformatted data to the line printer.",
+    .error_summary = "Error 2: Syntax Error, Error 13: Type Mismatch",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_STATEMENT
+};
 
 void stmt_lprint_register(void) {
-    MicroLibMetadata meta = {
-        .name = "LPRINT",
-        .category = "Line Printer I/O",
-        .syntax = "LPRINT [USING format$;] expression_list [; | ,]",
-        .help_text = "Prints formatted or unformatted data to the line printer.",
-        .error_codes = "Error 2: Syntax Error, Error 13: Type Mismatch"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_lprint_desc);
 }
 
 BppError stmt_lprint_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BppToken tok = lex_peek(lex);
     bool is_using = false;
@@ -80,10 +85,10 @@ BppError stmt_lprint_handler(VMContext *vm, LexerContext *lex) {
                 double imag = val.as.complex_val.imag;
                 if (imag >= 0.0) {
                     num_format_display(i_buf, sizeof(i_buf), imag, false, false);
-                    snprintf(cbuf, sizeof(cbuf), "%s+%sI ", r_buf, i_buf);
+                    runtime_snprintf(cbuf, sizeof(cbuf), "%s+%sI ", r_buf, i_buf);
                 } else {
                     num_format_display(i_buf, sizeof(i_buf), -imag, false, false);
-                    snprintf(cbuf, sizeof(cbuf), "%s-%sI ", r_buf, i_buf);
+                    runtime_snprintf(cbuf, sizeof(cbuf), "%s-%sI ", r_buf, i_buf);
                 }
                 vprinter_write_str(cbuf);
             } else {

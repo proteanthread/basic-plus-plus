@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (string_fn.c)
 // NEEDS: libcore (memory.h, memory.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libcore (strings.h, strings.c)
 // NEEDS: libengine (ascii_fn.h, string.c)
 // Provides runtime implementation for the ASCII_FN built-in function in BASIC++.
@@ -11,19 +11,23 @@
 // ---- Includes ----
 
 #include "eval/functions/string/conversion/ascii_fn.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/strings.h"
 #include "runtime/string.h"
 #include "runtime/memory.h"
+
+static const LangDesc g_ascii_desc = {
+    .name = "ASCII",
+    .category = "String Functions",
+    .syntax = "ASCII(str_expr) | NUM(char_expr)",
+    .description = "Returns the ASCII numeric value of the first character of a string (DEC PDP-11 / HP 2000).",
+    .error_summary = "Error 13: Type Mismatch, Error 5: Illegal Function Call",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_FUNCTION
+};
 void func_ascii_fn_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "ASCII",
-        .category = "String Functions",
-        .syntax = "ASCII(str_expr) | NUM(char_expr)",
-        .help_text = "Returns the ASCII numeric value of the first character of a string (DEC PDP-11 / HP 2000).",
-        .error_codes = "Error 13: Type Mismatch, Error 5: Illegal Function Call"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_ascii_desc);
 }
 
 BValue func_ascii_fn_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err) {

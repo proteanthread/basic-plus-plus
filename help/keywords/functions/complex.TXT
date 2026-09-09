@@ -1,17 +1,72 @@
-COMPLEX Complex Number Constructor Function
-======================================================================
+TITLE: COMPLEX
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/variables/declaration/complex.c
+GENERATED: no, hand-written
+STATUS: current
 
-The COMPLEX function constructs a complex value from real and imaginary
-components.
+==============================================================================
+COMPLEX KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: complex.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (arrays.h, arrays.c)
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libcore (variables.h, variables.c)
+    // NEEDS: libengine (complex.h, eval.h, eval.c, string.c)
+    // Provides runtime implementation for the COMPLEX statement in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Declares complex variables and arrays with real and imaginary components
+(Dartmouth DTSS).
 
-    z = COMPLEX(real_part, imag_part)
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    COMPLEX var1 [, var2, arr(dim1 [, dim2])]
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = COMPLEX var1 [, var2, arr(dim1 [, dim2])]
+    20 PRINT "Result: "; Val
 
-CODE EXAMPLES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax error, Error 9: Subscript out of range
 
-    10 Z = COMPLEX(2, 5)
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Variables & Declarations
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_IO
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  COMPLEX
+Category              Variables & Declarations
+Syntax                COMPLEX var1 [, var2, arr(dim1 [, dim2])]
+Description           Declares complex variables and arrays with real and...
+Error Summary         Error 2: Syntax error, Error 9: Subscript out of range
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_IO
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/variables/declaration/complex.c

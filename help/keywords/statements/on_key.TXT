@@ -1,31 +1,72 @@
-ON_KEY Function Key Event Trapping Statement
-============================================
+TITLE: ON_KEY
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/event/trapping/on_key.c
+GENERATED: no, hand-written
+STATUS: current
 
-Installs an event handler subroutine for programmable function keys (F1-F10).
+==============================================================================
+ON KEY KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: on_key.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (on_timer.c)
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libengine (eval.h, eval.c, lexer.h, lexer.c, on_key.h, string.c, vm.
+    // NEEDS: libkernel (vcon.h, vcon.c)
+    // NEEDS: libplatform (platform.h)
+    // Provides runtime implementation for the ON_KEY statement in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Establishes an asynchronous interrupt handler for function key presses, or
+toggles/customizes row 25 function key labels.
 
-    ON KEY(key_num%) GOSUB {line_number% | @label}
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    ON KEY(n) GOSUB line_label | KEY(n) {ON|OFF|STOP} | KEY ON | KEY OFF | KEY n, string
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = ON KEY(n) GOSUB line_label | KEY(n) {ON|OFF|STOP} | KEY ON | KEY OFF | KEY n, string
+    20 PRINT "Result: "; Val
 
-ERROR CONDITIONS
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error, Error 5: Illegal Function Call
 
-  - Error 5 (ERR_ILLEGAL_FUNCTION_CALL): Key number outside range (1..10).
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Event Trapping
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SAFE
 
-
-OPERATIONAL NOTES
-----------------------------------------------------------------------
-
-  Requires KEY(n) ON to activate trap.
-
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 ON KEY(1) GOSUB 100 : REM F1 handler
-    20 KEY(1) ON
-    30 DO : LOOP
-    100 PRINT "F1 Help requested": RETURN
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  ON KEY
+Category              Event Trapping
+Syntax                ON KEY(n) GOSUB line_label | KEY(n) {ON|OFF|STOP} |...
+Description           Establishes an asynchronous interrupt handler for f...
+Error Summary         Error 2: Syntax Error, Error 5: Illegal Function Call
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/event/trapping/on_key.c

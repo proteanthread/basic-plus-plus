@@ -12,6 +12,7 @@
 #include "runtime/microplex.h"
 #include "runtime/strings.h"
 #include "vm/vm.h"
+#include "runtime/string/strops.h"
 
 BValue func_microplex_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err) {
     BValue res;

@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
 // NEEDS: libcore (ctype.h, ctype.c, file.h, file.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libengine (eval.h, eval.c, files.h, lexer.h, lexer.c, string.c, vm.h)
 // NEEDS: libkernel (errors.h, security.h, security.c, vdev.h, vdev.c)
 // NEEDS: libplatform (platform.h)
@@ -17,28 +17,33 @@
 #include "eval/eval.h"
 #include "device/vdev.h"
 #include "security/security.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "platform/platform.h"
 #include "runtime/file.h"
 #include "types/errors.h"
-#include <string.h>
-#include <stdio.h>
-#include <ctype.h>
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "runtime/format/snprintf.h"
+#include "runtime/ctype/ctype.h"
+
+static const LangDesc g_files_desc = {
+    .name = "FILES",
+    .category = "Filesystem I/O",
+    .syntax = "FILES [filespec]",
+    .description = "Displays directory listing matching specified file pattern.",
+    .error_summary = "Error 2: Syntax Error, Error 53: File Not Found, Error 70: Permission Denied",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_STATEMENT
+};
 
 void stmt_files_register(void) {
-    MicroLibMetadata meta = {
-        .name = "FILES",
-        .category = "Filesystem I/O",
-        .syntax = "FILES [filespec]",
-        .help_text = "Displays directory listing matching specified file pattern.",
-        .error_codes = "Error 2: Syntax Error, Error 53: File Not Found, Error 70: Permission Denied"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_files_desc);
 }
 
 static bool has_bas_extension(const char *name) {
     if (!name) return false;
-    size_t len = strlen(name);
+    size_t len = runtime_strlen(name);
     if (len < 4) return false;
     const char *ext = name + len - 4;
     return (ext[0] == '.' &&
@@ -49,7 +54,7 @@ static bool has_bas_extension(const char *name) {
 
 BppError stmt_files_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     char pattern[256] = "*.*";
 
@@ -69,7 +74,7 @@ BppError stmt_files_handler(VMContext *vm, LexerContext *lex) {
 
         int col = 0;
         do {
-            if (strcmp(name, ".") == 0 || strcmp(name, "..") == 0) continue;
+            if (runtime_strcmp(name, ".") == 0 || runtime_strcmp(name, "..") == 0) continue;
             vdev_printf(vm_get_vdev(vm), "%-18s", name);
             col++;
             if (col >= 4) {
@@ -96,7 +101,7 @@ BppError stmt_files_handler(VMContext *vm, LexerContext *lex) {
                 is_multi_file = true;
             }
             lex_shutdown(look);
-            memset(&err, 0, sizeof(err));
+            runtime_memset(&err, 0, sizeof(err));
         }
     }
 
@@ -132,7 +137,7 @@ BppError stmt_files_handler(VMContext *vm, LexerContext *lex) {
     BValue val = eval_expression(vm, lex, &err);
     if (err.code != 0) return err;
     if (val.type == VAL_STRING && val.as.string) {
-        snprintf(pattern, sizeof(pattern), "%s", str_data(val.as.string));
+        runtime_snprintf(pattern, sizeof(pattern), "%s", str_data(val.as.string));
         str_release(vm_get_str(vm), val.as.string);
     }
 
@@ -149,7 +154,7 @@ BppError stmt_files_handler(VMContext *vm, LexerContext *lex) {
 
     int col = 0;
     do {
-        if (strcmp(name, ".") == 0 || strcmp(name, "..") == 0) continue;
+        if (runtime_strcmp(name, ".") == 0 || runtime_strcmp(name, "..") == 0) continue;
         vdev_printf(vm_get_vdev(vm), "%-18s", name);
         col++;
         if (col >= 4) {
@@ -168,7 +173,7 @@ BppError stmt_files_handler(VMContext *vm, LexerContext *lex) {
 
 BppError stmt_dir_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     char pattern[256] = "*.bas";
 
@@ -177,7 +182,7 @@ BppError stmt_dir_handler(VMContext *vm, LexerContext *lex) {
         BValue val = eval_expression(vm, lex, &err);
         if (err.code != 0) return err;
         if (val.type == VAL_STRING && val.as.string) {
-            snprintf(pattern, sizeof(pattern), "%s", str_data(val.as.string));
+            runtime_snprintf(pattern, sizeof(pattern), "%s", str_data(val.as.string));
             str_release(vm_get_str(vm), val.as.string);
         }
     }
@@ -196,7 +201,7 @@ BppError stmt_dir_handler(VMContext *vm, LexerContext *lex) {
     int col = 0;
     int found_count = 0;
     do {
-        if (strcmp(name, ".") == 0 || strcmp(name, "..") == 0) continue;
+        if (runtime_strcmp(name, ".") == 0 || runtime_strcmp(name, "..") == 0) continue;
         // Strict .BAS-exclusive filter (case-insensitive)
         if (!has_bas_extension(name)) continue;
 
@@ -221,7 +226,7 @@ BppError stmt_dir_handler(VMContext *vm, LexerContext *lex) {
 
 BppError stmt_pwd_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     (void)lex;
 
     char cwd[512] = {0};
@@ -235,7 +240,7 @@ BppError stmt_pwd_handler(VMContext *vm, LexerContext *lex) {
 
 BppError stmt_path_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BppToken tok = lex_peek(lex);
     if (tok.type != TOK_EOL && tok.type != TOK_EOF && tok.type != TOK_BACKSLASH) {
@@ -257,7 +262,7 @@ BppError stmt_path_handler(VMContext *vm, LexerContext *lex) {
 
 BppError stmt_unsave_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     char filename[256] = {0};
     BppToken tok = lex_peek(lex);
@@ -265,20 +270,20 @@ BppError stmt_unsave_handler(VMContext *vm, LexerContext *lex) {
         BValue val = eval_expression(vm, lex, &err);
         if (err.code != 0) return err;
         if (val.type == VAL_STRING && val.as.string) {
-            snprintf(filename, sizeof(filename), "%s", str_data(val.as.string));
+            runtime_snprintf(filename, sizeof(filename), "%s", str_data(val.as.string));
             str_release(vm_get_str(vm), val.as.string);
         }
     }
 
     if (filename[0] != '\0') {
-        remove(filename);
+        platform_remove(filename);
     }
     return err;
 }
 
 BppError stmt_scratch_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BppToken tok = lex_peek(lex);
     if (tok.type == TOK_HASH) {
@@ -299,7 +304,7 @@ BppError stmt_scratch_handler(VMContext *vm, LexerContext *lex) {
         BValue val = eval_expression(vm, lex, &err);
         if (err.code != 0) return err;
         if (val.type == VAL_STRING && val.as.string) {
-            remove(str_data(val.as.string));
+            platform_remove(str_data(val.as.string));
             str_release(vm_get_str(vm), val.as.string);
         }
     }

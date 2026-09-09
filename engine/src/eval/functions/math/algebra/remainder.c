@@ -2,25 +2,31 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (math_fn.c)
-// NEEDS: libcore (math.h, micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (math.h, language_descriptor.h, string.h)
 // NEEDS: libengine (math.c, remainder.h, string.c)
 // Provides runtime implementation for the REMAINDER built-in function in BASIC++.
 //
 // ---- Includes ----
 
 #include "eval/functions/math/algebra/remainder.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/math.h"
 #include "runtime/string.h"
+#include "runtime/string/strops.h"
+#include "runtime/math/math.h"
+
+static const LangDesc g_remainder_desc = {
+    .name = "REMAINDER",
+    .category = "Math Functions",
+    .syntax = "REMAINDER(x, y)",
+    .description = "Returns the remainder of x divided by y (ANSI Full BASIC 1987).",
+    .error_summary = "Error 11: Division by zero, Error 13: Type Mismatch",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_PURE,
+    .type = FEATURE_FUNCTION
+};
 void func_remainder_register(void) {
-    MicroLibMetadata meta = {
-        .name = "REMAINDER",
-        .category = "Math Functions",
-        .syntax = "REMAINDER(x, y)",
-        .help_text = "Returns the remainder of x divided by y (ANSI Full BASIC 1987).",
-        .error_codes = "Error 11: Division by zero, Error 13: Type Mismatch"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_remainder_desc);
 }
 
 BValue func_remainder_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err) {

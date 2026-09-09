@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
 // NEEDS: libcore (arrays.h, arrays.c, ctype.h, ctype.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libcore (strings.h, strings.c, variables.h, variables.c)
 // NEEDS: libengine (eval.h, eval.c, lexer.h, lexer.c, read.h, string.c, vm.h)
 // Provides runtime implementation for the READ statement in BASIC++.
@@ -17,25 +17,32 @@
 #include "runtime/variables.h"
 #include "runtime/arrays.h"
 #include "runtime/strings.h"
-#include "runtime/micro_lib_metadata.h"
-#include <string.h>
-#include <stdlib.h>
-#include <ctype.h>
+#include "runtime/language_descriptor.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "runtime/memory/alloc.h"
+#include "runtime/ctype/ctype.h"
+#include "runtime/conv/float_parse.h"
+#include "runtime/conv/num_parse.h"
+
+static const LangDesc g_read_desc = {
+    .name = "READ",
+    .category = "Variables & Memory",
+    .syntax = "READ var1 [, var2...]",
+    .description = "Reads sequential values from DATA statements and assigns them to variables.",
+    .error_summary = "Error 2: Syntax Error, Error 4: Out of Data, Error 13: Type Mismatch",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SYSTEM,
+    .type = FEATURE_STATEMENT
+};
 
 void stmt_read_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "READ",
-        .category = "Variables & Memory",
-        .syntax = "READ var1 [, var2...]",
-        .help_text = "Reads sequential values from DATA statements and assigns them to variables.",
-        .error_codes = "Error 2: Syntax Error, Error 4: Out of Data, Error 13: Type Mismatch"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_read_desc);
 }
 
 BppError stmt_read_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     while (true) {
         BppToken tok = lex_next(lex);
@@ -47,7 +54,7 @@ BppError stmt_read_handler(VMContext *vm, LexerContext *lex) {
 
         char var_name[64];
         if (tok.length >= sizeof(var_name)) tok.length = sizeof(var_name) - 1;
-        memcpy(var_name, tok.start, tok.length);
+        runtime_memcpy(var_name, tok.start, tok.length);
         var_name[tok.length] = '\0';
 
         bool is_array = false;
@@ -97,9 +104,9 @@ BppError stmt_read_handler(VMContext *vm, LexerContext *lex) {
         const char *item_src = items[ptr].pos;
         vm_set_data_ptr(vm, ptr + 1);
 
-        bool is_str = (var_name[strlen(var_name) - 1] == '$');
+        bool is_str = (var_name[runtime_strlen(var_name) - 1] == '$');
         BValue val;
-        memset(&val, 0, sizeof(val));
+        runtime_memset(&val, 0, sizeof(val));
 
         if (is_str) {
             char val_buf[256];
@@ -118,7 +125,7 @@ BppError stmt_read_handler(VMContext *vm, LexerContext *lex) {
                     if (*item_src == '"') break;
                     val_buf[len++] = *item_src++;
                 }
-                while (len > 0 && (isspace((unsigned char)val_buf[len - 1]) || val_buf[len - 1] == '"')) len--;
+                while (len > 0 && (runtime_isspace((unsigned char)val_buf[len - 1]) || val_buf[len - 1] == '"')) len--;
             }
             val_buf[len] = '\0';
             StringContext *str_ctx = vm_get_str(vm);
@@ -126,13 +133,15 @@ BppError stmt_read_handler(VMContext *vm, LexerContext *lex) {
             val.as.string = str_create(str_ctx, val_buf, len);
         } else {
             double num = 0.0;
-            while (*item_src && isspace((unsigned char)*item_src)) item_src++;
+            while (*item_src && runtime_isspace((unsigned char)*item_src)) item_src++;
             if (*item_src == '&' && (item_src[1] == 'H' || item_src[1] == 'h')) {
-                num = (double)strtoull(item_src + 2, NULL, 16);
+                num = (double)runtime_strtoull(item_src + 2, NULL, 16);
             } else if (*item_src == '&' && (item_src[1] == 'O' || item_src[1] == 'o')) {
-                num = (double)strtoull(item_src + 2, NULL, 8);
+                num = (double)runtime_strtoull(item_src + 2, NULL, 8);
+            } else if (*item_src == '&' && (item_src[1] >= '0' && item_src[1] <= '7')) {
+                num = (double)runtime_strtoull(item_src + 1, NULL, 8);
             } else {
-                num = strtod(item_src, NULL);
+                num = runtime_strtod(item_src, NULL);
             }
             val.type = VAL_NUMBER;
             val.as.number = num;

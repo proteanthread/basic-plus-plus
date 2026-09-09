@@ -2,7 +2,7 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libcore (strings.h, strings.c)
 // NEEDS: libengine (eval.h, eval.c, string.c, sys.h)
 // NEEDS: libplatform (platform.h)
@@ -14,23 +14,28 @@
 #include "eval/eval.h"
 #include "platform/platform.h"
 #include "runtime/strings.h"
-#include "runtime/micro_lib_metadata.h"
-#include <string.h>
+#include "runtime/language_descriptor.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_sys_desc = {
+    .name = "SYS",
+    .category = "System & Execution",
+    .syntax = "SYS address% | SYS command_string$",
+    .description = "Executes machine code subroutine at memory address or runs host OS command.",
+    .error_summary = "Error 2: Syntax Error",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_STATEMENT
+};
 
 void stmt_sys_register(void) {
-    MicroLibMetadata meta = {
-        .name = "SYS",
-        .category = "System & Execution",
-        .syntax = "SYS address% | SYS command_string$",
-        .help_text = "Executes machine code subroutine at memory address or runs host OS command.",
-        .error_codes = "Error 2: Syntax Error"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_sys_desc);
 }
 
 BppError stmt_sys_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BppToken tok = lex_peek(lex);
     if (tok.type != TOK_EOL && tok.type != TOK_EOF && tok.type != TOK_BACKSLASH) {

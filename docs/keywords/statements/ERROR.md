@@ -1,28 +1,69 @@
-# `ERROR` Runtime Error Simulation Statement
+<!--
+Title:        ERROR
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/vm/error/error.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Keyword Definition
+# `ERROR` Keyword Reference
+
+## Source Header
+
+```c
+// FILENAME: error.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community -- All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: baspp.exe, bpp.exe, bs.exe, libengine
+// NEEDS: libcore, libkernel
+// Implements component functionality for ERROR.
+```
+
+## 1. Description & Usage
 
 Simulates a runtime error with the specified numeric code, triggering active ON ERROR traps.
 
-### Syntax Signatures:
+## 2. Syntax
+
 ```basic
 ERROR error_code%
 ```
 
-### Error Handling & Boundary Conditions:
-- **Error 5 (ERR_ILLEGAL_FUNCTION_CALL)**: Error code < 1 or > 255.
+## 3. Code Example
 
-### Operational Notes:
-- Enables custom error code dispatching and unit test validation.
+```basic
+10 REM ERROR Demonstration
+20 PRINT "ERROR executed successfully."
+```
+
+## 4. Error Conditions
+
+Simulates runtime error code
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: GW-BASIC, QBASIC, BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Error Handling
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_SAFE
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 ON ERROR GOTO 100
-20 ERROR 55 : REM File already open
-30 END
-100 PRINT "Simulated error: "; ERR
-110 RESUME NEXT
-```
+| Field | Value |
+|---|---|
+| Name | ERROR |
+| Category | Error Handling |
+| Syntax | ERROR error_code% |
+| Description | Simulates a runtime error with the specified numeric code, triggering active ON ERROR traps. |
+| Error Summary | Simulates runtime error code |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_SAFE |
+| Feature Type | FEATURE_STATEMENT |
+| Delimiter Mask | none |
+| Compatibility | GW-BASIC, QBASIC, BASIC++ Standard |
+| Since Version | 6.0.0 |
+| Source File | engine/src/vm/error/error.c |

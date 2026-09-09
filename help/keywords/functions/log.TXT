@@ -1,22 +1,69 @@
-LOG Natural Logarithm (Base-e) Function
-======================================================================
+TITLE: LOG
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/system/stmt_log.c
+GENERATED: no, hand-written
+STATUS: current
 
-The LOG function computes the natural logarithm ln(x).
+==============================================================================
+LOG KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: stmt_log.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: exec_dispatch.c, common_reg_stmts.c
+    // NEEDS: libkernel (types/types.h, lexer/lexer.h, types/errors.h, vdev.h), li
+    // Implementation for Structured and Flat Logging Statements (LOG.INFO, LOG.WA
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Emits structured runtime_log messages across multiple severity levels or
+manages the circular runtime_log ring buffer.
 
-    result# = LOG(numeric_expression)
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    LOG.INFO msg$ [, tag$] | LOG LEVEL level$ | LOG DUMP [level$] | LOG CLEAR
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM LOG Demonstration
+    20 PRINT "LOG executed successfully."
 
-DOMAIN
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+None
 
-  - x > 0 (Error 5 if <= 0).
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      System & Logging
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SYSTEM
 
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 PRINT LOG(1)   : REM Outputs 0
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  LOG
+Category              System & Logging
+Syntax                LOG.INFO msg$ [, tag$] | LOG LEVEL level$ | LOG DUM...
+Description           Emits structured runtime_log messages across multip...
+Error Summary         None
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SYSTEM
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/system/stmt_log.c

@@ -15,6 +15,8 @@
 #include "platform/platform.h"
 #include "runtime/strings.h"
 #include "vm/vm.h"
+#include "runtime/string/strops.h"
+#include "runtime/string/memops.h"
 
 //
 // ---- Recursive Descent Expression Parser ----
@@ -24,6 +26,10 @@ static EvalAstNode *parse_expr_internal(LexerContext *lex);
 // parses atomic primary expressions, literals, variable identifiers, and built-in functions
 static EvalAstNode *parse_primary(LexerContext *lex) {
     BppToken tok = lex_peek(lex);
+    if (tok.type == TOK_HASH) {
+        lex_next(lex);
+        return parse_primary(lex);
+    }
     if (tok.type == TOK_NUMBER) {
         lex_next(lex);
         BValue val = { .type = VAL_NUMBER, .as.number = tok.as.number };
@@ -51,12 +57,14 @@ static EvalAstNode *parse_primary(LexerContext *lex) {
         runtime_memcpy(name, tok.start, nlen);
         name[nlen] = '\0';
 
-        if (lex_peek(lex).type == TOK_PERIOD) {
+        while (lex_peek(lex).type == TOK_PERIOD) {
             lex_next(lex);
             BppToken ftok = lex_peek(lex);
-            if (ftok.type == TOK_IDENT) {
+            if (ftok.type == TOK_IDENT || ftok.type == TOK_KEYWORD) {
                 lex_next(lex);
-                size_t flen = (ftok.length < sizeof(name) - runtime_strlen(name) - 2) ? ftok.length : (sizeof(name) - runtime_strlen(name) - 2);
+                size_t cur_len = runtime_strlen(name);
+                size_t avail = (cur_len + 2 < sizeof(name)) ? sizeof(name) - cur_len - 2 : 0;
+                size_t flen = (ftok.length < avail) ? ftok.length : avail;
                 runtime_strcat(name, ".");
                 runtime_strncat(name, ftok.start, flen);
             }
@@ -88,6 +96,10 @@ static EvalAstNode *parse_primary(LexerContext *lex) {
                 lex_next(lex);
                 EvalAstNode *arg = parse_expr_internal(lex);
                 if (!arg) return NULL;
+                if (lex_peek(lex).type == TOK_COMMA) {
+                    eval_ast_free_tree(arg);
+                    return NULL;
+                }
                 if (lex_peek(lex).type != TOK_RPAREN) {
                     eval_ast_free_tree(arg);
                     return NULL;
@@ -95,8 +107,8 @@ static EvalAstNode *parse_primary(LexerContext *lex) {
                 lex_next(lex);
                 return eval_ast_create_math_func(NULL, mf, arg);
             } else if (mf == AST_MATH_RND) {
-                EvalAstNode *zero_lit = eval_ast_create_literal(NULL, (BValue){.type = VAL_NUMBER, .as.number = 0.0});
-                return eval_ast_create_math_func(NULL, AST_MATH_RND, zero_lit);
+                EvalAstNode *default_lit = eval_ast_create_literal(NULL, (BValue){.type = VAL_NUMBER, .as.number = 1.0});
+                return eval_ast_create_math_func(NULL, AST_MATH_RND, default_lit);
             }
         }
 
@@ -118,6 +130,7 @@ static EvalAstNode *parse_primary(LexerContext *lex) {
         else if (runtime_strcasecmp(name, "INSTR") == 0) sf = AST_STR_INSTR;
         else if (runtime_strcasecmp(name, "SHA256$") == 0 || runtime_strcasecmp(name, "SHA256") == 0) sf = AST_STR_SHA256;
         else if (runtime_strcasecmp(name, "MD5$") == 0 || runtime_strcasecmp(name, "MD5") == 0) sf = AST_STR_MD5;
+        else if (runtime_strcasecmp(name, "PEEK$") == 0) sf = AST_STR_PEEK_STR;
         else if (runtime_strcasecmp(name, "PEEK") == 0) sf = AST_STR_PEEK;
 
 
@@ -157,7 +170,7 @@ static EvalAstNode *parse_primary(LexerContext *lex) {
         }
 
         if (lex_peek(lex).type == TOK_LPAREN) {
-            if (eval_is_builtin_function(name)) {
+            if (eval_is_builtin_function(name) || runtime_strncasecmp(name, "FN", 2) == 0) {
                 return NULL;
             }
             lex_next(lex);
@@ -186,11 +199,10 @@ static EvalAstNode *parse_primary(LexerContext *lex) {
             }
         }
 
-        if (eval_is_zero_arg_builtin_function(name)) {
-            return NULL;
-        }
-
-        if (lex_peek(lex).type == TOK_LBRACKET) {
+        if (lex_peek(lex).type == TOK_LBRACKET ||
+            lex_peek(lex).type == TOK_PN_LITERAL ||
+            lex_peek(lex).type == TOK_LBRACE ||
+            lex_peek(lex).type == TOK_RPN_LITERAL) {
             return NULL;
         }
         return eval_ast_create_variable(NULL, name);
@@ -212,7 +224,7 @@ static EvalAstNode *parse_primary(LexerContext *lex) {
 // parses unary operations: unary minus and logical NOT
 static EvalAstNode *parse_unary(LexerContext *lex) {
     BppToken tok = lex_peek(lex);
-    if (tok.type == TOK_MINUS) {
+    if (tok.type == TOK_MINUS || is_tok_kw(tok, KW_NEG, "NEG", 3)) {
         lex_next(lex);
         EvalAstNode *op = parse_unary(lex);
         if (!op) return NULL;

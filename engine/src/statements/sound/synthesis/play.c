@@ -2,7 +2,7 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
-// NEEDS: libcore (ctype.h, ctype.c, micro_lib_metadata.h, micro_lib_metadata.c)
+// NEEDS: libcore (ctype.h, ctype.c, language_descriptor.h)
 // NEEDS: libcore (string.h, strings.h, strings.c)
 // NEEDS: libengine (eval.h, eval.c, lexer.h, lexer.c, play.h, string.c, vm.h)
 // NEEDS: libkernel (errors.h, security.h, security.c, vdev.h, vdev.c)
@@ -20,19 +20,24 @@
 #include "security/security.h"
 #include "platform/platform.h"
 #include "runtime/strings.h"
-#include "runtime/micro_lib_metadata.h"
-#include <string.h>
-#include <ctype.h>
+#include "runtime/language_descriptor.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "runtime/ctype/ctype.h"
+
+static const LangDesc g_play_desc = {
+    .name = "PLAY",
+    .category = "Sound & Audio",
+    .syntax = "PLAY command_string",
+    .description = "Plays musical notes using MML (Music Macro Language) command string.",
+    .error_summary = "Error 2: Syntax Error, Error 5: Illegal Function Call",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_STATEMENT
+};
 
 void stmt_play_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "PLAY",
-        .category = "Sound & Audio",
-        .syntax = "PLAY command_string",
-        .help_text = "Plays musical notes using MML (Music Macro Language) command string.",
-        .error_codes = "Error 2: Syntax Error, Error 5: Illegal Function Call"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_play_desc);
 }
 
 typedef struct {
@@ -78,7 +83,7 @@ static void mml_play_string(const char *str) {
             continue;
         }
 
-        char uc = (char)toupper((unsigned char)c);
+        char uc = (char)runtime_toupper((unsigned char)c);
 
         if (uc == 'O') {
             p++;
@@ -136,7 +141,7 @@ static void mml_play_string(const char *str) {
         }
         if (uc == 'M') {
             p++;
-            char m_c = (char)toupper((unsigned char)*p);
+            char m_c = (char)runtime_toupper((unsigned char)*p);
             if (m_c == 'N') { state.music_mode = 0; p++; }
             else if (m_c == 'L') { state.music_mode = 1; p++; }
             else if (m_c == 'S') { state.music_mode = 2; p++; }
@@ -261,7 +266,7 @@ static void mml_play_string(const char *str) {
 
 BppError stmt_play_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     if (security_check(SECOP_VDEV, 0) != 0) {
         err.code = 70;

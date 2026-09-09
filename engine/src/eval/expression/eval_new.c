@@ -8,6 +8,8 @@
 // ---- Includes ----
 
 #include "eval/eval_expr_internal.h"
+#include "runtime/format/snprintf.h"
+#include "runtime/string/memops.h"
 
 //
 // ---- NEW Expression Parsing and Instantiation ----

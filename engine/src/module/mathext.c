@@ -9,7 +9,7 @@
 // ---- Includes ----
 
 #include "runtime/funcreg.h"
-#include <math.h>
+#include "runtime/math/math.h"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -27,7 +27,7 @@ static BValue fn_hypot(BValue *args, int argc, void *rt) {
     (void)argc; (void)rt;
     double a = bval_to_float(&args[0]);
     double b = bval_to_float(&args[1]);
-    return bval_float(sqrt(a * a + b * b));
+    return bval_float(runtime_sqrt(a * a + b * b));
 }
 
 // C CLAMP function handler
@@ -60,7 +60,7 @@ static BValue fn_pow(BValue *args, int argc, void *rt) {
     (void)argc; (void)rt;
     double base = bval_to_float(&args[0]);
     double exponent = bval_to_float(&args[1]);
-    return bval_float(pow(base, exponent));
+    return bval_float(runtime_pow(base, exponent));
 }
 
 static BValue fn_testsys(BValue *args, int argc, void *rt) {

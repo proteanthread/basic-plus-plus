@@ -1,24 +1,72 @@
-# `XOR` Logical and Bitwise Exclusive-OR Operator (Universal Dual-Format)
+<!--
+Title:        XOR
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/eval/functions/bits/logic/xor.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Operator/Function Definition
+# `XOR` Keyword Reference
 
-The `XOR` keyword performs bitwise exclusive OR across all 64 bits of integer operands. It is supported in both **infix** and **prefix** notation.
+## Source Header
 
-### Syntax Signatures:
-```basic
-result = expr1 XOR expr2
-result = XOR(expr1, expr2)
+```c
+// FILENAME: xor.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine (sys_fn.c)
+// NEEDS: libcore (language_descriptor.h)
+// NEEDS: libengine (xor.h)
+// Provides runtime implementation for the XOR built-in function in BASIC++.
+//
+// ---- Includes ----
 ```
 
-### Operational Rules:
-- Performs bitwise XOR on 64-bit integer values: `(int64_t)expr1 ^ (int64_t)expr2`.
-- In RPN stack evaluation blocks: `{ expr1 expr2 XOR }`.
+## 1. Description & Usage
+
+Performs bitwise and logical exclusive OR disjunction on integers or boolean values.
+
+## 2. Syntax
+
+```basic
+XOR(val1, val2 [, ...]) or val1 XOR val2
+```
+
+## 3. Code Example
+
+```basic
+10 Val = XOR(val1, val2 [, ...]) or val1 XOR val2
+20 PRINT "Result: "; Val
+```
+
+## 4. Error Conditions
+
+Error 13: Type Mismatch
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Bitwise & Logical Functions
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_PURE
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 PRINT "Infix: "; 255 XOR 15 : REM Outputs 240
-20 PRINT "Prefix: "; XOR(255, 15) : REM Outputs 240
-```
+| Field | Value |
+|---|---|
+| Name | XOR |
+| Category | Bitwise & Logical Functions |
+| Syntax | XOR(val1, val2 [, ...]) or val1 XOR val2 |
+| Description | Performs bitwise and logical exclusive OR disjunction on integers or boolean values. |
+| Error Summary | Error 13: Type Mismatch |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_PURE |
+| Feature Type | FEATURE_FUNCTION |
+| Delimiter Mask | none |
+| Compatibility | none |
+| Since Version | none |
+| Source File | engine/src/eval/functions/bits/logic/xor.c |

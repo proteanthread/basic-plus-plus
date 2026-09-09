@@ -1,22 +1,69 @@
-# `LGT` Common (Base-10) Logarithm Function
+<!--
+Title:        LGT
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/runtime/math/math.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Function Definition
+# `LGT` Keyword Reference
 
-The `LGT` (or `LOG10`) function computes the base-10 logarithm $\log_{10}(x)$ of a positive numeric argument.
+## Source Header
 
-### Syntax Signatures:
-```basic
-result# = LGT(numeric_expression)
+```c
+// FILENAME: math.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community -- All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: baspp.exe, bpp.exe, bs.exe, libengine
+// NEEDS: libcore, libkernel
+// Implements component functionality for LGT.
 ```
 
-### Operational Rules:
-- **Domain Constraint**: Requires $x > 0$. Arguments $\le 0$ trigger Error 5 (`ERR_ILLEGAL_FUNCTION_CALL`).
+## 1. Description & Usage
+
+Computes the common logarithm (base-10 logarithm) of positive number x.
+
+## 2. Syntax
+
+```basic
+LGT(x)
+```
+
+## 3. Code Example
+
+```basic
+10 Val = LGT(10)
+20 PRINT "Result: "; Val
+```
+
+## 4. Error Conditions
+
+Error 5: Illegal Function Call (x <= 0)
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Math Functions
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_PURE
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 PRINT LGT(100)  : REM Outputs 2
-20 PRINT LGT(1000) : REM Outputs 3
-```
+| Field | Value |
+|---|---|
+| Name | LGT |
+| Category | Math Functions |
+| Syntax | LGT(x) |
+| Description | Computes the common logarithm (base-10 logarithm) of positive number x. |
+| Error Summary | Error 5: Illegal Function Call (x <= 0) |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_PURE |
+| Feature Type | FEATURE_FUNCTION |
+| Delimiter Mask | none |
+| Compatibility | BASIC++ Standard |
+| Since Version | 6.0.0 |
+| Source File | engine/src/runtime/math/math.c |

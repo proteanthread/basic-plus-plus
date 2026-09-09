@@ -1,35 +1,70 @@
-RSET Right-Justify String Statement
-======================================================================
+TITLE: RSET
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/variables/assignment/rset.c
+GENERATED: no, hand-written
+STATUS: current
 
-The RSET statement right-justifies a string expression within a target
-string variable or FIELD buffer, padding on the left with spaces.
+==============================================================================
+RSET KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: rset.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (file.h, file.c, language_descriptor.h)
+    // NEEDS: libcore (string.h, strings.h, strings.c, variables.h, variables.c)
+    // NEEDS: libengine (eval.h, eval.c, rset.h, string.c)
+    // Provides runtime implementation for the RSET statement in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Right justifies a string in a fixed-length string variable or FIELD buffer.
 
-    RSET string_variable$ = string_expression$
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    RSET string_var = string_expression
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM RSET Demonstration
+    20 PRINT "RSET executed successfully."
 
-OPERATIONAL RULES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error, Error 13: Type Mismatch
 
-  - Aligns string to the right.
-  - Pads short strings with spaces on the left.
-  - Truncates long strings from the right.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Variables & Memory
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SYSTEM
 
-
-ERROR CODES
-----------------------------------------------------------------------
-
-  Error Code  Name                  Condition
-  ----------  --------------------  ----------------------------------
-  13          ERR_TYPE_MISMATCH     Non-string target or source
-
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 B$ = SPACE$(8)
-    20 RSET B$ = "100"
-    30 PRINT "["; B$; "]"   : REM Outputs [     100]
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  RSET
+Category              Variables & Memory
+Syntax                RSET string_var = string_expression
+Description           Right justifies a string in a fixed-length string v...
+Error Summary         Error 2: Syntax Error, Error 13: Type Mismatch
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SYSTEM
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/variables/assignment/rset.c

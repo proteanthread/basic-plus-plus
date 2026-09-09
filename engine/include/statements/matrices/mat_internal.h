@@ -10,21 +10,22 @@
 #ifndef MAT_INTERNAL_H
 #define MAT_INTERNAL_H
 
-#include <ctype.h>
-#include <math.h>
+#include "runtime/ctype/ctype.h"
+#include "runtime/math/math.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include "runtime/format/snprintf.h"
+#include "runtime/memory/alloc.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
 
 #include "device/vdev.h"
 #include "eval/eval.h"
 #include "lexer/lexer.h"
 #include "platform/platform.h"
 #include "runtime/arrays.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/strings.h"
 #include "runtime/variables.h"
 #include "security/security.h"

@@ -1,0 +1,68 @@
+TITLE: WEEKDAY
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/functions/datetime/weekday.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+WEEKDAY KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: weekday.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (common_reg_funcs.c, sys_fn.c)
+    // NEEDS: libcore (language_descriptor.h)
+    // NEEDS: libengine (datetime_common.h, weekday.h)
+    // Provides runtime implementation for the WEEKDAY function in BASIC++.
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Returns day of the week (1=Sunday..7=Saturday) for specified Microsoft Serial
+Date.
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    WEEKDAY(serial#)
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = WEEKDAY(serial#)
+    20 PRINT "Result: "; Val
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 13: Type Mismatch
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Date and Time
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_PURE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  WEEKDAY
+Category              Date and Time
+Syntax                WEEKDAY(serial#)
+Description           Returns day of the week (1=Sunday..7=Saturday) for ...
+Error Summary         Error 13: Type Mismatch
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_PURE
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/eval/functions/datetime/weekday.c

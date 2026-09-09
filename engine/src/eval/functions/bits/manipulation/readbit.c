@@ -2,24 +2,41 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (sys_fn.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c)
+// NEEDS: libcore (language_descriptor.h)
 // NEEDS: libengine (readbit.h)
 // Provides runtime implementation for the READBIT built-in function in BASIC++.
 //
 // ---- Includes ----
 
 #include "eval/functions/bits/manipulation/readbit.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_readbit_desc = {
+    .name = "READBIT",
+    .category = "Bitwise & Logical Functions",
+    .syntax = "READBIT(val, bit)",
+    .description = "Returns the boolean bit value (0 or 1) at the specified zero-based bit index.",
+    .error_summary = "Error 13: Type Mismatch",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_PURE,
+    .type = FEATURE_FUNCTION
+};
+
+static const LangDesc g_bit_desc = {
+    .name = "BIT",
+    .category = "Bitwise & Logical Functions",
+    .syntax = "BIT(val, bit)",
+    .description = "Returns the boolean bit value (0 or 1) at the specified zero-based bit index (HP Series 80).",
+    .error_summary = "Error 13: Type Mismatch",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_PURE,
+    .type = FEATURE_FUNCTION
+};
 
 void func_readbit_register(void) {
-    MicroLibMetadata meta = {
-        .name = "READBIT",
-        .category = "Bitwise & Logical Functions",
-        .syntax = "READBIT(val, bit)",
-        .help_text = "Returns the boolean bit value (0 or 1) at the specified zero-based bit index.",
-        .error_codes = "Error 13: Type Mismatch"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_readbit_desc);
+    lang_desc_register(&g_bit_desc);
 }
 
 BValue func_readbit_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err) {
@@ -28,13 +45,15 @@ BValue func_readbit_eval(VMContext *vm, const char *uname, int arg_count, BValue
     res.type = VAL_NONE;
     res.as.number = 0.0;
 
-    if (runtime_strcmp(uname, "_READBIT") != 0 && runtime_strcmp(uname, "READBIT") != 0 && runtime_strcmp(uname, "BITS.READ") != 0) {
+    if (runtime_strcmp(uname, "_READBIT") != 0 && runtime_strcmp(uname, "READBIT") != 0 &&
+        runtime_strcmp(uname, "BITS.READ") != 0 && runtime_strcmp(uname, "BIT") != 0 &&
+        runtime_strcmp(uname, "_BIT") != 0 && runtime_strcmp(uname, "BITS.BIT") != 0) {
         return res;
     }
 
     if (arg_count != 2 || args[0].type == VAL_STRING || args[1].type == VAL_STRING) {
         err->code = 13;
-        err->message = "READBIT expects two numeric arguments";
+        err->message = "BIT expects two numeric arguments";
         return res;
     }
 

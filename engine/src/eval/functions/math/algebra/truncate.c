@@ -2,25 +2,31 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (math_fn.c)
-// NEEDS: libcore (math.h, micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (math.h, language_descriptor.h, string.h)
 // NEEDS: libengine (math.c, string.c, truncate.h)
 // Provides runtime implementation for the TRUNCATE built-in function in BASIC++.
 //
 // ---- Includes ----
 
 #include "eval/functions/math/algebra/truncate.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/math.h"
 #include "runtime/string.h"
+#include "runtime/string/strops.h"
+#include "runtime/math/math.h"
+
+static const LangDesc g_truncate_desc = {
+    .name = "TRUNCATE",
+    .category = "Math Functions",
+    .syntax = "TRUNCATE(x [, n])",
+    .description = "Truncates numeric x to n decimal places toward zero (ANSI Full BASIC 1987).",
+    .error_summary = "Error 13: Type Mismatch",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_PURE,
+    .type = FEATURE_FUNCTION
+};
 void func_truncate_register(void) {
-    MicroLibMetadata meta = {
-        .name = "TRUNCATE",
-        .category = "Math Functions",
-        .syntax = "TRUNCATE(x [, n])",
-        .help_text = "Truncates numeric x to n decimal places toward zero (ANSI Full BASIC 1987).",
-        .error_codes = "Error 13: Type Mismatch"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_truncate_desc);
 }
 
 BValue func_truncate_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err) {

@@ -1,17 +1,70 @@
-CABS Complex Absolute Value / Magnitude Function
-======================================================================
+TITLE: CABS
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/module/mathext.c
+GENERATED: no, hand-written
+STATUS: current
 
-The CABS function calculates the magnitude (hypotenuse) of a complex
-number z = x + iy.
+==============================================================================
+CABS KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: mathext.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (funcreg.h, funcreg.c, math.h)
+    // NEEDS: libengine (math.c)
+    // Provides core logic and interface definitions for mathext within BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Returns the magnitude / absolute value of complex number z (sqrt(re^2 +
+im^2)).
 
-    magnitude# = CABS(complex_val)
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    CABS(z)
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 X = -42.5
+    20 PRINT "Original: "; X; " Absolute: "; ABS(X)
 
-CODE EXAMPLES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 13: Type Mismatch
 
-    10 PRINT CABS(COMPLEX(3, 4))   : REM Outputs 5
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Math & Complex Numbers
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_PURE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  CABS
+Category              Math & Complex Numbers
+Syntax                CABS(z)
+Description           Returns the magnitude / absolute value of complex n...
+Error Summary         Error 13: Type Mismatch
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_PURE
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         BASIC++ Standard
+Since Version         6.0.0
+Source File           engine/src/module/mathext.c

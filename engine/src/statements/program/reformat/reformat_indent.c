@@ -8,19 +8,23 @@
 // ---- Includes ----
 
 #include "statements/program/reformat_internal.h"
+#include "runtime/format/snprintf.h"
+#include "runtime/string/strops.h"
+#include "runtime/string/memops.h"
+#include "runtime/ctype/ctype.h"
 
 //
 // ---- Pass 3 Indentation and Case Conversion ----
 
 void reformat_plan_init(ReformatPlan *plan, int spaces) {
     if (!plan) return;
-    memset(plan, 0, sizeof(ReformatPlan));
+    runtime_memset(plan, 0, sizeof(ReformatPlan));
     plan->spaces_per_indent = (spaces > 0) ? spaces : 2;
 }
 
 BppError reformat_pass3_indent(VMContext *vm, const ReformatPlan *plan, ReformatModifier mod) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     if (!vm || !plan) return err;
     MemoryContext *mem = vm_get_mem(vm);
@@ -35,6 +39,9 @@ BppError reformat_pass3_indent(VMContext *vm, const ReformatPlan *plan, Reformat
 
     int changed = 0;
     int unchanged = 0;
+
+    ReformatBlockStack for_stack;
+    runtime_memset(&for_stack, 0, sizeof(for_stack));
 
     for (size_t i = 0; i < line_count; i++) {
         double line_num = lines[i].line_number;
@@ -55,6 +62,15 @@ BppError reformat_pass3_indent(VMContext *vm, const ReformatPlan *plan, Reformat
 
         if (tok_cnt > 0) {
             BppKeywordId kw = tokens[0].kw;
+
+            if (kw == KW_FOR && for_stack.depth < REFORMAT_MAX_NESTING) {
+                int v_idx = 1;
+                if (tok_cnt > 2 && tokens[1].kw == KW_LET) v_idx = 2;
+                if (v_idx < tok_cnt) {
+                    runtime_strncpy(for_stack.entries[for_stack.depth].loop_var, tokens[v_idx].text, sizeof(for_stack.entries[0].loop_var) - 1);
+                    for_stack.depth++;
+                }
+            }
 
             if (kw == KW_FOR || kw == KW_WHILE || kw == KW_DO || kw == KW_SELECT ||
                 kw == KW_SUB || kw == KW_FUNCTION || kw == KW_TRY) {
@@ -86,8 +102,37 @@ BppError reformat_pass3_indent(VMContext *vm, const ReformatPlan *plan, Reformat
 
         const char *body_text = skip_leading_ws(orig_text);
 
+        // Pragmas (!!) and Directives (::) are 100% byte-for-byte immutable
+        if ((body_text[0] == '!' && body_text[1] == '!') || (body_text[0] == ':' && body_text[1] == ':')) {
+            unchanged++;
+            continue;
+        }
+
         char body_buf[1024];
-        snprintf(body_buf, sizeof(body_buf), "%s", body_text);
+        runtime_snprintf(body_buf, sizeof(body_buf), "%s", body_text);
+
+        // Expand bare NEXT with matching active loop counter
+        if (tok_cnt > 0 && tokens[0].kw == KW_NEXT) {
+            bool is_bare = (tok_cnt == 1 || tokens[1].kw == KW_REM || tokens[1].type == TOK_DOCSTRING || tokens[1].type == TOK_EOL);
+            if (is_bare && for_stack.depth > 0) {
+                const char *lvar = for_stack.entries[for_stack.depth - 1].loop_var;
+                if (lvar[0] != '\0') {
+                    char tail_comment[512] = {0};
+                    const char *comm = runtime_strchr(body_text, '\'');
+                    if (!comm) comm = runtime_strcasestr(body_text, "REM");
+                    if (comm) runtime_strncpy(tail_comment, comm, sizeof(tail_comment) - 1);
+
+                    if (tail_comment[0]) {
+                        runtime_snprintf(body_buf, sizeof(body_buf), "NEXT %s %s", lvar, tail_comment);
+                    } else {
+                        runtime_snprintf(body_buf, sizeof(body_buf), "NEXT %s", lvar);
+                    }
+                }
+            }
+            if (for_stack.depth > 0) {
+                for_stack.depth--;
+            }
+        }
 
         if (mod == MOD_UPPER || mod == MOD_LOWER) {
             LexerContext *lex = lex_init(NULL, body_buf);
@@ -98,8 +143,8 @@ BppError reformat_pass3_indent(VMContext *vm, const ReformatPlan *plan, Reformat
                     if (tok.type == TOK_KEYWORD && tok.start && tok.length > 0) {
                         char *p = (char*)tok.start;
                         for (size_t k = 0; k < tok.length; k++) {
-                            if (mod == MOD_UPPER) p[k] = (char)toupper((unsigned char)p[k]);
-                            else if (mod == MOD_LOWER) p[k] = (char)tolower((unsigned char)p[k]);
+                            if (mod == MOD_UPPER) p[k] = (char)runtime_toupper((unsigned char)p[k]);
+                            else if (mod == MOD_LOWER) p[k] = (char)runtime_tolower((unsigned char)p[k]);
                         }
                     }
                 }
@@ -111,9 +156,9 @@ BppError reformat_pass3_indent(VMContext *vm, const ReformatPlan *plan, Reformat
         int indent_spaces = line_indent * spaces_per;
         if (indent_spaces < 0) indent_spaces = 0;
         if (indent_spaces > 128) indent_spaces = 128;
-        snprintf(new_buf, sizeof(new_buf), "%*s%.1024s", indent_spaces, "", body_buf);
+        runtime_snprintf(new_buf, sizeof(new_buf), "%*s%.1024s", indent_spaces, "", body_buf);
 
-        if (strcmp(orig_text, new_buf) != 0) {
+        if (runtime_strcmp(orig_text, new_buf) != 0) {
             mem_program_insert(mem, line_num, new_buf);
             changed++;
         } else {
@@ -150,7 +195,7 @@ bool reformat_find_sub_range(VMContext *vm, const char *sub_name, double *out_st
         FastToken tokens[MAX_LINE_TOKENS];
         int tok_cnt = tokenize_line_fast(text, tokens, MAX_LINE_TOKENS);
         if (tok_cnt >= 2 && (tokens[0].kw == KW_SUB || tokens[0].kw == KW_FUNCTION)) {
-            if (strcasecmp(tokens[1].text, sub_name) == 0) {
+            if (runtime_strcasecmp(tokens[1].text, sub_name) == 0) {
                 found = true;
                 start_line = lines[i].line_number;
                 for (size_t j = i + 1; j < line_count; j++) {
@@ -275,7 +320,7 @@ void reformat_pass_split(VMContext *vm, ReformatPlan *plan) {
 
             if (has_split_trigger_keyword(tokens, tok_cnt)) {
                 char text_copy[512];
-                snprintf(text_copy, sizeof(text_copy), "%s", text);
+                runtime_snprintf(text_copy, sizeof(text_copy), "%s", text);
                 char *parts[16];
                 int part_count = 0;
                 char *curr = text_copy;

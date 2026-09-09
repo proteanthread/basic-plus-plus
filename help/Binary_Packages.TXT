@@ -1,0 +1,69 @@
+==============================================================================
+Title:        Binary_Packages
+Tier:         2
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/statements/file/stmt_bsave.c, stmt_qsave.c
+Generated:    no, hand-written
+Status:       current
+==============================================================================
+
+BASIC++ BINARY PACKAGE ARCHITECTURE & MEMORY IMAGE SPECIFICATION
+
+The authoritative specification of the dual-tiered binary persistence
+subsystem: vintage 7-byte memory image files (BSAVE/BLOAD) and modern
+256-byte sector-aligned binary packages (QSAVE/QLOAD/QRUN).
+
+
+1. ARCHITECTURAL OVERVIEW
+
+BASIC++ provides a dual-tiered binary persistence and execution subsystem
+designed to bridge historical microcomputer compatibility with modern
+64-bit systems and microcontroller flash memory:
+1. Vintage 7-Byte Memory Image (BSaveHeader): The historical format
+   utilized by Microsoft BASICA, GW-BASIC, and QuickBASIC for raw memory
+   snapshots via BSAVE, BLOAD, and BRUN.
+2. Modern 256-Byte Sector-Aligned Package (QHeader256): An extensible,
+   hardware-sector-aligned package architecture supporting multi-CPU
+   targeting, User Defined Blocks (UDB), and autonomous IoT execution
+   via QSAVE, QLOAD, and QRUN.
+
+All binary I/O adheres to the zero-leak memory safety invariant, streaming
+via bounded stack-based sector chunks (uint8_t chunk[512]) with O(1) memory
+consumption.
+
+
+2. VINTAGE 7-BYTE HEADER SPECIFICATION (BSaveHeader)
+
+The vintage 7-byte header precedes all memory images saved via BSAVE. All
+16-bit integers are stored in little-endian byte order:
+
+Offset  Len  Field Name  Type      Range         Description
+------  ---  ----------  --------  ------------  -----------------------------
+0x00    1 B  magic       uint8_t   0xFD          Magic byte for BSAVE image.
+0x01..2 2 B  segment     uint16_t  0x0000..FFFF  Segment base address.
+0x03..4 2 B  offset      uint16_t  0x0000..FFFF  Starting memory offset.
+0x05..6 2 B  length      uint16_t  0x0001..FFFF  Byte count of binary payload.
+
+Super-Loader Invariant:
+QLOAD and QRUN are modern super-loaders; they automatically detect vintage
+0xFD headers and load them transparently into virtual memory or BIOS VRAM.
+Conversely, vintage statements (BLOAD, BRUN) reject modern 256-byte packages
+with Error 54 (Bad file mode) to preserve historical runtime integrity.
+
+
+3. MODERN 256-BYTE SECTOR-ALIGNED PRIMARY HEADER (QHeader256)
+
+The modern QHeader256 header is exactly 256 bytes in length, matching flash
+memory sector blocks and storage cluster boundaries:
+
+Offset  Len  Field Name        Type      Description
+------  ---  ----------------  --------  -------------------------------------
+0x00    1 B  magic_primary     uint8_t   0xFD (Sniffer compatibility).
+0x01    1 B  magic_extended    uint8_t   0xFE (Extended package discriminator)
+0x02..7 6 B  format_id         char[6]   ASCII signature "QB256\0".
+0x08    1 B  header_version    uint8_t   Specification version (0x01).
+0x09    1 B  arch_bits         uint8_t   Architecture bitness (16, 32, 64).
+0x0A    1 B  endianness        uint8_t   Byte order (0x00=Little, 0x01=Big).
+0x0B    1 B  payload_type      uint8_t   Classification code (QPAYLOAD_*).
+0x0C..D 2 B  target_arch       uint16_t  Target CPU Architecture ID.
+0x0E..F 2 B  target_subsys     uint16_t  Target Machine / BIOS Subsystem ID.

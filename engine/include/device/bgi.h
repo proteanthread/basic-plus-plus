@@ -13,6 +13,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
+#include "runtime/memory/alloc.h"
 
 // ======================================================================
 // SECTION A: Memory Layout Enumeration
@@ -46,7 +47,7 @@ typedef struct BGI_VideoMode {
     // Color configuration
     uint8_t      bits_per_pixel;     // < 1, 2, 4, 8, 15, 16, 24, or 32
     uint32_t     palette_size;       // < Number of palette entries (0=direct)
-    uint32_t    *palette;            // < ARGB8888 palette table (calloc'd)
+    uint32_t    *palette;            // < ARGB8888 palette table (runtime_calloc'd)
 
     // Memory layout
     BGI_MemLayout mem_layout;        // < How VRAM bytes map to pixels

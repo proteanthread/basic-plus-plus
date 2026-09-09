@@ -1,29 +1,67 @@
-assert Case-Insensitive Assertion Statement
-===========================================
+TITLE: assert
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/ast/eval_ast.c
+GENERATED: no, hand-written
+STATUS: current
 
-Asserts that a logical condition is true, halting program execution with an error if it evaluates to false.
+==============================================================================
+ASSERT KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: eval_ast.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community -- All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: baspp.exe, bpp.exe, bs.exe, libengine
+    // NEEDS: libcore, libkernel
+    // Implements component functionality for assert.
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Evaluates boolean condition; raises Error 255 (Assertion Failure) and halts if
+condition evaluates to false.
 
-    ASSERT condition [, "failure_message"]
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    ASSERT condition [, message$]
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM ASSERT Demonstration
+    20 PRINT "ASSERT executed successfully."
 
-ERROR CONDITIONS
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 255: Assertion Failure
 
-  - Error 250 (ERR_ASSERTION_FAILED): Assertion failed.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Program Control & Debugging
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SAFE
 
-
-OPERATIONAL NOTES
-----------------------------------------------------------------------
-
-  Case-insensitive alias for CHECK statement.
-
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 ASSERT X >= 0, "X cannot be negative"
-    20 PRINT "Assertion passed."
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  ASSERT
+Category              Program Control & Debugging
+Syntax                ASSERT condition [, message$]
+Description           Evaluates boolean condition; raises Error 255 (Asse...
+Error Summary         Error 255: Assertion Failure
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         BASIC++ Standard
+Since Version         6.0.0
+Source File           engine/src/eval/ast/eval_ast.c

@@ -2,7 +2,7 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
-// NEEDS: libcore (file.h, file.c, micro_lib_metadata.h, micro_lib_metadata.c)
+// NEEDS: libcore (file.h, file.c, language_descriptor.h)
 // NEEDS: libcore (string.h, strings.h, strings.c, variables.h, variables.c)
 // NEEDS: libengine (assign.h, eval.h, eval.c, string.c, vm.h)
 // NEEDS: libkernel (errors.h)
@@ -16,31 +16,40 @@
 #include "runtime/file.h"
 #include "runtime/variables.h"
 #include "runtime/strings.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "types/errors.h"
 #include "vm/vm.h"
 #include "platform/platform.h"
-#include <string.h>
-#include <stdio.h>
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "runtime/format/snprintf.h"
+
+static const LangDesc g_assign_desc = {
+    .name = "ASSIGN",
+    .category = "Filesystem I/O",
+    .syntax = "ASSIGN #channel TO \"filespec$\" [, BUFFER n]",
+    .description = "Dynamically associates a disk file specification or I/O device with an I/O path descriptor or channel (HP-3000 / HP-9845).",
+    .error_summary = "Error 2: Syntax Error, Error 52: Bad File Number, Error 53: File Not Found",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_STATEMENT
+};
+
+static const LangDesc g_advance_desc = {
+    .name = "ADVANCE",
+    .category = "Filesystem I/O",
+    .syntax = "ASSIGN #channel TO \"filespec$\" [, BUFFER n]",
+    .description = "Advances or rewinds relative record position within an open channel (HP TSB).",
+    .error_summary = "Error 2: Syntax Error, Error 52: Bad File Number, Error 62: Input Past End",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_STATEMENT
+};
 
 void stmt_assign_register(void) {
-    static const MicroLibMetadata meta_assign = {
-        .name = "ASSIGN",
-        .category = "Filesystem I/O",
-        .syntax = "ASSIGN @Path TO \"filespec\" | ASSIGN @Path TO * | ASSIGN [#]channel TO \"filespec\" | ASSIGN \"filespec\" TO [#]channel",
-        .help_text = "Dynamically associates a disk file specification or I/O device with an I/O path descriptor or channel (HP-3000 / HP-9845).",
-        .error_codes = "Error 2: Syntax Error, Error 52: Bad File Number, Error 53: File Not Found"
-    };
-    microlib_register(&meta_assign);
+    lang_desc_register(&g_assign_desc);
 
-    static const MicroLibMetadata meta_advance = {
-        .name = "ADVANCE",
-        .category = "Filesystem I/O",
-        .syntax = "ADVANCE [#]channel, record_count",
-        .help_text = "Advances or rewinds relative record position within an open channel (HP TSB).",
-        .error_codes = "Error 2: Syntax Error, Error 52: Bad File Number, Error 62: Input Past End"
-    };
-    microlib_register(&meta_advance);
+    lang_desc_register(&g_advance_desc);
 }
 
 static int find_free_channel(FileContext *fc) {
@@ -52,7 +61,7 @@ static int find_free_channel(FileContext *fc) {
 
 BppError stmt_assign_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     if (!vm || !lex) {
         err.code = 5; err.message = "Null context";
@@ -75,12 +84,12 @@ BppError stmt_assign_handler(VMContext *vm, LexerContext *lex) {
                 return err;
             }
             size_t ilen = (id_tok.length < sizeof(path_var) - 2) ? id_tok.length : sizeof(path_var) - 2;
-            memcpy(path_var + 1, id_tok.start, ilen);
+            runtime_memcpy(path_var + 1, id_tok.start, ilen);
             path_var[1 + ilen] = '\0';
         } else {
             lex_next(lex);
             size_t ilen = (first_tok.length < sizeof(path_var) - 1) ? first_tok.length : sizeof(path_var) - 1;
-            memcpy(path_var, first_tok.start, ilen);
+            runtime_memcpy(path_var, first_tok.start, ilen);
             path_var[ilen] = '\0';
         }
 
@@ -213,12 +222,12 @@ BppError stmt_assign_handler(VMContext *vm, LexerContext *lex) {
             lex_next(lex);
             BppToken id_tok = lex_next(lex);
             size_t ilen = (id_tok.length < sizeof(path_var) - 2) ? id_tok.length : sizeof(path_var) - 2;
-            memcpy(path_var + 1, id_tok.start, ilen);
+            runtime_memcpy(path_var + 1, id_tok.start, ilen);
             path_var[1 + ilen] = '\0';
         } else {
             lex_next(lex);
             size_t ilen = (hash.length < sizeof(path_var) - 1) ? hash.length : sizeof(path_var) - 1;
-            memcpy(path_var, hash.start, ilen);
+            runtime_memcpy(path_var, hash.start, ilen);
             path_var[ilen] = '\0';
         }
         int channel = find_free_channel(fc);
@@ -236,19 +245,27 @@ BppError stmt_assign_handler(VMContext *vm, LexerContext *lex) {
         lex_next(lex);
     }
 
-    BValue ch_val = eval_expression(vm, lex, &err);
+    BValue dest_val = eval_expression(vm, lex, &err);
     if (err.code != 0) {
         str_release(vm_get_str(vm), fn_val.as.string);
         return err;
     }
-    if (ch_val.type != VAL_NUMBER && ch_val.type != VAL_INTEGER) {
-        if (ch_val.type == VAL_STRING && ch_val.as.string) str_release(vm_get_str(vm), ch_val.as.string);
+
+    if (dest_val.type == VAL_STRING && dest_val.as.string) {
+        // Form: ASSIGN "alias:" TO "target:"
+        vdev_alias_set(vm_get_vdev(vm), str_data(fn_val.as.string), str_data(dest_val.as.string));
+        str_release(vm_get_str(vm), fn_val.as.string);
+        str_release(vm_get_str(vm), dest_val.as.string);
+        return err;
+    }
+
+    if (dest_val.type != VAL_NUMBER && dest_val.type != VAL_INTEGER) {
         str_release(vm_get_str(vm), fn_val.as.string);
         err.code = ERR_TYPE_MISMATCH;
         return err;
     }
 
-    int channel = (int)ch_val.as.number;
+    int channel = (int)dest_val.as.number;
     err = file_open(fc, vm_get_vdev(vm), channel, str_data(fn_val.as.string),
                     FILE_MODE_RANDOM, FILE_ACCESS_READ_WRITE, FILE_LOCK_DEFAULT, 128);
     str_release(vm_get_str(vm), fn_val.as.string);
@@ -257,7 +274,7 @@ BppError stmt_assign_handler(VMContext *vm, LexerContext *lex) {
 
 BppError stmt_advance_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BppToken hash = lex_peek(lex);
     if (hash.type == TOK_HASH) {

@@ -1,16 +1,70 @@
-ATN Arctangent Trigonometric Function
-======================================================================
+TITLE: ATN
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/functions/math/trig/atn.c
+GENERATED: no, hand-written
+STATUS: current
 
-The ATN function computes the inverse tangent of a number in radians.
+==============================================================================
+ATN KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: atn.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (math_fn.c)
+    // NEEDS: libcore (math.h, language_descriptor.h, string.h)
+    // NEEDS: libengine (atn.h, math.c, string.c)
+    // Provides runtime implementation for the ATN built-in function in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Returns the arctangent of a numeric expression (radians, degrees, or grads
+depending on angle mode).
 
-    radians# = ATN(numeric_expression)
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    ATN(x)
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = ATN(10)
+    20 PRINT "Result: "; Val
 
-CODE EXAMPLES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 13: Type Mismatch (ATN expects one numeric argument)
 
-    10 PRINT 4 * ATN(1)   : REM Outputs 3.141592653589793
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Math Functions
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_PURE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  ATN
+Category              Math Functions
+Syntax                ATN(x)
+Description           Returns the arctangent of a numeric expression (rad...
+Error Summary         Error 13: Type Mismatch (ATN expects one numeric ar...
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_PURE
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/eval/functions/math/trig/atn.c

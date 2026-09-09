@@ -1,47 +1,38 @@
 // FILENAME: incr.c
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
-// NEEDED BY: libengine, BASIC++ runtime
-// NEEDS: libcore (arrays.h, arrays.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
-// NEEDS: libcore (strings.h, strings.c, variables.h, variables.c)
-// NEEDS: libengine (eval.h, eval.c, incr.h, lexer.h, lexer.c, string.c, vm.h)
+// NEEDED BY: libengine (common_reg_stmts.c)
+// NEEDS: libcore (arrays.h, language_descriptor.h, strings.h, variables.h)
+// NEEDS: libengine (eval.h, incr.h, lexer.h, vm.h)
 // Provides runtime implementation for the INCR statement in BASIC++.
-//
-// ---- Includes ----
 
 #include "statements/variables/assignment/incr.h"
+#include "runtime/language_descriptor.h"
 #include "vm/vm.h"
 #include "lexer/lexer.h"
 #include "eval/eval.h"
 #include "runtime/variables.h"
 #include "runtime/arrays.h"
 #include "runtime/strings.h"
-#include "runtime/micro_lib_metadata.h"
-#include <string.h>
-#include <stdlib.h>
+#include "runtime/string/memops.h"
+#include <stdbool.h>
+
+static const LangDesc g_incr_desc = {
+    .name = "INCR",
+    .category = "Variables & Memory",
+    .syntax = "INCR variable [, step]",
+    .description = "Increments the numeric variable or array element by step (default 1).",
+    .error_summary = "Error 2: Syntax Error, Error 9: Subscript out of range, Error 13: Type Mismatch",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_PURE,
+    .type = FEATURE_STATEMENT
+};
 
 void stmt_incr_register(void) {
-    static const MicroLibMetadata meta_incr = {
-        .name = "INCR",
-        .category = "Variables & Memory",
-        .syntax = "INCR variable [, step]",
-        .help_text = "Increments the numeric variable or array element by step (default 1).",
-        .error_codes = "Error 2: Syntax Error, Error 13: Type Mismatch"
-    };
-    microlib_register(&meta_incr);
-
-    static const MicroLibMetadata meta_decr = {
-        .name = "DECR",
-        .category = "Variables & Memory",
-        .syntax = "DECR variable [, step]",
-        .help_text = "Decrements the numeric variable or array element by step (default 1).",
-        .error_codes = "Error 2: Syntax Error, Error 13: Type Mismatch"
-    };
-    microlib_register(&meta_decr);
+    lang_desc_register(&g_incr_desc);
 }
 
-static BppError handle_incr_decr(VMContext *vm, LexerContext *lex, bool is_incr) {
+BppError stmt_incr_handler(VMContext *vm, LexerContext *lex) {
     BppError err = {0};
     VariableContext *vc = vm_get_var(vm);
     ArrayContext *ac = vm_get_arr(vm);
@@ -49,13 +40,13 @@ static BppError handle_incr_decr(VMContext *vm, LexerContext *lex, bool is_incr)
     BppToken tok = lex_next(lex);
     if (tok.type != TOK_IDENT && tok.type != TOK_KEYWORD) {
         err.code = 2;
-        err.message = is_incr ? "Syntax error in INCR (expected variable name)" : "Syntax error in DECR (expected variable name)";
+        err.message = "Syntax error in INCR (expected variable name)";
         return err;
     }
 
     char var_name[64];
     size_t len = (tok.length < sizeof(var_name) - 1) ? tok.length : sizeof(var_name) - 1;
-    memcpy(var_name, tok.start, len);
+    runtime_memcpy(var_name, tok.start, len);
     var_name[len] = '\0';
 
     bool is_array = false;
@@ -118,11 +109,10 @@ static BppError handle_incr_decr(VMContext *vm, LexerContext *lex, bool is_incr)
             return err;
         }
         if (arr_elem->type == VAL_STRING) {
-            err.code = 13; err.message = "Type mismatch (cannot INCR/DECR string)";
+            err.code = 13; err.message = "Type mismatch (cannot INCR string)";
             return err;
         }
-        if (is_incr) arr_elem->as.number += step_val;
-        else arr_elem->as.number -= step_val;
+        arr_elem->as.number += step_val;
     } else {
         BValue *var = var_lookup(vc, var_name, true);
         if (!var) {
@@ -130,21 +120,12 @@ static BppError handle_incr_decr(VMContext *vm, LexerContext *lex, bool is_incr)
             return err;
         }
         if (var->type == VAL_STRING) {
-            err.code = 13; err.message = "Type mismatch (cannot INCR/DECR string)";
+            err.code = 13; err.message = "Type mismatch (cannot INCR string)";
             return err;
         }
         if (var->type == VAL_NONE) var->type = VAL_NUMBER;
-        if (is_incr) var->as.number += step_val;
-        else var->as.number -= step_val;
+        var->as.number += step_val;
     }
 
     return err;
-}
-
-BppError stmt_incr_handler(VMContext *vm, LexerContext *lex) {
-    return handle_incr_decr(vm, lex, true);
-}
-
-BppError stmt_decr_handler(VMContext *vm, LexerContext *lex) {
-    return handle_incr_decr(vm, lex, false);
 }

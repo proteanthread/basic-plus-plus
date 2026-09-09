@@ -1,29 +1,67 @@
-DEF_FN User Defined Function Statement
-======================================
+TITLE: DEF_FN
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/ast/eval_ast.c
+GENERATED: no, hand-written
+STATUS: current
 
-Defines a single-line user function that can be evaluated anywhere in expressions via FNname().
+==============================================================================
+DEF_FN KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: eval_ast.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community -- All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: baspp.exe, bpp.exe, bs.exe, libengine
+    // NEEDS: libcore, libkernel
+    // Implements component functionality for DEF_FN.
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Defines a single-line user function formula adhering to classical Dartmouth /
+GW-BASIC DEF FN conventions.
 
-    DEF FNname[(arg1 [, arg2...])] = expression
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    DEF FNname[(args)] = expr
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = DEF FNname[(args)] = e10pr
+    20 PRINT "Result: "; Val
 
-ERROR CONDITIONS
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error, Error 5: Illegal Function Call
 
-  - Error 5 (ERR_ILLEGAL_FUNCTION_CALL): Invalid argument count or recursive definition.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       Dartmouth BASIC, GW-BASIC, QBASIC, BASIC++ Standard
+Since Version: 6.0.0
+Category:      Function Definitions
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SAFE
 
-
-OPERATIONAL NOTES
-----------------------------------------------------------------------
-
-  Single-line expression macro evaluated in current variable scope.
-
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 DEF FNHypot(A, B) = SQR(A * A + B * B)
-    20 PRINT "Hypotenuse: "; FNHypot(3, 4) : REM Outputs 5
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  DEF_FN
+Category              Function Definitions
+Syntax                DEF FNname[(args)] = expr
+Description           Defines a single-line user function formula adherin...
+Error Summary         Error 2: Syntax Error, Error 5: Illegal Function Call
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         Dartmouth BASIC, GW-BASIC, QBASIC, BASIC++ Standard
+Since Version         6.0.0
+Source File           engine/src/eval/ast/eval_ast.c

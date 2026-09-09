@@ -1,0 +1,236 @@
+<!--
+Title:        Documentation_Index
+Tier:         4
+Applies to:   BASIC++ v6.5.2
+Authority:    docs/, help/, engine/src/docgen/docgen.c
+Generated:    no, hand-written
+Status:       current
+-->
+
+# Documentation Index
+
+Where to start, what exists, and what is honestly not covered yet.
+
+Every document below exists in two forms: Markdown in `docs/` and plaintext
+in `help/`, with byte-identical base names.
+
+---
+
+## Start here, by who you are
+
+| You are | Read first |
+|---|---|
+| A BASIC programmer | `BASIC_Programmers_Guide` |
+| Porting a vintage program | `Dialect_Migration_Reference` |
+| A C or C++ developer | `C_Programmers_Guide` |
+| A Python developer | `Python_Programmers_Guide` |
+| A Pascal or Delphi developer | `Pascal_Programmers_Guide` |
+| A web or JavaScript developer | `Web_And_Backend_Guide` |
+| Building a service | `Web_And_Backend_Guide`, then `Networking_Reference` |
+| Running systems, scripting, automation | `Systems_Administration_Guide` |
+| Working with microcontrollers | `IoT_And_Embedded_Guide` |
+| Extending the language | `Extension_Guide` |
+| Working close to hardware | `Systems_Programming`, then `Physical_Device_Access` |
+| Calling another language, or being called | `Language_Interop` |
+| Asking the language about itself | `Introspection_Reference` |
+
+---
+
+## By subject
+
+### The language
+
+- `BASIC_Programmers_Guide` — the language for someone who knows BASIC
+- `Set_Based_Object_Model` — sets, groups, objects, and why
+- `Structured_BASIC` — structured programming constructs
+- `Subroutines_And_Functions` — `SUB`, `FUNCTION`, `DECLARE`
+- `Arrays_And_Matrices` — arrays, `MAT`, `OPTION BASE`
+- `String_Handling`, `Advanced_Strings` — string operations
+- `User_Defined_Types` — `TYPE` and records
+- `Scope` — name resolution
+- `Error_Handling` — `ON ERROR`, `TRY`, `RAISE`
+- `Delimiter_And_Bracket_Keyword_Taxonomy` — the delimiter invariant
+- `Builtin_And_Dynamic_Variables` — predefined variables
+- `Options_Reference` — the `OPTION` statement
+- `Introspection_Reference` — asking the language what it contains, and
+  changing the answer
+
+### Reference
+
+- `docs/keywords/statements/` — one page per statement
+- `docs/keywords/functions/` — one page per function
+- `docs/keywords/libraries/`, `docs/keywords/modules/`
+- `docs/api/` — the C API, per subsystem
+- `Keyword` — keyword taxonomy
+- `Quick_Reference` — the short form
+
+### Migration and history
+
+- `Dialect_Migration_Reference` — TRS-80, Commodore, Atari, Apple II,
+  QuickBASIC, VB DOS, construct by construct
+- `Program_Modernization_Tutorial` — `RENUM`, `RENAME`, `REFORMAT`
+- `Legacy_BASIC_Modernization_Guide`
+- `VBDOS_QuickBASIC_PDS`, `MBASIC_CPM`, `Sinclair_BASIC`, `SuperBASIC_QL`
+- `Timeshare_Mainframe_Dialects` — HP, DEC, mainframe lineage
+- `Vintage_Ecosystems_Reference`
+- `Historical_Dialect_Feature_Import_Catalogue`
+
+### Building and deploying
+
+- `Building_BASIC++` — the normal build
+- `Building_A_Minimal_BASIC++` — small targets
+- `Compiling_BASIC_Programs` — `bppc`
+- `Transpiler` — `trans`
+- `FreeDOS_Build`, `Embedded_Platforms`
+- `Porting_And_Portability_Guide` — new platforms
+- `Binary_Packages`
+
+### Extending
+
+- `Extension_Guide` — aliases, user devices, modules, native keywords
+- `Module_Guide` — modules from the BASIC side
+- `Library_System` — the library layering
+- `Using_Aliases`, `Override`
+- `Universal_Registers_And_UDX`
+
+### Devices and I/O
+
+- `Virtual_Devices`, `Device_Reference`, `Device_Aliases`
+- `Virtual_Filesystem`, `Virtual_Consoles`
+- `File_IO`, `Stream_Block_IO`, `Binary_Formats`
+- `Screen_And_Console`, `TUI_Programming`
+- `Physical_Device_Access` — **what reaches real hardware and what does not**
+
+### Graphics and sound
+
+- `Graphics_Modes`, `Graphics_Sound`
+- `Game_Development_Guide`, `Game_Libraries_and_Engines/`
+
+### Systems and hardware
+
+- `Systems_Programming` — `PEEK`, `POKE`, `INP`, `OUT`, `VARPTR`
+- `Memory_Maps`, `Virtual_Memory_RAMBANKs`
+- `IBM_BIOS_Porting`, `BIOS_Porting_Guide`
+- `IoT_And_Embedded_Guide`
+- `Internals_And_Architecture`, `Source_Map`
+- The `Freestanding_*_Architecture` documents, per subsystem
+
+### Interop
+
+- `Language_Interop` — **read this first.** C, C++, Pascal, Python, assembler,
+  COM, JSON-RPC, WASM, and which of them actually work
+- `C_Programmers_Guide`, `Python_Programmers_Guide`, `Pascal_Programmers_Guide`
+
+### Networking
+
+- `Networking_Reference` — **read this before any other networking
+  document.** It establishes what is real and what is simulated, and explains
+  the two-socket-layer split
+- `Virtual_Network`, `Universal_Networking_Sockets_Security`
+- `UPnP_Port_Forwarding_And_NAT_Traversal`
+- `RFC51_Universal_Network_Interchange_Language`
+
+### Tooling and quality
+
+- `Implementation_Status` — **the evidence register.** What is real, stubbed,
+  partial and absent, every row citing the source it was read from
+- `Debugging_And_Testing` — debugger, tests, tracing, logging
+- `Program_Modernization_Tutorial`
+- `Security`, `Secure_Coding`
+- `Developer_Guide` — working on BASIC++ itself
+
+---
+
+## Guides, or just indexes?
+
+Both, and the distinction matters when you are looking for something.
+
+**Guides** teach: `BASIC_Programmers_Guide`, `C_Programmers_Guide`,
+`Extension_Guide`, `IoT_And_Embedded_Guide`, `Systems_Administration_Guide`,
+`Web_And_Backend_Guide`, `Debugging_And_Testing`,
+`Program_Modernization_Tutorial`, `Dialect_Migration_Reference`,
+`Language_Interop`, `Set_Based_Object_Model`. Read one front to back.
+
+**Registers** record measured state rather than teaching anything:
+`Implementation_Status` and `Physical_Device_Access`. Every row cites the
+source file it was established from, and a row is only true until that file
+changes.
+
+**References** are looked things up in: everything under `docs/keywords/` and
+`docs/api/`, plus `Quick_Reference` and `Options_Reference`. Do not read
+these; search them.
+
+**Architecture documents** explain structure and rationale:
+`Internals_And_Architecture`, the `Freestanding_*_Architecture` set,
+`Source_Map`.
+
+**Indexes** are this document, `help`, `catalog` and `README`.
+
+---
+
+## What is not covered yet
+
+Stated so nobody hunts for a document that does not exist.
+
+| Subject | State |
+|---|---|
+| Booting from UEFI | Not built. See `project notes/UEFI_BOOT_TARGET_PROMPT` |
+| Booting from MBR | Not built. See `project notes/MBR_LEGACY_BOOT_PROMPT` |
+| TLS, packet capture | Absent and simulated respectively. See `Networking_Reference` |
+| `SOCK.*` reaching a real network | The socket layer is real; the keywords are wired to a stub. See `Networking_Reference` section 1 |
+| `NET OPEN`, `NET LISTEN`, `NWRITE` | These keywords were documented and never existed. See `Virtual_Network` |
+| Calling Python from BASIC++ | `PYTHON$` returns the string "None". See `Python_Programmers_Guide` |
+| ESP32 firmware | The IoT layer is a desktop simulator. See `IoT_And_Embedded_Guide` |
+| Filesystem drivers | The VFS is a path namespace with no driver beneath it |
+| A GUI or TUI development environment | An IDE in the QBASIC sense exists; a Lazarus-style form designer does not. See `TUI_Programming` section 6 |
+| Mouse, lightpen, joystick, paddle input | Registered and empty. See `Physical_Device_Access` section 5 |
+| USB, CD-ROM, CD audio, DVD | Absent. USB-serial devices work through the serial layer. See `Physical_Device_Access` |
+| The `Systems_Programming_Manual` | Written without a source-verification pass and not yet corrected |
+| Games | `Game_Development_Guide` exists but has not been verified against the source |
+
+---
+
+## How this documentation stays current
+
+The honest answer to why it fell behind, and what fixes it.
+
+**Why it drifted.** Documents were used as sources of ideas during
+implementation, the idea was built differently from the way the document
+described it, and the document was never brought back into line. A document
+somebody recently worked from looks current, which makes this harder to spot
+than plain neglect.
+
+**Four mechanisms, of which one is in place.**
+
+1. **Generation.** Per-keyword pages are produced from the
+   `LanguageDescriptor` registered in the engine, by
+   `engine/src/docgen/docgen.c`, driven as `baspp --export-docs`. A keyword
+   cannot exist without its page. *Partially in place: the keyword tree is
+   generated; the generator does not yet fan out per-item into both trees.*
+
+2. **A build gate.** A target that fails the build when a registered item has
+   no page, a page has no item, a mirror is missing, or a pair has drifted.
+   *Not in place.* Until it is, currency depends on memory.
+
+3. **Same-commit documentation.** A change that adds, alters or removes a
+   keyword carries its documentation change in the same commit.
+   `PROJECT_RULES.md` requires this twice. *Stated, not enforced.*
+
+4. **A collision gate.** Before implementing anything that references
+   something already implemented, the divergence is raised rather than
+   discovered later. *Stated, not enforced.*
+
+Every document in this tree carries a six-field provenance header giving its
+tier, the `engine/` paths it was verified against, whether it was generated,
+and whether it is current or superseded. When a document is replaced its
+`Status` says so and names the replacement, so a superseded document never
+sits in the tree looking authoritative.
+
+**Superseded documents.** Two were replaced during the September 2026 pass and
+now carry a `Status: superseded` header pointing at their replacement:
+`Universal_Language_Interop_C_Python_Pascal` (now `Language_Interop`) and
+`Set_Based_Object_Model_And_Python3_Import` (split between
+`Set_Based_Object_Model` and `Python_Programmers_Guide`).
+
+If you find a document that contradicts the source, the source is right.
+Report it.

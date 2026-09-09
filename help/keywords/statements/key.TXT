@@ -1,30 +1,73 @@
-KEY Function Key Definition & Softkey Display Statement
-=======================================================
+TITLE: KEY
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/event/trapping/key.c
+GENERATED: no, hand-written
+STATUS: current
 
-Assigns macro strings to programmable function keys (F1-F10) or controls softkey display on line 25.
+==============================================================================
+KEY KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: key.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libcore (strings.h, strings.c)
+    // NEEDS: libengine (eval.h, eval.c, key.h, lexer.h, lexer.c, string.c, vm.h)
+    // NEEDS: libkernel (errors.h, vcon.h, vcon.c, vdev.h, vdev.c)
+    // NEEDS: libplatform (platform.h)
+    // Provides runtime implementation for the KEY statement in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Enables, disables, or customizes function key softkey display and key event
+trapping.
 
-    KEY key_number%, string_expression$
-    KEY ON | OFF | LIST
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    KEY ON | KEY OFF | KEY LIST | KEY n, string$ | KEY(n) {ON|OFF|STOP}
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = KEY ON | KEY OFF | KEY LIST | KEY n, string$ | KEY(n) {ON|OFF|STOP}
+    20 PRINT "Result: "; Val
 
-ERROR CONDITIONS
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error, Error 5: Illegal Function Call, Error 13: Type Mismatch
 
-  - Error 5 (ERR_ILLEGAL_FUNCTION_CALL): Key number outside range (1..10).
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Event Trapping & Console
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SAFE
 
-
-OPERATIONAL NOTES
-----------------------------------------------------------------------
-
-  Softkey bar rendered on bottom screen row in full console modes.
-
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 KEY 1, "FILES" + CHR$(13)
-    20 KEY ON : REM Show softkeys at screen bottom
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  KEY
+Category              Event Trapping & Console
+Syntax                KEY ON | KEY OFF | KEY LIST | KEY n, string$ | KEY(...
+Description           Enables, disables, or customizes function key softk...
+Error Summary         Error 2: Syntax Error, Error 5: Illegal Function Ca...
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/event/trapping/key.c

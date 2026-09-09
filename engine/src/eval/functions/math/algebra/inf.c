@@ -2,25 +2,30 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (math_fn.c)
-// NEEDS: libcore (math.h, micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (math.h, language_descriptor.h, string.h)
 // NEEDS: libengine (inf.h, math.c, string.c)
 // Provides runtime implementation for the INF built-in function in BASIC++.
 //
 // ---- Includes ----
 
 #include "eval/functions/math/algebra/inf.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/math.h"
 #include "runtime/string.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_inf_desc = {
+    .name = "INF",
+    .category = "Math Functions",
+    .syntax = "INF",
+    .description = "Returns positive infinity value (ANSI Full BASIC 1987).",
+    .error_summary = "Error 13: Type Mismatch",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_PURE,
+    .type = FEATURE_FUNCTION
+};
 void func_inf_register(void) {
-    MicroLibMetadata meta = {
-        .name = "INF",
-        .category = "Math Functions",
-        .syntax = "INF",
-        .help_text = "Returns positive infinity value (ANSI Full BASIC 1987).",
-        .error_codes = "Error 13: Type Mismatch"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_inf_desc);
 }
 
 BValue func_inf_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err) {

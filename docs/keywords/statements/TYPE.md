@@ -1,46 +1,77 @@
-# `TYPE` User-Defined Record Structure Declaration Statement
+<!--
+Title:        TYPE
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/statements/oop/structure/type.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Statement Definition
+# `TYPE` Keyword Reference
 
-The `TYPE ... END TYPE` block defines custom composite data structures (records/structs) composed of named fields with explicit primitive types. Variables of this type can then be declared using `DIM var AS TypeName`.
+## Source Header
 
-### Syntax Signatures:
-```basic
-TYPE TypeName
-    field1 AS PrimitiveType
-    field2 AS PrimitiveType
-    [field3 AS String * length]
-END TYPE
+```c
+// FILENAME: type.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore, libengine, libkernel, libplatform
+// Provides runtime implementation for the TYPE statement in BASIC++.
+//
+// ---- Includes ----
 ```
 
-### Operational Rules:
-- **Field Types**: Supported field types include `INTEGER` (16-bit), `LONG` (32-bit), `SINGLE` (32-bit float), `DOUBLE` (64-bit float), and fixed-length strings (`STRING * N`).
-- **Field Member Access**: Individual fields are accessed using dot notation (`record.fieldName`).
-- **Memory Layout**: In BASIC++ v6.5.2, struct layouts are tracked via `core/struct.h` and packed/aligned cleanly for C17 interop.
-- **Assignment**: Records of the same type can be copied directly with a single assignment (`LET A = B`).
+## 1. Description & Usage
+
+Defines a user-defined data structure (UDT/record) containing element fields.
+
+## 2. Syntax
+
+```basic
+TYPE type_name 
+ member_name AS type | member: type 
+ ... 
+ END TYPE | ENDTYPE
+```
+
+## 3. Code Example
+
+```basic
+10 REM TYPE Demonstration
+20 PRINT "TYPE executed successfully."
+```
+
+## 4. Error Conditions
+
+Error 2: Syntax Error, Error 38: TYPE Without END TYPE, Error 10: Duplicate Definition
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Variables & Memory
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_SYSTEM
 
 ---
 
-## 2. Language Dialect & Compatibility
+## LanguageDescriptor (LangDesc) Quick Reference
 
-| Dialect | Syntax | Dot Notation | Fixed Strings |
-|---|---|---|---|
-| **GW-BASIC / BASICA** | *None* | No | No |
-| **QuickBASIC / QBASIC** | `TYPE ... END TYPE` | Yes | Yes (`STRING * N`) |
-| **Visual Basic** | `Type ... End Type` | Yes | Yes |
-| **BASIC++ (Master)** | `TYPE ... END TYPE` | Yes | Yes |
-
----
-
-## 3. Examples
-
-```basic
-10 TYPE Point2D
-20   X AS DOUBLE
-30   Y AS DOUBLE
-40 END TYPE
-50 DIM P AS Point2D
-60 P.X = 100.5
-70 P.Y = 250.75
-80 PRINT "Point coordinates: ("; P.X; ", "; P.Y; ")"
-```
+| Field | Value |
+|---|---|
+| Name | TYPE |
+| Category | Variables & Memory |
+| Syntax | TYPE type_name 
+ member_name AS type \| member: type 
+ ... 
+ END TYPE \| ENDTYPE |
+| Description | Defines a user-defined data structure (UDT/record) containing element fields. |
+| Error Summary | Error 2: Syntax Error, Error 38: TYPE Without END TYPE, Error 10: Duplicate Definition |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_SYSTEM |
+| Feature Type | FEATURE_STATEMENT |
+| Delimiter Mask | none |
+| Compatibility | none |
+| Since Version | none |
+| Source File | engine/src/statements/oop/structure/type.c |

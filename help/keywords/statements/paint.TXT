@@ -1,30 +1,71 @@
-PAINT Graphics Flood Fill Statement
-===================================
+TITLE: PAINT
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/graphics/draw/paint.c
+GENERATED: no, hand-written
+STATUS: current
 
-Fills an enclosed graphics region with a solid color, stopping at the specified boundary border color.
+==============================================================================
+PAINT KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: paint.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libengine (eval.h, eval.c, lexer.h, lexer.c, paint.h, string.c, vm.h
+    // NEEDS: libkernel (security.h, security.c, vdev.h, vdev.c)
+    // Provides runtime implementation for the PAINT statement in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Fills a closed graphics region starting at coordinates (x, y) with color or
+tile pattern.
 
-    PAINT (x%, y%) [, [fill_color%] [, [border_color%]]]
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    PAINT (x, y) [, fill_color [, border_color]]
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = PAINT (10, y) [, fill_color [, border_color]]
+    20 PRINT "Result: "; Val
 
-ERROR CONDITIONS
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 5: Illegal Function Call (coordinates out of bounds)
 
-  - Error 5 (ERR_ILLEGAL_FUNCTION_CALL): Seed coordinates outside screen bounds.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Graphics & Drawing
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SAFE
 
-
-OPERATIONAL NOTES
-----------------------------------------------------------------------
-
-  Scanline flood fill algorithm with boundary detection.
-
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 SCREEN 12
-    20 CIRCLE (320, 240), 50, 14 : REM Yellow boundary
-    30 PAINT (320, 240), 12, 14   : REM Fill inside with red
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  PAINT
+Category              Graphics & Drawing
+Syntax                PAINT (x, y) [, fill_color [, border_color]]
+Description           Fills a closed graphics region starting at coordina...
+Error Summary         Error 5: Illegal Function Call (coordinates out of ...
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/graphics/draw/paint.c

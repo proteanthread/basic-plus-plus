@@ -1,0 +1,73 @@
+TITLE: SELECT
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/core/program/select.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+SELECT KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: select.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libplatform (plat_clipboard.c, plat_console.c, plat_dl.c)
+    // NEEDED BY: libplatform (plat_fs.c, plat_net.c, plat_regex.c, plat_sys.c)
+    // NEEDED BY: libplatform (plat_thread.c, plat_time.c)
+    // NEEDS: libcore (ctype.h, ctype.c, language_descriptor.h)
+    // NEEDS: libcore (string.h)
+    // NEEDS: libengine (eval.h, eval.c, stmt.h, string.c, vm.h)
+    // Provides runtime implementation for the SELECT statement in BASIC++.
+    //
+    // ---- Includes ----
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Executes one of several blocks of statements depending on the value of an
+expression.
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    SELECT CASE test_expression ... CASE expression_list ... END SELECT
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM SELECT Demonstration
+    20 PRINT "SELECT executed successfully."
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error, Error 13: Type Mismatch, Error 37: SELECT Without CASE
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Control Flow
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SAFE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  SELECT
+Category              Control Flow
+Syntax                SELECT CASE test_expression ... CASE expression_lis...
+Description           Executes one of several blocks of statements depend...
+Error Summary         Error 2: Syntax Error, Error 13: Type Mismatch, Err...
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/core/program/select.c

@@ -12,9 +12,55 @@
 #include "eval/functions/system/hardware/func_packet.h"
 #include "runtime/packet_sniff.h"
 #include "runtime/strings.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/string/strops.h"
 #include "runtime/string/memops.h"
-#include <string.h>
+
+static const LangDesc g_packet_mac_desc = {
+    .name = "PACKET.MAC$", .category = "Hardware & Network", .syntax = "PACKET.MAC$()",
+    .description = "Returns source MAC address of last captured raw network packet.",
+    .error_summary = "None", .subsystem = SUBSYSTEM_HARDWARE, .safety = SAFETY_IO, .type = FEATURE_FUNCTION
+};
+static const LangDesc g_packet_rssi_desc = {
+    .name = "PACKET.RSSI", .category = "Hardware & Network", .syntax = "PACKET.RSSI()",
+    .description = "Returns signal strength (RSSI in dBm) of last captured packet.",
+    .error_summary = "None", .subsystem = SUBSYSTEM_HARDWARE, .safety = SAFETY_IO, .type = FEATURE_FUNCTION
+};
+static const LangDesc g_packet_payload_desc = {
+    .name = "PACKET.PAYLOAD$", .category = "Hardware & Network", .syntax = "PACKET.PAYLOAD$()",
+    .description = "Returns raw payload bytes of last captured packet.",
+    .error_summary = "None", .subsystem = SUBSYSTEM_HARDWARE, .safety = SAFETY_IO, .type = FEATURE_FUNCTION
+};
+static const LangDesc g_packet_len_desc = {
+    .name = "PACKET.LEN", .category = "Hardware & Network", .syntax = "PACKET.LEN()",
+    .description = "Returns total byte length of last captured network packet.",
+    .error_summary = "None", .subsystem = SUBSYSTEM_HARDWARE, .safety = SAFETY_IO, .type = FEATURE_FUNCTION
+};
+static const LangDesc g_packet_src_desc = {
+    .name = "PACKET.SRC$", .category = "Hardware & Network", .syntax = "PACKET.SRC$()",
+    .description = "Returns source IP address string of last captured packet.",
+    .error_summary = "None", .subsystem = SUBSYSTEM_HARDWARE, .safety = SAFETY_IO, .type = FEATURE_FUNCTION
+};
+static const LangDesc g_packet_port_desc = {
+    .name = "PACKET.PORT", .category = "Hardware & Network", .syntax = "PACKET.PORT()",
+    .description = "Returns source port number of last captured packet.",
+    .error_summary = "None", .subsystem = SUBSYSTEM_HARDWARE, .safety = SAFETY_IO, .type = FEATURE_FUNCTION
+};
+static const LangDesc g_packet_type_desc = {
+    .name = "PACKET.TYPE$", .category = "Hardware & Network", .syntax = "PACKET.TYPE$()",
+    .description = "Returns protocol type string ('TCP', 'UDP', 'RAW') of last captured packet.",
+    .error_summary = "None", .subsystem = SUBSYSTEM_HARDWARE, .safety = SAFETY_IO, .type = FEATURE_FUNCTION
+};
+
+void func_packet_register(void) {
+    lang_desc_register(&g_packet_mac_desc);
+    lang_desc_register(&g_packet_rssi_desc);
+    lang_desc_register(&g_packet_payload_desc);
+    lang_desc_register(&g_packet_len_desc);
+    lang_desc_register(&g_packet_src_desc);
+    lang_desc_register(&g_packet_port_desc);
+    lang_desc_register(&g_packet_type_desc);
+}
 
 BValue func_packet_mac(VMContext *vm, int argc, BValue *argv, BppError *err) {
     (void)argc;
@@ -24,7 +70,7 @@ BValue func_packet_mac(VMContext *vm, int argc, BValue *argv, BppError *err) {
     res.type = VAL_STRING;
     const SniffPacket *p = packet_sniff_get_last();
     const char *mac = (p && p->src_mac[0]) ? p->src_mac : "00:00:00:00:00:00";
-    res.as.string = str_create(vm_get_str(vm), mac, strlen(mac));
+    res.as.string = str_create(vm_get_str(vm), mac, runtime_strlen(mac));
     return res;
 }
 
@@ -75,7 +121,7 @@ BValue func_packet_src(VMContext *vm, int argc, BValue *argv, BppError *err) {
     res.type = VAL_STRING;
     const SniffPacket *p = packet_sniff_get_last();
     const char *src = (p && p->src_ip[0]) ? p->src_ip : "0.0.0.0";
-    res.as.string = str_create(vm_get_str(vm), src, strlen(src));
+    res.as.string = str_create(vm_get_str(vm), src, runtime_strlen(src));
     return res;
 }
 

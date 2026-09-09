@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (string_fn.c)
 // NEEDS: libcore (memory.h, memory.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libcore (strings.h, strings.c)
 // NEEDS: libengine (seg.h, string.c)
 // Provides runtime implementation for the SEG built-in function in BASIC++.
@@ -11,19 +11,23 @@
 // ---- Includes ----
 
 #include "eval/functions/string/manipulation/seg.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/strings.h"
 #include "runtime/string.h"
 #include "runtime/memory.h"
+
+static const LangDesc g_seg_desc = {
+    .name = "SEG$",
+    .category = "String Functions",
+    .syntax = "SEG$(str_expr, start_pos, end_pos)",
+    .description = "Returns a substring from 1-based start_pos through end_pos inclusive (DEC BASIC-PLUS).",
+    .error_summary = "Error 13: Type Mismatch, Error 5: Illegal Function Call",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_FUNCTION
+};
 void func_seg_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "SEG$",
-        .category = "String Functions",
-        .syntax = "SEG$(str_expr, start_pos, end_pos)",
-        .help_text = "Returns a substring from 1-based start_pos through end_pos inclusive (DEC BASIC-PLUS).",
-        .error_codes = "Error 13: Type Mismatch, Error 5: Illegal Function Call"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_seg_desc);
 }
 
 BValue func_seg_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err) {

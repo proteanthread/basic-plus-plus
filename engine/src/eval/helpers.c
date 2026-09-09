@@ -11,6 +11,10 @@
 #include "eval/eval_internal.h"
 #include "runtime/variables.h"
 #include "runtime/num_format.h"
+#include "runtime/format/snprintf.h"
+#include "runtime/string/strops.h"
+#include "runtime/string/memops.h"
+#include "runtime/math/math.h"
 
 BValue eval_parse_string_slice(VMContext *vm, LexerContext *lex, const char *var_name, BppTokenType open_tok, BppError *out_err) {
     BValue res;
@@ -180,6 +184,7 @@ int eval_get_precedence(BppTokenType type) {
         case TOK_GT:
         case TOK_LE:
         case TOK_GE:
+        case TOK_IN:
             return 6; // Relational
         case TOK_SHL:
         case TOK_SHR:
@@ -191,6 +196,7 @@ int eval_get_precedence(BppTokenType type) {
         case TOK_PLUS:
         case TOK_MINUS:
         case TOK_AMPERSAND:
+        case TOK_PIPE:
         case TOK_MIN:
         case TOK_MAX:
         case TOK_HYPOT:
@@ -224,6 +230,8 @@ bool eval_is_operator(BppTokenType type) {
     return (type == TOK_PLUS || type == TOK_MINUS || type == TOK_MUL || type == TOK_DIV ||
             type == TOK_BACKSLASH ||
             type == TOK_AMPERSAND ||
+            type == TOK_PIPE ||
+            type == TOK_IN ||
             type == TOK_MOD || type == TOK_SHL || type == TOK_SHR ||
             type == TOK_READBIT || type == TOK_SETBIT || type == TOK_RESETBIT || type == TOK_TOGGLEBIT ||
             type == TOK_MIN || type == TOK_MAX || type == TOK_HYPOT || type == TOK_REMAINDER || type == TOK_ATAN2 ||
@@ -248,7 +256,9 @@ bool eval_is_builtin_function_tok(BppToken tok) {
         tok.as.keyword == KW_IDN || tok.as.keyword == KW_TRN || tok.as.keyword == KW_INV ||
         tok.as.keyword == KW_VARPTR || tok.as.keyword == KW_VARSEG || tok.as.keyword == KW_SADD ||
         tok.as.keyword == KW_CINT || tok.as.keyword == KW_CSNG || tok.as.keyword == KW_CDBL ||
-        tok.as.keyword == KW_DCOUNT || tok.as.keyword == KW_FREEFILE || tok.as.keyword == KW_USING || tok.as.keyword == KW_MAT) {
+        tok.as.keyword == KW_DEGREE || tok.as.keyword == KW_RADIAN || tok.as.keyword == KW_GRAD ||
+        tok.as.keyword == KW_WBYTE || tok.as.keyword == KW_RBYTE || tok.as.keyword == KW_TRANSLATE ||
+        tok.as.keyword == KW_FREEFILE || tok.as.keyword == KW_USING || tok.as.keyword == KW_MAT) {
         return true;
     }
     if (tok.start && tok.length > 0) {

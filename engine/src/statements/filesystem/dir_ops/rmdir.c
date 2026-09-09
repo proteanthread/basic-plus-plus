@@ -2,7 +2,7 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libcore (strings.h, strings.c)
 // NEEDS: libengine (eval.h, eval.c, rmdir.h, string.c)
 // NEEDS: libplatform (platform.h)
@@ -14,23 +14,28 @@
 #include "eval/eval.h"
 #include "platform/platform.h"
 #include "runtime/strings.h"
-#include "runtime/micro_lib_metadata.h"
-#include <string.h>
+#include "runtime/language_descriptor.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_rmdir_desc = {
+    .name = "RMDIR",
+    .category = "Filesystem I/O",
+    .syntax = "RMDIR pathname$",
+    .description = "Removes an empty directory from disk.",
+    .error_summary = "Error 2: Syntax Error, Error 75: Path/File Access Error, Error 76: Path Not Found",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_STATEMENT
+};
 
 void stmt_rmdir_register(void) {
-    MicroLibMetadata meta = {
-        .name = "RMDIR",
-        .category = "Filesystem I/O",
-        .syntax = "RMDIR pathname$",
-        .help_text = "Removes an empty directory from disk.",
-        .error_codes = "Error 2: Syntax Error, Error 75: Path/File Access Error, Error 76: Path Not Found"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_rmdir_desc);
 }
 
 BppError stmt_rmdir_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BValue path_val = eval_expression(vm, lex, &err);
     if (err.code != 0) return err;

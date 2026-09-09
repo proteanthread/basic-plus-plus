@@ -8,6 +8,8 @@
 // ---- Includes ----
 
 #include "runtime/arrays_internal.h"
+#include "runtime/string/strops.h"
+#include "runtime/string/memops.h"
 
 //
 // ---- Entry Management and Lifecycle ----
@@ -82,20 +84,6 @@ BppError arr_dim(ArrayContext *ctx, const char *name, int num_dims, const int *b
         return err;
     }
 
-    char norm[256];
-    normalize_name(norm, name, sizeof(norm));
-
-    unsigned int bucket = hash_name(norm);
-    ArrayEntry *curr = ctx->buckets[bucket];
-    while (curr) {
-        if (runtime_strcmp(curr->name, norm) == 0) {
-            err.code = 10;
-            err.message = "Array already dimensioned";
-            return err;
-        }
-        curr = curr->next;
-    }
-
     size_t total = 1;
     for (int i = 0; i < num_dims; ++i) {
         if (bounds[i] < ctx->option_base) {
@@ -110,6 +98,79 @@ BppError arr_dim(ArrayContext *ctx, const char *name, int num_dims, const int *b
             return err;
         }
         total *= dim_size;
+    }
+
+    char norm[256];
+    normalize_name(norm, name, sizeof(norm));
+
+    unsigned int bucket = hash_name(norm);
+    ArrayEntry *curr = ctx->buckets[bucket];
+    while (curr) {
+        if (runtime_strcmp(curr->name, norm) == 0) {
+            bool dims_match = (curr->num_dims == num_dims);
+            if (dims_match) {
+                for (int i = 0; i < num_dims; ++i) {
+                    if (curr->bounds[i] != bounds[i]) {
+                        dims_match = false;
+                        break;
+                    }
+                }
+            }
+
+            if (dims_match) {
+                // In-place re-zero: fast path, no reallocation
+                for (int i = 0; i < curr->total_size; ++i) {
+                    if (curr->elements[i].type == VAL_STRING && curr->elements[i].as.string) {
+                        str_release(ctx->str, curr->elements[i].as.string);
+                        curr->elements[i].as.string = NULL;
+                    } else if (curr->elements[i].type == VAL_MAP && curr->elements[i].as.map) {
+                        map_release(ctx->str, curr->elements[i].as.map);
+                        curr->elements[i].as.map = NULL;
+                    } else {
+                        curr->elements[i].as.number = 0.0;
+                    }
+                    curr->elements[i].type = curr->type;
+                }
+                return err;
+            } else {
+                // Differing dimensions: re-allocate / re-size
+                HalContext *hal = hal_get();
+                if (!curr->is_alias && curr->elements) {
+                    for (int i = 0; i < curr->total_size; ++i) {
+                        if (curr->elements[i].type == VAL_STRING && curr->elements[i].as.string) {
+                            str_release(ctx->str, curr->elements[i].as.string);
+                        } else if (curr->elements[i].type == VAL_MAP && curr->elements[i].as.map) {
+                            map_release(ctx->str, curr->elements[i].as.map);
+                        }
+                    }
+                    if (hal && hal->mem.free) hal->mem.free(curr->elements);
+                    curr->elements = NULL;
+                }
+                curr->is_alias = false;
+                if (hal && hal->mem.alloc) {
+                    curr->elements = (BValue *)hal->mem.alloc(total * sizeof(BValue));
+                }
+                if (!curr->elements) {
+                    err.code = 14;
+                    err.message = "Out of memory allocating array elements";
+                    return err;
+                }
+                runtime_memset(curr->elements, 0, total * sizeof(BValue));
+                curr->num_dims = num_dims;
+                runtime_memcpy(curr->bounds, bounds, num_dims * sizeof(int));
+                curr->total_size = (int)total;
+                for (size_t i = 0; i < total; ++i) {
+                    curr->elements[i].type = curr->type;
+                    if (curr->type == VAL_STRING) {
+                        curr->elements[i].as.string = NULL;
+                    } else {
+                        curr->elements[i].as.number = 0.0;
+                    }
+                }
+                return err;
+            }
+        }
+        curr = curr->next;
     }
 
     HalContext *hal = hal_get();

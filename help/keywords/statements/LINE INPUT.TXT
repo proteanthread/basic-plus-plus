@@ -1,0 +1,74 @@
+TITLE: LINE INPUT
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/core/io/line_input.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+LINE INPUT KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: line_input.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (arrays.h, arrays.c, file.h, file.c)
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libcore (strings.h, strings.c, variables.h, variables.c)
+    // NEEDS: libengine (eval.h, eval.c, line_input.h, string.c)
+    // NEEDS: libkernel (vdev.h, vdev.c)
+    // Provides runtime implementation for the LINE_INPUT statement in BASIC++.
+    //
+    // ---- Includes ----
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Reads an entire line of up to 255 characters from the keyboard or a file into
+a string variable.
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    LINE INPUT [;] ["prompt";] string_var$
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM LINE INPUT Demonstration
+    20 PRINT "LINE INPUT executed successfully."
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error, Error 5: Failed to read input, Error 52: Bad File
+Number, Error 62: Input Past End
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Console & File I/O
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_IO
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  LINE INPUT
+Category              Console & File I/O
+Syntax                LINE INPUT [;] ["prompt";] string_var$
+Description           Reads an entire line of up to 255 characters from t...
+Error Summary         Error 2: Syntax Error, Error 5: Failed to read inpu...
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_IO
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/core/io/line_input.c

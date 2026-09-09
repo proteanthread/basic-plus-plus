@@ -12,7 +12,7 @@
 #include "runtime/math/basic.h"
 #include "runtime/math/float_limits.h"
 
-// Taylor / Chebyshev polynomial for sin(r) on [-pi/4, pi/4]
+// Taylor / Chebyshev polynomial for runtime_sin(r) on [-pi/4, pi/4]
 static double sin_poly(double r) {
     double r2 = r * r;
     return r * (1.0 + r2 * (-0.1666666666666666664 +
@@ -23,7 +23,7 @@ static double sin_poly(double r) {
            r2 *   0.0000000001605893649))))));
 }
 
-// Taylor / Chebyshev polynomial for cos(r) on [-pi/4, pi/4]
+// Taylor / Chebyshev polynomial for runtime_cos(r) on [-pi/4, pi/4]
 static double cos_poly(double r) {
     double r2 = r * r;
     return 1.0 + r2 * (-0.5 +
@@ -39,7 +39,7 @@ double runtime_sin(double x) {
         return RUNTIME_NAN;
     }
 
-    // Quadrant reduction: k = round(x / (pi/2)), r = x - k * (pi/2)
+    // Quadrant reduction: k = runtime_round(x / (pi/2)), r = x - k * (pi/2)
     double k_flt = runtime_round(x * (2.0 / RUNTIME_PI));
     double r = x - k_flt * RUNTIME_PI_2;
     int64_t k = (int64_t)k_flt;
@@ -94,7 +94,7 @@ double runtime_atan(double x) {
     bool inv = (x > 1.0);
     if (inv) x = 1.0 / x;
 
-    // Polynomial for atan on [0, 1]
+    // Polynomial for runtime_atan on [0, 1]
     double x2 = x * x;
     double res = x * (1.0 + x2 * (-0.3333314528 +
                  x2 * ( 0.1999355085 +
@@ -152,7 +152,7 @@ double runtime_hypot(double x, double y) {
     if (x == 0.0) return 0.0;
     double t = y / x;
 
-    // sqrt(1 + t^2) * x using Newton iteration for sqrt
+    // runtime_sqrt(1 + t^2) * x using Newton iteration for runtime_sqrt
     double val = 1.0 + t * t;
     double root = (val > 1.0) ? val * 0.5 : 1.0;
     for (int i = 0; i < 8; ++i) {
@@ -161,7 +161,7 @@ double runtime_hypot(double x, double y) {
     return x * root;
 }
 
-// Forward declare for exp in hyperbolic functions
+// Forward declare for runtime_exp in hyperbolic functions
 double runtime_exp(double x);
 
 double runtime_sinh(double x) {

@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
 // NEEDS: libcore (alloc.h, alloc.c, hal.h, memops.h, memops.c)
-// NEEDS: libcore (memory.h, memory.c, snprintf.h, snprintf.c)
+// NEEDS: libcore (memory.h, memory.c, runtime_snprintf.h, runtime_snprintf.c)
 // NEEDS: libcore (strops.h, strops.c)
 // NEEDS: libkernel (config.h)
 // Provides core logic and interface definitions for mem_system within BASIC++.
@@ -54,6 +54,10 @@ struct MemoryContext {
 
     // Namespace tracking flag for fast bypass
     bool            has_namespaces;
+
+    // O(1) Fast Line Jump Lookup Table (lines 0..65535)
+    uint32_t       *line_jump_table;
+    bool            jump_table_valid;
 };
 
 // Align size to 8-byte boundary for performance and safety
@@ -136,6 +140,9 @@ MemoryContext *mem_init(size_t prog_mem_sz, size_t var_mem_sz, size_t str_mem_sz
     runtime_memset(ctx->lib_lines, 0, ctx->lib_lines_capacity * sizeof(BppProgramLine));
     ctx->lib_lines_count = 0;
 
+    ctx->line_jump_table = NULL;
+    ctx->jump_table_valid = false;
+
     return ctx;
 }
 
@@ -148,6 +155,11 @@ void mem_shutdown(MemoryContext *ctx) {
     if (ctx->lines && hal && hal->mem.free) {
         hal->mem.free(ctx->lines);
         ctx->lines = NULL;
+    }
+
+    if (ctx->line_jump_table && hal && hal->mem.free) {
+        hal->mem.free(ctx->line_jump_table);
+        ctx->line_jump_table = NULL;
     }
 
     // Free all library lines
@@ -184,12 +196,51 @@ void mem_scratch_reset(MemoryContext *ctx) {
     }
 }
 
+// Rebuilds O(1) direct line jump lookup table across all program lines
+static void rebuild_jump_table(MemoryContext *ctx) {
+    if (!ctx) return;
+    HalContext *hal = hal_get();
+    if (!ctx->line_jump_table && hal && hal->mem.alloc) {
+        ctx->line_jump_table = (uint32_t *)hal->mem.alloc(65536 * sizeof(uint32_t));
+    }
+    if (!ctx->line_jump_table) return;
+    runtime_memset(ctx->line_jump_table, 0xFF, 65536 * sizeof(uint32_t));
+    for (size_t i = 0; i < ctx->lines_count; ++i) {
+        if (ctx->lines[i].line_number >= 0.0 && ctx->lines[i].line_number < 65536.0) {
+            uint32_t lnum = (uint32_t)ctx->lines[i].line_number;
+            if ((double)lnum == ctx->lines[i].line_number) {
+                ctx->line_jump_table[lnum] = (uint32_t)i;
+            }
+        }
+    }
+    ctx->jump_table_valid = true;
+}
+
 // Binary search helper to find the index of a line or where it should be inserted
 static bool find_line_index(MemoryContext *ctx, BppLineNumber line, size_t *out_idx) {
+    if (!ctx || !out_idx) return false;
     if (ctx->lines_count == 0) {
         *out_idx = 0;
         return false;
     }
+
+    // O(1) Fast Path for vintage 16-bit line numbers
+    if (line >= 0.0 && line < 65536.0) {
+        uint32_t lnum = (uint32_t)line;
+        if ((double)lnum == line) {
+            if (!ctx->jump_table_valid) {
+                rebuild_jump_table(ctx);
+            }
+            if (ctx->jump_table_valid && ctx->line_jump_table) {
+                uint32_t idx = ctx->line_jump_table[lnum];
+                if (idx != 0xFFFFFFFF) {
+                    *out_idx = (size_t)idx;
+                    return true;
+                }
+            }
+        }
+    }
+
     size_t low = 0;
     size_t high = ctx->lines_count - 1;
 
@@ -294,6 +345,7 @@ bool mem_program_insert(MemoryContext *ctx, BppLineNumber line, const char *text
         ctx->has_namespaces = true;
     }
 
+    ctx->jump_table_valid = false;
     return true;
 }
 
@@ -322,6 +374,7 @@ bool mem_program_delete(MemoryContext *ctx, BppLineNumber line) {
         ctx->lines[i] = ctx->lines[i + 1];
     }
     ctx->lines_count--;
+    ctx->jump_table_valid = false;
 
     return true;
 }
@@ -342,6 +395,11 @@ BppProgramLine *mem_program_get_all(MemoryContext *ctx, size_t *count) {
 }
 
 bool mem_program_find_line_index(MemoryContext *ctx, BppLineNumber line, size_t *out_idx) {
+    if (!ctx || !out_idx) return false;
+    return find_line_index(ctx, line, out_idx);
+}
+
+bool mem_program_find_line_index_fast(MemoryContext *ctx, BppLineNumber line, size_t *out_idx) {
     if (!ctx || !out_idx) return false;
     return find_line_index(ctx, line, out_idx);
 }
@@ -373,6 +431,7 @@ void mem_program_clear(MemoryContext *ctx) {
     ctx->lines_mem_used = 0;
     ctx->program_version[0] = '\0';
     ctx->has_namespaces = false;
+    ctx->jump_table_valid = false;
 }
 
 void mem_program_set_version(MemoryContext *ctx, const char *ver_str) {
@@ -430,6 +489,11 @@ size_t mem_get_free_ram(MemoryContext *ctx) {
 size_t mem_get_used_ram(MemoryContext *ctx) {
     if (!ctx) return 0;
     return ctx->lines_mem_used + ctx->var_used + ctx->str_used + ctx->scratch_used;
+}
+
+size_t mem_get_total_ram(MemoryContext *ctx) {
+    if (!ctx) return 0;
+    return ctx->lines_mem_limit + ctx->var_size + ctx->str_limit + ctx->scratch_size;
 }
 
 void mem_format_size(size_t bytes, char *buf, size_t buf_size) {

@@ -11,6 +11,7 @@
 #define HAL_MEM_HAL_H
 
 #include <stddef.h>
+#include "runtime/memory/alloc.h"
 
 #ifdef __cplusplus
 extern "C" {

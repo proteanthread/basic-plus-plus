@@ -1,110 +1,169 @@
-# BASIC++ v6.5.2 Virtual Network
+<!--
+Title:        Virtual_Network
+Tier:         2
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/lib/platform/plat_net.c, engine/src/runtime/vnet.c,
+              vnet_nat.c, sock_engine.c, engine/src/statements/network/,
+              engine/src/device/dev_net_transport.c, docs/keywords/statements/
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. OVERVIEW
+# Virtual Network Subsystem
 
-The Virtual Network (VNet) subsystem provides TCP and UDP socket operations for BASIC++ programs. All network access is routed through the VNet interface (engine/src/runtime/vnet.c), which sits atop the platform network abstraction (plat_net.c). VNet is part of the libserver library and is available when the SUPPORT_NET feature gate is enabled.
+The VNet channel layer: what it is, what reaches it, and what does not.
 
-## 2. TCP CLIENT CONNECTIONS
+**This document replaces an earlier version that documented a BASIC keyword set
+that does not exist.** `NET OPEN`, `NET LISTEN`, `NET ACCEPT`, `NET ADDRESS$`,
+`NET TIMEOUT`, `NET STATUS` and `NWRITE` were described in detail there, with
+worked examples. The registered statement tree contains `NET.CONFIG` and
+`NET.UNPACK` and nothing else beginning with `NET`. Programs written from that
+document will not parse. Everything below was established by reading the
+sources named in the header.
 
-NET OPEN establishes a TCP connection to a remote host:
+---
 
-```basic
-10 NET OPEN #1, "tcp://example.com:80"
-20 NWRITE #1, "GET / HTTP/1.0" + CHR$(13) + CHR$(10)
-30 NWRITE #1, "Host: example.com" + CHR$(13) + CHR$(10)
-40 NWRITE #1, CHR$(13) + CHR$(10)
-50 WHILE NOT EOF(1)
-60   LINE INPUT #1, Response$
-70   PRINT Response$
-80 WEND
-90 CLOSE #1
-```
+## 1. What VNet is
 
-NET OPEN assigns a channel number and connects to the specified host and port. The URL-style syntax specifies the protocol (tcp:// or udp://), hostname, and port number.
+`engine/src/runtime/vnet.c` is a channel abstraction over real operating-system
+sockets. It is genuine code and it works:
 
-NWRITE sends data on the network channel. INPUT #n and LINE INPUT #n read received data. EOF(n) returns true when the remote end has closed the connection.
+- `VNET_MAX_CHANNELS` channels, each holding a socket, protocol name, host,
+  port, connection flag and last HTTP status.
+- `vnet_open(ctx, channel, protocol, host, port)` resolves the host and
+  connects. `"UDP"` selects a datagram socket; anything else selects a stream.
+- `vnet_open_host(ctx, channel, port)` binds and listens.
+- `vnet_accept(ctx, listen_channel, client_channel, ip_buf, len)` accepts
+  without blocking and writes the client's IP address into the caller's buffer.
+- `vnet_send`, `vnet_recv` with a 50 ms readable poll, `vnet_close`,
+  `vnet_status`, `vnet_connected`, `vnet_address`, `vnet_http_status`.
+- `vnet_create_vdev()` wraps a channel as a `VDev` so it can be attached to the
+  device layer.
 
-## 3. TCP SERVER
+Every socket is set non-blocking immediately after it is created, so a channel
+never hangs the interpreter.
 
-NET LISTEN creates a listening socket that accepts incoming connections:
+## 2. What it runs on
 
-```basic
-10 NET LISTEN #1, 8080           ' Listen on port 8080
-20 PRINT "Waiting for connection..."
-30 NET ACCEPT #1, #2             ' Accept connection on channel 2
-40 LINE INPUT #2, Request$
-50 PRINT "Received: "; Request$
-60 NWRITE #2, "Hello from BASIC++!"
-70 CLOSE #2
-80 CLOSE #1
-```
+`engine/lib/platform/plat_net.c`, which is the real thing:
 
-NET LISTEN binds to a port and begins listening. NET ACCEPT blocks until a client connects, then opens the new connection on the specified channel.
+| VNet call | Platform call | Underlying |
+|---|---|---|
+| `vnet_init` | `platform_net_init` | `WSAStartup(MAKEWORD(2,2))` on Windows, no-op on POSIX |
+| `vnet_open` | `platform_socket_connect` | `getaddrinfo` then `socket` then `connect` |
+| `vnet_open_host` | `platform_socket_listen` | `socket`, `SO_REUSEADDR`, `bind`, `listen(5)` |
+| `vnet_accept` | `platform_socket_accept` | `accept`, `inet_ntoa` for the client IP |
+| `vnet_send` | `platform_socket_send` | `send` |
+| `vnet_recv` | `platform_socket_recv` | `recv`, with `WSAEWOULDBLOCK` and `EAGAIN` distinguished from real errors |
+| non-blocking | `platform_socket_set_nonblocking` | `ioctlsocket(FIONBIO)` or `fcntl(O_NONBLOCK)` |
+| readiness | `platform_socket_poll_readable` | `select` with a millisecond timeout |
+| `vnet_close` | `platform_socket_close` | `closesocket` or `close` |
 
-## 4. UDP DATAGRAMS
+The file includes `<winsock2.h>` and `<ws2tcpip.h>` on Windows and
+`<sys/socket.h>`, `<netdb.h>` and `<arpa/inet.h>` on POSIX. `ws2_32` is linked
+at `engine/CMakeLists.txt` line 555. AF_UNSPEC in the hints means IPv4 and IPv6
+are both resolved.
 
-UDP connections use the udp:// protocol:
+## 3. What reaches it from BASIC
 
-```basic
-10 NET OPEN #1, "udp://0.0.0.0:5000"     ' Bind to port 5000
-20 NET OPEN #2, "udp://192.168.1.100:5000" ' Target for sending
-30 NWRITE #2, "Hello via UDP"
-40 ' Receive
-50 LINE INPUT #1, Message$
-60 PRINT "Received: "; Message$
-70 CLOSE #1, #2
-```
+Nothing, today.
 
-## 5. THE GEMINI PROTOCOL
+That is the single fact a reader needs from this document. The channel layer
+above and the socket layer beneath it both work, and no registered keyword
+calls either one.
 
-BASIC++ includes built-in support for the Gemini protocol (engine/src/runtime/gemini.c), a lightweight alternative to HTTP designed for simple document retrieval:
+| Surface | Wired to | State |
+|---|---|---|
+| `SOCK.*` statements and functions | `runtime/sock_engine.c` | Static handle table. No socket |
+| `TCP:` virtual device | `device/dev_net_transport.c` | `net_trans_putc` casts the character to void and returns it. `net_trans_dev_open` copies the path and sets a flag. The receive ring is never filled |
+| `HTTP.GET$` | `iot/src/iot_net.c` | Returns `{"status":"ok","code":200}` |
+| `WIFI`, `MQTT`, `ESPNOW`, `BT`, `WEBREPL` | `iot/src/iot_net.c` | Flags and invented strings |
+| `GEMINI`, `GOPHER`, `TNFS` | their own runtime files | Fixed responses; the URL is ignored |
+| `NET OPEN`, `NET LISTEN`, `NET ACCEPT`, `NWRITE` | nothing | **These keywords do not exist** |
 
-```basic
-10 GEMINI "gemini://gemini.circumlunar.space/", Response$
-20 PRINT Response$
-```
+## 4. Why this happened, as far as the sources show
 
-The GEMINI statement performs a complete request/response cycle: it connects to the server, sends the URL, receives the response, and closes the connection. The response (including the status line and body) is returned in the string variable.
+`vnet.c` and `plat_net.c` were written first and completely. The BASIC-level
+surfaces were then written against placeholder backends — `sock_engine.c`,
+`dev_net_transport.c`, `iot_net.c` — presumably so the parser, the descriptors
+and the documentation could be finished without waiting. The step that joins
+them was never taken, and the placeholder backends are indistinguishable from
+working ones at the call site, so nothing failed loudly enough to be noticed.
 
-## 6. NETWORK SECURITY
+The lesson is worth recording because it is a general one: a stub that returns
+success is more expensive than a stub that returns "not implemented".
 
-Network operations are subject to security level restrictions:
+## 5. Closing it
 
-| Level | Connect | Listen | Send | Receive |
-|-------|---------|--------|------|---------|
-| OPEN (0) | Yes | Yes | Yes | Yes |
-| SAFE (1) | Yes | Yes | Yes | Yes |
-| STANDARD (2) | Yes | No | Yes | Yes |
-| EDUCATIONAL (3) | No | No | No | No |
-| RESTRICTED (4) | No | No | No | No |
-| PARANOID (5) | No | No | No | No |
+This is the first item of the 7.0.0 networking work, and it is small.
 
-At STANDARD level, client connections are allowed but server listening is denied. At EDUCATIONAL level and above, all network operations are blocked. Blocked operations produce Error 70 (Permission denied).
+1. **`sock_engine.c` gains a hosted backend.** The functions
+   `sock_open`, `sock_bind`, `sock_listen`, `sock_accept`, `sock_send`,
+   `sock_recv`, `sock_poll`, `sock_close` and `sock_setsockopt` keep their
+   signatures and call `platform_socket_*` instead of touching the array. The
+   handle table stays, holding a `BppSocket` per entry rather than an index, so
+   BASIC handle numbers keep their meaning and the bind-then-listen call order
+   still works. The current implementation becomes the freestanding and test
+   backend, selected the way `hal_hosted.c` and `hal_freestanding.c` already
+   select platform behaviour.
 
-## 7. NETWORK FUNCTIONS
+2. **`dev_net_transport.c` gains the same treatment**, so that
+   `OPEN "TCP:host:port" FOR ...` reaches a socket. Its context struct already
+   holds protocol, host, port and a 4096-byte receive ring; what it lacks is a
+   socket in that struct and calls to fill the ring.
 
-NET STATUS(n) returns the connection state of channel n: 0 = disconnected, 1 = connecting, 2 = connected, 3 = listening.
+3. **Decide whether the `NET` statement family should exist.** The earlier
+   documentation described it, users may have read it, and the C layer it
+   would need is already complete — `vnet_open`, `vnet_open_host`,
+   `vnet_accept`, `vnet_send`, `vnet_recv`, `vnet_close`, `vnet_status`,
+   `vnet_address` map one to one onto the statements that were documented. If
+   the answer is yes, this is the cheapest new keyword family in the project,
+   because only the parsing and registration are missing. If the answer is no,
+   `SOCK.*` becomes the only socket surface and this document should say so.
+   **This is a decision, not a recommendation to implement.**
 
-NET ADDRESS$(n) returns the remote IP address and port of channel n.
+Items 1 and 2 are mechanical. Item 3 needs an answer before either is
+documented as the way to do networking in BASIC++.
 
-NET TIMEOUT n, seconds sets the timeout for network operations on channel n.
+## 6. What stays true regardless
 
-## 8. CRYPTO FUNCTIONS
+1. Sockets release their operating-system descriptors on close, and
+   `vnet_shutdown` closes every channel.
+2. Sockets cannot bypass host firewall or OS permission boundaries.
+3. Network access is gated by the security level; scripts at the restricted
+   levels are denied it.
+4. TLS does not exist in the project, so no connection is encrypted and no
+   HTTPS or Gemini URL can be fetched honestly. See `Networking_Reference`
+   section 8 item 2.
+5. UDP preserves message boundaries; TCP is a byte stream.
+6. Windows socket descriptors are `SOCKET`, POSIX descriptors are `int`;
+   `BppSocket` and `BASIC_INVALID_SOCKET` hide the difference.
+7. `SIGPIPE` must be ignored on POSIX or a write to a broken connection kills
+   the process.
+8. Real-mode 16-bit FreeDOS builds exclude the network subsystem: there is no
+   kernel TCP/IP stack to call.
+9. `plat_net.c` compiles to explicit failure — error 57, "Networking not
+   supported on this platform preset" — on any target that is not Windows,
+   Linux, macOS or a BSD. It does not silently pretend to work, which is the
+   behaviour the rest of the stack should copy.
+10. Channel numbers must not collide with open disk file channels.
 
-The crypto subsystem (engine/src/runtime/crypto.c) provides basic cryptographic functions for network applications:
+## 7. Where the code is
 
-HASH$(algorithm$, data$) computes a hash of the data string using the specified algorithm ("MD5", "SHA1", "SHA256").
+| Concern | Path |
+|---|---|
+| Real sockets | `engine/lib/platform/plat_net.c` |
+| Channel layer | `engine/src/runtime/vnet.c` |
+| NAT | `engine/src/runtime/vnet_nat.c` |
+| Handle table (stub) | `engine/src/runtime/sock_engine.c` |
+| `TCP:` device (stub) | `engine/src/device/dev_net_transport.c` |
+| Radio and HTTP (stub) | `engine/iot/src/iot_net.c` |
+| FujiNet `N:` routing | `engine/src/device/fujinet.c` |
+| Registered network statements | `engine/src/statements/network/` |
 
-ENCODE$(format$, data$) encodes a string in the specified format ("BASE64", "HEX", "URL").
+## See also
 
-DECODE$(format$, data$) decodes a string from the specified format.
-
-## 9. FujiNet COMPATIBILITY
-
-The FujiNet device emulation (engine/src/device/fujinet.c) provides Atari-compatible networking for programs that use FujiNet's device-based I/O model. FujiNet-style network operations use the N: device prefix:
-
-```basic
-10 OPEN "N:tcp://example.com:80/" FOR INPUT AS #1
-```
-
-This compatibility layer translates FujiNet device operations into VNet calls internally.
+- `Networking_Reference` for the whole network surface and its verdicts
+- `Implementation_Status` for the evidence register
+- `Device_Reference` and `Virtual_Devices` for the device layer
+- `Security` for the safety levels that gate network access

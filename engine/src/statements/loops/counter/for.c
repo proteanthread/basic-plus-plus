@@ -10,29 +10,35 @@
 #include "statements/loops/counter/for.h"
 #include "vm/vm.h"
 #include "lexer/lexer.h"
+#include "lexer/lexer_internal.h"
 #include "eval/eval.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/variables.h"
 #include "memory/memory.h"
 #include "device/vdev.h"
 #include "security/security.h"
 #include "platform/platform.h"
-#include <string.h>
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_for_desc = {
+    .name = "FOR",
+    .category = "Looping / Control Flow",
+    .syntax = "FOR var = start TO end [STEP step]",
+    .description = "Initiates a counter-controlled loop block executing statements until var reaches end.",
+    .error_summary = "Error 2: Syntax Error, Error 13: Type Mismatch, Error 26: FOR Without NEXT",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SAFE,
+    .type = FEATURE_STATEMENT
+};
 
 void stmt_for_register(void) {
-    MicroLibMetadata meta = {
-        .name = "FOR",
-        .category = "Looping / Control Flow",
-        .syntax = "FOR var = start TO end [STEP step]",
-        .help_text = "Initiates a counter-controlled loop block executing statements until var reaches end.",
-        .error_codes = "Error 2: Syntax Error, Error 13: Type Mismatch, Error 26: FOR Without NEXT"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_for_desc);
 }
 
 BppError stmt_for_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     if (!vm || !lex) {
         err.code = 5; err.message = "Null VM or lexer context";
@@ -49,7 +55,7 @@ BppError stmt_for_handler(VMContext *vm, LexerContext *lex) {
             return err;
         }
         size_t vlen = (var_tok.length < sizeof(var_names[var_count]) - 1) ? var_tok.length : sizeof(var_names[var_count]) - 1;
-        memcpy(var_names[var_count], var_tok.start, vlen);
+        runtime_memcpy(var_names[var_count], var_tok.start, vlen);
         var_names[var_count][vlen] = '\0';
         var_count++;
 
@@ -59,18 +65,24 @@ BppError stmt_for_handler(VMContext *vm, LexerContext *lex) {
             continue;
         }
         if (sep.type == TOK_EQ || (sep.start && sep.start[0] == '=')) {
+            const char *cur_p = lex_get_pos(lex);
+            if (!cur_p || (!runtime_strchr(cur_p + 1, '=') && !runtime_strchr(cur_p + 1, ','))) {
+                lex_next(lex); // Consume '=' before start expression
+                break;
+            }
+
             // Check if followed by another variable name and another '=' or ','
-            LexerContext *look_lex = lex_init(vm_get_mem(vm), lex_get_pos(lex));
-            lex_next(look_lex); // Consume '='
-            BppToken look_tok = lex_next(look_lex);
+            LexerContext look_lex;
+            lex_init_stack(&look_lex, vm_get_mem(vm), cur_p);
+            lex_next(&look_lex); // Consume '='
+            BppToken look_tok = lex_next(&look_lex);
             bool is_chained_var = false;
             if (look_tok.type == TOK_IDENT || look_tok.type == TOK_KEYWORD) {
-                BppToken after_tok = lex_peek(look_lex);
+                BppToken after_tok = lex_peek(&look_lex);
                 if (after_tok.type == TOK_EQ || (after_tok.start && after_tok.start[0] == '=') || after_tok.type == TOK_COMMA) {
                     is_chained_var = true;
                 }
             }
-            lex_shutdown(look_lex);
             if (is_chained_var) {
                 lex_next(lex); // Consume '='
                 continue;
@@ -98,10 +110,20 @@ BppError stmt_for_handler(VMContext *vm, LexerContext *lex) {
 
     BppToken to_or_by = lex_next(lex);
     bool is_to = (to_or_by.type == TOK_KEYWORD && to_or_by.as.keyword == KW_TO) ||
-                 (to_or_by.type == TOK_IDENT && to_or_by.length == 2 && strncasecmp(to_or_by.start, "TO", 2) == 0);
+                 (to_or_by.type == TOK_IDENT && to_or_by.length >= 2 && runtime_strncasecmp(to_or_by.start, "TO", 2) == 0);
     bool is_by = (to_or_by.type == TOK_KEYWORD && (to_or_by.as.keyword == KW_BY || to_or_by.as.keyword == KW_STEP)) ||
-                 (to_or_by.type == TOK_IDENT && ((to_or_by.length == 2 && strncasecmp(to_or_by.start, "BY", 2) == 0) ||
-                                                 (to_or_by.length == 4 && strncasecmp(to_or_by.start, "STEP", 4) == 0)));
+                 (to_or_by.type == TOK_IDENT && ((to_or_by.length >= 2 && runtime_strncasecmp(to_or_by.start, "BY", 2) == 0) ||
+                                                 (to_or_by.length >= 4 && runtime_strncasecmp(to_or_by.start, "STEP", 4) == 0)));
+
+    if (to_or_by.type == TOK_IDENT) {
+        if (is_to) {
+            lex_set_pos(lex, to_or_by.start + 2);
+        } else if (to_or_by.length >= 4 && runtime_strncasecmp(to_or_by.start, "STEP", 4) == 0) {
+            lex_set_pos(lex, to_or_by.start + 4);
+        } else if (to_or_by.length >= 2 && runtime_strncasecmp(to_or_by.start, "BY", 2) == 0) {
+            lex_set_pos(lex, to_or_by.start + 2);
+        }
+    }
 
     if (is_to) {
         // Standard: FOR var = start TO limit [STEP/BY step]
@@ -116,10 +138,18 @@ BppError stmt_for_handler(VMContext *vm, LexerContext *lex) {
 
         BppToken step_tok = lex_peek(lex);
         bool has_step = (step_tok.type == TOK_KEYWORD && (step_tok.as.keyword == KW_STEP || step_tok.as.keyword == KW_BY)) ||
-                        (step_tok.type == TOK_IDENT && ((step_tok.length == 4 && strncasecmp(step_tok.start, "STEP", 4) == 0) ||
-                                                        (step_tok.length == 2 && strncasecmp(step_tok.start, "BY", 2) == 0)));
+                        (step_tok.type == TOK_IDENT && ((step_tok.length >= 4 && runtime_strncasecmp(step_tok.start, "STEP", 4) == 0) ||
+                                                        (step_tok.length >= 2 && runtime_strncasecmp(step_tok.start, "BY", 2) == 0)));
         if (has_step) {
-            lex_next(lex);
+            if (step_tok.type == TOK_IDENT) {
+                if (step_tok.length >= 4 && runtime_strncasecmp(step_tok.start, "STEP", 4) == 0) {
+                    lex_set_pos(lex, step_tok.start + 4);
+                } else {
+                    lex_set_pos(lex, step_tok.start + 2);
+                }
+            } else {
+                lex_next(lex);
+            }
             BValue step_val = eval_expression(vm, lex, &err);
             if (err.code != 0) return err;
             if (step_val.type == VAL_STRING) {
@@ -142,7 +172,7 @@ BppError stmt_for_handler(VMContext *vm, LexerContext *lex) {
 
         BppToken peek_to = lex_peek(lex);
         bool has_to = (peek_to.type == TOK_KEYWORD && peek_to.as.keyword == KW_TO) ||
-                      (peek_to.type == TOK_IDENT && peek_to.length == 2 && strncasecmp(peek_to.start, "TO", 2) == 0);
+                      (peek_to.type == TOK_IDENT && peek_to.length == 2 && runtime_strncasecmp(peek_to.start, "TO", 2) == 0);
         if (has_to) {
             lex_next(lex); // Consume TO
             BValue end_val = eval_expression(vm, lex, &err);

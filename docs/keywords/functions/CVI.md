@@ -1,39 +1,71 @@
-# `CVI` Convert String to Integer Function
+<!--
+Title:        CVI
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/eval/builtins/string_fn.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Function Definition
+# `CVI` Keyword Reference
 
-The `CVI` (Convert to Integer) function unpacks a 2-byte (or 4-byte depending on integer word size) binary string and converts it into a signed integer number.
+## Source Header
 
-### Syntax Signatures:
-```basic
-result% = CVI(string_2_bytes)
+```c
+// FILENAME: string_fn.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore, libengine
+// Provides core logic and interface definitions for string_fn within BASIC++.
+//
+// ---- Includes ----
 ```
 
-### Operational Rules:
-- **String Length Requirement**: Exactly 2 bytes (or 4 bytes in 32-bit integer mode). If the string length is invalid, Error 5 (`ERR_ILLEGAL_FUNCTION_CALL`) is returned.
-- **Signed Representation**: Interprets the binary bytes as a 16-bit signed two's-complement integer ($-32768 \dots 32767$).
-- **Inverse Operation**: Inverse of `MKI$(number%)` (`MKISTR`).
+## 1. Description & Usage
+
+Decodes a 2-byte fielded binary string into a 16-bit signed integer.
+
+## 2. Syntax
+
+```basic
+CVI(2byte_str$)
+```
+
+## 3. Code Example
+
+```basic
+10 Val = CVI(2byte_str$)
+20 PRINT "Result: "; Val
+```
+
+## 4. Error Conditions
+
+Error 5: Illegal Function Call (length != 2)
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: GW-BASIC, QBASIC, BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Binary & Byte Conversion
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_PURE
 
 ---
 
-## 2. Language Dialect & Compatibility
+## LanguageDescriptor (LangDesc) Quick Reference
 
-| Dialect | Syntax | Bit Width | Range |
-|---|---|---|---|
-| **GW-BASIC / BASICA** | `CVI(A$)` | 16-bit signed | -32,768 to 32,767 |
-| **QuickBASIC / QBASIC** | `CVI(A$)` | 16-bit signed | -32,768 to 32,767 |
-| **BASIC++ (Master)** | `CVI(A$)` | 16-bit signed (or 32-bit via `CVL`) | -32,768 to 32,767 |
-
----
-
-## 3. Examples
-
-### Unpacking Integer from Field Buffer
-```basic
-10 OPEN "R", #1, "scores.dat", 2
-20 FIELD #1, 2 AS SCORE_RAW$
-30 GET #1, 1
-40 SCORE% = CVI(SCORE_RAW$)
-50 PRINT "Score: "; SCORE%
-60 CLOSE #1
-```
+| Field | Value |
+|---|---|
+| Name | CVI |
+| Category | Binary & Byte Conversion |
+| Syntax | CVI(2byte_str$) |
+| Description | Decodes a 2-byte fielded binary string into a 16-bit signed integer. |
+| Error Summary | Error 5: Illegal Function Call (length != 2) |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_PURE |
+| Feature Type | FEATURE_FUNCTION |
+| Delimiter Mask | none |
+| Compatibility | GW-BASIC, QBASIC, BASIC++ Standard |
+| Since Version | 6.0.0 |
+| Source File | engine/src/eval/builtins/string_fn.c |

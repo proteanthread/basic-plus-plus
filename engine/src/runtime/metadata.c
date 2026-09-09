@@ -7,7 +7,7 @@
 // NEEDED BY: libengine (goto.c, help.c, on_timer.c, restore.c, system.c, vm.h)
 // NEEDED BY: libengine (vm_internal.h)
 // NEEDS: libcore (ctype.h, ctype.c, memops.h, memops.c, metadata.h)
-// NEEDS: libcore (snprintf.h, snprintf.c, strops.h, strops.c)
+// NEEDS: libcore (runtime_snprintf.h, runtime_snprintf.c, strops.h, strops.c)
 // NEEDS: libengine (vm.h)
 // Provides core logic and interface definitions for metadata within BASIC++.
 //
@@ -436,7 +436,7 @@ void metadata_pre_scan_program(VMContext *vm, const char *filename) {
                 if (has_closing_marker) {
                     inside_block = true;
                 } else {
-                    // Single-line block! Scan rest of line for inline docstring/comment using strstr
+                    // Single-line block! Scan rest of line for inline docstring/comment using runtime_strstr
                     const char *doc_ptr = runtime_strstr(text, "//");
                     if (doc_ptr) {
                         doc_ptr += 2;

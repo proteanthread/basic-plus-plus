@@ -11,13 +11,15 @@
 #ifndef RUNTIME_MATH_ALGEBRA_H
 #define RUNTIME_MATH_ALGEBRA_H
 
+#include "runtime/math/math.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 double runtime_sqrt(double x);
 double runtime_cbrt(double x);
-double runtime_pow(double base, double exp);
+double runtime_pow(double base, double runtime_exp);
 double runtime_exp(double x);
 double runtime_log(double x);
 double runtime_log10(double x);

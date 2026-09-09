@@ -1,30 +1,67 @@
-WIDTH Screen and Printer Column Width Statement
-===============================================
+TITLE: WIDTH
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/device/gfx_tui.c
+GENERATED: no, hand-written
+STATUS: current
 
-Sets the number of text columns (e.g. 40 or 80) and rows (25, 43, 50) for the screen display, printer, or file channel.
+==============================================================================
+WIDTH KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: gfx_tui.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community -- All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: baspp.exe, bpp.exe, bs.exe, libengine
+    // NEEDS: libcore, libkernel
+    // Implements component functionality for WIDTH.
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Sets the text output column width for the console screen, active window, or
+printer channel.
 
-    WIDTH [columns%] [, rows%]
-    WIDTH [#]filenum%, columns%
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    WIDTH [columns] [, rows] | WIDTH [#file_num,] columns
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM WIDTH Demonstration
+    20 PRINT "WIDTH executed successfully."
 
-ERROR CONDITIONS
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 5: Illegal Function Call
 
-  - Error 5 (ERR_ILLEGAL_FUNCTION_CALL): Width/height not supported by active display.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       GW-BASIC, QBASIC, BASIC++ Standard
+Since Version: 6.0.0
+Category:      Console & Printer I/O
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SAFE
 
-
-OPERATIONAL NOTES
-----------------------------------------------------------------------
-
-  Controls automatic text wrapping margins.
-
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 WIDTH 80, 25 : REM Standard 80x25 text
-    20 WIDTH 40, 25 : REM 40-column large text mode
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  WIDTH
+Category              Console & Printer I/O
+Syntax                WIDTH [columns] [, rows] | WIDTH [#file_num,] columns
+Description           Sets the text output column width for the console s...
+Error Summary         Error 5: Illegal Function Call
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         GW-BASIC, QBASIC, BASIC++ Standard
+Since Version         6.0.0
+Source File           engine/src/device/gfx_tui.c

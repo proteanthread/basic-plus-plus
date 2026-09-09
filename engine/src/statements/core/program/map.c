@@ -2,7 +2,7 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libcore, libengine
-// NEEDS: libcore (ctype.h, ctype.c, micro_lib_metadata.h, micro_lib_metadata.c)
+// NEEDS: libcore (ctype.h, ctype.c, language_descriptor.h)
 // NEEDS: libcore (string.h, strings.h, strings.c, variables.h, variables.c)
 // NEEDS: libengine (eval.h, eval.c, map.h, string.c)
 // NEEDS: libkernel (errors.h)
@@ -13,45 +13,54 @@
 
 #include "statements/core/program/map.h"
 #include "eval/eval.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/variables.h"
 #include "runtime/strings.h"
 #include "types/errors.h"
 #include "platform/platform.h"
-#include <string.h>
-#include <ctype.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "runtime/ctype/ctype.h"
+#include "runtime/format/snprintf.h"
+#include "runtime/memory/alloc.h"
+
+static const LangDesc g_map_desc = {
+    .name = "MAP",
+    .category = "Variables & Memory",
+    .syntax = "MAP (map_name) var1 [= len] [, var2 [= len] ...] | MAP (map_name) ... MAPEND",
+    .description = "DEC RSTS/E BASIC-PLUS-2 statement declaring a static named buffer overlay across variables and RMS-11 file records.",
+    .error_summary = "Error 2: Syntax Error, Error 50: Field Overflow",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SYSTEM,
+    .type = FEATURE_STATEMENT
+};
+
+static const LangDesc g_mapend_desc = {
+    .name = "MAPEND",
+    .category = "Variables & Memory",
+    .syntax = "MAPEND",
+    .description = "Terminates a multi-line MAP block definition in DEC BASIC-PLUS-2.",
+    .error_summary = "Error 2: Syntax Error",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SYSTEM,
+    .type = FEATURE_STATEMENT
+};
 
 static MapBuffer g_map_buffers[BASIC_MAX_MAP_BUFFERS];
 static int       g_map_count = 0;
 static char      g_channel_maps[32][64];
 
 void stmt_map_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "MAP",
-        .category = "Variables & Memory",
-        .syntax = "MAP (map_name) var1 [= len] [, var2 [= len] ...] | MAP (map_name) ... MAPEND",
-        .help_text = "DEC RSTS/E BASIC-PLUS-2 statement declaring a static named buffer overlay across variables and RMS-11 file records.",
-        .error_codes = "Error 2: Syntax Error, Error 50: Field Overflow"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_map_desc);
 
-    static const MicroLibMetadata meta_mapend = {
-        .name = "MAPEND",
-        .category = "Variables & Memory",
-        .syntax = "MAPEND",
-        .help_text = "Terminates a multi-line MAP block definition in DEC BASIC-PLUS-2.",
-        .error_codes = "Error 2: Syntax Error"
-    };
-    microlib_register(&meta_mapend);
+    lang_desc_register(&g_mapend_desc);
 }
 
 void map_registry_clear_all(VMContext *vm) {
     (void)vm;
-    memset(g_map_buffers, 0, sizeof(g_map_buffers));
+    runtime_memset(g_map_buffers, 0, sizeof(g_map_buffers));
     g_map_count = 0;
-    memset(g_channel_maps, 0, sizeof(g_channel_maps));
+    runtime_memset(g_channel_maps, 0, sizeof(g_channel_maps));
 }
 
 MapBuffer *map_get_buffer(VMContext *vm, const char *map_name) {
@@ -73,8 +82,8 @@ bool map_registry_add_field(VMContext *vm, const char *map_name, const char *var
     if (!mb) {
         if (g_map_count >= BASIC_MAX_MAP_BUFFERS) return false;
         mb = &g_map_buffers[g_map_count++];
-        memset(mb, 0, sizeof(MapBuffer));
-        strncpy(mb->map_name, map_name, sizeof(mb->map_name) - 1);
+        runtime_memset(mb, 0, sizeof(MapBuffer));
+        runtime_strncpy(mb->map_name, map_name, sizeof(mb->map_name) - 1);
     }
 
     if (mb->field_count >= BASIC_MAX_MAP_FIELDS) return false;
@@ -87,7 +96,7 @@ bool map_registry_add_field(VMContext *vm, const char *map_name, const char *var
     }
 
     MapField *mf = &mb->fields[mb->field_count++];
-    strncpy(mf->var_name, var_name, sizeof(mf->var_name) - 1);
+    runtime_strncpy(mf->var_name, var_name, sizeof(mf->var_name) - 1);
     mf->type = type;
     mf->offset = mb->total_length;
     mf->length = length;
@@ -99,7 +108,7 @@ bool map_registry_add_field(VMContext *vm, const char *map_name, const char *var
 bool map_bind_channel(VMContext *vm, int channel, const char *map_name) {
     (void)vm;
     if (channel < 1 || channel >= 32 || !map_name) return false;
-    strncpy(g_channel_maps[channel], map_name, sizeof(g_channel_maps[channel]) - 1);
+    runtime_strncpy(g_channel_maps[channel], map_name, sizeof(g_channel_maps[channel]) - 1);
     return true;
 }
 
@@ -127,7 +136,7 @@ void map_sync_to_variables(VMContext *vm, const char *map_name, const unsigned c
         if (mf->type == MAP_TYPE_STRING) {
             char temp_str[1024];
             int copy_len = (flen < (int)sizeof(temp_str) - 1) ? flen : (int)sizeof(temp_str) - 1;
-            memcpy(temp_str, src, copy_len);
+            runtime_memcpy(temp_str, src, copy_len);
             temp_str[copy_len] = '\0';
             // Trim trailing spaces if needed, or create exact slice
             BValue val = { .type = VAL_STRING, .as.string = str_create(vm_get_str(vm), temp_str, copy_len) };
@@ -135,10 +144,10 @@ void map_sync_to_variables(VMContext *vm, const char *map_name, const unsigned c
         } else if (mf->type == MAP_TYPE_DOUBLE || mf->type == MAP_TYPE_SINGLE) {
             double dval = 0.0;
             if (flen >= (int)sizeof(double)) {
-                memcpy(&dval, src, sizeof(double));
+                runtime_memcpy(&dval, src, sizeof(double));
             } else if (flen >= (int)sizeof(float)) {
                 float fval = 0.0f;
-                memcpy(&fval, src, sizeof(float));
+                runtime_memcpy(&fval, src, sizeof(float));
                 dval = (double)fval;
             }
             BValue val = { .type = VAL_NUMBER, .as.number = dval };
@@ -146,10 +155,10 @@ void map_sync_to_variables(VMContext *vm, const char *map_name, const unsigned c
         } else if (mf->type == MAP_TYPE_INTEGER) {
             int ival = 0;
             if (flen >= (int)sizeof(int)) {
-                memcpy(&ival, src, sizeof(int));
+                runtime_memcpy(&ival, src, sizeof(int));
             } else if (flen >= 2) {
                 short sval = 0;
-                memcpy(&sval, src, sizeof(short));
+                runtime_memcpy(&sval, src, sizeof(short));
                 ival = (int)sval;
             }
             BValue val = { .type = VAL_INTEGER, .as.number = (double)ival };
@@ -174,28 +183,28 @@ void map_sync_from_variables(VMContext *vm, const char *map_name, unsigned char 
 
         BValue *val = var_lookup(vc, mf->var_name, false);
         if (mf->type == MAP_TYPE_STRING) {
-            memset(dst, ' ', flen);
+            runtime_memset(dst, ' ', flen);
             if (val && val->type == VAL_STRING && val->as.string) {
                 const char *data = str_data(val->as.string);
                 size_t slen = str_len(val->as.string);
                 size_t clen = (slen < (size_t)flen) ? slen : (size_t)flen;
-                memcpy(dst, data, clen);
+                runtime_memcpy(dst, data, clen);
             }
         } else if (mf->type == MAP_TYPE_DOUBLE || mf->type == MAP_TYPE_SINGLE) {
             double dval = (val && (val->type == VAL_NUMBER || val->type == VAL_INTEGER)) ? val->as.number : 0.0;
             if (flen >= (int)sizeof(double)) {
-                memcpy(dst, &dval, sizeof(double));
+                runtime_memcpy(dst, &dval, sizeof(double));
             } else if (flen >= (int)sizeof(float)) {
                 float fval = (float)dval;
-                memcpy(dst, &fval, sizeof(float));
+                runtime_memcpy(dst, &fval, sizeof(float));
             }
         } else if (mf->type == MAP_TYPE_INTEGER) {
             int ival = (val && (val->type == VAL_NUMBER || val->type == VAL_INTEGER)) ? (int)val->as.number : 0;
             if (flen >= (int)sizeof(int)) {
-                memcpy(dst, &ival, sizeof(int));
+                runtime_memcpy(dst, &ival, sizeof(int));
             } else if (flen >= 2) {
                 short sval = (short)ival;
-                memcpy(dst, &sval, sizeof(short));
+                runtime_memcpy(dst, &sval, sizeof(short));
             }
         }
     }
@@ -207,7 +216,7 @@ static bool parse_map_field_spec(VMContext *vm, LexerContext *lex, const char *m
 
     char token_str[64];
     size_t tlen = (tok.length < sizeof(token_str) - 1) ? tok.length : sizeof(token_str) - 1;
-    memcpy(token_str, tok.start, tlen);
+    runtime_memcpy(token_str, tok.start, tlen);
     token_str[tlen] = '\0';
 
     MapFieldType type = MAP_TYPE_DOUBLE;
@@ -220,7 +229,7 @@ static bool parse_map_field_spec(VMContext *vm, LexerContext *lex, const char *m
         tok = lex_next(lex);
         if (tok.type != TOK_IDENT && tok.type != TOK_KEYWORD) return false;
         tlen = (tok.length < sizeof(var_name) - 1) ? tok.length : sizeof(var_name) - 1;
-        memcpy(var_name, tok.start, tlen);
+        runtime_memcpy(var_name, tok.start, tlen);
         var_name[tlen] = '\0';
     } else if (platform_strcasecmp(token_str, "INTEGER") == 0 || platform_strcasecmp(token_str, "LONG") == 0) {
         type = MAP_TYPE_INTEGER;
@@ -228,7 +237,7 @@ static bool parse_map_field_spec(VMContext *vm, LexerContext *lex, const char *m
         tok = lex_next(lex);
         if (tok.type != TOK_IDENT && tok.type != TOK_KEYWORD) return false;
         tlen = (tok.length < sizeof(var_name) - 1) ? tok.length : sizeof(var_name) - 1;
-        memcpy(var_name, tok.start, tlen);
+        runtime_memcpy(var_name, tok.start, tlen);
         var_name[tlen] = '\0';
     } else if (platform_strcasecmp(token_str, "DOUBLE") == 0 || platform_strcasecmp(token_str, "REAL") == 0) {
         type = MAP_TYPE_DOUBLE;
@@ -236,7 +245,7 @@ static bool parse_map_field_spec(VMContext *vm, LexerContext *lex, const char *m
         tok = lex_next(lex);
         if (tok.type != TOK_IDENT && tok.type != TOK_KEYWORD) return false;
         tlen = (tok.length < sizeof(var_name) - 1) ? tok.length : sizeof(var_name) - 1;
-        memcpy(var_name, tok.start, tlen);
+        runtime_memcpy(var_name, tok.start, tlen);
         var_name[tlen] = '\0';
     } else if (platform_strcasecmp(token_str, "SINGLE") == 0) {
         type = MAP_TYPE_SINGLE;
@@ -244,12 +253,12 @@ static bool parse_map_field_spec(VMContext *vm, LexerContext *lex, const char *m
         tok = lex_next(lex);
         if (tok.type != TOK_IDENT && tok.type != TOK_KEYWORD) return false;
         tlen = (tok.length < sizeof(var_name) - 1) ? tok.length : sizeof(var_name) - 1;
-        memcpy(var_name, tok.start, tlen);
+        runtime_memcpy(var_name, tok.start, tlen);
         var_name[tlen] = '\0';
     } else {
         // Standard variable name with type sigil or default
-        strncpy(var_name, token_str, sizeof(var_name) - 1);
-        char last_ch = var_name[strlen(var_name) - 1];
+        runtime_strncpy(var_name, token_str, sizeof(var_name) - 1);
+        char last_ch = var_name[runtime_strlen(var_name) - 1];
         if (last_ch == '$') {
             type = MAP_TYPE_STRING;
             field_len = 32;
@@ -285,7 +294,7 @@ static bool parse_map_field_spec(VMContext *vm, LexerContext *lex, const char *m
 
 BppError stmt_map_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     if (!vm || !lex) {
         err.code = 5; err.message = "Null context";
@@ -306,7 +315,7 @@ BppError stmt_map_handler(VMContext *vm, LexerContext *lex) {
 
     char map_name[64];
     size_t mlen = (tok.length < sizeof(map_name) - 1) ? tok.length : sizeof(map_name) - 1;
-    memcpy(map_name, tok.start, mlen);
+    runtime_memcpy(map_name, tok.start, mlen);
     map_name[mlen] = '\0';
 
     tok = lex_next(lex);
@@ -382,6 +391,6 @@ BppError stmt_mapend_handler(VMContext *vm, LexerContext *lex) {
     (void)vm;
     (void)lex;
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     return err;
 }

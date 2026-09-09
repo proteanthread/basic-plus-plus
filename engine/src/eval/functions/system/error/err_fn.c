@@ -3,27 +3,31 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (sys_fn.c)
 // NEEDS: libcore (memory.h, memory.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libengine (err_fn.h, string.c, vm.h)
 // Provides runtime implementation for the ERR_FN built-in function in BASIC++.
 //
 // ---- Includes ----
 
 #include "eval/functions/system/error/err_fn.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "vm/vm.h"
 
 #include "runtime/string.h"
 #include "runtime/memory.h"
+
+static const LangDesc g_err_desc = {
+    .name = "ERR",
+    .category = "System / Error Functions",
+    .syntax = "code% = ERR",
+    .description = "Returns the run-time error code of the last occurred error.",
+    .error_summary = "Error 13: Type Mismatch (ERR expects no arguments)",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_FUNCTION
+};
 void func_err_fn_register(void) {
-    MicroLibMetadata meta = {
-        .name = "ERR",
-        .category = "System / Error Functions",
-        .syntax = "code% = ERR",
-        .help_text = "Returns the run-time error code of the last occurred error.",
-        .error_codes = "Error 13: Type Mismatch (ERR expects no arguments)"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_err_desc);
 }
 
 BValue func_err_fn_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err) {

@@ -1,0 +1,251 @@
+Title:        catalog
+Tier:         4
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot, bppc, detok, trans)
+Authority:    engine/include/runtime/language_descriptor.h
+Generated:    yes, from LanguageDescriptor metadata
+Status:       Active
+
+BASIC++ v6.5.2 MASTER INVENTORY CATALOG
+
+Total Registered Vocabulary Items: 842
+
+[CONTROL FLOW & LOOPING] (41 items)
+  break             CALL              CAUSE             CONTINUE
+  DECLARE           DO                DOEVENTS          END
+  ENDLOOP           EXIT              EXTERN            EXTERNAL
+  FOR               FUNCTION          GOSUB             GOTO
+  HANDLER           IF                IF_POSTFIX        LOOP
+  NEXT              ON_GOSUB          ON_GOTO           PERFORM
+  REM               REPEAT            RETRY             RETURN
+  SELECT            SLEEP             STOP              SUSPEND
+  TASK              UNLESS            UNTIL             VOID
+  WAIT              WEND              WHEN              WHILE
+  YIELD
+
+[EVENT TRAPPING & EXCEPTIONS] (15 items)
+  ERR$              ERROR             KEY               ON COM
+  ON ERROR          ON KEY            ON TIMER          ONKEY$
+  ON_ERROR_GOTO     ON_KEY            ON_PLAY           ON_TIMER
+  RESUME            TRY               WHENEVER
+
+[FILESYSTEM & STREAM I/O] (52 items)
+  ACCESS            ADVANCE           APPEND            ASSIGN
+  BACKSPACE         BLOAD             BRUN              BSAVE
+  CHDIR             CLOSE             CREATE            CURDIR$
+  DESTROY           DIR               DIR$              EOF
+  EXISTS            FILEMOD           FILEMOD$          FILES
+  FILESIZE          FIND              GET               INPUT#
+  KILL              LOC               LOCK              LOF
+  MKDIR             MODIFY            MOUNT             MOUNTS
+  NAME              OPEN              PREFIX            PRINT#
+  PUT               PWD               QLOAD             QRUN
+  QSAVE             RECORD            RESET             REWIND
+  RMDIR             SEEK              TEXT              TYP
+  UMOUNT            UNLOCK            VPATH             WRITE#
+
+[GENERAL & EXTENDED] (240 items)
+  AND               ARRAY EXT         ARRAYFILL         ASK
+  assert            AT                AVG               BIOS
+  BIT               BITCOUNT          BITFIELD          BUTTON
+  CBYTE             CDWORD            CHECKBOX          CLASS
+  CLK               CLK$              CLOCK             CLOCK$
+  CLRBIT            COMBOBOX          CONSOLE           COUNT
+  COUNT$            CPU               CREATEINDEX       CRYPTO.DECRYPT$
+  CRYPTO.ENCRYPT$   CRYPTO.HASH$      CRYPTO.HMAC$      CRYPTO.KEY$
+  CSRLIN            CVD               CVI               CVS
+  CWORD             DEF               DEF USR           DEF_FN
+  DELAY             DELETE            DELETE$           DELETEINDEX
+  DEMAND            DEREF             DEVCAPS           DEVCTL
+  DEVCTL$           DEVICE            DEVICES           DEVINFO$
+  DIM #             DIRLISTBOX        DISPLAY           DRIVELISTBOX
+  DUMP              DYNARRAY$         ECHO              ENTER
+  EPOCH             EPOCH.MS          EPS               EQV
+  EVERY             EXTEND            EXTRACT           FALSE
+  FID               FIELD             FIFO              FILELISTBOX
+  FILEOPENBOX$      FILESAVEBOX$      FORM              FRAME
+  FUJI.IP$          FUJI.JSON.GET$    FUJI.SSID$        FUJI.STATUS$
+  GMST              HEBREW$           HI                HSCROLLBAR
+  IMAGE             IMP               IMPORT            IN#
+  INDEX             INDEX$            INF               INKEY
+  INKEY$            INPUT             INPUT$            INPUTBOX$
+  INSERT            INSERT$           INTERRUPT         INVOKE
+  ISAM              JD                JIFFIES           JULIAN
+  JULIAN$           KEY$              KEYCOUNT          LABEL
+  LBOUND            LIFO              LINE INPUT        LINPUT
+  LISTBOX           LO                LOCATE            LOCKED
+  LOGIN             LPOS              LPRINT            MARGIN
+  MASK              MAT               MAT INPUT         MAT PRINT
+  MAT READ          MAT WRITE         MAT_IDN           MAT_INV
+  MAT_RND           MAT_TRN           MAXNUM            MEAN
+  MED               MENU              MESG              MJD
+  MKDSTR            MKISTR            MKSSTR            MODDIR$
+  MOUSE             MSGBOX            MSGRECV$          MSGSEND
+  MUTEX             MUX VAR           NOECHO            NOEXTEND
+  NOMARGIN          NOPAGE            NOT               NUM
+  OPTIONBUTTON      OR                OUT               PARAM
+  PARSE_DYNARRAY    PAUSE             PEN               PI
+  PIPE              POP               POS               PR#
+  PRINT             PRINT AT          PRIORITY          PTR
+  PUBLISH           PUBSUB            PUSH              PYTHON
+  PYTHON$           RAISE             RAISESIGNAL       RANDOMIZE
+  READBIT           READU             RECEIVE$          REFORMAT ENGINE
+  RELEASE           REMOVE$           REPLACE$          RESETBIT
+  RETRIEVE          ROL               ROR               SCREEN
+  SEEKEQ            SEEKGE            SEEKGT            SEND
+  SETBIT            SETINDEX          SET_BITFIELD      SHL
+  SHR               SPEED             STARDATE          STARDATE$
+  SUB               SUBSCRIBE         SUM               TEXTBOX
+  TI                TI$               TICKS             TICKS_MS
+  TICKS_US          TIME              TIME$             TIMER
+  TIMER$            TIMERCONTROL      TODAY             TODAY$
+  TOGGLEBIT         TRUE              TTY               UBOUND
+  UDX               UNIXTIME          UNLOAD            UNPUBLISH
+  UNSUBSCRIBE       UPDATE            UPTIME            UPTIME$
+  UTC               UTC$              VSCROLLBAR        WEEK
+  WEEK$             WHO               WIDTH             WRITE
+  WRITEU            XIO               XOR               ZONE
+
+[GRAPHICS, DRAWING & BGI] (28 items)
+  BGI               BORDER            BRIGHT            CIRCLE
+  CLS               COLOR             DRAW              DRAWTO
+  FLASH             GFX.COMPAT        GRAPHICS          HOME
+  INK               INVERSE           LINE              OVER
+  PAINT             PALETTE           PAPER             PCOPY
+  PLOT              PMAP              POINT             PRESET
+  PSET              REVERSE           VIEW              WINDOW
+
+[HARDWARE, GPIO & IOT] (83 items)
+  ALLOC             AREAD             ATTR              BANK
+  BAUD              BDOS              BT                CLOCKS
+  CLOCKS$           CONSOL            CPUSPEED          CPUSPEED$
+  DAC               DHT               DREAD             DS
+  DS$               DWRITE            ESPNOW            FRAMES
+  GEMINI.BROWSE     HALL              HIMEM             HTTP.GET$
+  I2C               IOT.RPC$          JOB               LOMEM
+  MEMMAP            MQTT              NEOPIXEL          NET.CONFIG
+  NET.UNPACK        NFC               PACKET.LEN        PACKET.MAC$
+  PACKET.PAYLOAD$   PACKET.PORT       PACKET.RSSI       PACKET.SRC$
+  PACKET.TYPE$      PADDLE            PAGE              PEEKB
+  PEER              PINMODE           POINTER           POKEB
+  PORT              PTRIG             PWM               RAMBANKS
+  RBYTE             REMOTE.EVAL$      REMOTE.EXEC       SEG
+  SERVO             SNIFF             SOCK              SOCK.ACCEPT%
+  SOCK.OPEN%        SOCK.POLL%        SOCK.RECV$        SOCK.STATUS%
+  SPEED%            SPEED&            SPI               ST
+  STATUS            STICK             STRIG             SWAP$
+  TNFS              TNFS.DIR$         TOUCH             UPNP.FORWARD
+  UPNP.UNFORWARD    USER              VBL               VCOUNT
+  WBYTE             WEBREPL           WIFI
+
+[MATH, TRIGONOMETRY & NUMBERS] (88 items)
+  ABS               ACOS              ANGLE             ARG
+  ASIN              ATAN2             ATN               CABS
+  CARG              CBOOL             CCUR              CDBL
+  CEIL              CEXP              CINT              CLAMP
+  CLOG              COMP              COMPLEX           CONJ
+  COS               COSH              COT               CPOW
+  CROSS             CSC               CSNG              CSQR
+  CSTR              CVDMBF            CVSMBF            DEGREE
+  DEGREES           DET               DOT               DP
+  EXP               FIX               FLOOR             FPT
+  FV                GRAD              HYPOT             IMAG
+  INT               IPMT              IPT               IRR
+  LERP              LGT               LOG               LOG10
+  LOG2              MAG               MAX               MIN
+  MKDMBF$           MKSMBF$           MOD               NEG
+  NPER              NPV               PDIF              PMT
+  PN                POL               PPMT              PV
+  RADIAN            RADIANS           RATE              REAL
+  REC               REMAINDER         RND               ROUND
+  RPN               SCALE             SEC               SGN
+  SIN               SINH              SQR               STACK
+  TAN               TANH              TRUNCATE          XP
+
+[METAPROGRAMMING & INTROSPECTION] (40 items)
+  ALIAS             AUTO              CATALOG           CATEGORY
+  CATEGORY$         CHAIN             CHECK             COMPILE
+  CONT              DEBUG             EDIT              HELP
+  HOSTNAME          ISARRAY           ISNUMERIC         JIT
+  KEYWORD           LIST              LLIST             LOAD
+  MERGE             MODULE            NEW               OVERRIDE
+  PROGRAM$          REFORMAT          RENAME            RENUM
+  REVERT            RUN               SAVE              SCOPE
+  SCRATCH           SIZE              TEST              TRACE
+  TROFF             TRON              USERNAME          VARS
+
+[NETWORKING & PROTOCOLS] (25 items)
+  GEMINI            GEMINI.GET$       GEMINI.META$      GEMINI.STATUS%
+  GOPHER            GOPHER.GET$       IP$               NBYTESWAITING
+  NCONNECTED        NEOF              NERROR            NET.GATEWAY$
+  NET.PACK$         NHTTPSTATUS       NSTATUS           UPNP.EXTERNALIP$
+  UPNP.STATUS       UPNP.STATUS$      WIFI.RSSI         WIFI.SSID$
+  WIFI.STATUS$      _BATTERY%         _CPU_LOAD%        _FREE_STACK
+  _TEMPERATURE%
+
+[SOUND & MULTIMEDIA] (6 items)
+  BEEP              PICTURE           PLAY              SOUND
+  VIEWPORT          VOICE
+
+[STRING MANIPULATION & TEXT] (54 items)
+  ASC               ASCII             ATH$              BIN$
+  CHR$              COLLATE           COMSTR$           CVT$%
+  DECOMSTR$         DIF$              EDIT$             ERT$
+  FORMAT$           HEX$              HTA$              ICASE$
+  INSTR             LCASE$            LEFT$             LEN
+  LTRIM$            MCASE$            MID$              MID$ STMT
+  NUM$              OCT$              OVERLAY$          PACK$
+  PLACE$            PROD$             QUO$              RAD$
+  REVERSE$          RIGHT$            RINSTR            RTRIM$
+  SEG$              SHUFFLE$          SPACE$            SPC
+  STR$              STRING$           SUM$              TAB
+  TCASE$            TRANSLATE         TRANSLATE$        TRIM$
+  UCASE$            UNPACK            UPS$              VAL
+  VERIFY            XLATE$
+
+[SYSTEM & ENVIRONMENT] (130 items)
+  ARCH$             AVAILMEM          BASEDIR$          BASENAME$
+  BIOCHECKSUM       BIOSIZE           BIOSTATUS         COMMAND$
+  COMPILER$         COMPUTERNAME      COMPUTERNAME$     COMSPEC
+  COMSPEC$          CORES             DATADIR$          DATE
+  DATE$             DATESERIAL        DATEVALUE         DAY
+  DAY$              DEEPSLEEP         DOCSDIR$          DOSVER$
+  DRIVE$            EDITION$          ENVIRON$          EPOCHDATE
+  ERDEV$            ERL               ERR               ERRORLEVEL
+  EXEC$             EXEDIR$           EXENAME$          EXEPATH$
+  EXT$              EXTERR            FRE               FREEFILE
+  FREQ              GOODBYE           GUID              GUID$
+  HELPDIR$          HOME$             HOMEDRIVE         HOMEDRIVE$
+  HOMEPATH          HOMEPATH$         HOSTNAME$         HOUR
+  HOURS             INP               ISADMIN           KERNEL$
+  LANG$             LOGDEBUG          LOGERROR          LOGGER
+  LOGINFO           LOGNAME           LOGNAME$          LOGTRACE
+  LOGWARN           MACHINE$          MAGTAPE           MEM
+  MEM.FREE          MEMMAP$           MINUTE            MINUTES
+  MONTH             MONTH$            OS$               PATH
+  PATH$             PEEK              PID               PLATFORM$
+  PROFILE$          PROGNAME$         PROMPT$           PTRSIZE
+  REBOOT            SCRIPTDIR$        SCRIPTNAME$       SCRIPTPATH$
+  SECOND            SECONDS           SECURITY          SELFTEST
+  SET               SETMEM            SHELL             SHELL$
+  SIOAVAIL          SIOSTATUS         SPEC%             SSEG
+  SYS               SYS.ARCH$         SYS.MEMORY.AVAIL  SYS.MEMORY.TOTAL
+  SYS.OS$           SYSTEM            TEMP$             TEMPDIR$
+  TERM$             TIM               TIMESERIAL        TIMEVALUE
+  TIMEZONE$         TIME_PART         TOTALMEM          TXN
+  TZ                TZ$               USERNAME$         USERPATH
+  USERPATH$         VER               VERSION           VERSION$
+  WALL              WEEKDAY           WINVER$           WORDSIZE
+  WORKDIR$          YEAR
+
+[VARIABLES, MEMORY & DATA TYPES] (40 items)
+  CHANGE            CLEAR             CLR               COMMON
+  CONST             DATA              DECR              DEF SEG
+  DEFDBL            DEFINT            DEFLNG            DEFSNG
+  DEFSTR            DIM               ENUM              ERASE
+  EXCHANGE          GLOBAL            INCR              LET
+  LSET              MAP               MAPEND            OPTION
+  POKE              PUBLIC            READ              REDIM
+  REMOVE            RESTORE           RSET              SHARE
+  SHARED            SHUFFLE           STATIC            SWAP
+  TYPE              VAR               VARPTR            WITH
+

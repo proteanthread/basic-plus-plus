@@ -1,27 +1,71 @@
-CLR / CLEAR Clear Program Variables Statement
-======================================================================
+TITLE: CLR
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/variables/data/clr.c
+GENERATED: no, hand-written
+STATUS: current
 
-The CLR statement (and alias CLEAR) clears all variables, arrays, and
-string allocations without erasing stored program lines.
+==============================================================================
+CLR KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: clr.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (arrays.h, arrays.c)
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libcore (strings.h, strings.c, variables.h, variables.c)
+    // NEEDS: libengine (clr.h, lexer.h, lexer.c, string.c, vm.h)
+    // Provides runtime implementation for the CLR statement in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Clears specified variables or all variables to default zero/empty values.
 
-    CLR
-    CLEAR [, [stack_size] [, basic_data_size]]
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    CLR [var1, var2, ...]
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM CLR Demonstration
+    20 PRINT "CLR executed successfully."
 
-OPERATIONAL RULES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error
 
-  - Clears all variables and resets arrays (var_clear_all).
-  - Releases all temporary and allocated string handles.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Variables & Memory
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SYSTEM
 
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 A = 100
-    20 CLR
-    30 PRINT A   : REM Outputs 0
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  CLR
+Category              Variables & Memory
+Syntax                CLR [var1, var2, ...]
+Description           Clears specified variables or all variables to defa...
+Error Summary         Error 2: Syntax Error
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SYSTEM
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/variables/data/clr.c

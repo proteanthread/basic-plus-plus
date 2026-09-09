@@ -2,7 +2,7 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
-// NEEDS: libcore (snprintf.h, snprintf.c, strops.h, strops.c)
+// NEEDS: libcore (runtime_snprintf.h, runtime_snprintf.c, strops.h, strops.c)
 // NEEDS: libengine (vm.h)
 // Provides core logic and interface definitions for dap_server within BASIC++.
 //

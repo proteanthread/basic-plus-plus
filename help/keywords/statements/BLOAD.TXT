@@ -1,0 +1,66 @@
+TITLE: BLOAD
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/filesystem/binary_ops/bload.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+BLOAD KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: bload.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore, libengine, libplatform
+    // Provides runtime implementation for the BLOAD statement in BASIC++.
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Loads a memory image file created by BSAVE with 7-byte header verification.
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    BLOAD filename$ [, offset%]
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM BLOAD Demonstration
+    20 PRINT "BLOAD executed successfully."
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error, Error 53: File Not Found, Error 54: Bad File Mode
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      File I/O & Memory
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_IO
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  BLOAD
+Category              File I/O & Memory
+Syntax                BLOAD filename$ [, offset%]
+Description           Loads a memory image file created by BSAVE with 7-b...
+Error Summary         Error 2: Syntax Error, Error 53: File Not Found, Er...
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_IO
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/filesystem/binary_ops/bload.c

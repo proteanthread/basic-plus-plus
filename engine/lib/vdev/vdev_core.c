@@ -10,11 +10,12 @@
 // ---- Includes ----
 
 #include "device/vdev.h"
-#include <string.h>
-#include <ctype.h>
-#include <stdio.h>
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "runtime/ctype/ctype.h"
+#include "runtime/format/snprintf.h"
 #include <stdarg.h>
-#include <stdlib.h>
+#include "runtime/memory/alloc.h"
 
 #define VDEV_MAX_DEVICES 64
 
@@ -26,17 +27,17 @@ struct VDevContext {
 
 static int strcmp_nocase(const char *s1, const char *s2) {
     while (*s1 && *s2) {
-        int c1 = toupper((unsigned char)*s1);
-        int c2 = toupper((unsigned char)*s2);
+        int c1 = runtime_toupper((unsigned char)*s1);
+        int c2 = runtime_toupper((unsigned char)*s2);
         if (c1 != c2) return c1 - c2;
         s1++;
         s2++;
     }
-    return toupper((unsigned char)*s1) - toupper((unsigned char)*s2);
+    return runtime_toupper((unsigned char)*s1) - runtime_toupper((unsigned char)*s2);
 }
 
 VDevContext *vdev_init(MemoryContext *mem) {
-    VDevContext *ctx = (VDevContext *)calloc(1, sizeof(VDevContext));
+    VDevContext *ctx = (VDevContext *)runtime_calloc(1, sizeof(VDevContext));
     if (!ctx) return NULL;
     ctx->mem = mem;
     ctx->count = 0;
@@ -50,7 +51,7 @@ void vdev_shutdown(VDevContext *ctx) {
             ctx->devices[i].close(ctx->devices[i].user_data);
         }
     }
-    free(ctx);
+    runtime_free(ctx);
 }
 
 bool vdev_register(VDevContext *ctx, VDev dev) {

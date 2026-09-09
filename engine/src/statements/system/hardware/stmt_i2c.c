@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
 // NEEDS: libcore (esp32_hal.h, esp32_hal.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libcore (strops.h, strops.c, variables.h, variables.c)
 // NEEDS: libengine (eval.h, eval.c, lexer.h, lexer.c, string.c, vm.h)
 // Implements the I2C statement for Inter-Integrated Circuit bus read/write operations.
@@ -13,15 +13,26 @@
 #include "vm/vm.h"
 #include "lexer/lexer.h"
 #include "eval/eval.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/string/strops.h"
 #include "runtime/variables.h"
 #include "esp32_hal.h"
-#include <string.h>
+#include "runtime/string/memops.h"
+
+static const LangDesc g_i2c_desc = {
+    .name = "I2C",
+    .category = "Hardware & IoT",
+    .syntax = "I2C.WRITE addr, reg, val | I2C.READ addr, reg, var",
+    .description = "Performs read or write transaction over I2C hardware bus.",
+    .error_summary = "Error 2: Syntax Error, Error 13: Type Mismatch",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_STATEMENT
+};
 
 BppError stmt_i2c_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     int is_read = 0;
     BppToken tok = lex_peek(lex);
@@ -59,7 +70,7 @@ BppError stmt_i2c_handler(VMContext *vm, LexerContext *lex) {
         if (tok.type == TOK_IDENT) {
             char var_name[64];
             size_t nlen = (tok.length < sizeof(var_name) - 1) ? tok.length : sizeof(var_name) - 1;
-            memcpy(var_name, tok.start, nlen);
+            runtime_memcpy(var_name, tok.start, nlen);
             var_name[nlen] = '\0';
             int read_val = esp32_hal_i2c_read(addr, reg);
             BValue val;
@@ -80,12 +91,5 @@ BppError stmt_i2c_handler(VMContext *vm, LexerContext *lex) {
 }
 
 void stmt_i2c_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "I2C",
-        .category = "Hardware & IoT",
-        .syntax = "I2C.WRITE addr, reg, val | I2C.READ addr, reg, var",
-        .help_text = "Performs read or write transaction over I2C hardware bus.",
-        .error_codes = "Error 2: Syntax Error, Error 13: Type Mismatch"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_i2c_desc);
 }

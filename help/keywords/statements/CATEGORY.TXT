@@ -1,0 +1,68 @@
+TITLE: CATEGORY
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/introspection/category.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+CATEGORY KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: category.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libcore, libengine, libflex
+    // NEEDS: libcore (funcreg.h, language_descriptor.h, memops.h, spec.h, strops.
+    // NEEDS: libkernel (vdev.h)
+    // Provides runtime implementation for the CATEGORY statement in BASIC++.
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Displays all categories, queries the category of a keyword, or lists all
+keywords in a category.
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    CATEGORY [keyword | category_name]
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM CATEGORY Demonstration
+    20 PRINT "CATEGORY executed successfully."
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Introspection
+Subsystem:     SUBSYSTEM_CORE
+Safety Level:  SAFETY_SAFE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  CATEGORY
+Category              Introspection
+Syntax                CATEGORY [keyword | category_name]
+Description           Displays all categories, queries the category of a ...
+Error Summary         Error 2: Syntax Error
+Subsystem             SUBSYSTEM_CORE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/introspection/category.c

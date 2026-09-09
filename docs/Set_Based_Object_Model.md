@@ -1,0 +1,368 @@
+<!--
+Title:        Set_Based_Object_Model
+Tier:         1
+Applies to:   BASIC++ v6.5.2, all targets
+Authority:    engine/include/runtime/set.h, engine/src/runtime/set/set_core.c,
+              set_ops.c, set_pick.c, set_unify.c
+Generated:    no, hand-written
+Status:       current
+-->
+
+# The Set-Based Object Model
+
+BASIC++ is object-oriented, and it does not put objects at the centre. Sets
+do. This document explains what that means, what the engine actually
+implements, what it gives you that a conventional object model does not, and
+what it costs.
+
+It supersedes `OOP_Architecture.md`, which describes an earlier and different
+model.
+
+---
+
+## 1. The containment notation
+
+The model is written as four nested levels, each with its own delimiter:
+
+```
+BLOCK { SET [ GROUP ( OBJECT ) ] }
+```
+
+Read outward-in:
+
+- A **BLOCK** is the outermost container, written with braces. It is the
+  fourth level and is used rarely.
+- A **SET** lives inside a block, written with square brackets. In the
+  ordinary three-level case the set is the outermost level.
+- A **GROUP** lives inside a set, written with parentheses.
+- An **OBJECT** is what a group holds, and it is a bundle of data in the
+  ordinary sense the term carries in C++, Python or Java.
+
+**Three levels is the standard depth. Four is the ceiling, and reaching it
+should be rare. Users may extend beyond four within their own domain.**
+
+Read that carefully, because it is easy to get backwards. The ordinary case is
+`SET [ GROUP ( OBJECT ) ]` — three levels. `BLOCK` is available above them and
+most models never need it.
+
+The bounds are not arbitrary. Below three levels the data starts to jumble,
+because there is no longer room to separate the container from the membership
+rule from the record; collapse any two of those and you are left describing
+two different things with one construct. Beyond four, significance is lost:
+each additional level divides the meaning of the data more finely than a
+reader can hold, and the structure begins to describe itself rather than the
+problem.
+
+The engine enforces no ceiling, because a particular domain may genuinely need
+a fifth level and it is not the language's place to forbid it. But the depth
+is a budget, not an allowance. If you find yourself at five, the usual cause is
+that one of the levels is doing a job that belongs to a sibling rather than to
+a parent.
+
+---
+
+## 2. What each level is for
+
+Each level answers a different question, and that is what keeps them from
+collapsing into four words for "container".
+
+### A SET answers WHAT EXISTS
+
+`BppSet` is described in the source as an ordered multiset or algebraic set.
+It holds a contiguous, indexed array of values and carries the complete set
+algebra:
+
+| Operation | Function |
+|---|---|
+| Union | `set_union` |
+| Intersection | `set_intersection` |
+| Difference | `set_difference` |
+| Symmetric difference | `set_sym_diff` |
+| Membership | `set_contains` |
+| Subset | `set_is_subset` |
+| Proper subset | `set_is_proper_subset` |
+| Cardinality | `set_cardinality` |
+
+A set is the scope in which things exist. Its elements are addressed by
+position, and it is the level at which you ask whether something is present
+at all.
+
+### A GROUP answers WHAT IT IS LIKE
+
+`BppGroup` is described in the source as an addressable subset or record
+within a set. Its members are `BppGroupEntry` values, and the entry structure
+is the key to the whole design:
+
+```c
+typedef struct BppGroupEntry {
+    char   *name;   // Member name, or NULL for a purely ordinal member
+    BValue  val;    // Bound member value
+} BppGroupEntry;
+```
+
+**A group member may be named or purely ordinal.** That single decision makes
+a group simultaneously a record, when its members are named, and a tuple, when
+they are not, and it is why the same structure serves a database row, a
+struct, and a positional argument list without three separate types.
+
+Groups carry their own algebra — `group_union`, `group_intersection`,
+`group_difference`, `group_sym_diff`, `group_is_subset`,
+`group_is_proper_subset` — so an operation on groups yields a group and the
+level is closed under itself.
+
+### An OBJECT answers WHICH ONE
+
+An object is a bundle of data: identity and state. It is what a group's
+entries bind to. Sets and groups have no identity beyond their contents; an
+object is one thing.
+
+### A BLOCK answers IN WHAT CONTEXT
+
+The block is the enclosing context a set lives in, and it is the fourth level.
+Most models do not need it: if your sets already stand on their own, there is
+nothing for a block to disambiguate and adding one only lengthens every path.
+Reach for it when several sets are genuinely the same kind of thing in
+different worlds, and the world itself has to be addressable.
+
+It is a level of the notation rather than a distinct runtime type; section 4
+explains how depth is actually implemented.
+
+---
+
+## 3. Everything nests
+
+A value inside a set or a group may itself be a set, a group, a map or a
+string. `set_core.c` handles all four in its retain and release paths:
+
+```c
+if (val.type == VAL_STRING && val.as.string) { ... }
+else if (val.type == VAL_MAP && val.as.map)  { ... }
+else if (val.type == VAL_SET && val.as.set)  { ... }
+else if (val.type == VAL_GROUP && val.as.group) { ... }
+```
+
+So nesting is real and unlimited, and every container is reference-counted
+with `add_ref` and `release` for deterministic lifetime. There is no garbage
+collector and no collection pause.
+
+---
+
+## 4. How depth is actually implemented
+
+There is no `BppBlock` type in the engine, and no `VAL_BLOCK`. There are two
+container types, `BppSet` and `BppGroup`, and depth comes from nesting them.
+
+The mechanism is explicit in the API:
+
+```c
+bool group_path_get(void *str_ctx, BppGroup *group, int depth,
+                    BValue *keys, BValue *out_val);
+bool group_path_set(void *str_ctx, BppGroup *group, int depth,
+                    BValue *keys, BValue val);
+bool set_path_get(void *str_ctx, BValue root, int depth,
+                  BValue *keys, BValue *out_val);
+bool set_path_set(void *str_ctx, BValue *root, int depth,
+                  BValue *keys, BValue val);
+```
+
+`depth` is a parameter. A three-level address passes three keys; a four-level
+address passes four. The header calls this **Multi-Tier Path Addressing**, and
+it is precisely why the standard depth can be three, the ceiling four, and a
+user's own domain extend further: the engine imposes no limit, the convention
+does.
+
+BLOCK, SET, GROUP and OBJECT are therefore names for *positions* in a nested
+structure, not four separate implementations. That is a strength rather than a
+compromise: it is what allows the depth to be a matter of domain modelling
+rather than of language design.
+
+---
+
+## 5. Relational projection
+
+Because a set of groups is structurally a table of rows, the engine provides
+projection over it:
+
+```c
+BppSet *set_project(void *str_ctx, BppSet *set, const char *field);
+BppSet *set_project_filter(void *str_ctx, BppSet *set,
+                           const char *filter_key, BValue filter_val,
+                           const char *field);
+```
+
+`set_project` extracts one named field from every group in a set, yielding a
+set of values. `set_project_filter` does the same restricted to groups whose
+`filter_key` matches `filter_val`. That is a SELECT with a WHERE clause,
+available as a language primitive rather than as a library.
+
+This falls out of the model rather than being bolted on, and it is one of the
+clearest arguments for it: in a conventional object model, projecting one
+attribute across a collection is a loop or a comprehension, because the
+collection knows nothing about the shape of its members. Here the set does.
+
+---
+
+## 6. Pick MultiValue compatibility
+
+The model reaches back to a genuinely different lineage. `set_pick.c`
+implements the Pick operating system's dynamic-array semantics:
+
+```c
+BppSet *set_from_dynarray(void *str_ctx, const char *str);
+char   *set_to_dynarray(void *str_ctx, BValue val);
+BValue  set_dyn_extract(void *str_ctx, BValue target,
+                        int attr, int val, int subval, BppError *err);
+BValue  set_dyn_replace(...);
+BValue  set_dyn_insert(...);
+BValue  set_dyn_delete(...);
+```
+
+The `attr`, `val`, `subval` triple is Pick's attribute, value and subvalue
+addressing, unchanged. A Pick or D3 dynamic array converts into a BASIC++ set
+and back out again, and the EXTRACT, REPLACE, INSERT and DELETE operations
+behave as a Pick programmer expects.
+
+Note that Pick's model is exactly three levels deep. That is the same standard
+depth stated in section 1, arrived at independently by a system that has been
+in production since 1965. It is a useful piece of corroboration: three levels
+is where a general-purpose data model naturally settles.
+
+---
+
+## 7. Maps subsume into groups
+
+```c
+BppGroup      *group_from_map(void *str_ctx, struct BppMap *map);
+struct BppMap *map_from_group(void *str_ctx, BppGroup *group);
+```
+
+A map is a group whose members all happen to be named. The conversion is
+lossless in that direction and lossy in the other only when a group holds
+ordinal members that have no key to become.
+
+---
+
+## 8. Containers are unified
+
+`set_unify.c` puts sets, arrays and maps behind one accessor, so that `Arr{i}`
+reaches an array element through the same path a set element is reached by:
+
+```c
+bool set_unify_array_get(void *vm, const char *name, int index,
+                         BValue *out_val, BppError *err);
+bool set_unify_array_set(void *vm, const char *name, int index,
+                         BValue val, BppError *err);
+```
+
+The brace delimiter is the set and collection accessor throughout, consistent
+with the project's delimiter invariant: parentheses for infix, brackets for
+prefix and slicing, braces for postfix, maps and sets.
+
+---
+
+## 9. What OOP standards BASIC++ has
+
+Asked directly: **there is no standard for object orientation that a language
+can be audited against.** There is no certifying body and no conformance
+suite. Any claim of "OOP compliance" is not meaningful as stated, and this
+document will not make one.
+
+What can be stated, and what matters to somebody deciding whether to use the
+language, is which recognised object-oriented capabilities the model provides
+and how. That table is below, and it is honest about the gaps.
+
+| Capability | Provided | How |
+|---|---|---|
+| Encapsulation | Yes | A group binds named members; access is through `group_get` and `group_set`, not through raw layout |
+| Composition | Yes | Any container nests inside any other, to arbitrary depth (section 4) |
+| Identity | Yes | Reference-counted containers; an object is distinguishable from a copy |
+| Deterministic lifetime | Yes | `add_ref` and `release`; no garbage collector, no pause |
+| Aggregation and query | Yes | Set algebra plus `set_project` and `set_project_filter` (section 5) |
+| Structural typing | Yes | Group membership is decided by the fields a group has, not by a declared class |
+| Multiple membership | Yes | The same object may sit in several groups at once |
+| Inheritance | **No** | There is no class hierarchy and no subclass relation |
+| Virtual dispatch | **No** | Behaviour is not attached to a type and resolved at call time |
+| Access modifiers | **No** | There is no private, protected or public on a member |
+
+The three absences are real and are not oversights. A model that puts
+behaviour at the group rather than at the object does not need an inheritance
+chain to share it, because an object can simply belong to another group. That
+is composition over inheritance taken to its conclusion rather than offered as
+advice.
+
+If your design depends on virtual dispatch through a class hierarchy, this
+model will feel wrong, and you should know that before you start rather than
+after.
+
+---
+
+## 10. Why sets rather than objects
+
+The argument, stated plainly, with its costs.
+
+**The claim.** Python fuses two distinct ideas into one construct. A class is
+both the rule that decides what a value is, and the holder of the behaviour
+that value responds to. Because those are the same object, every value has
+exactly one type, and asking "what is this?" and "what can this do?" always
+return the same answer.
+
+BASIC++ separates them. The group holds the membership rule and the shared
+shape; the object holds the data. One object can belong to several groups and
+be operated on differently through each. Asking what a value is and asking
+what it can do become two questions with two answers.
+
+**Why that is worth having.** Consider a record that is, at once, a row in a
+report, an entry in an audit log, and a message on a queue. In a class-based
+model it is one class, and you either give that class every responsibility, or
+you build three wrapper classes, or you reach for multiple inheritance and its
+attendant problems. In the set model it is one object in three groups, and
+each group carries only what its own concern needs. Nothing wraps anything.
+
+The relational operations in section 5 are the second half of the argument.
+Because a set knows the shape of its members, projecting and filtering are
+primitives. In an object model the collection is a dumb container and every
+such operation is written by the caller.
+
+**What it costs.** Four things, and they are not small:
+
+1. **Unfamiliarity.** Every programmer arriving from Python, Java or C# has to
+   unlearn the class. The first hour is spent looking for a construct that is
+   not there.
+
+2. **No inheritance means no free specialisation.** Where a class hierarchy
+   would let you refine one method and inherit the rest, you compose
+   explicitly. That is more typing and, in a deep hierarchy, considerably
+   more.
+
+3. **Behaviour is harder to locate.** In a class-based language you find an
+   object's methods by finding its class. Here you must know which groups it
+   belongs to. Tooling helps; intuition does not.
+
+4. **The depth is a modelling decision you cannot avoid.** Section 1 gives
+   three as standard and four as the ceiling, but which three levels *your*
+   domain needs is work you have to do. A class-based model makes that
+   decision for you, badly but automatically.
+
+A reader who wants only the advantages should be suspicious of this document.
+The trade is real: finer granularity and free relational operations, bought
+with unfamiliarity and explicit composition.
+
+---
+
+## 11. Where the code is
+
+| Concern | Path |
+|---|---|
+| Types and full API | `engine/include/runtime/set.h` |
+| Lifecycle and mutation | `engine/src/runtime/set/set_core.c` |
+| Set and group algebra | `engine/src/runtime/set/set_ops.c` |
+| Pick MultiValue | `engine/src/runtime/set/set_pick.c` |
+| Container unification | `engine/src/runtime/set/set_unify.c` |
+| Map interop | `engine/src/runtime/map.c` |
+
+## See also
+
+- `Delimiter_And_Bracket_Keyword_Taxonomy` for the delimiter invariant
+- `Arrays_And_Matrices` for array semantics and `OPTION BASE`
+- `User_Defined_Types` for `TYPE` and record declaration
+- `Standard_Library` for the map and collection statements

@@ -2,7 +2,7 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libcore (strings.h, strings.c)
 // NEEDS: libengine (beep.h, eval.h, eval.c, lexer.h, lexer.c, string.c, vm.h)
 // NEEDS: libkernel (errors.h, security.h, security.c, vdev.h, vdev.c)
@@ -20,23 +20,28 @@
 #include "security/security.h"
 #include "platform/platform.h"
 #include "runtime/strings.h"
-#include "runtime/micro_lib_metadata.h"
-#include <string.h>
+#include "runtime/language_descriptor.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_beep_desc = {
+    .name = "BEEP",
+    .category = "Sound & Audio",
+    .syntax = "BEEP [count [, delay]]",
+    .description = "Emits standard 800 Hz speaker beep tones for count repetitions with optional delay in seconds (default 1 beep, 1.0s delay).",
+    .error_summary = "Error 2: Syntax Error, Error 5: Illegal Function Call, Error 13: Type Mismatch",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_STATEMENT
+};
 
 void stmt_beep_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "BEEP",
-        .category = "Sound & Audio",
-        .syntax = "BEEP [count [, delay]]",
-        .help_text = "Emits standard 800 Hz speaker beep tones for count repetitions with optional delay in seconds (default 1 beep, 1.0s delay).",
-        .error_codes = "Error 2: Syntax Error, Error 5: Illegal Function Call, Error 13: Type Mismatch"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_beep_desc);
 }
 
 BppError stmt_beep_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     if (security_check(SECOP_VDEV, 0) != 0) {
         err.code = 70;

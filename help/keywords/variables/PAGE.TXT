@@ -1,0 +1,73 @@
+TITLE: PAGE
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/io/page.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+PAGE KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: page.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (file.h, file.c, language_descriptor.h)
+    // NEEDS: libcore (string.h)
+    // NEEDS: libengine (eval.h, eval.c, page.h, string.c)
+    // NEEDS: libkernel (errors.h, vdev.h, vdev.c)
+    // Provides runtime implementation for the PAGE statement in BASIC++.
+    //
+    // ---- Includes ----
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Sets lines per page before form-feed or emits a page eject (DEC PDP-10 /
+ECMA-116).
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    PAGE [#channel,] [height]
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM PAGE Demonstration
+    20 PRINT "PAGE executed successfully."
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax error, Error 5: Illegal function call, Error 52: Bad file
+number
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Input / Output
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_IO
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  PAGE
+Category              Input / Output
+Syntax                PAGE [#channel,] [height]
+Description           Sets lines per page before form-feed or emits a pag...
+Error Summary         Error 2: Syntax error, Error 5: Illegal function ca...
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_IO
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/io/page.c

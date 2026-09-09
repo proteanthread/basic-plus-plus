@@ -1,16 +1,69 @@
-TANH Hyperbolic Tangent Function
-======================================================================
+TITLE: TANH
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/functions/math/trig/tanh.c
+GENERATED: no, hand-written
+STATUS: current
 
-The TANH function computes the hyperbolic tangent of a numeric argument.
+==============================================================================
+TANH KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: tanh.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (math_fn.c)
+    // NEEDS: libcore (math.h, language_descriptor.h, string.h)
+    // NEEDS: libengine (math.c, string.c, tanh.h)
+    // Provides runtime implementation for the TANH built-in function in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Returns the hyperbolic tangent of x.
 
-    result# = TANH(numeric_expression)
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    TANH(x) | HTN(x)
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = TANH(10) | HTN(10)
+    20 PRINT "Result: "; Val
 
-CODE EXAMPLES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 13: Type Mismatch (TANH expects one numeric argument)
 
-    10 PRINT TANH(0)   : REM Outputs 0
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Math & Trigonometry
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_PURE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  TANH
+Category              Math & Trigonometry
+Syntax                TANH(x) | HTN(x)
+Description           Returns the hyperbolic tangent of x.
+Error Summary         Error 13: Type Mismatch (TANH expects one numeric a...
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_PURE
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/eval/functions/math/trig/tanh.c

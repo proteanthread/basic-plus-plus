@@ -1,0 +1,68 @@
+TITLE: TEXTBOX
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/ui/widgets/textbox.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+TEXTBOX KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: textbox.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (common_reg_stmts.c)
+    // NEEDS: libcore (language_descriptor.h, strings.h)
+    // NEEDS: libengine (eval.h, textbox.h)
+    // NEEDS: libkernel (vdev.h)
+    // Provides runtime implementation for the TEXTBOX statement in BASIC++.
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Renders an editable text box UI widget.
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    TEXTBOX text$ [, col%, row%, width%, height%]
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM TEXTBOX Demonstration
+    20 PRINT "TEXTBOX executed successfully."
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+None
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      User Interface
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_PURE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  TEXTBOX
+Category              User Interface
+Syntax                TEXTBOX text$ [, col%, row%, width%, height%]
+Description           Renders an editable text box UI widget.
+Error Summary         None
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_PURE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/ui/widgets/textbox.c

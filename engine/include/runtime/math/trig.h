@@ -11,6 +11,8 @@
 #ifndef RUNTIME_MATH_TRIG_H
 #define RUNTIME_MATH_TRIG_H
 
+#include "runtime/math/math.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif

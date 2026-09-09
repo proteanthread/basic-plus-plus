@@ -1,126 +1,60 @@
-# BASIC++ v6.5.2 Multitasking Systems
+<!--
+Title:        Multitasking_Systems
+Tier:         2
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/statements/system/task.c, engine/src/runtime/task.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. COOPERATIVE MULTITASKING
+# BASIC++ v6.5.2 Multitasking Systems Architecture
 
-BASIC++ implements cooperative multitasking within the single-threaded VM. Tasks run interleaved at statement boundaries — each task executes one statement, then yields to the next task in the queue. This is not preemptive multitasking; a task that enters a long computation without yielding blocks all other tasks.
+The authoritative specification for cooperative multitasking, concurrent script task execution, task life cycles, and execution scheduling in BASIC++ v6.5.2.
 
-The task system is implemented in engine/src/runtime/task.c and is part of the libserver library.
+---
 
-## 2. CREATING AND MANAGING TASKS
+## 1. Cooperative Multitasking Model
 
-TASK START line creates a background task that begins execution at the specified BASIC line number. The task receives a unique task ID starting from 1:
+BASIC++ implements cooperative multitasking within a deterministic single-threaded virtual machine context. Concurrent tasks execute interleaved at statement boundaries: each scheduled task executes statements within its time slice and cooperatively yields control back to the task scheduler.
+
+Because execution is cooperative rather than preemptive:
+- Long computations must periodically call `YIELD` to give processing time to other queued tasks.
+- Hardware interrupts, timer events, and network packets are polled and serviced at statement dispatch boundaries.
+- Multitasking operations require `SECOP_SYSTEM` security privilege; unprivileged sandboxes restrict background spawning.
+
+The multitasking subsystem is implemented in `engine/src/statements/system/task.c` and `engine/src/runtime/task.c`.
+
+---
+
+## 2. Task Management Statements
+
+### A. The `TASK` Statement
+The `TASK` statement manages task creation, inspection, synchronization, and termination:
+
+- **`TASK` or `TASK LIST`**: Lists all active background tasks, their task identifiers (PIDs), and their current execution states.
+- **`TASK "filename.bas"`**: Spawns an independent background task executing the specified BASIC script file.
+- **`TASK ::global_label`**: Spawns a background task beginning execution at the designated global label within the currently loaded program.
+- **`TASK pid`**: Switches active execution focus to the specified task ID.
+- **`TASK WAIT pid`**: Blocks the calling routine until the background task identified by `pid` terminates (task join).
+- **`TASK KILL pid`**: Immediately terminates execution of the background task identified by `pid` and reclaims its resources.
+
+### B. Cooperative Yielding and Synchronization
+- **`YIELD`**: Voluntarily relinquishes the current VM execution slice to the next ready task in the scheduling ring.
+- **`SUSPEND`**: Pauses execution of the current or specified task until an explicit resume signal is received.
+- **`RESUME`**: Resumes execution of a previously suspended task or re-enables event trapping after handling.
+
+---
+
+## 3. Example: Background Worker Task
 
 ```basic
-10 TASK START 1000       ' Create task 1
-20 TASK START 2000       ' Create task 2
-30 ' Main program continues here
-40 FOR I = 1 TO 100
-50   PRINT "Main:"; I
-60   SLEEP 0.1
+10 REM Main Task Controller
+20 PRINT "Starting background logger task..."
+30 TASK "logger.bas"
+40 FOR I = 1 TO 10
+50   PRINT "Main loop iteration: "; I
+60   YIELD
 70 NEXT I
-80 TASK STOP 1           ' Stop task 1
-90 TASK STOP 2           ' Stop task 2
-100 END
-1000 ' Task 1: Clock display
-1010 WHILE 1
-1020   LOCATE 1, 60 : PRINT TIME$
-1030   WAIT 1
-1040 WEND
-2000 ' Task 2: Memory monitor
-2010 WHILE 1
-2020   LOCATE 2, 60 : PRINT "Free:"; FRE(0)
-2030   WAIT 5
-2040 WEND
+80 TASK LIST
+90 END
 ```
-
-TASK STOP id halts a running task. TASK STOP with no argument stops all background tasks.
-
-TASK LIST displays all active tasks with their IDs, starting lines, and status (RUNNING, WAITING, STOPPED).
-
-TASK STATUS id returns the state of a specific task as a numeric code.
-
-## 3. YIELDING AND WAITING
-
-WAIT n inside a background task voluntarily yields execution for n seconds. During the wait, the main program and other tasks continue running. WAIT 0 yields immediately without delay (useful for cooperative CPU sharing).
-
-SLEEP n in the main program pauses all execution (main and tasks) for n seconds. Use WAIT in tasks and SLEEP only in the main program when you want everything to pause.
-
-## 4. SHARED STATE
-
-All tasks share the same variable space, array space, and string heap. There is no task-local storage. This means tasks can communicate through shared variables, but they must coordinate access to avoid race conditions.
-
-BASIC++ provides transaction support for atomic operations across shared state:
-
-```basic
-10 ' Main program increments counter
-20 TXN
-30   Counter = Counter + 1
-40 COMMIT
-```
-
-TXN/COMMIT ensures that the counter increment is atomic — no task switch occurs between reading and writing the variable.
-
-## 5. TASK INTERACTION PATTERNS
-
-### Producer-Consumer
-
-```basic
-10 DIM Queue$(100)
-20 QueueHead = 0 : QueueTail = 0
-30 TASK START 1000       ' Producer
-40 TASK START 2000       ' Consumer
-50 SLEEP 10
-60 TASK STOP 0
-70 END
-1000 ' Producer: Generate data
-1010 WHILE 1
-1020   TXN
-1030     Queue$(QueueTail) = "Item " + STR$(QueueTail)
-1040     QueueTail = (QueueTail + 1) MOD 100
-1050   COMMIT
-1060   WAIT 0.5
-1070 WEND
-2000 ' Consumer: Process data
-2010 WHILE 1
-2020   IF QueueHead <> QueueTail THEN
-2030     TXN
-2040       PRINT "Processing: "; Queue$(QueueHead)
-2050       QueueHead = (QueueHead + 1) MOD 100
-2060     COMMIT
-2070   END IF
-2080   WAIT 0.1
-2090 WEND
-```
-
-### Heartbeat Monitor
-
-```basic
-10 LastHeartbeat = TIMER
-20 TASK START 5000       ' Heartbeat sender
-30 ' Main program monitors heartbeat
-40 WHILE 1
-50   IF TIMER - LastHeartbeat > 10 THEN
-60     PRINT "WARNING: Heartbeat missed!"
-70   END IF
-80   SLEEP 1
-90 WEND
-5000 ' Heartbeat task
-5010 WHILE 1
-5020   TXN
-5030     LastHeartbeat = TIMER
-5040   COMMIT
-5050   WAIT 5
-5060 WEND
-```
-
-## 6. TASK LIMITS
-
-The maximum number of concurrent tasks is 16 on modern builds, 4 on FreeDOS, and 2 on embedded. Each task maintains its own execution position and loop stack state but shares all other VM resources.
-
-## 7. TASKS AND EVENT TRAPPING
-
-Event traps (ON TIMER, ON KEY, etc.) fire in the main program context only. Background tasks do not receive event trap notifications. If a background task needs to respond to events, the main program's event handler should set a shared variable that the task polls.
-
-## 8. TASK SECURITY
-
-The security system applies equally to all tasks. If the security level restricts file access, no task can access files regardless of which task initiated the operation. The RESTRICT command affects all tasks globally.

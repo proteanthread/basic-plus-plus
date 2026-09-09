@@ -2,25 +2,30 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (math_fn.c)
-// NEEDS: libcore (math.h, micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (math.h, language_descriptor.h, string.h)
 // NEEDS: libengine (lerp.h, math.c, string.c)
 // Provides runtime implementation for the LERP built-in function in BASIC++.
 //
 // ---- Includes ----
 
 #include "eval/functions/math/algebra/lerp.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/math.h"
 #include "runtime/string.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_lerp_desc = {
+    .name = "LERP",
+    .category = "Math Functions",
+    .syntax = "LERP(a, b, t)",
+    .description = "Performs linear interpolation between a and b using weight t (a + (b - a) * t).",
+    .error_summary = "Error 13: Type Mismatch (LERP expects three numeric arguments)",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_PURE,
+    .type = FEATURE_FUNCTION
+};
 void func_lerp_register(void) {
-    MicroLibMetadata meta = {
-        .name = "LERP",
-        .category = "Math Functions",
-        .syntax = "LERP(a, b, t)",
-        .help_text = "Performs linear interpolation between a and b using weight t (a + (b - a) * t).",
-        .error_codes = "Error 13: Type Mismatch (LERP expects three numeric arguments)"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_lerp_desc);
 }
 
 BValue func_lerp_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err) {

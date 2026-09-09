@@ -1,28 +1,70 @@
-RENAME Rename File Command Alias
-================================
+TITLE: RENAME
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/program/stmt_rename.c
+GENERATED: no, hand-written
+STATUS: current
 
-Alias for the standard NAME statement, renaming an existing file on disk.
+==============================================================================
+RENAME KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: stmt_rename.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (common_reg_stmts.c, common_reg_funcs.c)
+    // NEEDS: libcore (language_descriptor.h, memory.h, string.h)
+    // NEEDS: libengine (lexer.h, stmt_rename.h, vm.h)
+    // Provides runtime implementation for the RENAME statement and function in BA
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Renames variables and symbols in-program to modernize legacy code and resolve
+keyword collisions.
 
-    RENAME old_filename$ TO new_filename$
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    RENAME | RENAME old_var TO new_var | RENAME CONFLICTS [PREFIX "v_"] | RENAME SMART [CASE "mixed"|"snake"] | RENAME UNDO
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM RENAME Demonstration
+    20 PRINT "RENAME executed successfully."
 
-ERROR CONDITIONS
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error, Error 5: Illegal Function Call
 
-  - Error 53 (ERR_FILE_NOT_FOUND): File does not exist.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Program Management
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SAFE
 
-
-OPERATIONAL NOTES
-----------------------------------------------------------------------
-
-  Convenience alias for NAME...AS.
-
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 RENAME "OLD.BAS" TO "NEW.BAS"
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  RENAME
+Category              Program Management
+Syntax                RENAME | RENAME old_var TO new_var | RENAME CONFLIC...
+Description           Renames variables and symbols in-program to moderni...
+Error Summary         Error 2: Syntax Error, Error 5: Illegal Function Call
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/program/stmt_rename.c

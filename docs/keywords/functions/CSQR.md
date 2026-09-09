@@ -1,23 +1,72 @@
-# `CSQR` Complex Square Root Function
+<!--
+Title:        CSQR
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/module/mathext.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Function Definition
+# `CSQR` Keyword Reference
 
-The `CSQR` function computes the principal complex square root $\sqrt{z}$ of a complex number $z = x + iy$.
+## Source Header
 
-### Syntax Signatures:
-```basic
-res_complex = CSQR(complex_val)
+```c
+// FILENAME: mathext.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore (funcreg.h, funcreg.c, math.h)
+// NEEDS: libengine (math.c)
+// Provides core logic and interface definitions for mathext within BASIC++.
+//
+// ---- Includes ----
 ```
 
-### Operational Rules:
-- Returns square root with non-negative real part ($\text{Re}(\sqrt{z}) \ge 0$).
+## 1. Description & Usage
+
+Computes the principal square root of complex number z.
+
+## 2. Syntax
+
+```basic
+CSQR(z)
+```
+
+## 3. Code Example
+
+```basic
+10 Val = 16
+20 PRINT "SQR("; Val; ") = "; SQR(Val)
+```
+
+## 4. Error Conditions
+
+Error 13: Type Mismatch
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Math & Complex Numbers
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_PURE
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 Z = COMPLEX(-1, 0)
-20 RES = CSQR(Z)
-30 PRINT "sqrt(-1) = "; REAL(RES); " + "; IMAG(RES); "i" : REM Outputs 0 + 1i
-```
+| Field | Value |
+|---|---|
+| Name | CSQR |
+| Category | Math & Complex Numbers |
+| Syntax | CSQR(z) |
+| Description | Computes the principal square root of complex number z. |
+| Error Summary | Error 13: Type Mismatch |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_PURE |
+| Feature Type | FEATURE_FUNCTION |
+| Delimiter Mask | none |
+| Compatibility | BASIC++ Standard |
+| Since Version | 6.0.0 |
+| Source File | engine/src/module/mathext.c |

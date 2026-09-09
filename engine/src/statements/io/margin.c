@@ -2,7 +2,7 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
-// NEEDS: libcore (file.h, file.c, micro_lib_metadata.h, micro_lib_metadata.c)
+// NEEDS: libcore (file.h, file.c, language_descriptor.h)
 // NEEDS: libcore (string.h)
 // NEEDS: libengine (eval.h, eval.c, margin.h, string.c)
 // NEEDS: libkernel (errors.h)
@@ -13,24 +13,29 @@
 #include "statements/io/margin.h"
 #include "eval/eval.h"
 #include "runtime/file.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "types/errors.h"
-#include <string.h>
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_margin_desc = {
+    .name = "MARGIN",
+    .category = "Input / Output",
+    .syntax = "MARGIN [#channel,] width",
+    .description = "Sets line length / print margin width before auto-wrapping output (SDS 940 / DEC PDP-10 Super BASIC).",
+    .error_summary = "Error 2: Syntax error, Error 5: Illegal function call, Error 52: Bad file number",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_STATEMENT
+};
 
 void stmt_margin_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "MARGIN",
-        .category = "Input / Output",
-        .syntax = "MARGIN [#channel,] width",
-        .help_text = "Sets line length / print margin width before auto-wrapping output (SDS 940 / DEC PDP-10 Super BASIC).",
-        .error_codes = "Error 2: Syntax error, Error 5: Illegal function call, Error 52: Bad file number"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_margin_desc);
 }
 
 BppError stmt_margin_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BppToken tok = lex_peek(lex);
     if (tok.type == TOK_KEYWORD && tok.as.keyword == KW_MARGIN) {

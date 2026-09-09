@@ -231,6 +231,12 @@ void platform_sound_stop(void);
 // @return true if keyboard character is waiting, false otherwise.
 bool platform_kbhit(void);
 
+// @brief Non-destructive peek of next character in keyboard queue (returns 0 if empty).
+int platform_peek_key(void);
+
+// @brief Reads next character from keyboard queue non-blockingly (returns 0 if empty).
+int platform_inkey_char(void);
+
 // @brief Blocking read of a single raw character from keyboard (no echoing).
 int platform_getch(void);
 
@@ -243,13 +249,43 @@ int platform_console_height(void);
 // @brief Retrieve terminal output console width (columns).
 int platform_console_width(void);
 
+// Console Output Primitives
+int platform_console_putchar(int c);
+int platform_console_getchar(void);
+char *platform_console_gets(char *buf, size_t size);
+int platform_console_puts(const char *str);
+int platform_console_printf(const char *fmt, ...);
+int platform_console_eputs(const char *str);
+void platform_console_eprintf(const char *fmt, ...);
+void platform_console_flush(void);
+
 // File system wrappers
 int platform_chdir(const char *path);
+void *platform_file_open(const char *path, const char *mode);
+int platform_file_close(void *handle);
+size_t platform_file_read(void *handle, void *buffer, size_t size);
+size_t platform_file_write(void *handle, const void *buffer, size_t size);
+int platform_file_printf(void *handle, const char *format, ...);
+char *platform_file_gets(char *buf, size_t size, void *handle);
+#ifndef PLATFORM_SEEK_SET
+#define PLATFORM_SEEK_SET 0
+#define PLATFORM_SEEK_CUR 1
+#define PLATFORM_SEEK_END 2
+#endif
+
+int platform_file_seek(void *handle, long offset, int origin);
+long platform_file_tell(void *handle);
+int platform_file_eof(void *handle);
+int platform_file_flush(void *handle);
 
 // OS shell and signals
 void platform_setup_signals(void *vm_ptr);
+void *platform_get_active_vm(void);
+void platform_trigger_break(void);
 void platform_execute_shell(void);
 void platform_execute_command(const char *cmd);
+char *platform_execute_capture(const char *cmd);
+void platform_execute_capture_free(char *buf);
 int platform_mkdir(const char *path);
 int platform_rmdir(const char *path);
 char *platform_getcwd(char *buf, size_t size);
@@ -267,10 +303,22 @@ void platform_get_username(char *buf, size_t size);
 int platform_get_attributes(const char *path);
 int platform_set_attributes(const char *path, int attr);
 
+// Platform Hardware & Sensors
+int platform_get_battery_level(void);
+double platform_get_temperature(void);
+int platform_get_cpu_load(void);
+int platform_get_wifi_rssi(void);
+void platform_get_lan_ipv4(char *buf, size_t size);
+void platform_get_wan_ipv4(char *buf, size_t size);
+void platform_get_lan_ipv6(char *buf, size_t size);
+void platform_get_wan_ipv6(char *buf, size_t size);
+int platform_get_cpu_cores(void);
+long platform_get_pid(void);
+long platform_get_ppid(void);
+
 // File Locking
-#include <stdio.h>
-int platform_lock_file(FILE *fp);
-int platform_unlock_file(FILE *fp);
+int platform_lock_file(void *fp);
+int platform_unlock_file(void *fp);
 
 // Directory Iteration
 typedef struct BppDirSearch BppDirSearch;
@@ -293,7 +341,10 @@ struct tm *platform_localtime(const time_t *timep, struct tm *result);
 struct tm *platform_gmtime(const time_t *timep, struct tm *result);
 double platform_get_timer(void);
 double platform_get_uptime(void);
+double platform_get_system_uptime(void);
 double platform_get_highres_time(void);
+uint64_t platform_get_total_system_memory(void);
+uint64_t platform_get_avail_system_memory(void);
 
 // Threading and Mutex Abstractions
 typedef struct {
@@ -321,7 +372,6 @@ void platform_free_library(void *library_handle);
 const char *platform_library_last_error(void);
 
 // Cross-platform Socket API
-#include <stdint.h>
 typedef intptr_t BppSocket;
 #define BASIC_INVALID_SOCKET ((BppSocket)-1)
 #define BASIC_SOCK_STREAM 1
@@ -340,12 +390,13 @@ int platform_socket_set_nonblocking(BppSocket sock, int nonblock);
 int platform_socket_poll_readable(BppSocket sock, int timeout_ms);
 
 #if defined(_WIN32) || defined(_MSC_VER)
-    #define platform_strcasecmp _stricmp
-    #define platform_strncasecmp _strnicmp
+    #define platform_strcasecmp runtime_strcasecmp
+    #define platform_strncasecmp runtime_strncasecmp
 #else
-    #include <strings.h>
-    #define platform_strcasecmp strcasecmp
-    #define platform_strncasecmp strncasecmp
+    #include "runtime/string/strops.h"
+#include "platform/platform.h"
+    #define platform_strcasecmp runtime_strcasecmp
+    #define platform_strncasecmp runtime_strncasecmp
 #endif
 
 int platform_get_executable_path(char *buf, size_t size);
@@ -377,6 +428,10 @@ void platform_cleanup_workspace(bool full_cleanup);
 
 // Clipboard Abstractions
 char *platform_clipboard_get(void);
+void platform_clipboard_free(char *text);
 void platform_clipboard_set(const char *text);
+
+// Hardware Clocks & Speed Abstraction
+#include "platform/plat_hw_speed.h"
 
 #endif // PLATFORM_H

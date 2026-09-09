@@ -2,25 +2,31 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (math_fn.c)
-// NEEDS: libcore (math.h, micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (math.h, language_descriptor.h, string.h)
 // NEEDS: libengine (hypot.h, math.c, string.c)
 // Provides runtime implementation for the HYPOT built-in function in BASIC++.
 //
 // ---- Includes ----
 
 #include "eval/functions/math/trig/hypot.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/math.h"
 #include "runtime/string.h"
+#include "runtime/string/strops.h"
+#include "runtime/math/math.h"
+
+static const LangDesc g_hypot_desc = {
+    .name = "HYPOT",
+    .category = "Math Functions",
+    .syntax = "HYPOT(val1, val2 [, ...]) or val1 HYPOT val2",
+    .description = "Returns the Euclidean norm runtime_sqrt(sum of squares) of arguments (supports dual prefix & infix notation).",
+    .error_summary = "Error 13: Type Mismatch (HYPOT expects numeric arguments)",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_PURE,
+    .type = FEATURE_FUNCTION
+};
 void func_hypot_register(void) {
-    MicroLibMetadata meta = {
-        .name = "HYPOT",
-        .category = "Math Functions",
-        .syntax = "HYPOT(val1, val2 [, ...]) or val1 HYPOT val2",
-        .help_text = "Returns the Euclidean norm runtime_sqrt(sum of squares) of arguments (supports dual prefix & infix notation).",
-        .error_codes = "Error 13: Type Mismatch (HYPOT expects numeric arguments)"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_hypot_desc);
 }
 
 BValue func_hypot_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err) {

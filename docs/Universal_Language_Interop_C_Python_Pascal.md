@@ -1,0 +1,28 @@
+<!--
+Title:        Universal_Language_Interop_C_Python_Pascal
+Tier:         4
+Applies to:   BASIC++ v6.5.2
+Authority:    superseded document
+Generated:    no, hand-written
+Status:       superseded
+-->
+
+# Universal Language Interop (superseded)
+
+This document has been replaced by **`Language_Interop`**.
+
+The title was misleading: it grouped C, Python and Pascal as three
+comparably supported languages. They are not. C interop is real in both
+directions; Pascal reaches BASIC++ through the C ABI and has no dedicated
+bridge; and `PYTHON$` returns the literal string `"None"` for every input.
+
+`Language_Interop` states which is which, with the source evidence, and adds
+assembler, COM, JSON-RPC, IPC and WASM.
+
+## See also
+
+- `Language_Interop` — the replacement
+- `C_Programmers_Guide`
+- `Python_Programmers_Guide`
+- `Pascal_Programmers_Guide`
+- `Implementation_Status`

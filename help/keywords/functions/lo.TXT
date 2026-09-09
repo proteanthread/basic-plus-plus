@@ -1,16 +1,68 @@
-LO Low Byte / Word Extractor Function
-======================================================================
+TITLE: LO
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/eval.c
+GENERATED: no, hand-written
+STATUS: current
 
-The LO function extracts the low-order byte (bits 0..7) of an integer.
+==============================================================================
+LO KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: eval.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libboot, libcore, libengine, libext, libkernel, libstandard
+    // NEEDS: libengine (eval_expr_internal.h)
+    // Implements component functionality for eval.c.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Extracts the low-order byte or word of numeric expression val%.
 
-    low_byte% = LO(numeric_expression)
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    LO(val%)
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = LO(val%)
+    20 PRINT "Result: "; Val
 
-CODE EXAMPLES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+None
 
-    10 PRINT LO(&HABCD)   : REM Outputs 205 (&HCD)
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Bitwise & Binary
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_PURE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  LO
+Category              Bitwise & Binary
+Syntax                LO(val%)
+Description           Extracts the low-order byte or word of numeric expr...
+Error Summary         None
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_PURE
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         BASIC++ Standard
+Since Version         6.0.0
+Source File           engine/src/eval/eval.c

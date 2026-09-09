@@ -1,0 +1,66 @@
+TITLE: CLK$
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/runtime/descriptors/system_var_descriptors.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+CLK$ KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: system_var_descriptors.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libcore, libengine, libflex
+    // NEEDS: libcore (language_descriptor.h, system_var_descriptors.h)
+    // Implements authoritative descriptor definitions for built-in system variabl
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+12-hour UTC formatted time string with AM/PM indicator ('HH:MM:SS AM/PM').
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    CLK$ or CLK$()
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = CLK$ or CLK$()
+    20 PRINT "Result: "; Val
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+None
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Clocks & Timers
+Subsystem:     SUBSYSTEM_CORE
+Safety Level:  SAFETY_SAFE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  CLK$
+Category              Clocks & Timers
+Syntax                CLK$ or CLK$()
+Description           12-hour UTC formatted time string with AM/PM indica...
+Error Summary         None
+Subsystem             SUBSYSTEM_CORE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_VARIABLE
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/runtime/descriptors/system_var_descripto...

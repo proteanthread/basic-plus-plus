@@ -1,40 +1,71 @@
-# `ALLOC` Dynamic Heap Memory Allocation Function
+<!--
+Title:        ALLOC
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/runtime/memory/alloc.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Function Definition
+# `ALLOC` Keyword Reference
 
-The `ALLOC` function allocates a block of uninitialized dynamic heap memory of the specified byte size from the interpreter's managed memory pool and returns a memory address pointer (`uintptr_t`).
+## Source Header
 
-### Syntax Signatures:
-```basic
-ptr% = ALLOC(byte_size&)
+```c
+// FILENAME: alloc.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libboot, libcore, libengine, libkernel
+// NEEDS: libcore (alloc.h, memops.h, memops.c)
+// Freestanding allocator bridge implementation.
+//
+// ---- Includes ----
 ```
 
-### Operational Rules:
-- **Sandbox Security Gate**: In restricted sandbox modes (`SEC_STRICT` or `SEC_PARANOID`), dynamic raw heap allocation is prohibited and triggers Error 70 (`ERR_PERMISSION_DENIED`).
-- **Memory Pool**: Memory is allocated from the active engine memory pool (640MB `baspp`, 384MB `bpp`, 64MB `bs`).
-- **Deallocation Requirement**: Memory allocated via `ALLOC` MUST be explicitly released using `FREE(ptr)` or `DEALLOC(ptr)` to prevent leaks.
-- **Null on Failure**: Returns `0` if allocation fails due to pool exhaustion.
+## 1. Description & Usage
+
+Allocates a contiguous raw byte buffer from the system memory arena and returns handle/pointer.
+
+## 2. Syntax
+
+```basic
+ALLOC(size_bytes) | ALLOC var, size
+```
+
+## 3. Code Example
+
+```basic
+10 Val = ALLOC(size_bytes) | ALLOC var, size
+20 PRINT "Result: "; Val
+```
+
+## 4. Error Conditions
+
+Error 7: Out of Memory
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Systems Standard
+- **Since Version**: 6.5.0
+- **Category**: Hardware & Memory
+- **Subsystem**: SUBSYSTEM_PLATFORM
+- **Safety Level**: SAFETY_SAFE
 
 ---
 
-## 2. Language Dialect & Compatibility
+## LanguageDescriptor (LangDesc) Quick Reference
 
-| Dialect | Syntax | Security Gate | Return Type |
-|---|---|---|---|
-| **GW-BASIC / BASICA** | *None* | N/A | N/A |
-| **QuickBASIC / QBASIC** | *None* | N/A | N/A |
-| **C / C17** | `malloc(size)` | OS dependent | `void*` |
-| **BASIC++ (Master)** | `ALLOC(bytes)` | Security Sandboxed | Integer/Pointer |
-
----
-
-## 3. Examples
-
-```basic
-10 POOL_SIZE& = 4096
-20 PTR% = ALLOC(POOL_SIZE&)
-30 IF PTR% = 0 THEN PRINT "Out of memory!": END
-40 PRINT "Allocated 4KB buffer at address: "; HEX$(PTR%)
-50 FREE(PTR%)
-60 PRINT "Buffer released."
-```
+| Field | Value |
+|---|---|
+| Name | ALLOC |
+| Category | Hardware & Memory |
+| Syntax | ALLOC(size_bytes) \| ALLOC var, size |
+| Description | Allocates a contiguous raw byte buffer from the system memory arena and returns handle/pointer. |
+| Error Summary | Error 7: Out of Memory |
+| Subsystem | SUBSYSTEM_PLATFORM |
+| Safety Level | SAFETY_SAFE |
+| Feature Type | FEATURE_STATEMENT |
+| Delimiter Mask | none |
+| Compatibility | BASIC++ Systems Standard |
+| Since Version | 6.5.0 |
+| Source File | engine/src/runtime/memory/alloc.c |

@@ -1,31 +1,74 @@
-GOTO Unconditional Control Transfer Statement
-=============================================
+TITLE: GOTO
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/core/program/goto.c
+GENERATED: no, hand-written
+STATUS: current
 
-Unconditionally transfers execution control to the designated program line number or symbolic label.
+==============================================================================
+GOTO KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: goto.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (memory.h, memory.c, metadata.h, metadata.c)
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libcore (strings.h, strings.c)
+    // NEEDS: libengine (eval.h, eval.c, goto.h, lexer.h, lexer.c, string.c, vm.h)
+    // NEEDS: libplatform (platform.h)
+    // Provides runtime implementation for the GOTO statement in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Unconditionally transfers execution to the specified program line number,
+expression, or label.
 
-    GOTO {line_number% | @label}
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    GOTO line_num | expr | label
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM GOTO Demonstration
+    20 PRINT "GOTO executed successfully."
 
-ERROR CONDITIONS
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 8: Undefined line number (target line does not exist), Error 2: Syntax
+error (missing line number)
 
-  - Error 8 (ERR_UNDEFINED_LINE_NUMBER): Target line number does not exist.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Control Flow
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SAFE
 
-
-OPERATIONAL NOTES
-----------------------------------------------------------------------
-
-  Fast line pointer redirection in VM execution loop.
-
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 PRINT "Step 1"
-    20 GOTO 40
-    30 PRINT "Skipped"
-    40 PRINT "Step 2"
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  GOTO
+Category              Control Flow
+Syntax                GOTO line_num | expr | label
+Description           Unconditionally transfers execution to the specifie...
+Error Summary         Error 8: Undefined line number (target line does no...
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/core/program/goto.c

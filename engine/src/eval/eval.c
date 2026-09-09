@@ -215,6 +215,9 @@
 // ---- Includes ----
 
 #include "eval/eval_expr_internal.h"
+#include "eval/rpn_mirror.h"
+#include "runtime/string/strops.h"
+#include "runtime/string/memops.h"
 
 //
 // ---- Expression Evaluator Orchestrator ----
@@ -251,11 +254,15 @@ BValue eval_expression(VMContext *vm, LexerContext *lex, BppError *out_err) {
            tok.type != TOK_RBRACKET &&
            (open_parens > 0 || !eval_is_clause_delimiter(tok))) {
 
-        // Stop parsing if AT identifier
-        if (tok.type == TOK_IDENT && tok.length == 2 &&
-            (tok.start[0] == 'A' || tok.start[0] == 'a') &&
-            (tok.start[1] == 'T' || tok.start[1] == 't')) {
-            break;
+        // Stop parsing if AT keyword/identifier or @ modifier after an operand
+        if (!expect_operand) {
+            if ((tok.type == TOK_KEYWORD && tok.as.keyword == KW_AT) ||
+                (tok.type == TOK_IDENT && tok.length == 2 &&
+                 (tok.start[0] == 'A' || tok.start[0] == 'a') &&
+                 (tok.start[1] == 'T' || tok.start[1] == 't')) ||
+                tok.type == TOK_AT) {
+                break;
+            }
         }
 
         // Implied delimiter check
@@ -273,6 +280,12 @@ BValue eval_expression(VMContext *vm, LexerContext *lex, BppError *out_err) {
                                               tok.as.keyword == KW_ATAN2))) {
                 break;
             }
+        }
+
+        if (tok.type == TOK_HASH) {
+            lex_next(lex);
+            tok = lex_peek(lex);
+            continue;
         }
 
         lex_next(lex);
@@ -311,7 +324,7 @@ BValue eval_expression(VMContext *vm, LexerContext *lex, BppError *out_err) {
             expect_operand = false;
         } else if (tok.type == TOK_RPN_LITERAL) {
             if (!expect_operand) {
-                out_err->code = 2; out_err->message = "Expected operator, got RPN literal";
+                out_err->code = 2; out_err->message = "Expected operator, got braced literal";
                 EVAL_EARLY_RETURN;
             }
             char *rpn_str = (char *)mem_scratch_alloc(vm_get_mem(vm), tok.length + 1);
@@ -322,9 +335,27 @@ BValue eval_expression(VMContext *vm, LexerContext *lex, BppError *out_err) {
             runtime_memcpy(rpn_str, tok.as.string, tok.length);
             rpn_str[tok.length] = '\0';
 
-            LexerContext *rpn_lex = lex_init(vm_get_mem(vm), rpn_str);
-            BValue res = eval_expression_rpn(vm, rpn_lex, out_err);
-            lex_shutdown(rpn_lex);
+            BValue res = eval_parse_braced_literal(vm, rpn_str, out_err);
+            if (out_err->code != 0) EVAL_EARLY_RETURN;
+
+            VAL_PUSH(res);
+            expect_operand = false;
+        } else if (tok.type == TOK_PN_LITERAL) {
+            if (!expect_operand) {
+                out_err->code = 2; out_err->message = "Expected operator, got PN literal";
+                EVAL_EARLY_RETURN;
+            }
+            char *pn_str = (char *)mem_scratch_alloc(vm_get_mem(vm), tok.length + 1);
+            if (!pn_str) {
+                out_err->code = 14; out_err->message = "Scratch memory exhausted";
+                EVAL_EARLY_RETURN;
+            }
+            runtime_memcpy(pn_str, tok.as.string, tok.length);
+            pn_str[tok.length] = '\0';
+
+            LexerContext *pn_lex = lex_init(vm_get_mem(vm), pn_str);
+            BValue res = eval_expression_pn(vm, pn_lex, out_err);
+            lex_shutdown(pn_lex);
             if (out_err->code != 0) EVAL_EARLY_RETURN;
 
             VAL_PUSH(res);
@@ -342,7 +373,8 @@ BValue eval_expression(VMContext *vm, LexerContext *lex, BppError *out_err) {
             }
             VAL_PUSH(res_val);
             expect_operand = false;
-        } else if (tok.type == TOK_IDENT || tok.type == TOK_KEYWORD || tok.type == TOK_PERIOD || tok.type == TOK_AT) {
+        } else if (tok.type == TOK_IDENT || tok.type == TOK_KEYWORD || tok.type == TOK_PERIOD || tok.type == TOK_AT ||
+                   tok.type == TOK_MIN || tok.type == TOK_MAX || tok.type == TOK_HYPOT || tok.type == TOK_ATAN2 || tok.type == TOK_REMAINDER) {
             if (!expect_operand) {
                 out_err->code = 2; out_err->message = "Expected operator, got variable, keyword or '.'";
                 EVAL_EARLY_RETURN;
@@ -413,6 +445,9 @@ BValue eval_expression(VMContext *vm, LexerContext *lex, BppError *out_err) {
     }
 
     vm_dec_eval_depth(vm);
+    if (vm_get_eval_depth(vm) == 0 && rpn_get_eval_mirror()) {
+        rpn_mirror_eval_result(val_stack[0]);
+    }
     return val_stack[0];
 
     #undef EVAL_EARLY_RETURN

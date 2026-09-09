@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
 // NEEDS: libcore (esp32_hal.h, esp32_hal.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libcore (strops.h, strops.c)
 // NEEDS: libengine (eval.h, eval.c, lexer.h, lexer.c, string.c, vm.h)
 // Implements the DELAY statement for millisecond and microsecond sleep pauses.
@@ -13,22 +13,33 @@
 #include "vm/vm.h"
 #include "lexer/lexer.h"
 #include "eval/eval.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/string/strops.h"
 #include "esp32_hal.h"
-#include <string.h>
+#include "runtime/string/memops.h"
+
+static const LangDesc g_delay_desc = {
+    .name = "DELAY",
+    .category = "Timing & Real-Time",
+    .syntax = "DELAY ms | DELAY.MS ms | DELAY.US us",
+    .description = "Pauses execution for specified milliseconds or microseconds.",
+    .error_summary = "Error 2: Syntax Error, Error 13: Type Mismatch",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SAFE,
+    .type = FEATURE_STATEMENT
+};
 
 BppError stmt_delay_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     bool is_us = false;
     BppToken tok = lex_peek(lex);
     if (tok.type == TOK_PERIOD) {
         lex_next(lex);
         BppToken sub = lex_peek(lex);
-        if (sub.type == TOK_IDENT) {
-            if (runtime_strncasecmp(sub.start, "US", sub.length) == 0) is_us = true;
+        if (sub.type == TOK_IDENT || sub.type == TOK_KEYWORD) {
+            if (sub.length == 2 && runtime_strncasecmp(sub.start, "US", 2) == 0) is_us = true;
             lex_next(lex);
         }
     }
@@ -45,12 +56,5 @@ BppError stmt_delay_handler(VMContext *vm, LexerContext *lex) {
 }
 
 void stmt_delay_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "DELAY",
-        .category = "Timing & Real-Time",
-        .syntax = "DELAY ms | DELAY.MS ms | DELAY.US us",
-        .help_text = "Pauses execution for specified milliseconds or microseconds.",
-        .error_codes = "Error 2: Syntax Error, Error 13: Type Mismatch"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_delay_desc);
 }

@@ -1,7 +1,7 @@
-// FILENAME: tan.h
+// FILENAME: runtime_tan.h
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
-// NEEDED BY: libengine (math_fn.c, tan.c)
+// NEEDED BY: libengine (math_fn.c, runtime_tan.c)
 // NEEDS: libengine (eval_internal.h)
 // NEEDS: libkernel (types.h)
 // Provides runtime implementation for the TAN built-in function in BASIC++.
@@ -13,6 +13,7 @@
 
 #include "types/types.h"
 #include "eval/eval_internal.h"
+#include "runtime/math/math.h"
 
 BValue func_tan_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err);
 void func_tan_register(void);

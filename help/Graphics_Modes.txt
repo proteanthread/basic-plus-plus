@@ -1,154 +1,113 @@
-======================================================================
-  BASIC++ V6.5.2 GRAPHICS MODES
-======================================================================
+Title:        Graphics_Modes
+Tier:         2
+Applies to:   BASIC++ v6.5.2 (baspp, SDL2, BGI)
+Authority:    engine/src/device/bgi/
+Generated:    no, manual reference
+Status:       current
 
+==============================================================================
+BASIC++ v6.5.2 Graphics Modes
+==============================================================================
 
-======================================================================
-  1. THE BGI GRAPHICS SYSTEM
-======================================================================
+1. THE BGI GRAPHICS SYSTEM
 
-BASIC++ uses the BGI (BASIC++ Graphics Interface) for all pixel-level graphics operations. The BGI is a layered rasterizer implemented in engine/src/device/bgi/ that supports classic GW-BASIC/QBASIC screen modes, custom resolution modes, and retro hardware mode emulation. BGI is part of the libhardware library and requires the libadvanced library (SDL2) for actual display output. On text-only terminals, AAlib (engine/src/device/bgi/aalib/aalib.c) provides ASCII art approximation of graphics output.
+BASIC++ utilizes the Borland Graphics Interface (BGI) rasterizer subsystem
+(engine/src/device/bgi/) for 2D graphics rendering. BGI is packaged within
+libhardware and integrates with libadvanced (SDL2) for hardware-accelerated
+window display. For headless text terminals and SSH sessions, an ASCII-art
+fallback engine (AAlib, engine/src/device/bgi/aalib/aalib.c) renders graphics
+frames directly in terminal text cells.
 
+2. STANDARD SCREEN MODES
 
-======================================================================
-  2. STANDARD SCREEN MODES
-======================================================================
+The SCREEN statement configures the active display mode:
 
-The SCREEN statement selects a display mode. BASIC++ supports all GW-BASIC and QBASIC screen modes:
+    SCREEN mode [, [colorswitch] [, [active_page] [, visual_page]]]
 
-| Mode | Resolution | Colors | Text | Type |
-|------|-----------|--------|------|------|
-| 0 | Text only | 16 | 80x25 | Text |
-| 1 | 320x200 | 4 | 40x25 | CGA |
-| 2 | 640x200 | 2 | 80x25 | CGA |
-| 3 | 720x348 | 2 | 80x25 | Hercules |
-| 4 | 320x200 | 4 | 40x25 | EGA |
-| 7 | 320x200 | 16 | 40x25 | EGA |
-| 8 | 640x200 | 16 | 80x25 | EGA |
-| 9 | 640x350 | 16 | 80x25 | EGA |
-| 10 | 640x350 | 4 | 80x25 | EGA mono |
-| 11 | 640x480 | 2 | 80x30 | VGA |
-| 12 | 640x480 | 16 | 80x30 | VGA |
-| 13 | 320x200 | 256 | 40x25 | VGA/MCGA |
+Mode  Resolution  Colors  Text Format  Video Adapter Emulated
+------------------------------------------------------------------------------
+0     Text Only   16      80x25/40x25  MDPA / CGA / EGA / VGA Text
+1     320x200     4       40x25        CGA 4-Color Graphics
+2     640x200     2       80x25        CGA High-Resolution Mono
+3     720x348     2       80x25        Hercules Graphics Card (HGC)
+4     320x200     4       40x25        EGA 4-Color Mode
+7     320x200     16      40x25        EGA 16-Color Graphics
+8     640x200     16      80x25        EGA High-Res 16-Color
+9     640x350     16      80x25        EGA High-Res 350-Line
+10    640x350     4       80x25        EGA Monochrome Graphics
+11    640x480     2       80x30        VGA Two-Color Graphics
+12    640x480     16      80x30        VGA 16-Color Standard
+13    320x200     256     40x25        VGA / MCGA 256-Color (Mode 13h)
 
-10 SCREEN 12        ' 640x480, 16 colors
-20 LINE (0,0)-(639,479), 15
-30 CIRCLE (320,240), 100, 14
+Modern high-resolution modes:
+* SCREEN 14: 800x600 SVGA (16/256 colors)
+* SCREEN 15: 1024x768 XGA (256/16M colors)
+* SCREEN 16: 1280x720 720p HD
+* SCREEN 17: 1280x1024 SXGA
+* SCREEN 18: 1920x1080 1080p Full HD
+* SCREEN 19: 2560x1440 1440p QHD
+* SCREEN 20: 3840x2160 4K UHD
 
-SCREEN 0 returns to text mode. SCREEN mode, colorswitch, activepage, visualpage provides full control over color and paging.
+3. CUSTOM RESOLUTION MODES
 
+BASIC++ permits arbitrary window sizes and split-screen configurations:
+* SET SCREEN width, height [, bpp [, text_cols [, text_rows [, fps]]]]:
+  Full-canvas graphics mode (default 8 bpp, 60 fps).
+* SET GRAPHICS width, height [, bpp [, text_cols [, text_rows [, fps]]]]:
+  Split-screen mode with dedicated text scrolling window at the bottom.
+* SET MODE n: Selects from 35 predefined heritage computer display profiles.
 
-======================================================================
-  3. CUSTOM RESOLUTION MODES
-======================================================================
+4. RETRO HARDWARE MODES
 
-BASIC++ extends standard modes with custom resolution initializers:
+The heritage mode descriptor table in engine/src/device/bgi/bgi_modes.c
+emulates vintage computing displays:
 
-**SET SCREEN width, height [, bpp [, text_cols [, text_rows [, fps]]]]** ? Full-screen graphics mode. Defaults to 256 colors (8 bpp) and zero text window rows:
+ID  Name               Resolution  Colors  System Emulated
+------------------------------------------------------------------------------
+0   CGA SCREEN 1       320x200     4       IBM CGA 4-Color
+1   CGA SCREEN 2       640x200     2       IBM CGA Monochrome
+2   Tandy SCREEN 3     160x200     16      Tandy 1000 / PCjr
+3   EGA SCREEN 9       640x350     16      IBM EGA 16-Color
+4   EGA SCREEN 10      640x350     2       IBM EGA Monochrome
+5   VGA SCREEN 12      640x480     16      IBM VGA 16-Color
+6   VGA Mode 13h       320x200     256     IBM VGA 256-Color
+7   Hercules HGC       720x348     2       Hercules Graphics Card
+8   IBM MDA            720x350     2       IBM Monochrome Display
+9   C64 Hi-Res         320x200     16      Commodore 64 High-Res
+10  C64 Multicolor     160x200     4       Commodore 64 Multicolor
+11  ZX Spectrum        256x192     16      Sinclair ZX Spectrum
+12  Atari 8-bit GR.8   320x192     2       Atari 400/800 Graphics 8
+13  Atari 8-bit GR.7   160x96      4       Atari 400/800 Graphics 7
+14  Atari ST Low       320x200     16      Atari ST Low-Res
+15  Atari ST Medium    640x200     4       Atari ST Medium-Res
+16  Atari ST High      640x400     2       Atari ST High-Res Mono
+17  Apple II Hi-Res    280x192     6       Apple II High-Resolution
+18  Amiga OCS 320      320x256     32      Commodore Amiga 500 Low
+19  Amiga OCS 640      640x256     16      Commodore Amiga 500 High
+20  MSX1 TMS9918       256x212     16      MSX1 Home Computer
+21  Amstrad CPC M0     160x200     16      Amstrad CPC Mode 0
+22  BBC Micro Mode 1   160x256     8       Acorn BBC Micro Mode 1
+23  NES PPU NTSC       256x240     54      Nintendo Entertainment System
+24  SNES PPU           256x224     256     Super Nintendo System
+25  Genesis NTSC       320x224     256     Sega Genesis / Mega Drive
+26  Master System      256x192     64      Sega Master System
+27  Game Boy Color     160x144     56      Nintendo Game Boy Color
+28  Game Gear          160x144     32      Sega Game Gear
+29  TurboGrafx-16      256x239     256     NEC PC Engine / TurboGrafx
+30  Intellivision      159x96      16      Mattel Intellivision
+31  ColecoVision       256x192     16      ColecoVision
+32  Atari 2600 TIA     160x192     128     Atari 2600 Video
+33  Atari 7800 MARIA   160x240     256     Atari 7800 ProSystem
+34  Game Boy           160x144     4       Nintendo Game Boy Mono
 
-10 SET SCREEN 800, 600          ' 800x600, 256 colors, full graphics
-20 SET SCREEN 1024, 768, 24     ' 1024x768, 24-bit true color
+5. GRAPHICS CONTROL STATEMENTS
 
-**SET GRAPHICS width, height [, bpp [, text_cols [, text_rows [, fps]]]]** ? Split-screen mode with a text window at the bottom. Defaults to 16 colors (4 bpp) and a text window of 80 columns by 4 rows:
-
-10 SET GRAPHICS 640, 400         ' 640x400, 16 colors, 4-row text window
-20 SET GRAPHICS 640, 480, 8, 80, 6  ' 640x480, 256 colors, 6-row text window
-
-**SET MODE n** ? Selects from 42 predefined retro hardware mode profiles that emulate specific historical computer display configurations.
-
-
-======================================================================
-  4. RETRO HARDWARE MODES
-======================================================================
-
-SET MODE provides access to retro display configurations:
-
-| Mode | System | Resolution | Colors |
-|------|--------|-----------|--------|
-| 0 | IBM MDA | 720x350 | Mono |
-| 1 | IBM CGA Low | 320x200 | 4 |
-| 2 | IBM CGA High | 640x200 | 2 |
-| 3 | Tandy/PCjr | 320x200 | 16 |
-| 4 | Tandy/PCjr Hi | 640x200 | 4 |
-| 5 | EGA Low | 320x200 | 16 |
-| 6 | EGA High | 640x350 | 16 |
-| 7 | VGA Low | 320x200 | 256 |
-| 8 | VGA Med | 640x480 | 16 |
-| 9 | VGA High | 640x480 | 256 |
-| 10 | SVGA | 800x600 | 256 |
-| 11 | Apple II Lo | 40x48 | 16 |
-| 12 | Apple II Hi | 280x192 | 6 |
-| 13 | C64 | 320x200 | 16 |
-| 14 | C64 Multi | 160x200 | 4 |
-| 15 | Atari 800 Gr.0 | 40x24 | 2 |
-| 16 | ZX Spectrum | 256x192 | 15 |
-| 17 | MSX | 256x192 | 16 |
-| 18 | Amiga Lo | 320x200 | 32 |
-| 19 | Amiga Hi | 640x200 | 16 |
-| 20 | Atari ST Low | 320x200 | 16 |
-| 21 | Atari ST Med | 640x200 | 4 |
-| 22 | Atari ST High | 640x400 | 2 |
-
-
-======================================================================
-  5. GRAPHICS STATEMENTS
-======================================================================
-
-PSET (x, y), color ? Set a pixel. PRESET (x, y) ? Reset a pixel to background.
-
-LINE (x1,y1)-(x2,y2), color ? Draw a line. LINE (x1,y1)-(x2,y2), color, B ? Draw a rectangle. LINE (x1,y1)-(x2,y2), color, BF ? Draw a filled rectangle.
-
-CIRCLE (x,y), radius, color ? Draw a circle. CIRCLE (x,y), radius, color, start, end ? Draw an arc. CIRCLE (x,y), radius, color, start, end, aspect ? Draw an ellipse.
-
-PAINT (x,y), fill_color, border_color ? Flood fill an area.
-
-DRAW "command string" ? Execute a graphics macro language for turtle-style drawing. Commands: U (up), D (down), L (left), R (right), E (up-right), F (down-right), G (down-left), H (up-left), M x,y (move), B (move without drawing), N (return after drawing), C (set color), A (set angle), S (set scale).
-
-
-======================================================================
-  6. COLOR AND PALETTE
-======================================================================
-
-PALETTE attribute, color ? Remap a color attribute to a different physical color. PALETTE resets all attributes to defaults.
-
-COLOR fg, bg ? Set drawing colors. The available colors depend on the active screen mode.
-
-The BGI palette system (engine/src/device/bgi/bgi_palette.c) maps logical color indices to physical RGB values. The default palette for 16-color modes uses the standard CGA/EGA colors. For 256-color modes, the default uses a standard VGA palette.
-
-
-======================================================================
-  7. VIEWPORT AND COORDINATES
-======================================================================
-
-VIEW (x1,y1)-(x2,y2) ? Define a graphics viewport (clipping rectangle). All drawing operations are clipped to the viewport. VIEW SCREEN uses absolute coordinates; VIEW without SCREEN uses viewport-relative coordinates.
-
-WINDOW (x1,y1)-(x2,y2) ? Define a logical coordinate system. Maps the physical pixel coordinates to logical values. WINDOW SCREEN places (0,0) at the top-left (screen coordinates). WINDOW without SCREEN places (0,0) at the bottom-left (math coordinates).
-
-PMAP(coordinate, function) ? Convert between physical and logical coordinates.
-
-
-======================================================================
-  8. PAGE FLIPPING
-======================================================================
-
-PCOPY source, destination ? Copy one video page to another. Used for double-buffered animation:
-
-10 SCREEN 7, , 0, 1      ' Draw on page 0, display page 1
-20 ' Draw frame on page 0
-30 PCOPY 0, 1             ' Copy completed frame to display page
-
-
-======================================================================
-  9. IMAGE OPERATIONS
-======================================================================
-
-PUTIMAGE stores a screen region to an array: GET (x1,y1)-(x2,y2), array. PUTIMAGE draws the stored region: PUT (x, y), array, action. The action can be PSET, PRESET, AND, OR, or XOR.
-
-FREEIMAGE releases the memory used by a stored image.
-
-
-======================================================================
-  10. FONT RENDERING
-======================================================================
-
-The BGI font system (engine/src/device/bgi/bgi_font.c) provides built-in fonts for text rendering in graphics modes. ROM fonts at 1x1, 2x1, and 2x2 scaling factors are available for split-screen text windows. OUTTEXTXY x, y, "text" draws a string at the specified graphics coordinates.
+* PALETTE [attribute, color]: Modifies color palette registers.
+* COLOR [foreground] [, [background] [, border]]: Sets drawing and text color
+  attributes.
+* PCOPY source_page, destination_page: Copies video memory pages for double
+  buffering.
+* VIEW [[SCREEN] (x1, y1)-(x2, y2) [, [fill_color] [, border_color]]]:
+  Restricts drawing output to a rectangular viewport.
+* WINDOW [[SCREEN] (x1, y1)-(x2, y2)]: Configures Cartesian world coordinate
+  scaling.

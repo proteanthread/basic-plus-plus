@@ -1,30 +1,69 @@
-NEXT End of FOR Loop Statement
-==============================
+TITLE: NEXT
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/loops/counter/next.c
+GENERATED: no, hand-written
+STATUS: current
 
-Increments the loop counter variable and branches back to the matching FOR statement if not complete.
+==============================================================================
+NEXT KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: next.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore, libengine, libkernel, libplatform
+    // Provides runtime implementation for the NEXT statement in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Increments the FOR loop counter variable(s) and loops back if target bound has
+not been exceeded.
 
-    NEXT [variable [, variable...]]
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    NEXT [var1[, var2...]] | NEXT [var1 [var2...]]
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM NEXT Demonstration
+    20 PRINT "NEXT executed successfully."
 
-ERROR CONDITIONS
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 1: NEXT Without FOR, Error 2: Syntax Error
 
-  - Error 1 (ERR_NEXT_WITHOUT_FOR): No matching FOR statement active.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Looping / Control Flow
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SAFE
 
-
-OPERATIONAL NOTES
-----------------------------------------------------------------------
-
-  Supports multiple nested counters in single statement (e.g. NEXT J, I).
-
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 FOR I = 1 TO 5
-    20   PRINT I
-    30 NEXT I
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  NEXT
+Category              Looping / Control Flow
+Syntax                NEXT [var1[, var2...]] | NEXT [var1 [var2...]]
+Description           Increments the FOR loop counter variable(s) and loo...
+Error Summary         Error 1: NEXT Without FOR, Error 2: Syntax Error
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/loops/counter/next.c

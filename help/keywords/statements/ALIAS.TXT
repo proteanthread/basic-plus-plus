@@ -1,0 +1,68 @@
+TITLE: ALIAS
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/introspection/alias.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+ALIAS KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: alias.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (exec_internal.h, scope.c)
+    // NEEDS: libcore (hal.h, memops.h, strops.h, runtime_snprintf.h)
+    // NEEDS: libengine (alias.h, lexer.h, vm.h)
+    // NEEDS: libkernel (types.h, vdev.h)
+    // Provides runtime implementation for the ALIAS statement in BASIC++.
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Defines a keyword or operator alias for customized dialect syntax.
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    ALIAS name = expansion | ALIAS LIST | ALIAS CLEAR | ALIAS OPER op = expansion
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM ALIAS Demonstration
+    20 PRINT "ALIAS executed successfully."
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error, Error 53: File Not Found
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Introspection
+Subsystem:     SUBSYSTEM_FLEX
+Safety Level:  SAFETY_SAFE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  ALIAS
+Category              Introspection
+Syntax                ALIAS name = expansion | ALIAS LIST | ALIAS CLEAR |...
+Description           Defines a keyword or operator alias for customized ...
+Error Summary         Error 2: Syntax Error, Error 53: File Not Found
+Subsystem             SUBSYSTEM_FLEX
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/introspection/alias.c

@@ -1,0 +1,61 @@
+<!--
+Title:        Freestanding Kernel Architecture
+Tier:         2
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/
+Generated:    no
+Status:       Active
+-->
+
+# Freestanding Kernel Architecture
+
+## 1. Architectural Overview
+
+The BASIC++ kernel (`libkernel`) implements the core execution engine, Virtual BIOS, lexer, virtual machine context, memory manager, security sandbox, virtual devices, and array subsystem under strict ISO C17 freestanding compliance (§4 ¶6).
+
+All kernel modules operate with zero direct hosted standard C library (`libc`) runtime dependencies. All host operating system interactions, physical and virtual memory allocations, console I/O, monotonic timing, and peripheral operations route through the unified Hardware Abstraction Layer (`libhal`) and Freestanding C17 Runtime (`libcore_runtime`).
+
+---
+
+## 2. Kernel Subsystems & Architectural Boundaries
+
+### 2.1 Virtual BIOS Subsystem (`engine/src/bios/`)
+- **Freestanding Interrupt Dispatch**: Register-level BIOS emulation for INT 10h (video), INT 13h (low-level disk), INT 16h (keyboard), and INT 1Ah (real-time clock).
+- **Hardware Model Profiles**: IBM PC 5150, PC/XT 5160, PC/AT 5170, and PCjr 4860 hardware timing and register layouts.
+- **VRAM Observer Engine**: Traps direct video memory access across MDA (`0xB0000`), CGA (`0xB8000`), and EGA/VGA (`0xA0000`).
+- **Timer Services**: Driven by `hal->time.monotonic_ms` and `platform_localtime` with zero direct `time.h` dependencies.
+
+### 2.2 Lexer Subsystem (`engine/src/lexer/`)
+- **15-16 Significant Digit Precision**: Double-precision floating-point scanning with bit-exact parsing before `1E+n` representation.
+- **Zero Libc Dependency**: Powered by `libcore_runtime_conv`, `libcore_runtime_ctype`, and `libcore_runtime_string`.
+- **Atomic Scanning Modules**: `scan_keyword.c`, `scan_number.c`, `scan_string.c`, and `lexer.c`.
+
+### 2.3 Virtual Machine & Execution Contexts (`engine/src/vm/`)
+- **Interpreter Contexts**: Stack, Context, Control, Data, Error, Events, and Math subsystems.
+- **Event Handlers**: Alarm, Poll, and Trap (`events_alarm.c`, `events_poll.c`, `events_trap.c`) using HAL monotonic timing.
+- **Mathematical Operations**: Complex number parsing, vector operations, and expression dispatch.
+
+### 2.4 Virtual Devices & Bus (`engine/src/device/`)
+- **Virtual Console (`vcon.c`, `console.c`)**: Text buffers, ANSI escape sequence parsing, cursor positioning, and mouse tracking.
+- **Memory & Bus Dispatch (`bus.c`, `vdev.c`)**: Emulated POKEY randomizer, SID sound chip, Spectrum 50Hz frame clock, and C64 60Hz CIA clock.
+- **PDF & Printer Virtualization (`pdf_writer.c`, `vprinter.c`)**: Freestanding document streaming via `IoHandle` and `hal->io.file_*`.
+
+### 2.5 Security Sandbox & Memory (`engine/src/security/`, `engine/src/memory/`)
+- **Dynamic Sandboxing**: Permissive, Safe, Standard, Educational, Restricted, and Paranoid execution levels.
+- **Segmented Memory Allocator**: Scratch Bump Arena, Variable Pool, and Program Line Store driven by `hal->mem.alloc`.
+
+### 2.6 Dynamic Array Subsystem (`engine/src/runtime/arrays/`)
+- **Option Base Support**: Full multidimensional array management under `OPTION BASE 0` and `OPTION BASE 1`.
+- **Array Auto-Expansion & Alias**: Bounds verification and variable aliasing with zero heap corruption.
+
+---
+
+## 3. Verification & Test Coverage
+
+The freestanding kernel test suite validates six core functional areas:
+1. Freestanding Lexer & 15-16 Digit Precision Suite (PASS)
+2. Freestanding BIOS & Interrupt Services Suite (PASS)
+3. VCon Virtual Device & Console Pages Suite (PASS)
+4. Security Sandbox Subsystem Suite (PASS)
+5. Freestanding Array & Auto-Expansion Suite (PASS)
+6. Integrated libboot -> libkernel VM Execution Suite (PASS)

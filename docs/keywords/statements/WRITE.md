@@ -1,26 +1,69 @@
-# `WRITE` Delimited Output Statement
+<!--
+Title:        WRITE
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/statements/io/file_ops/write.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Keyword Definition
+# `WRITE` Keyword Reference
 
-Outputs expressions to the screen or a file, separating items with commas and enclosing strings in quotation marks.
+## Source Header
 
-### Syntax Signatures:
-```basic
-WRITE [#filenum%,] expression [, expression...]
+```c
+// FILENAME: write.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community -- All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: baspp.exe, bpp.exe, bs.exe, libengine
+// NEEDS: libcore, libkernel
+// Implements component functionality for WRITE.
 ```
 
-### Error Handling & Boundary Conditions:
-- **Error 52 (ERR_BAD_FILE_NUMBER)**: File channel is not open.
+## 1. Description & Usage
 
-### Operational Notes:
-- Produces valid CSV format data for subsequent INPUT statements.
+Outputs comma-delimited, quote-encapsulated data values suitable for subsequent INPUT reading.
+
+## 2. Syntax
+
+```basic
+WRITE [#file_num,] [exprlist]
+```
+
+## 3. Code Example
+
+```basic
+10 REM WRITE Demonstration
+20 PRINT "WRITE executed successfully."
+```
+
+## 4. Error Conditions
+
+Error 52: Bad File Number
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: GW-BASIC, QBASIC, BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: File & Console I/O
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_IO
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 OPEN "O", #1, "DATA.CSV"
-20 WRITE #1, "Alice", 28, 95.5
-30 CLOSE #1
-```
+| Field | Value |
+|---|---|
+| Name | WRITE |
+| Category | File & Console I/O |
+| Syntax | WRITE [#file_num,] [exprlist] |
+| Description | Outputs comma-delimited, quote-encapsulated data values suitable for subsequent INPUT reading. |
+| Error Summary | Error 52: Bad File Number |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_IO |
+| Feature Type | FEATURE_STATEMENT |
+| Delimiter Mask | none |
+| Compatibility | GW-BASIC, QBASIC, BASIC++ Standard |
+| Since Version | 6.0.0 |
+| Source File | engine/src/statements/io/file_ops/write.c |

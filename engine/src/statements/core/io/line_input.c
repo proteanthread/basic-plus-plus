@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
 // NEEDS: libcore (arrays.h, arrays.c, file.h, file.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libcore (strings.h, strings.c, variables.h, variables.c)
 // NEEDS: libengine (eval.h, eval.c, line_input.h, string.c)
 // NEEDS: libkernel (vdev.h, vdev.c)
@@ -18,24 +18,30 @@
 #include "runtime/variables.h"
 #include "runtime/arrays.h"
 #include "runtime/strings.h"
-#include "runtime/micro_lib_metadata.h"
-#include <string.h>
-#include <stdio.h>
+#include "runtime/language_descriptor.h"
+#include "types/errors.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "runtime/format/snprintf.h"
+
+static const LangDesc g_line_input_desc = {
+    .name = "LINE INPUT",
+    .category = "Console & File I/O",
+    .syntax = "LINE INPUT [;] [\"prompt\";] string_var$",
+    .description = "Reads an entire line of up to 255 characters from the keyboard or a file into a string variable.",
+    .error_summary = "Error 2: Syntax Error, Error 5: Failed to read input, Error 52: Bad File Number, Error 62: Input Past End",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_STATEMENT
+};
 
 void stmt_line_input_register(void) {
-    MicroLibMetadata meta = {
-        .name = "LINE INPUT",
-        .category = "Console & File I/O",
-        .syntax = "LINE INPUT [;] [\"prompt\";] string_var$ | LINE INPUT #file_num%, string_var$",
-        .help_text = "Reads an entire line of up to 255 characters from the keyboard or a file into a string variable.",
-        .error_codes = "Error 2: Syntax Error, Error 5: Failed to read input, Error 52: Bad File Number, Error 62: Input Past End"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_line_input_desc);
 }
 
 BppError stmt_line_input_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BppToken tok = lex_peek(lex);
     bool is_file = false;
@@ -74,7 +80,7 @@ BppError stmt_line_input_handler(VMContext *vm, LexerContext *lex) {
             size_t prompt_len = tok.length;
             char prompt_buf[512] = "";
             size_t copy_len = (prompt_len < sizeof(prompt_buf) - 1) ? prompt_len : sizeof(prompt_buf) - 1;
-            memcpy(prompt_buf, prompt, copy_len);
+            runtime_memcpy(prompt_buf, prompt, copy_len);
             prompt_buf[copy_len] = '\0';
 
             tok = lex_next(lex);
@@ -95,7 +101,7 @@ BppError stmt_line_input_handler(VMContext *vm, LexerContext *lex) {
 
     char var_name[64];
     if (tok.length >= sizeof(var_name)) tok.length = sizeof(var_name) - 1;
-    memcpy(var_name, tok.start, tok.length);
+    runtime_memcpy(var_name, tok.start, tok.length);
     var_name[tok.length] = '\0';
 
     bool is_array = false;
@@ -139,7 +145,7 @@ BppError stmt_line_input_handler(VMContext *vm, LexerContext *lex) {
             return err;
         }
         if (file_gets(fc, channel, line_buf, sizeof(line_buf))) {
-            size_t l = strlen(line_buf);
+            size_t l = runtime_strlen(line_buf);
             while (l > 0 && (line_buf[l - 1] == '\r' || line_buf[l - 1] == '\n')) {
                 line_buf[--l] = '\0';
             }
@@ -154,23 +160,28 @@ BppError stmt_line_input_handler(VMContext *vm, LexerContext *lex) {
             read_ok = con_dev->ops.gets(con_dev, line_buf, sizeof(line_buf));
         }
         if (!read_ok) {
-            if (fgets(line_buf, sizeof(line_buf), stdin)) {
+            if (vdev_gets(vdev, line_buf, sizeof(line_buf))) {
                 read_ok = true;
             }
         }
         if (!read_ok) {
+            if (vm_break_triggered(vm)) {
+                err.code = ERR_DEVICE_IO_ERROR;
+                err.message = "Break";
+                return err;
+            }
             err.code = 5; err.message = "Failed to read input from console device";
             return err;
         }
-        size_t l = strlen(line_buf);
+        size_t l = runtime_strlen(line_buf);
         while (l > 0 && (line_buf[l - 1] == '\r' || line_buf[l - 1] == '\n')) {
             line_buf[--l] = '\0';
         }
     }
 
-    BppString *s = str_create(str_ctx, line_buf, strlen(line_buf));
+    BppString *s = str_create(str_ctx, line_buf, runtime_strlen(line_buf));
     BValue val;
-    memset(&val, 0, sizeof(val));
+    runtime_memset(&val, 0, sizeof(val));
     val.type = VAL_STRING;
     val.as.string = s;
 

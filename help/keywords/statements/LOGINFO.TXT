@@ -1,0 +1,69 @@
+TITLE: LOGINFO
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/system/stmt_log.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+LOGINFO KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: stmt_log.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: exec_dispatch.c, common_reg_stmts.c
+    // NEEDS: libkernel (types/types.h, lexer/lexer.h, types/errors.h, vdev.h), li
+    // Implementation for Structured and Flat Logging Statements (LOG.INFO, LOG.WA
+    //
+    // ---- Includes ----
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Emits an INFO-severity runtime_log entry to the active logging sinks and
+circular ring buffer.
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    LOGINFO message$ [, tag$]
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM LOGINFO Demonstration
+    20 PRINT "LOGINFO executed successfully."
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+None
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      System & Logging
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SYSTEM
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  LOGINFO
+Category              System & Logging
+Syntax                LOGINFO message$ [, tag$]
+Description           Emits an INFO-severity runtime_log entry to the act...
+Error Summary         None
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SYSTEM
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/system/stmt_log.c

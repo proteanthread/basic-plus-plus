@@ -13,6 +13,7 @@
 
 #include <stddef.h>
 #include <stdbool.h>
+#include "runtime/memory/alloc.h"
 
 // ------------------------------------------------------------------
 // TextLine: shared line representation used by all editor modules
@@ -93,7 +94,7 @@ void editor_core_clear_sel(EditorSelection *sel);
 void editor_core_get_sel_bounds(const EditorSelection *sel,
                                 int *r1, int *c1, int *r2, int *c2);
 
-// Extract selected text from a line buffer as a malloc'd string.
+// Extract selected text from a line buffer as a runtime_malloc'd string.
 char *editor_core_get_selected_text(const EditorSelection *sel,
                                     const TextLine *lines, int num_lines);
 

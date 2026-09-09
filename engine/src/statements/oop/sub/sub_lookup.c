@@ -8,6 +8,10 @@
 // ---- Includes ----
 
 #include "statements/oop/sub_internal.h"
+#include "core/struct.h"
+#include "runtime/format/snprintf.h"
+#include "runtime/string/strops.h"
+#include "runtime/string/memops.h"
 
 //
 // ---- Procedure Lookup ----
@@ -18,16 +22,16 @@ bool find_procedure_ex(VMContext *vm, const char *name, BppKeywordId proc_kw, Bp
     MemoryContext *mem = vm_get_mem(vm);
     char mod_prefix[128] = {0};
     char pure_name[128] = {0};
-    const char *dot = strchr(name, '.');
+    const char *dot = runtime_strchr(name, '.');
     if (dot) {
         size_t mlen = (size_t)(dot - name);
         if (mlen < sizeof(mod_prefix)) {
-            memcpy(mod_prefix, name, mlen);
+            runtime_memcpy(mod_prefix, name, mlen);
             mod_prefix[mlen] = '\0';
         }
-        strncpy(pure_name, dot + 1, sizeof(pure_name) - 1);
+        runtime_strncpy(pure_name, dot + 1, sizeof(pure_name) - 1);
     } else {
-        strncpy(pure_name, name, sizeof(pure_name) - 1);
+        runtime_strncpy(pure_name, name, sizeof(pure_name) - 1);
     }
 
     for (int pass = 0; pass < 2; pass++) {
@@ -50,7 +54,7 @@ bool find_procedure_ex(VMContext *vm, const char *name, BppKeywordId proc_kw, Bp
                 BppToken m_tok = lex_next(scan_lex);
                 if (m_tok.type == TOK_IDENT || m_tok.type == TOK_KEYWORD) {
                     size_t len = (m_tok.length < sizeof(cur_mod) - 1) ? m_tok.length : sizeof(cur_mod) - 1;
-                    memcpy(cur_mod, m_tok.start, len);
+                    runtime_memcpy(cur_mod, m_tok.start, len);
                     cur_mod[len] = '\0';
                 }
                 lex_shutdown(scan_lex);
@@ -59,7 +63,7 @@ bool find_procedure_ex(VMContext *vm, const char *name, BppKeywordId proc_kw, Bp
                 BppToken c_tok = lex_next(scan_lex);
                 if (c_tok.type == TOK_IDENT || c_tok.type == TOK_KEYWORD) {
                     size_t len = (c_tok.length < sizeof(cur_class) - 1) ? c_tok.length : sizeof(cur_class) - 1;
-                    memcpy(cur_class, c_tok.start, len);
+                    runtime_memcpy(cur_class, c_tok.start, len);
                     cur_class[len] = '\0';
                 }
                 lex_shutdown(scan_lex);
@@ -82,57 +86,72 @@ bool find_procedure_ex(VMContext *vm, const char *name, BppKeywordId proc_kw, Bp
                 tok = lex_next(scan_lex);
             }
 
-            if (tok.type == TOK_KEYWORD &&
-                (tok.as.keyword == proc_kw ||
-                 (proc_kw == KW_SUB && (tok.as.keyword == KW_PROCEDURE || tok.as.keyword == KW_PROPERTY || tok.as.keyword == KW_CONSTRUCTOR)) ||
-                 (proc_kw == KW_FUNCTION && tok.as.keyword == KW_DEF))) {
+            bool is_target_proc = false;
+            if (tok.type == TOK_KEYWORD) {
+                if (tok.as.keyword == proc_kw ||
+                    (proc_kw == KW_SUB && (tok.as.keyword == KW_PROCEDURE || tok.as.keyword == KW_PROPERTY || tok.as.keyword == KW_CONSTRUCTOR)) ||
+                    (proc_kw == KW_FUNCTION && tok.as.keyword == KW_DEF)) {
+                    is_target_proc = true;
+                }
+            } else if (tok.type == TOK_IDENT) {
+                if (proc_kw == KW_FUNCTION && ((tok.length == 8 && runtime_strncasecmp(tok.start, "FUNCTION", 8) == 0) || (tok.length == 3 && runtime_strncasecmp(tok.start, "DEF", 3) == 0))) {
+                    is_target_proc = true;
+                } else if (proc_kw == KW_SUB && ((tok.length == 3 && runtime_strncasecmp(tok.start, "SUB", 3) == 0) ||
+                                                 (tok.length == 9 && runtime_strncasecmp(tok.start, "PROCEDURE", 9) == 0) ||
+                                                 (tok.length == 8 && runtime_strncasecmp(tok.start, "PROPERTY", 8) == 0) ||
+                                                 (tok.length == 11 && runtime_strncasecmp(tok.start, "CONSTRUCTOR", 11) == 0))) {
+                    is_target_proc = true;
+                }
+            }
+
+            if (is_target_proc) {
 
                 BppToken name_tok = lex_next(scan_lex);
                 char candidate[128] = {0};
                 if ((name_tok.type == TOK_KEYWORD && name_tok.as.keyword == KW_OPERATOR) ||
-                    (name_tok.type == TOK_IDENT && name_tok.length == 8 && strncasecmp(name_tok.start, "OPERATOR", 8) == 0)) {
+                    (name_tok.type == TOK_IDENT && name_tok.length == 8 && runtime_strncasecmp(name_tok.start, "OPERATOR", 8) == 0)) {
                     BppToken op_tok = lex_next(scan_lex);
                     char op_str[32] = {0};
                     if (op_tok.type == TOK_KEYWORD || op_tok.type == TOK_IDENT) {
                         size_t olen = (op_tok.length < sizeof(op_str) - 1) ? op_tok.length : sizeof(op_str) - 1;
-                        memcpy(op_str, op_tok.start, olen);
+                        runtime_memcpy(op_str, op_tok.start, olen);
                         op_str[olen] = '\0';
                     } else if (op_tok.type == TOK_PLUS) {
-                        strcpy(op_str, "+");
+                        runtime_strcpy(op_str, "+");
                     } else if (op_tok.type == TOK_MINUS) {
-                        strcpy(op_str, "-");
+                        runtime_strcpy(op_str, "-");
                     } else if (op_tok.type == TOK_MUL) {
-                        strcpy(op_str, "*");
+                        runtime_strcpy(op_str, "*");
                     } else if (op_tok.type == TOK_DIV) {
-                        strcpy(op_str, "/");
+                        runtime_strcpy(op_str, "/");
                     } else if (op_tok.type == TOK_EQ) {
-                        strcpy(op_str, "=");
+                        runtime_strcpy(op_str, "=");
                     } else if (op_tok.type == TOK_LT) {
                         if (lex_peek(scan_lex).type == TOK_GT) {
                             lex_next(scan_lex);
-                            strcpy(op_str, "<>");
+                            runtime_strcpy(op_str, "<>");
                         } else if (lex_peek(scan_lex).type == TOK_EQ) {
                             lex_next(scan_lex);
-                            strcpy(op_str, "<=");
+                            runtime_strcpy(op_str, "<=");
                         } else {
-                            strcpy(op_str, "<");
+                            runtime_strcpy(op_str, "<");
                         }
                     } else if (op_tok.type == TOK_GT) {
                         if (lex_peek(scan_lex).type == TOK_EQ) {
                             lex_next(scan_lex);
-                            strcpy(op_str, ">=");
+                            runtime_strcpy(op_str, ">=");
                         } else {
-                            strcpy(op_str, ">");
+                            runtime_strcpy(op_str, ">");
                         }
                     } else if (op_tok.start && op_tok.length > 0) {
                         size_t olen = (op_tok.length < sizeof(op_str) - 1) ? op_tok.length : sizeof(op_str) - 1;
-                        memcpy(op_str, op_tok.start, olen);
+                        runtime_memcpy(op_str, op_tok.start, olen);
                         op_str[olen] = '\0';
                     }
-                    snprintf(candidate, sizeof(candidate), "OPERATOR_%s", op_str);
+                    runtime_snprintf(candidate, sizeof(candidate), "OPERATOR_%s", op_str);
                 } else if (name_tok.type == TOK_IDENT || name_tok.type == TOK_KEYWORD) {
                     size_t len = (name_tok.length < sizeof(candidate) - 1) ? name_tok.length : sizeof(candidate) - 1;
-                    memcpy(candidate, name_tok.start, len);
+                    runtime_memcpy(candidate, name_tok.start, len);
                     candidate[len] = '\0';
                 }
 
@@ -143,32 +162,32 @@ bool find_procedure_ex(VMContext *vm, const char *name, BppKeywordId proc_kw, Bp
                         if (sub_tok.type != TOK_IDENT && sub_tok.type != TOK_KEYWORD) break;
                         char sub_part[64];
                         size_t slen = (sub_tok.length < sizeof(sub_part) - 1) ? sub_tok.length : sizeof(sub_part) - 1;
-                        memcpy(sub_part, sub_tok.start, slen);
+                        runtime_memcpy(sub_part, sub_tok.start, slen);
                         sub_part[slen] = '\0';
 
                         char combined[128];
-                        snprintf(combined, sizeof(combined), "%s.%s", candidate, sub_part);
-                        strncpy(candidate, combined, sizeof(candidate) - 1);
+                        runtime_snprintf(combined, sizeof(combined), "%s.%s", candidate, sub_part);
+                        runtime_strncpy(candidate, combined, sizeof(candidate) - 1);
                         candidate[sizeof(candidate) - 1] = '\0';
                     }
 
                     bool matches = false;
-                    if (strcasecmp(candidate, name) == 0) {
+                    if (runtime_strcasecmp(candidate, name) == 0) {
                         matches = true;
-                    } else if (strncmp(candidate, "OPERATOR_", 9) == 0 && strcasecmp(candidate + 9, name) == 0) {
+                    } else if (runtime_strncmp(candidate, "OPERATOR_", 9) == 0 && runtime_strcasecmp(candidate + 9, name) == 0) {
                         matches = true;
                     } else if (mod_prefix[0] != '\0' && cur_mod[0] != '\0' &&
-                               strcasecmp(mod_prefix, cur_mod) == 0 &&
-                               strcasecmp(pure_name, candidate) == 0) {
+                               runtime_strcasecmp(mod_prefix, cur_mod) == 0 &&
+                               runtime_strcasecmp(pure_name, candidate) == 0) {
                         matches = true;
                     } else if (mod_prefix[0] != '\0' && cur_class[0] != '\0' &&
-                               strcasecmp(mod_prefix, cur_class) == 0 &&
-                               strcasecmp(pure_name, candidate) == 0) {
+                               runtime_strcasecmp(mod_prefix, cur_class) == 0 &&
+                               runtime_strcasecmp(pure_name, candidate) == 0) {
                         matches = true;
                     } else if (mod_prefix[0] == '\0' && cur_class[0] != '\0') {
                         char full_c_name[128];
-                        snprintf(full_c_name, sizeof(full_c_name), "%s.%s", cur_class, candidate);
-                        if (strcasecmp(full_c_name, name) == 0) {
+                        runtime_snprintf(full_c_name, sizeof(full_c_name), "%s.%s", cur_class, candidate);
+                        if (runtime_strcasecmp(full_c_name, name) == 0) {
                             matches = true;
                         }
                     }
@@ -185,6 +204,19 @@ bool find_procedure_ex(VMContext *vm, const char *name, BppKeywordId proc_kw, Bp
             lex_shutdown(scan_lex);
         }
     }
+
+    if (mod_prefix[0] != '\0') {
+        const BppUserTypeDef *tdef = struct_find_type(vm_get_types(vm), mod_prefix);
+        while (tdef && tdef->parent_name[0] != '\0') {
+            char parent_proc[256];
+            runtime_snprintf(parent_proc, sizeof(parent_proc), "%s.%s", tdef->parent_name, pure_name);
+            if (find_procedure_ex(vm, parent_proc, proc_kw, out_line, out_text, out_is_lib)) {
+                return true;
+            }
+            tdef = struct_find_type(vm_get_types(vm), tdef->parent_name);
+        }
+    }
+
     return false;
 }
 
@@ -212,7 +244,7 @@ int parse_formal_params(MemoryContext *mem, const char *line_text, FormalParam *
                                     tok.as.keyword == KW_CONSTRUCTOR || tok.as.keyword == KW_DEF)) {
         tok = lex_next(lex);
         if ((tok.type == TOK_KEYWORD && tok.as.keyword == KW_OPERATOR) ||
-            (tok.type == TOK_IDENT && tok.length == 8 && strncasecmp(tok.start, "OPERATOR", 8) == 0)) {
+            (tok.type == TOK_IDENT && tok.length == 8 && runtime_strncasecmp(tok.start, "OPERATOR", 8) == 0)) {
             tok = lex_next(lex);
         }
         while (lex_peek(lex).type == TOK_PERIOD) {
@@ -259,7 +291,7 @@ int parse_formal_params(MemoryContext *mem, const char *line_text, FormalParam *
         if (tok.type != TOK_IDENT && tok.type != TOK_KEYWORD) break;
 
         size_t len = (tok.length < sizeof(params[count].name) - 1) ? tok.length : sizeof(params[count].name) - 1;
-        memcpy(params[count].name, tok.start, len);
+        runtime_memcpy(params[count].name, tok.start, len);
         params[count].name[len] = '\0';
         params[count].is_byref = is_byref;
         params[count].is_optional = is_optional;
@@ -280,7 +312,7 @@ int parse_formal_params(MemoryContext *mem, const char *line_text, FormalParam *
             BppToken type_tok = lex_next(lex);
             if (type_tok.type == TOK_IDENT || type_tok.type == TOK_KEYWORD) {
                 size_t tlen = (type_tok.length < sizeof(params[count].type_name) - 1) ? type_tok.length : sizeof(params[count].type_name) - 1;
-                memcpy(params[count].type_name, type_tok.start, tlen);
+                runtime_memcpy(params[count].type_name, type_tok.start, tlen);
                 params[count].type_name[tlen] = '\0';
             }
         }
@@ -304,7 +336,7 @@ int parse_formal_params(MemoryContext *mem, const char *line_text, FormalParam *
             const char *expr_end = lex_get_pos(lex);
             size_t elen = (size_t)(expr_end - expr_start);
             if (elen > sizeof(params[count].default_expr) - 1) elen = sizeof(params[count].default_expr) - 1;
-            memcpy(params[count].default_expr, expr_start, elen);
+            runtime_memcpy(params[count].default_expr, expr_start, elen);
             params[count].default_expr[elen] = '\0';
             params[count].is_optional = true;
         }
@@ -349,7 +381,7 @@ int parse_call_args(VMContext *vm, LexerContext *lex, FormalParam *formal_params
 
         if (tok.type == TOK_IDENT) {
             size_t nlen = (tok.length < 63) ? tok.length : 63;
-            memcpy(out_arg_names[count], tok.start, nlen);
+            runtime_memcpy(out_arg_names[count], tok.start, nlen);
             out_arg_names[count][nlen] = '\0';
 
             if (is_array_param) {
@@ -361,7 +393,7 @@ int parse_call_args(VMContext *vm, LexerContext *lex, FormalParam *formal_params
                     }
                 }
                 out_args[count].type = VAL_ARRAY_REF;
-                out_args[count].as.string = str_create(vm_get_str(vm), out_arg_names[count], strlen(out_arg_names[count]));
+                out_args[count].as.string = str_create(vm_get_str(vm), out_arg_names[count], runtime_strlen(out_arg_names[count]));
                 out_is_byref[count] = true;
                 count++;
                 if (lex_peek(lex).type == TOK_COMMA) { lex_next(lex); continue; }

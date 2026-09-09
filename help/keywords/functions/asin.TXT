@@ -1,23 +1,71 @@
-ASIN Arcsine Trigonometric Function
-======================================================================
+TITLE: ASIN
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/functions/math/trig/asin.c
+GENERATED: no, hand-written
+STATUS: current
 
-The ASIN function computes the inverse sine of an expression in radians.
+==============================================================================
+ASIN KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: runtime_asin.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (math_fn.c)
+    // NEEDS: libcore (math.h, language_descriptor.h, string.h)
+    // NEEDS: libengine (runtime_asin.h, math.c, string.c)
+    // Provides runtime implementation for the ASIN built-in function in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Returns the arcsine of x (in radians, degrees, or grads depending on angle
+mode) for -1.0 <= x <= 1.0.
 
-    radians# = ASIN(numeric_expression)
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    ASIN(x)
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Angle = 0.5
+    20 PRINT "SIN("; Angle; ") = "; SIN(Angle)
 
-DOMAIN
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 5: Illegal Function Call (ASIN argument out of range [-1, 1]), Error 13:
+Type Mismatch (ASIN expects one numeric argument)
 
-  - -1.0 <= x <= 1.0 (Error 5 if outside domain).
-  - Returns range: -PI/2 to +PI/2 radians.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Math Functions
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_PURE
 
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 PRINT ASIN(0.0)   : REM Outputs 0
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  ASIN
+Category              Math Functions
+Syntax                ASIN(x)
+Description           Returns the arcsine of x (in radians, degrees, or g...
+Error Summary         Error 5: Illegal Function Call (ASIN argument out o...
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_PURE
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/eval/functions/math/trig/asin.c

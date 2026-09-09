@@ -1,29 +1,72 @@
-# `REM` Remark / Comment Statement
+<!--
+Title:        REM
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/statements/core/program/rem.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Keyword Definition
+# `REM` Keyword Reference
 
-The `REM` statement (and shorthand single quote `'`) allows inserting explanatory remarks, comments, and documentation notes into a program. The interpreter ignores all text following `REM` or `'` until the end of the physical line.
+## Source Header
 
-### Syntax Signatures:
-```basic
-REM comment_text
-' comment_text
-statement : REM comment_text
-statement ' comment_text
+```c
+// FILENAME: rem.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore (language_descriptor.h, string.h)
+// NEEDS: libengine (lexer.h, lexer.c, rem.h, string.c, vm.h)
+// Provides runtime implementation for the REM statement in BASIC++.
+//
+// ---- Includes ----
 ```
 
-### Operational Rules:
-- The entire rest of the line following `REM` or `'` is treated as comment text and ignored by the AST evaluator.
-- Unlike other statements, colons (`:`) occurring inside a `REM` line are treated as literal text, not statement separators.
+## 1. Description & Usage
+
+Defines a remark/comment line ignored by the BASIC engine during execution.
+
+## 2. Syntax
+
+```basic
+REM [comment text] or ' [comment text]
+```
+
+## 3. Code Example
+
+```basic
+10 REM REM Demonstration
+20 PRINT "REM executed successfully."
+```
+
+## 4. Error Conditions
+
+None (comments never generate errors)
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Control Flow
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_SAFE
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 REM ===================================================
-20 REM Program: Inventory Manager v1.0
-30 REM ===================================================
-40 LET ITEMS = 50 ' Initial stock count
-50 PRINT "Items in stock:"; ITEMS
-```
+| Field | Value |
+|---|---|
+| Name | REM |
+| Category | Control Flow |
+| Syntax | REM [comment text] or ' [comment text] |
+| Description | Defines a remark/comment line ignored by the BASIC engine during execution. |
+| Error Summary | None (comments never generate errors) |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_SAFE |
+| Feature Type | FEATURE_STATEMENT |
+| Delimiter Mask | none |
+| Compatibility | none |
+| Since Version | none |
+| Source File | engine/src/statements/core/program/rem.c |

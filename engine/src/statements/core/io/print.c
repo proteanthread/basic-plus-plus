@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
 // NEEDS: libcore (dialect.h, dialect.c, math.h)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c)
+// NEEDS: libcore (language_descriptor.h)
 // NEEDS: libcore (num_format.h, num_format.c, string.h, using.h)
 // NEEDS: libengine (eval.h, eval.c, math.c, stmt.h, string.c)
 // NEEDS: libkernel (vcon.h, vcon.c, vdev.h, vdev.c)
@@ -14,37 +14,58 @@
 #include "stmt/stmt.h"
 #include "device/vdev.h"
 #include "device/vcon.h"
+#include "device/bgi.h"
 #include "core/dialect.h"
 #include "eval/eval.h"
 #include "runtime/using.h"
 #include "runtime/num_format.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
+#include "runtime/set.h"
+#include "runtime/map.h"
+#include "hal/hal.h"
+#include "runtime/format/snprintf.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "runtime/math/math.h"
+#include "platform/platform.h"
+
+static const LangDesc g_print_desc = {
+    .name = "PRINT",
+    .category = "Console I/O",
+    .syntax = "PRINT [#n,] [AT x, y | AT(x, y) | AT[x, y] | AT{map}] [@z | @(z) | @[z] | @{map}] [exprlist] [;|,]",
+    .description = "Outputs formatted text or numeric expressions to console or file, with 2D grid and 1D buffer cursor positioning.",
+    .error_summary = "Error 2: Syntax Error, Error 5: Illegal Function Call, Error 13: Type Mismatch, Error 52: Bad File Number",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SAFE,
+    .type = FEATURE_STATEMENT
+};
+
+static const LangDesc g_at_desc = {
+    .name = "AT",
+    .category = "Console I/O",
+    .syntax = "PRINT AT x, y [, fg [, bg]] | AT(x, y [, fg [, bg]]) | AT[px, py] | AT{prop: val, ...}",
+    .description = "Screen cursor positioning clause for 2D Cartesian grid, graphics pixel offload, and declarative property maps.",
+    .error_summary = "Error 2: Syntax Error",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SAFE,
+    .type = FEATURE_STATEMENT
+};
 
 void stmt_print_register(void) {
-    MicroLibMetadata meta = {
-        .name = "PRINT",
-        .category = "Console I/O",
-        .syntax = "PRINT [#n,] [exprlist] [;|,]",
-        .help_text = "Outputs formatted text or numeric expressions to the console or open file channel.",
-        .error_codes = "Error 2: Syntax Error, Error 13: Type Mismatch, Error 52: Bad File Number"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_print_desc);
+    lang_desc_register(&g_at_desc);
 }
-#include <stdio.h>
-#include <string.h>
-#include <math.h>
-
 BppError stmt_file_print_handler(VMContext *vm, LexerContext *lex);
 BppError stmt_print_using_handler(VMContext *vm, LexerContext *lex);
-void print_using_internal_ex(VMContext *vm, LexerContext *lex, int channel, FILE *stream);
+void print_using_internal_ex(VMContext *vm, LexerContext *lex, int channel, void *stream);
 void print_using_internal(VMContext *vm, LexerContext *lex, int channel);
 
 int g_lpos = 1;
 
-static void printer_write_str(FILE *fp, const char *s) {
-    if (!s) return;
+static void printer_write_str(void *fp, const char *s) {
+    if (!s || !fp) return;
     while (*s) {
-        fputc(*s, fp);
+        platform_file_write(fp, s, 1);
         if (*s == '\n' || *s == '\r') {
             g_lpos = 1;
         } else if (*s == '\t') {
@@ -60,9 +81,11 @@ static void format_double_clean(char *buf, size_t buf_size, double val, bool lea
     num_format_display(buf, buf_size, val, leading_space, trailing_space);
 }
 
+#include "stmt/print_pos.h"
+
 BppError stmt_print_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BppToken tok = lex_peek(lex);
     if (tok.type == TOK_HASH) {
@@ -78,6 +101,7 @@ BppError stmt_print_handler(VMContext *vm, LexerContext *lex) {
     StringContext *str_ctx = vm_get_str(vm);
 
     bool last_was_sep = false;
+    bool has_printed_item = false;
     // Bug #19: Initialize col from actual console cursor position rather than
 // always 0 so TAB/comma spacing works correctly after trailing semicolons
     int init_col = 0;
@@ -110,12 +134,33 @@ BppError stmt_print_handler(VMContext *vm, LexerContext *lex) {
             continue;
         }
 
+        // Check for AT print modifier (PRINT AT x, y or PRINT AT(...) or PRINT AT[...] or PRINT AT{...})
+        if ((tok.type == TOK_KEYWORD && tok.as.keyword == KW_AT) ||
+            (tok.type == TOK_IDENT && tok.length == 2 &&
+             (tok.start[0] == 'A' || tok.start[0] == 'a') &&
+             (tok.start[1] == 'T' || tok.start[1] == 't'))) {
+            lex_next(lex); // Consume 'AT'
+            err = parse_print_at_modifier(vm, lex, &col, &last_was_sep);
+            if (err.code != 0) return err;
+            tok = lex_peek(lex);
+            continue;
+        }
+
+        // Check for @ print modifier (PRINT @z or PRINT @(z) or PRINT @[z] or PRINT @{...})
+        if (tok.type == TOK_AT) {
+            lex_next(lex); // Consume '@'
+            err = parse_print_at_sign_modifier(vm, lex, &col, &last_was_sep);
+            if (err.code != 0) return err;
+            tok = lex_peek(lex);
+            continue;
+        }
+
         // Check for TAB, SPC, SPA, or LIN print modifiers
         if (tok.type == TOK_IDENT && tok.length == 3 &&
-            (strncasecmp(tok.start, "TAB", 3) == 0 || strncasecmp(tok.start, "SPC", 3) == 0 ||
-             strncasecmp(tok.start, "SPA", 3) == 0 || strncasecmp(tok.start, "LIN", 3) == 0)) {
-            bool is_tab = (strncasecmp(tok.start, "TAB", 3) == 0);
-            bool is_lin = (strncasecmp(tok.start, "LIN", 3) == 0);
+            (runtime_strncasecmp(tok.start, "TAB", 3) == 0 || runtime_strncasecmp(tok.start, "SPC", 3) == 0 ||
+             runtime_strncasecmp(tok.start, "SPA", 3) == 0 || runtime_strncasecmp(tok.start, "LIN", 3) == 0)) {
+            bool is_tab = (runtime_strncasecmp(tok.start, "TAB", 3) == 0);
+            bool is_lin = (runtime_strncasecmp(tok.start, "LIN", 3) == 0);
             lex_next(lex); // Consume modifier
             BppToken open_paren = lex_peek(lex);
             if (open_paren.type != TOK_LPAREN) {
@@ -179,8 +224,8 @@ BppError stmt_print_handler(VMContext *vm, LexerContext *lex) {
         }
 
         // Check if next token begins a space-separated statement or block
-        if (!last_was_sep) {
-            if (tok.type == TOK_LPAREN || tok.type == TOK_LBRACKET) {
+        if (has_printed_item && !last_was_sep) {
+            if (tok.type == TOK_LBRACKET) {
                 break;
             }
             if (tok.type == TOK_KEYWORD) {
@@ -199,7 +244,7 @@ BppError stmt_print_handler(VMContext *vm, LexerContext *lex) {
                 }
             }
             if (tok.type == TOK_IDENT) {
-                if (tok.length == 4 && (strncasecmp(tok.start, "ELSE", 4) == 0 || strncasecmp(tok.start, "THEN", 4) == 0)) {
+                if (tok.length == 4 && (runtime_strncasecmp(tok.start, "ELSE", 4) == 0 || runtime_strncasecmp(tok.start, "THEN", 4) == 0)) {
                     break;
                 }
                 // Check if this identifier is followed by '=' -> start of assignment statement
@@ -226,7 +271,7 @@ BppError stmt_print_handler(VMContext *vm, LexerContext *lex) {
         char buf[256];
         if (val.type == VAL_STRING) {
             const char *str_data_ptr = str_data(val.as.string);
-            size_t len = strlen(str_data_ptr);
+            size_t len = runtime_strlen(str_data_ptr);
             vdev_puts(vdev, str_data_ptr);
             // Release temporary string returned by expression
             if (val.as.string) {
@@ -239,20 +284,45 @@ BppError stmt_print_handler(VMContext *vm, LexerContext *lex) {
             char i_buf[128];
             format_double_clean(r_buf, sizeof(r_buf), val.as.complex_val.real, false, false);
             format_double_clean(i_buf, sizeof(i_buf), val.as.complex_val.imag, false, false);
-            snprintf(buf, sizeof(buf), "(%s, %s) ", r_buf, i_buf);
-            size_t len = strlen(buf);
+            runtime_snprintf(buf, sizeof(buf), "(%s, %s) ", r_buf, i_buf);
+            size_t len = runtime_strlen(buf);
             vdev_puts(vdev, buf);
             last_was_sep = false;
             col += len;
+        } else if (val.type == VAL_SET) {
+            char sbuf[512];
+            set_format(sbuf, sizeof(sbuf), val.as.set);
+            vdev_puts(vdev, sbuf);
+            last_was_sep = false;
+            col += runtime_strlen(sbuf);
+        } else if (val.type == VAL_GROUP) {
+            char gbuf[512];
+            group_format(gbuf, sizeof(gbuf), val.as.group);
+            vdev_puts(vdev, gbuf);
+            last_was_sep = false;
+            col += runtime_strlen(gbuf);
+        } else if (val.type == VAL_MAP) {
+            char mbuf[512];
+            char *json = map_stringify_json(val.as.map);
+            if (json) {
+                runtime_snprintf(mbuf, sizeof(mbuf), "%s", json);
+                hal_get()->mem.free(json);
+            } else {
+                runtime_snprintf(mbuf, sizeof(mbuf), "{}");
+            }
+            vdev_puts(vdev, mbuf);
+            last_was_sep = false;
+            col += runtime_strlen(mbuf);
         } else {
             // Number: positive prints with leading space, negative with minus. Trailing space follows.
             double num = val.as.number;
             format_double_clean(buf, sizeof(buf), num, true, true);
-            size_t len = strlen(buf);
+            size_t len = runtime_strlen(buf);
             vdev_puts(vdev, buf);
             last_was_sep = false;
             col += len;
         }
+        has_printed_item = true;
 
         tok = lex_peek(lex);
     }
@@ -268,7 +338,7 @@ BppError stmt_print_handler(VMContext *vm, LexerContext *lex) {
 
 BppError stmt_display_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BppToken tok = lex_peek(lex);
     bool is_using = false;
@@ -317,7 +387,7 @@ BppError stmt_display_handler(VMContext *vm, LexerContext *lex) {
 
             if (val.type == VAL_STRING) {
                 const char *sdata = str_data(val.as.string);
-                size_t slen = strlen(sdata);
+                size_t slen = runtime_strlen(sdata);
                 vdev_puts(vdev, sdata);
                 str_release(vm_get_str(vm), val.as.string);
                 col += slen;
@@ -328,20 +398,41 @@ BppError stmt_display_handler(VMContext *vm, LexerContext *lex) {
                 double imag = val.as.complex_val.imag;
                 if (imag >= 0.0) {
                     num_format_serialize(i_buf, sizeof(i_buf), imag);
-                    snprintf(cbuf, sizeof(cbuf), " %s+%sI ", r_buf, i_buf);
+                    runtime_snprintf(cbuf, sizeof(cbuf), " %s+%sI ", r_buf, i_buf);
                 } else {
                     num_format_serialize(i_buf, sizeof(i_buf), -imag);
-                    snprintf(cbuf, sizeof(cbuf), " %s-%sI ", r_buf, i_buf);
+                    runtime_snprintf(cbuf, sizeof(cbuf), " %s-%sI ", r_buf, i_buf);
                 }
                 vdev_puts(vdev, cbuf);
-                col += strlen(cbuf);
+                col += runtime_strlen(cbuf);
+            } else if (val.type == VAL_SET) {
+                char sbuf[512];
+                set_format(sbuf, sizeof(sbuf), val.as.set);
+                vdev_puts(vdev, sbuf);
+                col += runtime_strlen(sbuf);
+            } else if (val.type == VAL_GROUP) {
+                char gbuf[512];
+                group_format(gbuf, sizeof(gbuf), val.as.group);
+                vdev_puts(vdev, gbuf);
+                col += runtime_strlen(gbuf);
+            } else if (val.type == VAL_MAP) {
+                char mbuf[512];
+                char *json = map_stringify_json(val.as.map);
+                if (json) {
+                    runtime_snprintf(mbuf, sizeof(mbuf), "%s", json);
+                    hal_get()->mem.free(json);
+                } else {
+                    runtime_snprintf(mbuf, sizeof(mbuf), "{}");
+                }
+                vdev_puts(vdev, mbuf);
+                col += runtime_strlen(mbuf);
             } else {
                 char buf[64];
                 num_format_serialize(buf, sizeof(buf), val.as.number);
                 vdev_puts(vdev, " ");
                 vdev_puts(vdev, buf);
                 vdev_puts(vdev, " ");
-                col += (strlen(buf) + 2);
+                col += (runtime_strlen(buf) + 2);
             }
             last_was_sep = false;
         }

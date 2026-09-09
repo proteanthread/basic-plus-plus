@@ -1,27 +1,75 @@
-# `LINE` Graphics Line & Box Drawing Statement
+<!--
+Title:        LINE
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/statements/graphics/draw/line.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Keyword Definition
+# `LINE` Keyword Reference
 
-Draws lines, rectangles, and solid filled boxes on the graphics screen, or reads full lines of text.
+## Source Header
 
-### Syntax Signatures:
-```basic
-LINE [[(x1%, y1%)]-(x2%, y2%) [, [color%] [, [B | BF] [, style%]]]]
-LINE INPUT [;] ["prompt";] string_var$
+```c
+// FILENAME: line.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore (language_descriptor.h, string.h)
+// NEEDS: libengine (eval.h, eval.c, input_file.h, input_file.c)
+// NEEDS: libengine (lexer.h, lexer.c, line.h, string.c, vm.h)
+// NEEDS: libkernel (security.h, security.c, vdev.h, vdev.c)
+// NEEDS: libplatform (platform.h)
+// Provides runtime implementation for the LINE statement in BASIC++.
+//
+// ---- Includes ----
 ```
 
-### Error Handling & Boundary Conditions:
-- **Error 5 (ERR_ILLEGAL_FUNCTION_CALL)**: Coordinates outside screen resolution.
+## 1. Description & Usage
 
-### Operational Notes:
-- B draws hollow outline; BF draws solid filled box.
+Draws a straight line or box on the active graphics screen canvas.
+
+## 2. Syntax
+
+```basic
+LINE [[x1, y1]]-(x2, y2) [, [color] [, [B|BF] [, style]]]
+```
+
+## 3. Code Example
+
+```basic
+10 Val = LINE [[101, y1]]-(102, y2) [, [color] [, [B|BF] [, style]]]
+20 PRINT "Result: "; Val
+```
+
+## 4. Error Conditions
+
+Error 2: Syntax Error, Error 5: Illegal Function Call
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Graphics & Display
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_SAFE
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 SCREEN 12
-20 LINE (50, 50)-(200, 150), 14, B  : REM Yellow rectangle
-30 LINE (220, 50)-(370, 150), 10, BF : REM Filled green box
-```
+| Field | Value |
+|---|---|
+| Name | LINE |
+| Category | Graphics & Display |
+| Syntax | LINE [[x1, y1]]-(x2, y2) [, [color] [, [B\|BF] [, style]]] |
+| Description | Draws a straight line or box on the active graphics screen canvas. |
+| Error Summary | Error 2: Syntax Error, Error 5: Illegal Function Call |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_SAFE |
+| Feature Type | FEATURE_STATEMENT |
+| Delimiter Mask | none |
+| Compatibility | none |
+| Since Version | none |
+| Source File | engine/src/statements/graphics/draw/line.c |

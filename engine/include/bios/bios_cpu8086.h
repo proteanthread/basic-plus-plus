@@ -39,6 +39,9 @@ typedef struct {
 void bios_cpu8086_reset(BiosCpu8086Context* cpu);
 bool bios_cpu8086_step(BiosCpu8086Context* cpu, uint8_t* phys_mem_1mb);
 void bios_cpu8086_int(BiosCpu8086Context* cpu, uint8_t int_num, uint8_t* phys_mem_1mb);
+BiosCpu8086Context* bios_cpu8086_get_active(void);
+double bios_cpu8086_reg_get(const char *reg_name, bool *found);
+bool bios_cpu8086_reg_set(const char *reg_name, double val);
 
 #ifdef __cplusplus
 }

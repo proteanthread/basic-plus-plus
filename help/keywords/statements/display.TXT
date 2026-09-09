@@ -1,22 +1,67 @@
-DISPLAY Virtual Console Output Statement
-========================================
+TITLE: DISPLAY
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/io/display.c
+GENERATED: no, hand-written
+STATUS: current
 
-Outputs formatted text directly to the virtual terminal console device.
+==============================================================================
+DISPLAY KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: display.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community -- All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: baspp.exe, bpp.exe, bs.exe, libengine
+    // NEEDS: libcore, libkernel
+    // Implements component functionality for DISPLAY.
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Outputs formatted expression list to console screen buffer adhering to
+ECMA-116 standard.
 
-    DISPLAY expression [, expression...]
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    DISPLAY [exprlist]
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM DISPLAY Demonstration
+    20 PRINT "DISPLAY executed successfully."
 
-OPERATIONAL NOTES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+None
 
-  Bypasses standard line buffering for high-throughput console display.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       ECMA-116, Super BASIC, BASIC++ Standard
+Since Version: 6.0.0
+Category:      Console I/O
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SAFE
 
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 DISPLAY "Virtual Console Output: ", 42, 3.14159
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  DISPLAY
+Category              Console I/O
+Syntax                DISPLAY [exprlist]
+Description           Outputs formatted expression list to console screen...
+Error Summary         None
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         ECMA-116, Super BASIC, BASIC++ Standard
+Since Version         6.0.0
+Source File           engine/src/statements/io/display.c

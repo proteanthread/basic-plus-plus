@@ -11,8 +11,13 @@
 #include "eval/eval_internal.h"
 #include "runtime/variables.h"
 #include "runtime/map.h"
+#include "runtime/set.h"
 #include "core/struct.h"
 #include "statements/oop/sub.h"
+#include "runtime/format/snprintf.h"
+#include "runtime/string/strops.h"
+#include "runtime/string/memops.h"
+#include "runtime/math/math.h"
 
 
 bool eval_execute_op(VMContext *vm, BppTokenType op, BValue *val_stack, size_t *val_ptr, BppError *err) {
@@ -44,7 +49,13 @@ bool eval_execute_op(VMContext *vm, BppTokenType op, BValue *val_stack, size_t *
         if (op == TOK_UNARY_MINUS) {
             val->as.number = -val->as.number;
         } else if (op == TOK_NOT) {
-            val->as.number = (double)(~(int64_t)val->as.number);
+            if (val->as.number == 1.0) {
+                val->as.number = 0.0;
+            } else if (val->as.number == -1.0) {
+                val->as.number = 0.0;
+            } else {
+                val->as.number = (double)(~(int64_t)val->as.number);
+            }
         }
         return true;
     }
@@ -77,6 +88,29 @@ bool eval_execute_op(VMContext *vm, BppTokenType op, BValue *val_stack, size_t *
                 }
                 ans = n1 / n2;
                 break;
+            case TOK_BACKSLASH:
+                if ((int64_t)n2 == 0) {
+                    err->code = 11;
+                    err->message = "Division by zero in integer division";
+                    return false;
+                }
+                ans = (double)((int64_t)n1 / (int64_t)n2);
+                break;
+            case TOK_MOD:
+                if ((int64_t)n2 == 0) {
+                    err->code = 11;
+                    err->message = "Division by zero in MOD";
+                    return false;
+                }
+                ans = (double)((int64_t)n1 % (int64_t)n2);
+                break;
+            case TOK_AND:
+            case TOK_AMPERSAND: ans = (double)((int64_t)n1 & (int64_t)n2); break;
+            case TOK_OR:
+            case TOK_PIPE:      ans = (double)((int64_t)n1 | (int64_t)n2); break;
+            case TOK_XOR: ans = (double)((int64_t)n1 ^ (int64_t)n2); break;
+            case TOK_SHL: ans = (double)((int64_t)n1 << ((int64_t)n2 & 63)); break;
+            case TOK_SHR: ans = (double)((int64_t)n1 >> ((int64_t)n2 & 63)); break;
             case TOK_EQ: ans = (n1 == n2) ? -1.0 : 0.0; break;
             case TOK_NE: ans = (n1 != n2) ? -1.0 : 0.0; break;
             case TOK_LT: ans = (n1 < n2)  ? -1.0 : 0.0; break;
@@ -93,7 +127,9 @@ bool eval_execute_op(VMContext *vm, BppTokenType op, BValue *val_stack, size_t *
 
 generic_op_path:
     // Infix String Concatenation: &
-    if (op == TOK_AMPERSAND) {
+    if (op == TOK_AMPERSAND && (lhs.type != VAL_SET && rhs.type != VAL_SET &&
+                               lhs.type != VAL_GROUP && rhs.type != VAL_GROUP &&
+                               lhs.type != VAL_MAP && rhs.type != VAL_MAP)) {
         char s1_buf[64], s2_buf[64];
         const char *s1 = "";
         const char *s2 = "";
@@ -245,6 +281,134 @@ generic_op_path:
                 }
             }
         }
+    }
+
+    // Set membership operator: x IN S
+    if (op == TOK_IN) {
+        bool found = false;
+        if (rhs.type == VAL_SET && rhs.as.set) {
+            found = set_contains(rhs.as.set, lhs);
+        } else if (rhs.type == VAL_GROUP && rhs.as.group) {
+            if (lhs.type == VAL_STRING && lhs.as.string) {
+                found = group_has(rhs.as.group, str_data(lhs.as.string));
+            }
+        } else if (rhs.type == VAL_MAP && rhs.as.map) {
+            if (lhs.type == VAL_STRING && lhs.as.string) {
+                found = map_has(rhs.as.map, str_data(lhs.as.string));
+            }
+        } else {
+            err->code = 13;
+            err->message = "RHS of IN operator must be a Set, Group, or Map";
+            return false;
+        }
+        res->type = VAL_NUMBER;
+        res->as.number = found ? -1.0 : 0.0;
+        return true;
+    }
+
+    // Set algebraic operators
+    if (lhs.type == VAL_SET || rhs.type == VAL_SET) {
+        if (op == TOK_PIPE) {
+            BppSet *s_a = (lhs.type == VAL_SET) ? lhs.as.set : NULL;
+            BppSet *s_b = (rhs.type == VAL_SET) ? rhs.as.set : NULL;
+            res->type = VAL_SET;
+            res->as.set = set_union(str, s_a, s_b);
+            return true;
+        }
+        if (op == TOK_AMPERSAND) {
+            BppSet *s_a = (lhs.type == VAL_SET) ? lhs.as.set : NULL;
+            BppSet *s_b = (rhs.type == VAL_SET) ? rhs.as.set : NULL;
+            res->type = VAL_SET;
+            res->as.set = set_intersection(str, s_a, s_b);
+            return true;
+        }
+        if (op == TOK_BACKSLASH) {
+            BppSet *s_a = (lhs.type == VAL_SET) ? lhs.as.set : NULL;
+            BppSet *s_b = (rhs.type == VAL_SET) ? rhs.as.set : NULL;
+            res->type = VAL_SET;
+            res->as.set = set_difference(str, s_a, s_b);
+            return true;
+        }
+        if (op == TOK_POW) {
+            BppSet *s_a = (lhs.type == VAL_SET) ? lhs.as.set : NULL;
+            BppSet *s_b = (rhs.type == VAL_SET) ? rhs.as.set : NULL;
+            res->type = VAL_SET;
+            res->as.set = set_sym_diff(str, s_a, s_b);
+            return true;
+        }
+        if (op == TOK_LE || op == TOK_LT) {
+            bool sub = (op == TOK_LE) ? set_is_subset(lhs.as.set, rhs.as.set) : set_is_proper_subset(lhs.as.set, rhs.as.set);
+            res->type = VAL_NUMBER;
+            res->as.number = sub ? -1.0 : 0.0;
+            return true;
+        }
+        if (op == TOK_EQ || op == TOK_NE) {
+            bool eq = value_equals(lhs, rhs);
+            res->type = VAL_NUMBER;
+            res->as.number = (op == TOK_EQ ? (eq ? -1.0 : 0.0) : (eq ? 0.0 : -1.0));
+            return true;
+        }
+        err->code = 13;
+        err->message = "Invalid operator for sets";
+        return false;
+    }
+
+    // Group and Map algebraic and comparison operators
+    if (lhs.type == VAL_GROUP || rhs.type == VAL_GROUP || lhs.type == VAL_MAP || rhs.type == VAL_MAP) {
+        BppGroup *g_a = (lhs.type == VAL_GROUP) ? lhs.as.group : (lhs.type == VAL_MAP ? group_from_map(str, lhs.as.map) : NULL);
+        BppGroup *g_b = (rhs.type == VAL_GROUP) ? rhs.as.group : (rhs.type == VAL_MAP ? group_from_map(str, rhs.as.map) : NULL);
+        bool free_a = (lhs.type == VAL_MAP && g_a != NULL);
+        bool free_b = (rhs.type == VAL_MAP && g_b != NULL);
+
+        if (op == TOK_PIPE) {
+            res->type = VAL_GROUP;
+            res->as.group = group_union(str, g_a, g_b);
+            if (free_a) group_release(str, g_a);
+            if (free_b) group_release(str, g_b);
+            return true;
+        }
+        if (op == TOK_AMPERSAND) {
+            res->type = VAL_GROUP;
+            res->as.group = group_intersection(str, g_a, g_b);
+            if (free_a) group_release(str, g_a);
+            if (free_b) group_release(str, g_b);
+            return true;
+        }
+        if (op == TOK_BACKSLASH) {
+            res->type = VAL_GROUP;
+            res->as.group = group_difference(str, g_a, g_b);
+            if (free_a) group_release(str, g_a);
+            if (free_b) group_release(str, g_b);
+            return true;
+        }
+        if (op == TOK_POW) {
+            res->type = VAL_GROUP;
+            res->as.group = group_sym_diff(str, g_a, g_b);
+            if (free_a) group_release(str, g_a);
+            if (free_b) group_release(str, g_b);
+            return true;
+        }
+        if (op == TOK_LE || op == TOK_LT) {
+            bool sub = (op == TOK_LE) ? group_is_subset(g_a, g_b) : group_is_proper_subset(g_a, g_b);
+            res->type = VAL_NUMBER;
+            res->as.number = sub ? -1.0 : 0.0;
+            if (free_a) group_release(str, g_a);
+            if (free_b) group_release(str, g_b);
+            return true;
+        }
+        if (op == TOK_EQ || op == TOK_NE) {
+            bool eq = value_equals(lhs, rhs);
+            res->type = VAL_NUMBER;
+            res->as.number = (op == TOK_EQ ? (eq ? -1.0 : 0.0) : (eq ? 0.0 : -1.0));
+            if (free_a) group_release(str, g_a);
+            if (free_b) group_release(str, g_b);
+            return true;
+        }
+        if (free_a) group_release(str, g_a);
+        if (free_b) group_release(str, g_b);
+        err->code = 13;
+        err->message = "Invalid operator for groups or maps";
+        return false;
     }
 
     // String operators

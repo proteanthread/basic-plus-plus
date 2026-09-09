@@ -1,124 +1,54 @@
-# BASIC++ v6.5.2 Virtual Memory and RAM Banks
+<!--
+Title:        Virtual_Memory_RAMBANKs
+Tier:         2
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/memory/vmem_mmu.c, engine/src/memory/segmented_mem.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. OVERVIEW
+# BASIC++ v6.5.2 Virtual Memory & RAM Banks Architecture
 
-The segmented memory subsystem (vmem) provides access to a flat virtual address space partitioned into switchable banks. This emulates the bank-switching memory architecture of classic 8-bit and 16-bit computers where only a subset of total memory is visible at any time. The vmem system is implemented in engine/src/memory/segmented_mem.c and is part of the libhardware library.
+The authoritative specification for segmented virtual memory (`vmem`), bank-switched RAM banking, and memory management unit (MMU) virtualization in BASIC++ v6.5.2.
 
-The vmem subsystem is available only in the baspp standard edition. It is excluded from the bpp lite edition and the bs batch runner.
+---
 
-## 2. BANK ORGANIZATION
+## 1. Segmented Memory Architecture (`vmem`)
 
-Virtual memory is organized into banks of configurable size. The default configuration provides 256 banks of 4 KB each, giving 1 MB of total segmented storage. Each bank can be mapped into the active window independently.
+The segmented memory subsystem (`engine/src/memory/vmem_mmu.c`) provides access to an address space partitioned into switchable 64 KB memory banks. This emulates classic bank-switching memory architectures (EMS 4.0, XMS, Commodore REU, Apple II language cards) while running on 32-bit and 64-bit host architectures:
 
-```text
-Bank 0:  0x00000 - 0x00FFF  (4096 bytes)
-Bank 1:  0x01000 - 0x01FFF  (4096 bytes)
-Bank 2:  0x02000 - 0x02FFF  (4096 bytes)
-...
-Bank 255: 0xFF000 - 0xFFFFF (4096 bytes)
-```
+- **Memory Pools by Binary Edition**:
+  - `baspp.exe` (Desktop Flagship): 640 MB memory pool with up to 1024 switchable virtual RAM banks.
+  - `bpp.exe` (Lite Edition): 384 MB flat pool; segmented memory excluded to optimize terminal execution.
+  - `bs.exe` (Batch Runner): 64 MB flat pool.
+  - `iot.exe` (Microcontroller Edition): 2 MB pool.
 
-The bank size and count are configurable at initialization.
+---
 
-## 3. BASIC++ STATEMENTS FOR VMEM
+## 2. Bank Switching Operations
 
-VMEM INIT banks, size — Initializes the segmented memory system with the specified number of banks and bank size in bytes:
+- **`BANK bank_num`**: Switches the active 64 KB memory bank mapped into the addressable window. Subsequent `PEEK`, `POKE`, `BLOAD`, and `BSAVE` operations target the selected bank.
+- **`RAMBANK bank_num`**: Selects a high-memory extended RAM bank.
+- **`MEM[...]`**: Array-style physical memory access mapped into the active bank window.
 
-```basic
-10 VMEM INIT 64, 8192    ' 64 banks of 8 KB = 512 KB total
-```
+---
 
-VMEM BANK n — Selects bank n as the active bank. Subsequent VPOKE and VPEEK operations access this bank:
+## 3. Safety and Sandbox Bounds Checking
 
-```basic
-20 VMEM BANK 0
-30 VPOKE 0, 42           ' Write 42 to byte 0 of bank 0
-40 VMEM BANK 1
-50 VPOKE 0, 99           ' Write 99 to byte 0 of bank 1
-```
+In accordance with project safety standards and the EU Cyber Resilience Act (CRA 2024):
+- All memory addresses accessed via `PEEK`, `POKE`, or `BANK` are validated against allocated arena boundaries in `vmem_mmu.c`.
+- Accesses outside allocated bank memory raise **Error 5: Illegal Function Call** rather than triggering host OS segmentation faults.
 
-VPOKE address, value — Writes a byte (0-255) to the specified offset within the active bank.
+---
 
-VPEEK(address) — Reads a byte from the specified offset within the active bank.
-
-VMEM COPY src_bank, dest_bank — Copies the entire contents of one bank to another.
-
-VMEM FILL bank, value — Fills all bytes in a bank with the specified value.
-
-VMEM SWAP bank1, bank2 — Exchanges the contents of two banks.
-
-VMEM CLEAR — Zeros all banks.
-
-VMEM FREE — Releases all segmented memory back to the system.
-
-## 4. USE CASES
-
-### Sprite and Tile Storage
-
-Bank-switched memory is natural for storing sprites, tiles, and animation frames in graphics programs:
+## 4. Example: Bank Switching & Memory Access
 
 ```basic
-10 VMEM INIT 32, 1024    ' 32 banks of 1 KB for sprite data
-20 VMEM BANK 0
-30 FOR I = 0 TO 255
-40   VPOKE I, SpriteData(I)
-50 NEXT I
-60 ' Switch to bank 1 for the next sprite
-70 VMEM BANK 1
-80 FOR I = 0 TO 255
-90   VPOKE I, SpriteData2(I)
-100 NEXT I
+10 REM Bank Switching Memory Demo
+20 BANK 1
+30 POKE 100, 42
+40 BANK 2
+50 POKE 100, 99
+60 BANK 1 : PRINT "Bank 1, Byte 100: "; PEEK(100)
+70 BANK 2 : PRINT "Bank 2, Byte 100: "; PEEK(100)
 ```
-
-### Data Page Switching
-
-Programs that process datasets larger than available variable memory can page data through banks:
-
-```basic
-10 VMEM INIT 16, 16384   ' 16 banks of 16 KB = 256 KB
-20 FOR Page = 0 TO 15
-30   VMEM BANK Page
-40   FOR Offset = 0 TO 16383
-50     VPOKE Offset, ProcessByte(Page, Offset)
-60   NEXT Offset
-70 NEXT Page
-```
-
-### State Snapshots
-
-VMEM COPY creates instant snapshots of memory state for undo operations:
-
-```basic
-10 VMEM COPY 0, 15       ' Save current state to bank 15
-20 ' ... perform operations on bank 0 ...
-30 ' If something went wrong:
-40 VMEM COPY 15, 0       ' Restore saved state
-```
-
-## 5. RELATIONSHIP TO POKE/PEEK
-
-VPOKE and VPEEK operate on the segmented virtual memory space. POKE and PEEK operate on the BIOS emulation memory space (the PC BIOS data area and video RAM regions). These are separate address spaces. VPOKE does not write to the BIOS data area, and POKE does not write to vmem banks.
-
-## 6. PERFORMANCE CONSIDERATIONS
-
-Bank switching is a constant-time operation — it simply changes which bank's pointer is used for subsequent VPOKE/VPEEK calls. The actual data is stored in a contiguous heap allocation. There is no memory copy during a bank switch.
-
-VPOKE and VPEEK are single-byte operations. For bulk transfers, use VMEM COPY or loop over the bank contents. Future versions may add block transfer operations for higher throughput.
-
-## 7. BIOS MEMORY EMULATION
-
-The BIOS emulation subsystem (libhardware, engine/src/bios/) provides a separate virtual address space that mirrors the IBM PC/XT/AT memory layout:
-
-```text
-0x00000 - 0x003FF  Interrupt Vector Table (IVT)
-0x00400 - 0x004FF  BIOS Data Area (BDA)
-0xA0000 - 0xAFFFF  EGA/VGA graphics framebuffer
-0xB0000 - 0xB0FFF  MDA text framebuffer
-0xB8000 - 0xBFFFF  CGA/EGA/VGA text framebuffer
-0xC0000 - 0xCFFFF  Video BIOS ROM
-0xF0000 - 0xFFFFF  System BIOS ROM
-```
-
-POKE and PEEK access this space. For example, PEEK(&H449) reads the current video mode from the BDA. POKE to the video RAM regions updates the virtual display through BiosVRAMObserver callbacks.
-
-This BIOS memory space is entirely separate from VMEM banks and from the BASIC++ program/variable/string memory regions.

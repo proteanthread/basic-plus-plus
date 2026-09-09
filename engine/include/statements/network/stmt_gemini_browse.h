@@ -14,5 +14,6 @@
 #include "lexer/lexer.h"
 
 BppError stmt_gemini_browse_handler(VMContext *vm, LexerContext *lex);
+void     stmt_gemini_browse_register(void);
 
 #endif // STATEMENTS_NETWORK_STMT_GEMINI_BROWSE_H

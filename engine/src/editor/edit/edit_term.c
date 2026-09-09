@@ -19,6 +19,8 @@ static struct termios orig_termios;
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <conio.h>
+#include "runtime/format/snprintf.h"
+#include "runtime/string/strops.h"
 #ifndef ENABLE_VIRTUAL_TERMINAL_PROCESSING
 #define ENABLE_VIRTUAL_TERMINAL_PROCESSING 0x0004
 #endif

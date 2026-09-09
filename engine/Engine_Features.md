@@ -27,15 +27,17 @@ The BASIC++ v6.5.2 engine is structured into an 11-modular library spectrum link
 
 ## 2. Executable Target Editions & Memory Allocations
 
-BASIC++ builds into five distinct executable binary targets optimized for different execution environments:
+BASIC++ builds into seven distinct executable binary targets optimized for different execution environments:
 
 | Target Executable | Edition Name | Default Memory Pool | Interactive Prompt | Output Status | Graphic/TUI Subsystem |
 |---|---|---|---|---|---|
 | **`baspp.exe` / `baspp`** | Flagship Desktop Edition | **640 MB** (`671088640L`) | `> ` | `Ok\n> ` | Full SDL2 graphics, BGI software rasterizer, TUI multiplexer, DAP server |
 | **`bpp.exe` / `bpp`** | Lite REPL Edition | **384 MB** (`402653184L`) | `] ` | `Ready.\n] ` | Terminal console REPL. Weak symbol fallbacks in `vdev.c` for headless linking |
 | **`bs.exe` / `bs`** | Batch Script Runner | **64 MB** (`67108864L`) | *None* | *None* | Headless non-interactive execution for PowerShell, Bash, CGI pipelines |
+| **`iot.exe` / `iot`** | Microcontroller & IoT Edition | **2 MB** (`2097152L`) | `] ` | `Ready.\n] ` | Headless micro-REPL optimized for microcontrollers, hardware I/O, event loops |
 | **`bppc.exe` / `bppc`** | Compiler & Transpiler | Dynamic | *Command-line* | *Diagnostics* | Standalone binary transpiler & bytecode emitter tool |
 | **`detok.exe` / `detok`** | GW-BASIC Detokenizer | Dynamic | *Command-line* | *Text Output* | Decodes legacy GW-BASIC binary file format to text |
+| **`trans.exe` / `trans`** | Source-to-Source Transpiler | Dynamic | *Command-line* | *Diagnostics* | Transpiles BASIC source to clean ISO C17 code |
 
 ---
 
@@ -331,3 +333,287 @@ The engine provides full syntactic and semantic interchangeability between **inf
 Every operator is registered as a standalone micro-library under `engine/src/eval/functions/` (`libengine`) and is queryable via interactive `HELP` and `CATALOG`.
 
 
+
+---
+
+## 13. Systems Programming, Freestanding C17, Bare-Metal UEFI & Object Pascal Architecture
+
+### 13.1 Systems Programming Compilation Pipeline (`bppc` & `trans`)
+BASIC++ provides a first-class native compilation pipeline capable of producing genuine freestanding binaries with zero interpreter, zero garbage collector, and zero hosted C runtime dependencies:
+
+1. **Freestanding C17 Target (`--freestanding`)**:
+   - Emits pure ISO C17 code requiring zero libc runtime functions (`-ffreestanding -nostdlib`).
+   - Sized ordinal primitive types: `U8`, `I8`, `U16`, `I16`, `U32`, `I32`, `U64`, `I64`, `USIZE`, `ISIZE`.
+   - Bare-metal entry point `void _start(void)`.
+   - Volatile hardware memory and port access: `BPP_MEM8(addr)`, `BPP_MEM16(addr)`, `BPP_MEM32(addr)`, `BPP_MEM64(addr)`, `BPP_PORT8(port)`.
+   - Syntactic hardware arrays: `MEM[addr]`, `MEMW[addr]`, `MEML[addr]`, `PORT[port]` using reserved square brackets `[ ]`.
+   - Direct inline assembly escape: `ASM "..."`.
+
+2. **64-bit Bare-Metal UEFI Target (`--uefi`)**:
+   - Compiles directly into 64-bit UEFI firmware application payloads (`\EFI\BOOT\BOOTX64.EFI`).
+   - Entry point: `EFI_STATUS EFIAPI efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)`.
+   - Native UEFI text console protocols: `EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL` providing `OutputString` (UCS-2 / UTF-16LE conversion) and `ClearScreen`.
+   - Enables machine cold boot directly into a native BASIC++ systems environment with zero operating system beneath it.
+
+3. **Object Pascal Transpilation Target (`--pascal`)**:
+   - Generates clean Object Pascal targeting the Free Pascal Compiler (FPC).
+   - Generates `program GeneratedBppProgram;` with `{$mode objfpc}{$H+}`.
+   - Maps sized types to Pascal primitives (`Byte`, `ShortInt`, `Word`, `SmallInt`, `LongWord`, `LongInt`, `QWord`, `Int64`, `PtrUInt`, `PtrInt`).
+   - Direct typed pointer dereferencing: `PByte(PtrUInt(addr))^ := val;`.
+
+---
+
+## 13. Systems Programming, Freestanding C17, Bare-Metal UEFI & Object Pascal Architecture
+
+### 13.1 Systems Programming Compilation Pipeline (`bppc` & `trans`)
+BASIC++ provides a first-class native compilation pipeline capable of producing genuine freestanding binaries with zero interpreter, zero garbage collector, and zero hosted C runtime dependencies:
+
+1. **Freestanding C17 Target (`--freestanding`)**:
+   - Emits pure ISO C17 code requiring zero libc runtime functions (`-ffreestanding -nostdlib`).
+   - Sized ordinal primitive types: `U8`, `I8`, `U16`, `I16`, `U32`, `I32`, `U64`, `I64`, `USIZE`, `ISIZE`.
+   - Bare-metal entry point `void _start(void)`.
+   - Volatile hardware memory and port access: `BPP_MEM8(addr)`, `BPP_MEM16(addr)`, `BPP_MEM32(addr)`, `BPP_MEM64(addr)`, `BPP_PORT8(port)`.
+   - Syntactic hardware arrays: `MEM[addr]`, `MEMW[addr]`, `MEML[addr]`, `PORT[port]` using reserved square brackets `[ ]`.
+   - Direct inline assembly escape: `ASM "..."`.
+
+2. **64-bit Bare-Metal UEFI Target (`--uefi`)**:
+   - Compiles directly into 64-bit UEFI firmware application payloads (`\EFI\BOOT\BOOTX64.EFI`).
+   - Entry point: `EFI_STATUS EFIAPI efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)`.
+   - Native UEFI text console protocols: `EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL` providing `OutputString` (UCS-2 / UTF-16LE conversion) and `ClearScreen`.
+   - Enables machine cold boot directly into a native BASIC++ systems environment with zero operating system beneath it.
+
+3. **Object Pascal Transpilation Target (`--pascal`)**:
+   - Generates clean Object Pascal targeting the Free Pascal Compiler (FPC).
+   - Generates `program GeneratedBppProgram;` with `{$mode objfpc}{$H+}`.
+   - Maps sized types to Pascal primitives (`Byte`, `ShortInt`, `Word`, `SmallInt`, `LongWord`, `LongInt`, `QWord`, `Int64`, `PtrUInt`, `PtrInt`).
+   - Direct typed pointer dereferencing: `PByte(PtrUInt(addr))^ := val;`.
+
+---
+
+## 14. Historical Dialect Feature Import: Vintage Ecosystems & Apple III Business Extensions (Waves 1–12)
+
+### 14.1 Phase 2A (Waves 1–4): Freestanding Linear Algebra, Slicing & Pick MultiValue
+1. **Wave 1: Freestanding Linear Algebra & Bare DET**:
+   - `DET` / `MATH.DET`: Bare identifier returning determinant of the last inverted matrix (`MAT N = INV(M)`) via Gaussian elimination.
+   - `DOT(u, v)`: Vector dot product with support for `VAL_NUMBER` and `VAL_INTEGER` array elements across 0-based and 1-based indexing.
+
+2. **Wave 2: Slicing, Codecs, and Low-Memory Storage**:
+   - Bracket Slicing (`S$[start TO end]`, `S$[start, end]`, `S$[start]`): Atari and HP-style zero-copy string slicing.
+   - `CHANGE` (DEC PDP-10 / Tymshare Super BASIC): `CHANGE S$ TO A%` and `CHANGE A% TO S$`, dynamically respecting `OPTION BASE 0` (`A%(0)` is length) and `OPTION BASE 1` (`A%(1)` is length) with stack/arena memory.
+   - `PACK` & `UNPACK`: Dedicated statement synonyms for string-array ASCII conversion.
+   - `EXAM(addr)` & `FILL addr, val`: North Star BASIC byte read function and write statement with 64KB virtual low RAM emulation.
+
+3. **Wave 3: Fractional & Financial Rounding Intrinsics**:
+   - `FRAC(x)` / `FP(x)`: Returns fractional part of a number (`x - trunc(x)`).
+   - `BANKER_ROUND(x [, n])`: IEEE 754 round half to even (banker's rounding).
+
+4. **Wave 4: Pick MultiValue Dynamic Arrays & Unified Functions**:
+   - Option A (Primary): Context-disambiguated `LOCATE target IN arr SETTING pos THEN ... ELSE ...` (disambiguated from QuickBASIC screen `LOCATE row, col`).
+   - Option B (Synonym): `FIND target IN arr SETTING pos THEN ... ELSE ...` (disambiguated from DEC file `FIND`).
+   - Option C (Compound): `ARRAY FIND target IN arr SETTING pos THEN ... ELSE ...`.
+   - Sorted ordering: `LOCATE target IN arr BY "AL"|"AR"|"DL"|"DR" SETTING pos`.
+   - Unified Array & String Functions: `INDEX(arr, target)` / `INDEX$(arr, target)`, `INSERT(arr, pos, val)` / `INSERT$(arr, pos, val$)`, `REPLACE(arr, pos, val)` / `REPLACE$(arr, pos, val$)`, `DELETE(arr, pos)` / `DELETE$(arr, pos)` / `REMOVE$(arr, pos)`, `COUNT(arr [, delim$])` / `COUNT$(arr [, delim$])`, `FIELD(dyn, delim$, idx)`, `EXTRACT(dyn, am [, vm [, svm]])`. Legacy `D`-prefixed functions are shelved in `planned/`.
+
+### 14.2 Phase 2B (Waves 5–8): Bitwise Registers, Sized Strings, Reductions & Renumbering
+1. **Wave 5: Bitwise Registers & Bitfield Ops**:
+   - `BIT(val, bit)` (alias for `READBIT`), `CLRBIT(val, bit)` (alias for `RESETBIT`), `SETBIT`, `TOGGLEBIT`.
+   - `ROL(val, count [, width])`: Rotate bits left with optional width (default 32).
+   - `ROR(val, count [, width])`: Rotate bits right with optional width (default 32).
+   - `BITFIELD(val, start, len)`: Extract bitfield slice from integer value.
+   - Bracket modifiers supported across bitwise functions: `ROL[...]`, `ROR[...]`, `BITFIELD[...]`.
+
+2. **Wave 6: String Length Sizing & Dynamic Descriptors**:
+   - String length constraints on declaration: `DIM S$ = len`, `DIM S$[len]`, `DIM S$ * len`, `DIM S AS STRING * len`, `DIM S AS STRING = len`, `DIM S AS STRING[len]`.
+   - Automatic string clamping/truncation upon variable assignment when string length exceeds declared `max_len`.
+   - `MAXLEN(S$)` / `MAXLEN[S$]`: Retrieves declared maximum length constraint of sized string variable (0 if unbounded).
+
+3. **Wave 7: Mathematical Reductions & Statistics (Tri-Hybrid Delimiters `()`, `[]`, `{}`)**:
+   - `SUM(...)`: Variadic summation of numeric arguments, array reduction `SUM(arr)` / `SUM[arr]`, and set collection `SUM{...}`.
+   - `AVG(...)` / `MEAN(...)`: Arithmetic mean of numeric arguments, array reduction `AVG(arr)` / `AVG[arr]`, and set collection `AVG{...}`.
+   - `MIN(...)` / `MAX(...)`: Minimum and maximum of numeric arguments, array reduction `MIN(arr)` / `MIN[arr]`, and set collection `MIN{...}`.
+
+4. **Wave 8: Auto-Renumbering Preprocessor**:
+   - File-to-file renumbering preprocessor: `RENUM "input.bas", start, step TO "output.bas"`.
+   - In-place file renumbering: `RENUM "input.bas", start, step`.
+   - Automated line numbering on load: `LOAD "input.bas"`, `RENUM` automatically assigns deterministic line numbers (10, 20, 30...) to unnumbered source files.
+
+### 14.3 Phase 2C (Waves 9–12): Extended Vintage Ecosystems & Apple III Business Extensions
+1. **Wave 9: Sharp Pocket Trigonometric Angle Modes & Polar/Rectangular Coordinates**:
+   - `DEGREE`, `RADIAN`, `GRAD`: Statements to switch global VM trigonometric angle mode.
+   - `DEGREE(rad)`, `RADIAN(deg)`, `GRAD(deg)`: Explicit angle conversion functions.
+   - Angle-Aware Trig: `SIN`, `COS`, `TAN`, `ASIN`, `ACOS`, `ATN` dynamically convert angles based on active VM angle mode across both interpreter and AST evaluators.
+   - `POL(x, y [, coord])` / `POL[x, y]`: Polar coordinate conversion returning radius (r = hypot(x, y)) or angle (theta = atan2(y, x) in active angle mode).
+   - `REC(r, theta [, coord])` / `REC[r, theta]`: Rectangular coordinate conversion returning x (r * cos(theta)) or y (r * sin(theta)) in active angle mode.
+
+2. **Wave 10: Tektronix 4050 Terminal Control, GPIB Bus & Orthogonal Brackets**:
+   - `PAGE`: Clear screen statement via virtual console (`vcon_clear_screen`, `vcon_locate`, `\f`).
+   - `WBYTE`, `RBYTE`: GPIB / IEEE-488 instrument I/O statements and functions: `WBYTE data...`, `WBYTE @dev, sec: data...`, `WBYTE[dev, sec] data...`, `WBYTE(dev, data)`, `RBYTE var...`, `RBYTE @dev, sec: var...`, `RBYTE[dev, sec] var...`, `RBYTE(dev)`, backed by a virtual GPIB bus controller and FIFO buffer ring.
+   - Orthogonal Bracket Coordinates: `WINDOW [xmin..xmax, ymin..ymax]` and `VIEWPORT [xmin..xmax, ymin..ymax]` adhering strictly to square-bracket delimiter semantics.
+
+3. **Wave 11: Wang 2200 Substring Search & Character Translation**:
+   - `POS(s$, target$ [, start])`: Substring position search with optional 1-based start offset, coexisting with legacy console column check `POS(0)`.
+   - `TRANSLATE var$ USING table$`, `TRANSLATE var$, from$, to$`, `TRANSLATE[from$, to$] var$`: In-place character translation statement using lookup tables or character pairs.
+   - `TRANSLATE$(src$, from$, to$)`, `TRANSLATE$(src$, table$)`, `TRANSLATE$[from$, to$](src$)`: Character translation function returning mapped string.
+
+4. **Wave 12: Business BASIC & Apple III Terminal Control & Formatting**:
+   - `@(col, row)` / `@[col, row]`: 2D screen cursor positioning within `PRINT` statements.
+   - `@(-1)`: Clear screen (`CLS`) terminal control mnemonic.
+   - `@(-2)`: Cursor home (`HOME`) terminal control mnemonic.
+   - `@(-3)`: Erase to end of line (`EOL`) terminal control mnemonic.
+   - `@(-4)`: Erase to end of screen (`EOS`) terminal control mnemonic.
+
+---
+
+## 14. Historical Dialect Feature Import: Vintage Ecosystems & Apple III Business Extensions (Waves 1–12)
+
+### 14.1 Phase 2A (Waves 1–4): Freestanding Linear Algebra, Slicing & Pick MultiValue
+1. **Wave 1: Freestanding Linear Algebra & Bare DET**:
+   - `DET` / `MATH.DET`: Bare identifier returning determinant of the last inverted matrix (`MAT N = INV(M)`) via Gaussian elimination.
+   - `DOT(u, v)`: Vector dot product with support for `VAL_NUMBER` and `VAL_INTEGER` array elements across 0-based and 1-based indexing.
+
+2. **Wave 2: Slicing, Codecs, and Low-Memory Storage**:
+   - Bracket Slicing (`S$[start TO end]`, `S$[start, end]`, `S$[start]`): Atari and HP-style zero-copy string slicing.
+   - `CHANGE` (DEC PDP-10 / Tymshare Super BASIC): `CHANGE S$ TO A%` and `CHANGE A% TO S$`, dynamically respecting `OPTION BASE 0` (`A%(0)` is length) and `OPTION BASE 1` (`A%(1)` is length) with stack/arena memory.
+   - `PACK` & `UNPACK`: Dedicated statement synonyms for string-array ASCII conversion.
+   - `EXAM(addr)` & `FILL addr, val`: North Star BASIC byte read function and write statement with 64KB virtual low RAM emulation.
+
+3. **Wave 3: Fractional & Financial Rounding Intrinsics**:
+   - `FRAC(x)` / `FP(x)`: Returns fractional part of a number (`x - trunc(x)`).
+   - `BANKER_ROUND(x [, n])`: IEEE 754 round half to even (banker's rounding).
+
+4. **Wave 4: Pick MultiValue Dynamic Arrays & Unified Functions**:
+   - Option A (Primary): Context-disambiguated `LOCATE target IN arr SETTING pos THEN ... ELSE ...` (disambiguated from QuickBASIC screen `LOCATE row, col`).
+   - Option B (Synonym): `FIND target IN arr SETTING pos THEN ... ELSE ...` (disambiguated from DEC file `FIND`).
+   - Option C (Compound): `ARRAY FIND target IN arr SETTING pos THEN ... ELSE ...`.
+   - Sorted ordering: `LOCATE target IN arr BY "AL"|"AR"|"DL"|"DR" SETTING pos`.
+   - Unified Array & String Functions: `INDEX(arr, target)` / `INDEX$(arr, target)`, `INSERT(arr, pos, val)` / `INSERT$(arr, pos, val$)`, `REPLACE(arr, pos, val)` / `REPLACE$(arr, pos, val$)`, `DELETE(arr, pos)` / `DELETE$(arr, pos)` / `REMOVE$(arr, pos)`, `COUNT(arr [, delim$])` / `COUNT$(arr [, delim$])`, `FIELD(dyn, delim$, idx)`, `EXTRACT(dyn, am [, vm [, svm]])`. Legacy `D`-prefixed functions are shelved in `planned/`.
+
+### 14.2 Phase 2B (Waves 5–8): Bitwise Registers, Sized Strings, Reductions & Renumbering
+1. **Wave 5: Bitwise Registers & Bitfield Ops**:
+   - `BIT(val, bit)` (alias for `READBIT`), `CLRBIT(val, bit)` (alias for `RESETBIT`), `SETBIT`, `TOGGLEBIT`.
+   - `ROL(val, count [, width])`: Rotate bits left with optional width (default 32).
+   - `ROR(val, count [, width])`: Rotate bits right with optional width (default 32).
+   - `BITFIELD(val, start, len)`: Extract bitfield slice from integer value.
+   - Bracket modifiers supported across bitwise functions: `ROL[...]`, `ROR[...]`, `BITFIELD[...]`.
+
+2. **Wave 6: String Length Sizing & Dynamic Descriptors**:
+   - String length constraints on declaration: `DIM S$ = len`, `DIM S$[len]`, `DIM S$ * len`, `DIM S AS STRING * len`, `DIM S AS STRING = len`, `DIM S AS STRING[len]`.
+   - Automatic string clamping/truncation upon variable assignment when string length exceeds declared `max_len`.
+   - `MAXLEN(S$)` / `MAXLEN[S$]`: Retrieves declared maximum length constraint of sized string variable (0 if unbounded).
+
+3. **Wave 7: Mathematical Reductions & Statistics (Tri-Hybrid Delimiters `()`, `[]`, `{}`)**:
+   - `SUM(...)`: Variadic summation of numeric arguments, array reduction `SUM(arr)` / `SUM[arr]`, and set collection `SUM{...}`.
+   - `AVG(...)` / `MEAN(...)`: Arithmetic mean of numeric arguments, array reduction `AVG(arr)` / `AVG[arr]`, and set collection `AVG{...}`.
+   - `MIN(...)` / `MAX(...)`: Minimum and maximum of numeric arguments, array reduction `MIN(arr)` / `MIN[arr]`, and set collection `MIN{...}`.
+
+4. **Wave 8: Auto-Renumbering Preprocessor**:
+   - File-to-file renumbering preprocessor: `RENUM "input.bas", start, step TO "output.bas"`.
+   - In-place file renumbering: `RENUM "input.bas", start, step`.
+   - Automated line numbering on load: `LOAD "input.bas"`, `RENUM` automatically assigns deterministic line numbers (10, 20, 30...) to unnumbered source files.
+
+### 14.3 Phase 2C (Waves 9–12): Extended Vintage Ecosystems & Apple III Business Extensions
+1. **Wave 9: Sharp Pocket Trigonometric Angle Modes & Polar/Rectangular Coordinates**:
+   - `DEGREE`, `RADIAN`, `GRAD`: Statements to switch global VM trigonometric angle mode.
+   - `DEGREE(rad)`, `RADIAN(deg)`, `GRAD(deg)`: Explicit angle conversion functions.
+   - Angle-Aware Trig: `SIN`, `COS`, `TAN`, `ASIN`, `ACOS`, `ATN` dynamically convert angles based on active VM angle mode across both interpreter and AST evaluators.
+   - `POL(x, y [, coord])` / `POL[x, y]`: Polar coordinate conversion returning radius (r = hypot(x, y)) or angle (theta = atan2(y, x) in active angle mode).
+   - `REC(r, theta [, coord])` / `REC[r, theta]`: Rectangular coordinate conversion returning x (r * cos(theta)) or y (r * sin(theta)) in active angle mode.
+
+2. **Wave 10: Tektronix 4050 Terminal Control, GPIB Bus & Orthogonal Brackets**:
+   - `PAGE`: Clear screen statement via virtual console (`vcon_clear_screen`, `vcon_locate`, `\f`).
+   - `WBYTE`, `RBYTE`: GPIB / IEEE-488 instrument I/O statements and functions: `WBYTE data...`, `WBYTE @dev, sec: data...`, `WBYTE[dev, sec] data...`, `WBYTE(dev, data)`, `RBYTE var...`, `RBYTE @dev, sec: var...`, `RBYTE[dev, sec] var...`, `RBYTE(dev)`, backed by a virtual GPIB bus controller and FIFO buffer ring.
+   - Orthogonal Bracket Coordinates: `WINDOW [xmin..xmax, ymin..ymax]` and `VIEWPORT [xmin..xmax, ymin..ymax]` adhering strictly to square-bracket delimiter semantics.
+
+3. **Wave 11: Wang 2200 Substring Search & Character Translation**:
+   - `POS(s$, target$ [, start])`: Substring position search with optional 1-based start offset, coexisting with legacy console column check `POS(0)`.
+   - `TRANSLATE var$ USING table$`, `TRANSLATE var$, from$, to$`, `TRANSLATE[from$, to$] var$`: In-place character translation statement using lookup tables or character pairs.
+   - `TRANSLATE$(src$, from$, to$)`, `TRANSLATE$(src$, table$)`, `TRANSLATE$[from$, to$](src$)`: Character translation function returning mapped string.
+
+4. **Wave 12: Business BASIC & Apple III Terminal Control & Formatting**:
+   - `@(col, row)` / `@[col, row]`: 2D screen cursor positioning within `PRINT` statements.
+   - `@(-1)`: Clear screen (`CLS`) terminal control mnemonic.
+   - `@(-2)`: Cursor home (`HOME`) terminal control mnemonic.
+   - `@(-3)`: Erase to end of line (`EOL`) terminal control mnemonic.
+   - `@(-4)`: Erase to end of screen (`EOS`) terminal control mnemonic.
+### 14.4 Phase 2D (Waves 13–16): HAL-Mediated & Systems Integration
+1. **Wave 13: Pick & Business BASIC Record Locking**:
+   - `READU`: Dynamic record reading with exclusive lock acquisition across multiple syntaxes: `READU [#]ch, id, var$`, `READU[ch, id] var$`, `READU var$ FROM [#]ch, id`, and function forms `status = READU(ch, id, var$)`, `rec$ = READU$(ch, id)`.
+   - `WRITEU`: Record write statement retaining active record lock: `WRITEU [#]ch, id, data$`, `WRITEU[ch, id] data$`, `WRITEU data$ ON/TO [#]ch, id`, and function form `status = WRITEU(ch, id, data$)`.
+   - `RELEASE`: Explicit lock release statement and function: bare `RELEASE`, `RELEASE [#]ch`, `RELEASE [#]ch, id`, `RELEASE[ch, id]`, `status = RELEASE(ch, id)`, `RELEASE(ch)`, `RELEASE()`.
+   - `LOCKED`: Intrinsic predicate function returning `-1` (true) if record is locked or `0` (false) if unlocked: `is_locked = LOCKED(ch, id)` and `LOCKED[ch, id]`. Backed by an $O(1)$ pre-allocated static lock table (128 slots) with zero bare `malloc`.
+
+2. **Wave 14: Structured ISAM & Keyed Storage Abstract HAL Core**:
+   - High-level ISAM & Keyed Storage HAL abstraction with multi-syntax statement operations: `OPEN "file.db" AS #ch KEYED`, `SEEKEQ [#]ch, key$`, `SEEKEQ[ch] key$`, `SEEKGE [#]ch, key$`, `SEEKGE[ch] key$`, `RETRIEVE [#]ch, key$, var$`, `RETRIEVE[ch] key$, var$`, `UPDATE [#]ch, key$, data$`, `UPDATE[ch] key$, data$`, `INSERT [#]ch, key$, data$`, `INSERT[ch] key$, data$`.
+   - ISAM Intrinsic Query Functions: `KEY$(ch)` returns current active key or primary index; `KEYCOUNT(ch)` and `KEYCOUNT[ch]` return total indexed key count; `ISAM(ch)` and `KEYED(ch)` return boolean status (`-1` / `0`) verifying active indexed file mode.
+
+3. **Wave 15: Non-BASIC Systems Types & Concurrency Extensions**:
+   - Explicit Non-BASIC Systems Types: `CBYTE(val)`, `BYTE(val)`, `CWORD(val)`, `WORD(val)`, `CDWORD(val)`, `DWORD(val)` providing integer truncations to 8-bit, 16-bit, and 32-bit unsigned/signed representations.
+   - Bracket Memory Width Accessors: `BYTE[addr]`, `WORD[addr]`, `DWORD[addr]` providing physical memory peek accessors with width-directed bounds checking and memory barriers.
+   - Low-Level Pointer & Address Descriptors: `PTR(var)` returns virtual address / memory handle; `DEREF(addr)` dereferences byte value at virtual address.
+   - Bitfield & Masking Operations: `BITFIELD(val, start, len)` and curried `BITFIELD[start, len](val)`; `SET_BITFIELD(val, start, len, new_bits)`; `MASK(val, mask_pattern)` and curried `MASK[mask_pattern](val)`.
+   - Concurrency & Mutex Primitives: `MUTEX "INIT", id`, `MUTEX "LOCK", id`, `MUTEX "UNLOCK", id`; functional acquisition: `m = MUTEX(name$)`, `MUTEX_LOCK(id)`, `MUTEX_UNLOCK(id)` backed by pre-allocated static mutex pool with auto-activation.
+
+4. **Wave 16: Master Dialect Regression & Closure**:
+   - 100% dialect test suite coverage across GW-BASIC, QBASIC, Super BASIC, Pick MultiValue, and ECMA-116.
+   - Tri-hybrid delimiter semantic invariants rigorously verified: `( )` for infix function calls and grouping, `[ ]` for bracket slicing, Polish notation, and memory width modifiers, `{ }` for reverse Polish notation, JSON dictionaries, and variadic sets.
+   - Unified array and string functions verified without duplication: `INDEX`, `INDEX$`, `INSERT`, `INSERT$`, `REPLACE`, `REPLACE$`, `REMOVE`, `REMOVE$`, `DELETE`, `DELETE$`, `COUNT`, `COUNT$`. Redundant `D`-prefixed and `P`-prefixed functions purged and shelved.
+
+---
+
+## 15. Stage 2: Python 3 Capability Import and Set-Based Object Model
+
+### 15.1 Wave 1: Core Set Model & Algebraic Engine
+1. **Foundational Principle**:
+   - "Everything is a Set, and what other languages call an Object is a Group within a Set."
+   - First-class Set collection (`VAL_SET`, `BppSet`) and Group collection (`VAL_GROUP`, `BppGroup`) types seamlessly integrated into the unified `BValue` runtime type system.
+
+2. **Braced Set and Group Literals**:
+   - Braced Set Literals: `{ 1, 2, 3 }`, `{ "apple", "banana" }`, and empty set `{}`. Automatically deduplicates elements upon insertion.
+   - Braced Group Literals: `{ name: "Alice", age: 30, city: "Denver" }` storing key-value pairs where keys are string identifiers and values are first-class `BValue` payloads.
+
+3. **Algebraic Set Operators**:
+   - **Union (`|`)**: `u = a | b` produces a new Set containing all unique elements from both sets.
+   - **Intersection (`&`)**: `inter = a & b` produces a new Set containing elements present in both sets.
+   - **Set Difference (`\`)**: `diff = a \ b` produces a new Set containing elements present in `a` but not in `b`. Contextually and syntactically disambiguated from numeric integer division (`10 \ 3 = 3`) and vintage DEC PDP-11 statement separators.
+   - **Symmetric Difference (`^`)**: `sdiff = a ^ b` produces a new Set containing elements present in either set but not in both. Disambiguated from power exponentiation (`2 ^ 8 = 256`).
+   - **Subset & Proper Subset (`<=`, `<`)**: `sub1 <= a` and `sub1 < a` evaluate subset relations returning relational truth values (`-1` for true, `0` for false).
+   - **Set Equality & Relational Testing (`=`, `<>`)**: Evaluates deep structural element equality across sets (`-1` for true, `0` for false).
+   - **Set Membership (`IN`)**: `item IN S` tests element containment returning `-1` (true) or `0` (false), contextually disambiguated from Pick MultiValue `LOCATE target IN arr SETTING pos`.
+
+4. **Addressing, Indexing, and In-Place Mutation**:
+   - Cardinality & Element Count: `COUNT(S)` returns set cardinality; `COUNT(S, item)` returns occurrences (`0` or `1`).
+   - Group Key Addressing & Mutation: `g{"key"}` retrieves property value; `g{"key"} = val` mutates or adds property in-place.
+   - Set 1-Based Element Addressing & Mutation: `S{idx}` retrieves element by index; `S{idx} = val` updates element in-place.
+   - Array Brace Addressing Parity: `arr{1} = 42` provides orthogonal brace addressing into dimensioned arrays.
+
+5. **Certified Memory Allocation & ISO C17 Safety**:
+   - Zero bare `malloc`: Implemented strictly using pool allocation (`RuntimePool`) and monotonic arenas (`RuntimeArena`) conforming to ISO C17 (§4 ¶6) freestanding rules.
+
+### 15.2 Wave 2: Pick MultiValue Dynamic Array Group Mapping & Map Container Unification
+1. **Container Subsumption & Unification**:
+   - `BppGroup` (`VAL_GROUP`) seamlessly subsumes associative key-value maps (`VAL_MAP`), allowing unified key-to-value addressing and mutation.
+   - Bidirectional conversion helpers (`group_from_map`, `map_from_group`) bridge legacy associative arrays with first-class set algebra.
+
+2. **Group and Map Algebraic Operations**:
+   - **Union (`|`)**: `G1 | G2` merges key-value pairs; right-operand values take precedence for shared keys with full $O(N)$ hash insertion.
+   - **Intersection (`&`)**: `G1 & G2` retains entries whose keys are present in both groups, adopting the right operand's value for consistent precedence.
+   - **Difference (`\`)**: `G1 \ G2` extracts entries whose keys exist in `G1` but are absent in `G2`.
+   - **Symmetric Difference (`^`)**: `G1 ^ G2` yields entries present in either group but not in both.
+   - **Subset & Proper Subset (`<=`, `<`)**: `G1 <= G2` returns `-1` (true) if all entries (keys and structural values) in `G1` are identically contained in `G2`.
+   - **Structural Equality (`=`, `<>`)**: Evaluates deep structural match across all group keys and values.
+
+3. **Multi-Tier Hierarchical Path Addressing & Mutation**:
+   - Multi-tier brace access: `R{"dept", "mgr", "name"}` descends nested Groups, Maps, and Sets with arbitrary depth.
+   - Multi-tier in-place mutation: `R{"emp", "salary"} = 100000` traverses or lazily constructs intermediate groups and mutates the target value in-place.
+
+4. **Pick MultiValue Three-Tier Dynamic Array Integration**:
+   - Native 3-tier dynamic array representation: Attribute Marks (`CHR$(254)` / `@AM`), Value Marks (`CHR$(253)` / `@VM`), and Subvalue Marks (`CHR$(252)` / `@SVM`).
+   - String Path Extraction: `dyn${attr [, val [, subval]]}` performs $O(1)$ substring extraction using orthogonal brace syntax.
+   - Dynamic String Mutation: `dyn${attr [, val [, subval]]} = "new_val"` reconstructs and replaces delimited segments in-place.
+   - `PARSE_DYNARRAY(dyn$)` / `GROUP_MAP(dyn$)`: Parses Pick dynamic array string into a 3-tier hierarchical Set of Groups.
+   - `DYNARRAY$(G)` / `DYNARRAY(G)`: Serializes a Set or Group back into a Pick-delimited string with 100% binary fidelity.
+   - Polymorphic Pick Intrinsics: `EXTRACT`, `REPLACE`, `INSERT`, `DELETE` operate interchangeably over dynamic strings, Sets, and Groups.
+
+5. **Relational Wildcard and Predicate Projections**:
+   - Wildcard Attribute Projection: `S{*, "id"}` projects attribute across all group items in the set.
+   - Predicate Filter Projection: `S{*, "role" = "user", "id"}` filters set elements matching predicate criteria and projects the target field into a new Set.

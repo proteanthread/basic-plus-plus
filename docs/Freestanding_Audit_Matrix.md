@@ -1,3 +1,12 @@
+<!--
+Title:        Freestanding Audit Matrix
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot, bppc)
+Authority:    engine/
+Generated:    yes
+Status:       Active
+-->
+
 # Master File-by-File Freestanding C17 Audit Matrix
 
 > **Standard Conformance**: ISO/IEC 9899:2018 (C17 Freestanding), ISO/IEC 25010:2023 (Software Quality & Maintainability), ISO/IEC 5055:2021 (Automated Source Code Quality), MISRA C:2012 / SEI CERT C (Safety-Critical & Bounded Operations), EU Cyber Resilience Act (CRA - Regulation EU 2024/2847 - Security by Design), and EU GDPR Article 25 (Privacy by Default).

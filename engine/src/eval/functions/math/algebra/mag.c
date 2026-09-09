@@ -2,25 +2,30 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (math_fn.c)
-// NEEDS: libcore (math.h, micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (math.h, language_descriptor.h, string.h)
 // NEEDS: libengine (mag.h, math.c, string.c)
 // Provides runtime implementation for the MAG built-in function in BASIC++.
 //
 // ---- Includes ----
 
 #include "eval/functions/math/algebra/mag.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/math.h"
 #include "runtime/string.h"
+#include "runtime/math/math.h"
+
+static const LangDesc g_mag_desc = {
+    .name = "MAG",
+    .category = "Math Functions",
+    .syntax = "MAG(x, y) | MAG(complex_z) | MAG(x)",
+    .description = "Returns the vector magnitude (hypotenuse) or absolute magnitude/modulus.",
+    .error_summary = "Error 13: Type Mismatch",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_PURE,
+    .type = FEATURE_FUNCTION
+};
 void func_mag_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "MAG",
-        .category = "Math Functions",
-        .syntax = "MAG(x, y) | MAG(complex_z) | MAG(x)",
-        .help_text = "Returns the vector magnitude (hypotenuse) or absolute magnitude/modulus.",
-        .error_codes = "Error 13: Type Mismatch"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_mag_desc);
 }
 
 BValue func_mag_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err) {

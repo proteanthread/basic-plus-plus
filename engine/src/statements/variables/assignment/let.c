@@ -11,26 +11,40 @@
 #include "statements/oop/sub.h"
 #include "vm/vm.h"
 #include "lexer/lexer.h"
+#include "lexer/lexer_internal.h"
 #include "eval/eval.h"
 #include "runtime/variables.h"
+#include "runtime/variables_internal.h"
 #include "runtime/arrays.h"
 #include "runtime/strings.h"
 #include "runtime/map.h"
-#include "runtime/micro_lib_metadata.h"
-#include <string.h>
-#include <stdlib.h>
+#include "runtime/set.h"
+#include "runtime/language_descriptor.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "platform/platform.h"
 #include "runtime/format/snprintf.h"
+#include "runtime/num_format.h"
+#include "device/vdev.h"
+#include "eval/functions/system/hardware/func_baud.h"
+#include "bios/bios_cpu8086.h"
+#include "reg/reg_udx.h"
+#include "runtime/memory/alloc.h"
+
+static const LangDesc g_let_desc = {
+    .name = "LET",
+    .category = "Variables & Memory",
+    .syntax = "[LET] variable = expression",
+    .description = "Assigns the value of an expression to a variable or array element.",
+    .error_summary = "Error 2: Syntax Error, Error 13: Type Mismatch",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SYSTEM,
+    .type = FEATURE_STATEMENT
+};
 
 
 void stmt_let_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "LET",
-        .category = "Variables & Memory",
-        .syntax = "[LET] variable = expression",
-        .help_text = "Assigns the value of an expression to a variable or array element.",
-        .error_codes = "Error 2: Syntax Error, Error 13: Type Mismatch"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_let_desc);
 }
 
 typedef struct {
@@ -41,10 +55,12 @@ typedef struct {
     bool is_slice;
     int slice_start;
     int slice_end;
+    bool is_brace;
+    char brace_body[128];
 } AssignTarget;
 
 static bool parse_single_target(VMContext *vm, LexerContext *lex, AssignTarget *target, BppError *err) {
-    memset(target, 0, sizeof(*target));
+    runtime_memset(target, 0, sizeof(*target));
     BppToken tok = lex_next(lex);
     if (tok.type != TOK_IDENT && tok.type != TOK_KEYWORD) {
         err->code = 2;
@@ -52,8 +68,20 @@ static bool parse_single_target(VMContext *vm, LexerContext *lex, AssignTarget *
         return false;
     }
     size_t len = (tok.length < sizeof(target->var_name) - 1) ? tok.length : (sizeof(target->var_name) - 1);
-    memcpy(target->var_name, tok.start, len);
+    runtime_memcpy(target->var_name, tok.start, len);
     target->var_name[len] = '\0';
+
+    // Check for trailing type sigil if keyword was scanned separately from sigil
+    BppToken sig_tok = lex_peek(lex);
+    if (sig_tok.type == TOK_AMPERSAND && len < sizeof(target->var_name) - 2) {
+        target->var_name[len++] = '&';
+        target->var_name[len] = '\0';
+        lex_next(lex);
+    } else if (sig_tok.type == TOK_MOD && len < sizeof(target->var_name) - 2) {
+        target->var_name[len++] = '%';
+        target->var_name[len] = '\0';
+        lex_next(lex);
+    }
 
     while (lex_peek(lex).type == TOK_PERIOD) {
         lex_next(lex); // Consume '.'
@@ -64,17 +92,26 @@ static bool parse_single_target(VMContext *vm, LexerContext *lex, AssignTarget *
         }
         char sub_part[64];
         size_t slen = (sub_tok.length < sizeof(sub_part) - 1) ? sub_tok.length : sizeof(sub_part) - 1;
-        memcpy(sub_part, sub_tok.start, slen);
+        runtime_memcpy(sub_part, sub_tok.start, slen);
         sub_part[slen] = '\0';
 
         char combined[64];
         runtime_snprintf(combined, sizeof(combined), "%s.%s", target->var_name, sub_part);
-        strncpy(target->var_name, combined, sizeof(target->var_name) - 1);
+        runtime_strncpy(target->var_name, combined, sizeof(target->var_name) - 1);
 
         target->var_name[sizeof(target->var_name) - 1] = '\0';
     }
 
     BppToken next_tok = lex_peek(lex);
+    if (next_tok.type == TOK_RPN_LITERAL) {
+        target->is_brace = true;
+        lex_next(lex);
+        size_t blen = (next_tok.length < sizeof(target->brace_body) - 1) ? next_tok.length : sizeof(target->brace_body) - 1;
+        runtime_memcpy(target->brace_body, next_tok.as.string, blen);
+        target->brace_body[blen] = '\0';
+        return true;
+    }
+
     if (next_tok.type == TOK_LBRACKET) {
         target->is_slice = true;
         lex_next(lex); // Consume '['
@@ -83,7 +120,7 @@ static bool parse_single_target(VMContext *vm, LexerContext *lex, AssignTarget *
         target->slice_start = (int)s_val.as.number;
         BppToken sep = lex_peek(lex);
         if (sep.type == TOK_COMMA || (sep.type == TOK_KEYWORD && sep.as.keyword == KW_TO) ||
-            (sep.type == TOK_IDENT && sep.length == 2 && strncasecmp(sep.start, "TO", 2) == 0)) {
+            (sep.type == TOK_IDENT && sep.length == 2 && runtime_strncasecmp(sep.start, "TO", 2) == 0)) {
             lex_next(lex);
             BValue e_val = eval_expression(vm, lex, err);
             if (err->code != 0) return false;
@@ -102,7 +139,7 @@ static bool parse_single_target(VMContext *vm, LexerContext *lex, AssignTarget *
     if (next_tok.type == TOK_LPAREN) {
         // Check if string slice or array index
         bool is_str_slice = false;
-        if (strchr(target->var_name, '$') && !arr_exists(vm_get_arr(vm), target->var_name)) {
+        if (runtime_strchr(target->var_name, '$') && !arr_exists(vm_get_arr(vm), target->var_name)) {
             is_str_slice = true;
         }
 
@@ -117,7 +154,7 @@ static bool parse_single_target(VMContext *vm, LexerContext *lex, AssignTarget *
 
         BppToken sep = lex_peek(lex);
         if (is_str_slice && (sep.type == TOK_COMMA || (sep.type == TOK_KEYWORD && sep.as.keyword == KW_TO) ||
-            (sep.type == TOK_IDENT && sep.length == 2 && strncasecmp(sep.start, "TO", 2) == 0))) {
+            (sep.type == TOK_IDENT && sep.length == 2 && runtime_strncasecmp(sep.start, "TO", 2) == 0))) {
             target->is_slice = true;
             target->slice_start = (int)idx1.as.number;
             lex_next(lex); // Consume ',' or 'TO'
@@ -180,20 +217,53 @@ static bool parse_single_target(VMContext *vm, LexerContext *lex, AssignTarget *
 }
 
 BppError stmt_let_handler(VMContext *vm, LexerContext *lex) {
+    bool is_explicit = false;
+    BppToken tok = lex_peek(lex);
+    if ((tok.type == TOK_KEYWORD && tok.as.keyword == KW_LET) ||
+        (tok.type == TOK_IDENT && tok.length == 3 && platform_strncasecmp(tok.start, "LET", 3) == 0)) {
+        is_explicit = true;
+        lex_next(lex);
+    }
+    return stmt_let_handler_ex(vm, lex, is_explicit, false);
+}
+
+BppError stmt_let_handler_ex(VMContext *vm, LexerContext *lex, bool is_explicit_let, bool is_set_object_only) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
+    const char *start_pos = lex ? lex_get_pos(lex) : NULL;
 
     AssignTarget targets[16];
     int target_count = 0;
 
-    bool is_explicit_let = false;
-    BppToken tok = lex_peek(lex);
-    if (tok.type == TOK_KEYWORD && tok.as.keyword == KW_LET) {
-        is_explicit_let = true;
-        lex_next(lex);
-    }
-
+next_let_assignment:
+    target_count = 0;
     if (!parse_single_target(vm, lex, &targets[target_count++], &err)) {
+        if (!is_explicit_let && start_pos) {
+            lex_set_pos(lex, start_pos);
+            BppError eval_err;
+            runtime_memset(&eval_err, 0, sizeof(eval_err));
+            BValue eval_res = eval_expression(vm, lex, &eval_err);
+            if (eval_err.code == 0) {
+                if (!vm_is_running(vm)) {
+                    VDevContext *vdev = vm_get_vdev(vm);
+                    if (eval_res.type == VAL_STRING && eval_res.as.string) {
+                        vdev_puts(vdev, str_data(eval_res.as.string));
+                        vdev_puts(vdev, "\n");
+                    } else if (eval_res.type == VAL_NUMBER || eval_res.type == VAL_INTEGER) {
+                        char nbuf[64];
+                        num_format_display(nbuf, sizeof(nbuf), eval_res.as.number, false, true);
+                        vdev_puts(vdev, nbuf);
+                        vdev_puts(vdev, "\n");
+                    }
+                }
+                if (eval_res.type == VAL_STRING && eval_res.as.string) {
+                    str_release(vm_get_str(vm), eval_res.as.string);
+                } else if (eval_res.type == VAL_MAP && eval_res.as.map) {
+                    map_release(vm_get_str(vm), eval_res.as.map);
+                }
+                return eval_err;
+            }
+        }
         return err;
     }
 
@@ -214,13 +284,20 @@ BppError stmt_let_handler(VMContext *vm, LexerContext *lex) {
                 break;
             }
 
+            const char *cur_p = lex_get_pos(lex);
+            if (!cur_p || !runtime_strchr(cur_p + 1, '=')) {
+                lex_next(lex); // Consume '=' before RHS expr
+                break;
+            }
+
             // Explicit LET A = B = C: lookahead to see if another assignment target follows
-            LexerContext *look_lex = lex_init(vm_get_mem(vm), lex_get_pos(lex));
-            lex_next(look_lex); // Consume '='
-            BppToken look_tok = lex_next(look_lex);
+            LexerContext look_lex;
+            lex_init_stack(&look_lex, vm_get_mem(vm), cur_p);
+            lex_next(&look_lex); // Consume '='
+            BppToken look_tok = lex_next(&look_lex);
             bool is_next_target = false;
             if (look_tok.type == TOK_IDENT || look_tok.type == TOK_KEYWORD) {
-                BppToken after_tok = lex_peek(look_lex);
+                BppToken after_tok = lex_peek(&look_lex);
                 if (after_tok.type == TOK_LPAREN) {
                     // Scan past array parens
                     int pcount = 0;
@@ -229,20 +306,20 @@ BppError stmt_let_handler(VMContext *vm, LexerContext *lex) {
                         else if (after_tok.type == TOK_RPAREN) {
                             pcount--;
                             if (pcount == 0) {
-                                lex_next(look_lex);
+                                lex_next(&look_lex);
                                 break;
                             }
                         }
-                        lex_next(look_lex);
-                        after_tok = lex_peek(look_lex);
+                        lex_next(&look_lex);
+                        after_tok = lex_peek(&look_lex);
                     }
-                    after_tok = lex_peek(look_lex);
+                    after_tok = lex_peek(&look_lex);
                 }
-                if (after_tok.type == TOK_EQ || after_tok.type == TOK_COMMA) {
+
+                if (after_tok.type == TOK_EQ) {
                     is_next_target = true;
                 }
             }
-            lex_shutdown(look_lex);
 
             if (is_next_target) {
                 lex_next(lex); // Consume '='
@@ -256,13 +333,50 @@ BppError stmt_let_handler(VMContext *vm, LexerContext *lex) {
             }
         }
 
+        if (!is_explicit_let && start_pos) {
+            lex_set_pos(lex, start_pos);
+            BppError eval_err;
+            runtime_memset(&eval_err, 0, sizeof(eval_err));
+            BValue eval_res = eval_expression(vm, lex, &eval_err);
+            if (eval_err.code == 0) {
+                if (!vm_is_running(vm)) {
+                    VDevContext *vdev = vm_get_vdev(vm);
+                    if (eval_res.type == VAL_STRING && eval_res.as.string) {
+                        vdev_puts(vdev, str_data(eval_res.as.string));
+                        vdev_puts(vdev, "\n");
+                    } else if (eval_res.type == VAL_NUMBER || eval_res.type == VAL_INTEGER) {
+                        char nbuf[64];
+                        num_format_display(nbuf, sizeof(nbuf), eval_res.as.number, false, true);
+                        vdev_puts(vdev, nbuf);
+                        vdev_puts(vdev, "\n");
+                    }
+                }
+                if (eval_res.type == VAL_STRING && eval_res.as.string) {
+                    str_release(vm_get_str(vm), eval_res.as.string);
+                } else if (eval_res.type == VAL_MAP && eval_res.as.map) {
+                    map_release(vm_get_str(vm), eval_res.as.map);
+                }
+                return eval_err;
+            }
+        }
+
         err.code = 2;
         err.message = "Syntax Error in LET (expected '=' or ',')";
         return err;
     }
 
+    const char *rhs_expr_text = lex_get_pos(lex);
     BValue val = eval_expression(vm, lex, &err);
     if (err.code != 0) {
+        return err;
+    }
+
+    if (is_set_object_only && val.type != VAL_MAP) {
+        if (val.type == VAL_STRING && val.as.string) {
+            str_release(vm_get_str(vm), val.as.string);
+        }
+        err.code = 13;
+        err.message = "Type Mismatch: SET assignment requires an object reference";
         return err;
     }
 
@@ -273,9 +387,9 @@ BppError stmt_let_handler(VMContext *vm, LexerContext *lex) {
         if (targets[i].is_slice) {
             BValue *cur = var_lookup(vc, targets[i].var_name, false);
             const char *orig_str = (cur && cur->type == VAL_STRING && cur->as.string) ? str_data(cur->as.string) : "";
-            int orig_len = (int)strlen(orig_str);
+            int orig_len = (int)runtime_strlen(orig_str);
             const char *rhs_str = (val.type == VAL_STRING && val.as.string) ? str_data(val.as.string) : "";
-            int rhs_len = (int)strlen(rhs_str);
+            int rhs_len = (int)runtime_strlen(rhs_str);
 
             int start = targets[i].slice_start;
             int end = (targets[i].slice_end > 0) ? targets[i].slice_end : (start + rhs_len - 1);
@@ -287,7 +401,7 @@ BppError stmt_let_handler(VMContext *vm, LexerContext *lex) {
             if (start - 1 + rhs_len > max_len) max_len = start - 1 + rhs_len;
             if (max_len < 0) max_len = 0;
 
-            char *buf = (char *)malloc(max_len + 1);
+            char *buf = (char *)runtime_malloc(max_len + 1);
             if (buf) {
                 for (int j = 0; j < max_len; ++j) {
                     buf[j] = (j < orig_len) ? orig_str[j] : ' ';
@@ -302,7 +416,7 @@ BppError stmt_let_handler(VMContext *vm, LexerContext *lex) {
                 new_val.type = VAL_STRING;
                 new_val.as.string = str_create(vm_get_str(vm), buf, max_len);
                 var_assign(vc, targets[i].var_name, new_val);
-                free(buf);
+                runtime_free(buf);
             }
         } else if (targets[i].is_array) {
             BValue *target = arr_get_element(arr_ctx, targets[i].var_name, targets[i].num_dims, targets[i].indices, &err);
@@ -319,14 +433,104 @@ BppError stmt_let_handler(VMContext *vm, LexerContext *lex) {
             if (val.type == VAL_STRING && val.as.string) {
                 str_add_ref(val.as.string);
             }
+        } else if (targets[i].is_brace) {
+            if (arr_exists(vm_get_arr(vm), targets[i].var_name)) {
+                LexerContext *sub_lex = lex_init(vm_get_mem(vm), targets[i].brace_body);
+                BValue idx_val = eval_expression(vm, sub_lex, &err);
+                lex_shutdown(sub_lex);
+                if (err.code == 0) {
+                    set_unify_array_set(vm, targets[i].var_name, (int)idx_val.as.number, val, &err);
+                }
+            } else {
+                BValue *cur_var = var_lookup(vc, targets[i].var_name, false);
+                if (!cur_var) {
+                    err.code = 9; err.message = "Variable not found for brace assignment";
+                } else if (cur_var->type == VAL_STRING && cur_var->as.string) {
+                    // Pick dynamic array string mutation: dyn${attr [, val [, subval]]} = val
+                    LexerContext *sub_lex = lex_init(vm_get_mem(vm), targets[i].brace_body);
+                    int attr = 0, v_idx = 0, sv_idx = 0;
+                    BValue i1 = eval_expression(vm, sub_lex, &err);
+                    if (err.code == 0) {
+                        attr = (int)i1.as.number;
+                        if (lex_peek(sub_lex).type == TOK_COMMA) {
+                            lex_next(sub_lex);
+                            BValue i2 = eval_expression(vm, sub_lex, &err);
+                            if (err.code == 0) {
+                                v_idx = (int)i2.as.number;
+                                if (lex_peek(sub_lex).type == TOK_COMMA) {
+                                    lex_next(sub_lex);
+                                    BValue i3 = eval_expression(vm, sub_lex, &err);
+                                    if (err.code == 0) sv_idx = (int)i3.as.number;
+                                }
+                            }
+                        }
+                    }
+                    lex_shutdown(sub_lex);
+                    if (err.code == 0) {
+                        BValue rep = set_dyn_replace(vm_get_str(vm), *cur_var, attr, v_idx, sv_idx, val, &err);
+                        var_assign(vc, targets[i].var_name, rep);
+                    }
+                } else if (cur_var->type == VAL_SET || cur_var->type == VAL_GROUP || cur_var->type == VAL_MAP) {
+                    LexerContext *sub_lex = lex_init(vm_get_mem(vm), targets[i].brace_body);
+                    BValue keys[8];
+                    int depth = 0;
+                    while (lex_peek(sub_lex).type != TOK_EOF && lex_peek(sub_lex).type != TOK_EOL && depth < 8) {
+                        BppToken pt = lex_peek(sub_lex);
+                        if (pt.type == TOK_STRING) {
+                            lex_next(sub_lex);
+                            char kbuf[64];
+                            size_t klen = (pt.length < sizeof(kbuf) - 1) ? pt.length : sizeof(kbuf) - 1;
+                            runtime_memcpy(kbuf, pt.as.string, klen);
+                            kbuf[klen] = '\0';
+                            keys[depth].type = VAL_STRING;
+                            keys[depth].as.string = str_create(vm_get_str(vm), kbuf, klen);
+                            depth++;
+                        } else if (pt.type == TOK_IDENT || pt.type == TOK_KEYWORD) {
+                            lex_next(sub_lex);
+                            char kbuf[64];
+                            size_t klen = (pt.length < sizeof(kbuf) - 1) ? pt.length : sizeof(kbuf) - 1;
+                            runtime_memcpy(kbuf, pt.start, klen);
+                            kbuf[klen] = '\0';
+                            keys[depth].type = VAL_STRING;
+                            keys[depth].as.string = str_create(vm_get_str(vm), kbuf, klen);
+                            depth++;
+                        } else {
+                            BValue kval = eval_expression(vm, sub_lex, &err);
+                            if (err.code != 0) break;
+                            keys[depth++] = kval;
+                        }
+                        if (lex_peek(sub_lex).type == TOK_COMMA) {
+                            lex_next(sub_lex);
+                        } else {
+                            break;
+                        }
+                    }
+                    lex_shutdown(sub_lex);
+                    if (err.code == 0 && depth > 0) {
+                        if (!set_path_set(vm_get_str(vm), cur_var, depth, keys, val)) {
+                            err.code = 9; err.message = "Path indexing failed in brace assignment";
+                        }
+                    }
+                    for (int k = 0; k < depth; ++k) {
+                        if (keys[k].type == VAL_STRING && keys[k].as.string) {
+                            str_release(vm_get_str(vm), keys[k].as.string);
+                        }
+                    }
+                } else {
+                    err.code = 13; err.message = "Target is not a set, group, map, array, or dynamic string";
+                }
+            }
         } else {
-            const char *dot = strchr(targets[i].var_name, '.');
+            const char *dot = runtime_strchr(targets[i].var_name, '.');
             bool handled_map = false;
-            if (dot) {
+            bool is_reg_domain = (reg_is_hardware_domain(targets[i].var_name) ||
+                                  reg_is_math_domain(targets[i].var_name) ||
+                                  reg_is_udx_domain(targets[i].var_name));
+            if (dot && !is_reg_domain) {
                 char base_name[64] = {0};
                 size_t blen = (size_t)(dot - targets[i].var_name);
                 if (blen < sizeof(base_name)) {
-                    memcpy(base_name, targets[i].var_name, blen);
+                    runtime_memcpy(base_name, targets[i].var_name, blen);
                     const char *field_name = dot + 1;
                     BValue *base_val = var_lookup(vc, base_name, false);
                     if (base_val && base_val->type == VAL_MAP && base_val->as.map) {
@@ -349,7 +553,7 @@ BppError stmt_let_handler(VMContext *vm, LexerContext *lex) {
                                 if (val.type == VAL_STRING && val.as.string) str_add_ref(val.as.string);
                                 else if (val.type == VAL_MAP && val.as.map) map_add_ref(val.as.map);
                                 BppError p_err;
-                                memset(&p_err, 0, sizeof(p_err));
+                                runtime_memset(&p_err, 0, sizeof(p_err));
                                 invoke_user_function(vm, prop_proc, p_args, 2, &p_err);
                                 if (p_args[0].type == VAL_MAP && p_args[0].as.map) map_release(vm_get_str(vm), p_args[0].as.map);
                                 if (p_args[1].type == VAL_STRING && p_args[1].as.string) str_release(vm_get_str(vm), p_args[1].as.string);
@@ -389,7 +593,7 @@ BppError stmt_let_handler(VMContext *vm, LexerContext *lex) {
                             BValue d_arg = *cur_var;
                             map_add_ref(d_arg.as.map);
                             BppError d_err;
-                            memset(&d_err, 0, sizeof(d_err));
+                            runtime_memset(&d_err, 0, sizeof(d_err));
                             invoke_user_function(vm, dt_name, &d_arg, 1, &d_err);
                             map_release(vm_get_str(vm), d_arg.as.map);
                         } else {
@@ -399,7 +603,7 @@ BppError stmt_let_handler(VMContext *vm, LexerContext *lex) {
                                 BValue d_arg = *cur_var;
                                 map_add_ref(d_arg.as.map);
                                 BppError d_err;
-                                memset(&d_err, 0, sizeof(d_err));
+                                runtime_memset(&d_err, 0, sizeof(d_err));
                                 invoke_user_function(vm, dt_name, &d_arg, 1, &d_err);
                                 map_release(vm_get_str(vm), d_arg.as.map);
                             }
@@ -412,9 +616,57 @@ BppError stmt_let_handler(VMContext *vm, LexerContext *lex) {
             }
 
             if (!handled_map) {
-                if (!var_assign(vc, targets[i].var_name, val)) {
-                    err.code = 13; // Type mismatch
-                    err.message = "Type Mismatch in variable assignment";
+                DynamicVarEntry *dvar = var_find_dynamic(vc, targets[i].var_name);
+                if (dvar && dvar->write_fn[0] != '\0') {
+                    BValue w_args[1];
+                    w_args[0] = val;
+                    if (val.type == VAL_STRING && val.as.string) str_add_ref(val.as.string);
+                    else if (val.type == VAL_MAP && val.as.map) map_add_ref(val.as.map);
+                    BppError w_err;
+                    runtime_memset(&w_err, 0, sizeof(w_err));
+                    invoke_user_function(vm, dvar->write_fn, w_args, 1, &w_err);
+                    if (w_args[0].type == VAL_STRING && w_args[0].as.string) str_release(vm_get_str(vm), w_args[0].as.string);
+                    else if (w_args[0].type == VAL_MAP && w_args[0].as.map) map_release(vm_get_str(vm), w_args[0].as.map);
+                    if (w_err.code != 0) {
+                        err = w_err;
+                    }
+                } else if (platform_strcasecmp(targets[i].var_name, "SPEED&") == 0) {
+                    if (val.type == VAL_NUMBER || val.type == VAL_INTEGER) {
+                        baud_set_channel_rate(0, val.as.number);
+                    } else {
+                        err.code = 13;
+                        err.message = "Type mismatch for SPEED&";
+                    }
+                } else if (platform_strcasecmp(targets[i].var_name, "SPEED%") == 0) {
+                    if (val.type == VAL_NUMBER || val.type == VAL_INTEGER) {
+                        speed_set_apple_speed(val.as.number);
+                    } else {
+                        err.code = 13;
+                        err.message = "Type mismatch for SPEED%";
+                    }
+                } else if (platform_strcasecmp(targets[i].var_name, "SPEED") == 0) {
+                    if (val.type == VAL_NUMBER || val.type == VAL_INTEGER) {
+                        if (val.as.number > 255.0) {
+                            baud_set_channel_rate(0, val.as.number);
+                        } else {
+                            speed_set_apple_speed(val.as.number);
+                        }
+                    } else {
+                        err.code = 13;
+                        err.message = "Type mismatch for SPEED";
+                    }
+                } else if (is_reg_domain) {
+                    if (!reg_assign_builtin(targets[i].var_name, val, rhs_expr_text, &err)) {
+                        if (err.code == 0) {
+                            err.code = 5;
+                            err.message = "Unknown register or invalid register assignment";
+                        }
+                    }
+                } else {
+                    if (!var_assign(vc, targets[i].var_name, val)) {
+                        err.code = 13; // Type mismatch
+                        err.message = "Type Mismatch in variable assignment";
+                    }
                 }
             }
         }
@@ -422,6 +674,24 @@ BppError stmt_let_handler(VMContext *vm, LexerContext *lex) {
 
     if (val.type == VAL_STRING && val.as.string) {
         str_release(vm_get_str(vm), val.as.string);
+    }
+
+    if (err.code == 0 && is_explicit_let) {
+        BppToken trailing_sep = lex_peek(lex);
+        if (trailing_sep.type == TOK_COMMA) {
+            LexerContext look;
+            lex_init_stack(&look, vm_get_mem(vm), lex_get_pos(lex));
+            lex_next(&look); // Consume ','
+            BppToken next_cand = lex_next(&look);
+            if (next_cand.type == TOK_IDENT || next_cand.type == TOK_KEYWORD) {
+                BppToken after_cand = lex_peek(&look);
+                if (after_cand.type == TOK_EQ || after_cand.type == TOK_PERIOD ||
+                    after_cand.type == TOK_LPAREN || after_cand.type == TOK_LBRACKET) {
+                    lex_next(lex); // Consume comma
+                    goto next_let_assignment;
+                }
+            }
+        }
     }
 
     return err;

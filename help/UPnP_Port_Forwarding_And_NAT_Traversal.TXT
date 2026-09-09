@@ -1,0 +1,130 @@
+===============================================================================
+UPnP IGD & NAT-PMP Auto-Port Forwarding Subsystem
+===============================================================================
+
+Overview
+-------------------------------------------------------------------------------
+BASIC++ v6.5.2 provides an automated, pluggable Network Address Translation
+(NAT) traversal and port mapping subsystem. This subsystem enables
+peer-to-peer applications, self-hosted web/gemini servers, multiplayer games,
+and IoT listeners written in BASIC to automatically configure gateway routers
+without requiring manual router port forwarding.
+
+The subsystem operates across three decoupled layers:
+1. High-Level Language Statements & Functions: Dedicated BASIC statements
+   (UPNP.FORWARD, UPNP.UNFORWARD) and functions (UPNP.EXTERNALIP$(),
+   UPNP.STATUS()).
+2. Virtual Device Bus Interface: Stream and DEVCTL control via the UPNP:
+   virtual device.
+3. Pluggable Network Driver Architecture: Runtime provider interface
+   (VNetNatProvider) supporting SSDP/SOAP UPnP IGD, NAT-PMP (UDP 5351), and
+   simulated offline loopback modes.
+
+-------------------------------------------------------------------------------
+1. Statement Reference
+-------------------------------------------------------------------------------
+
+UPNP.FORWARD
+Maps an external port on the gateway router to an internal local port.
+
+Syntax:
+  UPNP.FORWARD ext_port [, int_port [, proto$ [, desc$]]]
+  UPNP FORWARD ext_port [, int_port [, proto$ [, desc$]]]
+
+Parameters:
+  ext_port: The external WAN port number to open on the gateway router (1..65535).
+  int_port: (Optional) The local internal port number on the host machine.
+            Defaults to ext_port.
+  proto$:   (Optional) Network protocol string: "TCP" (default) or "UDP".
+  desc$:    (Optional) Descriptive string label stored on the router
+            (defaults to "BASIC++ Forward").
+
+Example:
+  10 REM Forward external port 8080 to local web server on port 8080
+  20 UPNP.FORWARD 8080, 8080, "TCP", "BASIC++ Web Server"
+  30 PRINT "External port 8080 forwarded."
+
+-------------------------------------------------------------------------------
+
+UPNP.UNFORWARD
+Removes an active port mapping from the gateway router.
+
+Syntax:
+  UPNP.UNFORWARD ext_port [, proto$]
+  UPNP UNFORWARD ext_port [, proto$]
+
+Parameters:
+  ext_port: The external WAN port number to remove (1..65535).
+  proto$:   (Optional) Network protocol: "TCP" (default) or "UDP".
+
+Example:
+  10 UPNP.UNFORWARD 8080, "TCP"
+  20 PRINT "Port 8080 unmapped from router."
+
+-------------------------------------------------------------------------------
+2. Function Reference
+-------------------------------------------------------------------------------
+
+UPNP.EXTERNALIP$()
+Retrieves the external WAN public IP address of the gateway router.
+
+Syntax:
+  public_ip$ = UPNP.EXTERNALIP$()
+
+Return Value:
+  Returns a string containing the public IPv4/IPv6 address of the router
+  (e.g. "198.51.100.42").
+
+-------------------------------------------------------------------------------
+
+UPNP.STATUS() / UPNP.STATUS$()
+Queries the status of a specific port mapping on the gateway router.
+
+Syntax:
+  status_code% = UPNP.STATUS(ext_port [, proto$])
+  status_desc$ = UPNP.STATUS$(ext_port [, proto$])
+
+Return Values:
+  UPNP.STATUS() returns numeric status:
+    0: OK / Active mapping verified.
+    1: Not mapped / Port free.
+    2: Discovery error.
+    3: Gateway SOAP error.
+    4: Port conflict.
+    5: Unsupported protocol.
+  UPNP.STATUS$() returns a descriptive status string
+  (e.g. "MAPPED TCP 8080->8080 (BASIC++ Web Server)").
+
+-------------------------------------------------------------------------------
+3. Virtual Device Interface (UPNP:)
+-------------------------------------------------------------------------------
+
+You can also interact with the UPnP subsystem using the standard virtual device
+stream architecture:
+
+  10 OPEN "UPNP:" AS #1
+  20 RC% = DEVCTL(1, "FORWARD", 8080, 8080)
+  30 IF RC% = 0 THEN PRINT "Port 8080 mapped via DEVCTL"
+  40 CLOSE #1
+
+-------------------------------------------------------------------------------
+4. Pluggable Architecture & Future-Proof Redefinition
+-------------------------------------------------------------------------------
+
+Developers and embedded IoT integrators can redefine or replace the active NAT
+provider at runtime using the C API:
+
+  #include "runtime/vnet_nat.h"
+
+  static VNetNatProvider custom_provider = {
+      .name = "Custom STUN / WireGuard Tunnel",
+      .discover = my_custom_discover,
+      .get_external_ip = my_custom_get_ip,
+      .add_mapping = my_custom_add_mapping,
+      .delete_mapping = my_custom_del_mapping,
+      .query_status = my_custom_status,
+      .userdata = NULL
+  };
+
+  // Register custom provider
+  vnet_nat_set_provider(&custom_provider);

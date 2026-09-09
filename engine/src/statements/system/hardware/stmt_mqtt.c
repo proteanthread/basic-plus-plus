@@ -2,7 +2,7 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libcore (strops.h, strops.c)
 // NEEDS: libengine (eval.h, eval.c, lexer.h, lexer.c, string.c, vm.h)
 // NEEDS: libserver (iot_net.h, iot_net.c)
@@ -13,22 +13,38 @@
 #include "vm/vm.h"
 #include "lexer/lexer.h"
 #include "eval/eval.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/string/strops.h"
 #include "iot_net.h"
-#include <string.h>
+#include "runtime/string/memops.h"
+
+static const LangDesc g_mqtt_desc = {
+    .name = "MQTT",
+    .category = "Wireless & IoT",
+    .syntax = "MQTT.PUBLISH topic$, payload$ | MQTT.SUBSCRIBE topic$",
+    .description = "Publishes telemetry or subscribes to message topics via MQTT broker.",
+    .error_summary = "Error 2: Syntax Error, Error 13: Type Mismatch",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_STATEMENT
+};
 
 BppError stmt_mqtt_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     bool is_sub = false;
     BppToken tok = lex_peek(lex);
     if (tok.type == TOK_PERIOD) {
         lex_next(lex);
         BppToken sub = lex_peek(lex);
-        if (sub.type == TOK_IDENT) {
-            if (runtime_strncasecmp(sub.start, "SUBSCRIBE", sub.length) == 0) is_sub = true;
+        if (tok_is_keyword(sub, KW_SUBSCRIBE, "SUBSCRIBE")) {
+            is_sub = true;
+            lex_next(lex);
+        } else if (tok_is_keyword(sub, KW_PUBLISH, "PUBLISH")) {
+            is_sub = false;
+            lex_next(lex);
+        } else if (sub.type == TOK_IDENT || sub.type == TOK_KEYWORD) {
             lex_next(lex);
         }
     }
@@ -62,12 +78,5 @@ BppError stmt_mqtt_handler(VMContext *vm, LexerContext *lex) {
 }
 
 void stmt_mqtt_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "MQTT",
-        .category = "Wireless & IoT",
-        .syntax = "MQTT.PUBLISH topic$, payload$ | MQTT.SUBSCRIBE topic$",
-        .help_text = "Publishes telemetry or subscribes to message topics via MQTT broker.",
-        .error_codes = "Error 2: Syntax Error, Error 13: Type Mismatch"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_mqtt_desc);
 }

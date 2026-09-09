@@ -1,18 +1,67 @@
-DAY$ Current Day Name String Function
-======================================================================
+TITLE: DAY$
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/functions/datetime/day.c
+GENERATED: no, hand-written
+STATUS: current
 
-The DAY$ function returns the current day of the week as a text string
-(e.g. "Monday", "Tuesday").
+==============================================================================
+DAY$ KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: day.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (common_reg_funcs.c, sys_fn.c)
+    // NEEDS: libcore (language_descriptor.h)
+    // NEEDS: libengine (datetime_common.h, day.h)
+    // Provides runtime implementation for the DAY function in BASIC++.
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Returns the weekday name string (e.g. 'Monday') for current or specified date.
 
-    name$ = DAY$
-    name$ = DAY$()
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    DAY$ [(date_expr)]
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = DAY$ [(date_e10pr)]
+    20 PRINT "Result: "; Val
 
-CODE EXAMPLES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 5: Illegal Function Call
 
-    10 PRINT "Today is "; DAY$
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Date & Time
+Subsystem:     SUBSYSTEM_PLATFORM
+Safety Level:  SAFETY_SAFE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  DAY$
+Category              Date & Time
+Syntax                DAY$ [(date_expr)]
+Description           Returns the weekday name string (e.g. 'Monday') for...
+Error Summary         Error 5: Illegal Function Call
+Subsystem             SUBSYSTEM_PLATFORM
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         BASIC++ Standard
+Since Version         6.0.0
+Source File           engine/src/eval/functions/datetime/day.c

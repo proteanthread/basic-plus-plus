@@ -2,33 +2,39 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libengine (lexer.h, lexer.c, rem.h, string.c, vm.h)
 // Provides runtime implementation for the REM statement in BASIC++.
 //
 // ---- Includes ----
 
 #include "statements/core/program/rem.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "vm/vm.h"
 #include "lexer/lexer.h"
-#include <stdio.h>
-#include <string.h>
+#include "runtime/format/snprintf.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "platform/platform.h"
+
+static const LangDesc g_rem_desc = {
+    .name = "REM",
+    .category = "Control Flow",
+    .syntax = "REM [comment text] or ' [comment text]",
+    .description = "Defines a remark/comment line ignored by the BASIC engine during execution.",
+    .error_summary = "None (comments never generate errors)",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SAFE,
+    .type = FEATURE_STATEMENT
+};
 
 void stmt_rem_register(void) {
-    MicroLibMetadata meta = {
-        .name = "REM",
-        .category = "Control Flow",
-        .syntax = "REM [comment text] or ' [comment text]",
-        .help_text = "Defines a remark/comment line ignored by the BASIC engine during execution.",
-        .error_codes = "None (comments never generate errors)"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_rem_desc);
 }
 
 BppError stmt_rem_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     if (!vm || !lex) return err;
 
     const char *pos = lex_get_pos(lex);
@@ -36,8 +42,8 @@ BppError stmt_rem_handler(VMContext *vm, LexerContext *lex) {
 
     while (*pos == ' ' || *pos == '\t') pos++;
 
-    if (strncasecmp(pos, "$INCLUDE:", 9) == 0 || strncasecmp(pos, "$INCLUDE", 8) == 0) {
-        pos += (strncasecmp(pos, "$INCLUDE:", 9) == 0) ? 9 : 8;
+    if (runtime_strncasecmp(pos, "$INCLUDE:", 9) == 0 || runtime_strncasecmp(pos, "$INCLUDE", 8) == 0) {
+        pos += (runtime_strncasecmp(pos, "$INCLUDE:", 9) == 0) ? 9 : 8;
         while (*pos == ' ' || *pos == '\t') pos++;
 
         char inc_path[512] = {0};
@@ -57,32 +63,32 @@ BppError stmt_rem_handler(VMContext *vm, LexerContext *lex) {
         inc_path[idx] = '\0';
 
         if (idx > 0) {
-            FILE *f = fopen(inc_path, "r");
+            void *f = platform_file_open(inc_path, "r");
             if (!f) {
                 char alt_path[512];
-                snprintf(alt_path, sizeof(alt_path), "engine/include/%s", inc_path);
-                f = fopen(alt_path, "r");
+                runtime_snprintf(alt_path, sizeof(alt_path), "engine/include/%s", inc_path);
+                f = platform_file_open(alt_path, "r");
             }
             if (!f) {
                 char alt_path[512];
-                snprintf(alt_path, sizeof(alt_path), "include/%s", inc_path);
-                f = fopen(alt_path, "r");
+                runtime_snprintf(alt_path, sizeof(alt_path), "include/%s", inc_path);
+                f = platform_file_open(alt_path, "r");
             }
             if (f) {
                 char line_buf[1024];
-                while (fgets(line_buf, sizeof(line_buf), f)) {
-                    size_t llen = strlen(line_buf);
+                while (platform_file_gets(line_buf, sizeof(line_buf), f)) {
+                    size_t llen = runtime_strlen(line_buf);
                     while (llen > 0 && (line_buf[llen - 1] == '\r' || line_buf[llen - 1] == '\n')) {
                         line_buf[--llen] = '\0';
                     }
                     if (llen == 0) continue;
                     BppError line_err = vm_execute_line(vm, line_buf);
                     if (line_err.code != 0) {
-                        fclose(f);
+                        platform_file_close(f);
                         return line_err;
                     }
                 }
-                fclose(f);
+                platform_file_close(f);
             }
         }
     }

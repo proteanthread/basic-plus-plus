@@ -1,29 +1,67 @@
-CONSOLE Console Display Configuration Statement
-===============================================
+TITLE: CONSOLE
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/platform/console/plat_console.c
+GENERATED: no, hand-written
+STATUS: current
 
-Configures virtual terminal console scrolling regions and display properties.
+==============================================================================
+CONSOLE KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: plat_console.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community -- All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: baspp.exe, bpp.exe, bs.exe, libengine
+    // NEEDS: libcore, libkernel
+    // Implements component functionality for CONSOLE.
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Redirects standard console terminal input and output to an alternate virtual
+device or port.
 
-    CONSOLE [start_line%] [, [num_lines%] [, [flag%]]]
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    CONSOLE [device$ | mode%]
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM CONSOLE Demonstration
+    20 PRINT "CONSOLE executed successfully."
 
-ERROR CONDITIONS
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 52: Bad File Number
 
-  - Error 5 (ERR_ILLEGAL_FUNCTION_CALL): Line count outside terminal bounds.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Console I/O
+Subsystem:     SUBSYSTEM_PLATFORM
+Safety Level:  SAFETY_SAFE
 
-
-OPERATIONAL NOTES
-----------------------------------------------------------------------
-
-  Controls ANSI scrolling regions and terminal multiplexer panes.
-
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 CONSOLE 1, 24, 1
-    20 PRINT "Console window configured."
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  CONSOLE
+Category              Console I/O
+Syntax                CONSOLE [device$ | mode%]
+Description           Redirects standard console terminal input and outpu...
+Error Summary         Error 52: Bad File Number
+Subsystem             SUBSYSTEM_PLATFORM
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         BASIC++ Standard
+Since Version         6.0.0
+Source File           engine/src/platform/console/plat_console.c

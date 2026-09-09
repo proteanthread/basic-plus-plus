@@ -3,98 +3,100 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (string_fn.c)
 // NEEDS: libcore (memory.h, memory.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libcore (strings.h, strings.c)
 // NEEDS: libengine (pick.h, string.c)
 // NEEDS: libkernel (errors.h)
-// Provides runtime implementation for the PICK built-in function in BASIC++.
+// Provides runtime implementation for standard Pick built-in functions in BASIC++.
 //
 // ---- Includes ----
 
 #include "eval/functions/string/manipulation/pick.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/strings.h"
 #include "types/errors.h"
+#include "memory/memory.h"
+#include "runtime/string/strops.h"
+#include "runtime/string/memops.h"
+#include "runtime/arrays.h"
+#include "runtime/set.h"
 #include "runtime/string.h"
-#include "runtime/memory.h"
+#include "statements/variables/data/pick_locate.h"
+#include "hal/hal.h"
+
+static const LangDesc g_field_desc = {
+    .name = "FIELD",
+    .category = "Pick Dynamic Arrays",
+    .syntax = "FIELD(str_expr, delim_expr, instance_expr [, count_expr])",
+    .description = "Extracts one or more delimited substrings from a string (Pick OS / Universe).",
+    .error_summary = "Error 13: Type Mismatch",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SAFE,
+    .type = FEATURE_FUNCTION
+};
+
+static const LangDesc g_extract_desc = {
+    .name = "EXTRACT",
+    .category = "Pick Dynamic Arrays",
+    .syntax = "EXTRACT(dyn_arr, attr [, val [, subval]])",
+    .description = "Extracts an attribute, value, or subvalue from a Pick dynamic array string.",
+    .error_summary = "Error 13: Type Mismatch",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SAFE,
+    .type = FEATURE_FUNCTION
+};
+
+static const LangDesc g_count_desc = {
+    .name = "COUNT",
+    .category = "Array & String Functions",
+    .syntax = "COUNT(arr_or_str [, match])",
+    .description = "Returns element count of array or occurrences of substring in string.",
+    .error_summary = "Error 13: Type Mismatch",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SAFE,
+    .type = FEATURE_FUNCTION
+};
+
+static const LangDesc g_count_str_desc = {
+    .name = "COUNT$",
+    .category = "Array & String Functions",
+    .syntax = "COUNT$(arr$ [, match$]) | COUNT$(dyn$ [, delim$])",
+    .description = "Returns element count of string array or field count of delimited dynamic string.",
+    .error_summary = "Error 13: Type Mismatch",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SAFE,
+    .type = FEATURE_FUNCTION
+};
+
+static const LangDesc g_dynarray_desc = {
+    .name = "DYNARRAY$",
+    .category = "Pick Dynamic Arrays",
+    .syntax = "DYNARRAY$(set_or_group)",
+    .description = "Serializes a Set or Group structure into a Pick MultiValue dynamic array string.",
+    .error_summary = "Error 13: Type Mismatch",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SAFE,
+    .type = FEATURE_FUNCTION
+};
+
+static const LangDesc g_parse_dynarray_desc = {
+    .name = "PARSE_DYNARRAY",
+    .category = "Pick Dynamic Arrays",
+    .syntax = "PARSE_DYNARRAY(dyn_str$) | GROUP_MAP(dyn_str$)",
+    .description = "Parses a Pick dynamic array string into a three-tier Set/Group structure.",
+    .error_summary = "Error 13: Type Mismatch",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SAFE,
+    .type = FEATURE_FUNCTION
+};
+
 void func_pick_register(void) {
-    static const MicroLibMetadata meta_dcount = {
-        .name = "DCOUNT",
-        .category = "Pick Dynamic Arrays",
-        .syntax = "DCOUNT(str_expr, delim_expr)",
-        .help_text = "Returns the count of delimited fields in a string (Pick OS / PICK/BASIC).",
-        .error_codes = "Error 13: Type Mismatch"
-    };
-    microlib_register(&meta_dcount);
-
-    static const MicroLibMetadata meta_field = {
-        .name = "FIELD",
-        .category = "Pick Dynamic Arrays",
-        .syntax = "FIELD(str_expr, delim_expr, instance_expr [, count_expr])",
-        .help_text = "Extracts one or more delimited substrings from a string (Pick OS / Universe).",
-        .error_codes = "Error 13: Type Mismatch"
-    };
-    microlib_register(&meta_field);
-
-    static const MicroLibMetadata meta_extract = {
-        .name = "EXTRACT",
-        .category = "Pick Dynamic Arrays",
-        .syntax = "EXTRACT(dyn_arr, attr [, val [, subval]])",
-        .help_text = "Extracts an attribute, value, or subvalue from a Pick dynamic array string.",
-        .error_codes = "Error 13: Type Mismatch"
-    };
-    microlib_register(&meta_extract);
-}
-
-BValue func_dcount_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err) {
-    BValue res;
-    res.type = VAL_NUMBER;
-    res.as.number = 0.0;
-    (void)uname;
-
-    if (arg_count < 1 || arg_count > 2) {
-        err->code = ERR_SYNTAX;
-        err->message = "DCOUNT expects 1 or 2 arguments: DCOUNT(string, delimiter)";
-        return res;
-    }
-
-    if (args[0].type != VAL_STRING) {
-        err->code = ERR_TYPE_MISMATCH;
-        err->message = "Type mismatch in DCOUNT: string expected for argument 1";
-        return res;
-    }
-
-    const char *str_val = args[0].as.string ? str_data(args[0].as.string) : "";
-    if (runtime_strlen(str_val) == 0) {
-        res.as.number = 0.0;
-        return res;
-    }
-
-    const char *delim = "^"; // Default attribute mark or delimiter
-    if (arg_count == 2) {
-        if (args[1].type != VAL_STRING) {
-            err->code = ERR_TYPE_MISMATCH;
-            err->message = "Type mismatch in DCOUNT: delimiter must be string";
-            return res;
-        }
-        delim = args[1].as.string ? str_data(args[1].as.string) : "^";
-    }
-
-    if (runtime_strlen(delim) == 0) {
-        res.as.number = (double)runtime_strlen(str_val);
-        return res;
-    }
-
-    int count = 1;
-    size_t dlen = runtime_strlen(delim);
-    const char *p = str_val;
-    while ((p = runtime_strstr(p, delim)) != NULL) {
-        count++;
-        p += dlen;
-    }
-
-    res.as.number = (double)count;
-    return res;
+    lang_desc_register(&g_field_desc);
+    lang_desc_register(&g_extract_desc);
+    lang_desc_register(&g_count_desc);
+    lang_desc_register(&g_count_str_desc);
+    lang_desc_register(&g_dynarray_desc);
+    lang_desc_register(&g_parse_dynarray_desc);
 }
 
 BValue func_count_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err) {
@@ -103,35 +105,136 @@ BValue func_count_eval(VMContext *vm, const char *uname, int arg_count, BValue *
     res.as.number = 0.0;
     (void)uname;
 
-    if (arg_count != 2) {
+    if (arg_count < 1 || !args) {
         err->code = ERR_SYNTAX;
-        err->message = "COUNT expects 2 arguments: COUNT(string, substring)";
+        err->message = "COUNT expects at least 1 argument";
         return res;
     }
 
-    if (args[0].type != VAL_STRING || args[1].type != VAL_STRING) {
-        err->code = ERR_TYPE_MISMATCH;
+    // Case: Set or Group
+    if (args[0].type == VAL_SET && args[0].as.set) {
+        if (arg_count == 1) {
+            res.as.number = (double)args[0].as.set->count;
+            return res;
+        }
+        int matches = 0;
+        for (int i = 0; i < args[0].as.set->count; i++) {
+            if (value_equals(args[0].as.set->items[i], args[1])) matches++;
+        }
+        res.as.number = (double)matches;
+        return res;
+    }
+    if (args[0].type == VAL_GROUP && args[0].as.group) {
+        res.as.number = (double)args[0].as.group->count;
         return res;
     }
 
-    const char *str_val = args[0].as.string ? str_data(args[0].as.string) : "";
-    const char *sub = args[1].as.string ? str_data(args[1].as.string) : "";
-    if (runtime_strlen(str_val) == 0 || runtime_strlen(sub) == 0) {
-        res.as.number = 0.0;
+    // Case 1: Array reference
+    if (args[0].type == VAL_ARRAY_REF && args[0].as.string) {
+        const char *arr_name = str_data(args[0].as.string);
+        ArrayEntry *entry = arr_find_entry(vm_get_arr(vm), arr_name);
+        if (!entry) {
+            err->code = 9;
+            err->message = "Array not found in COUNT";
+            return res;
+        }
+        if (arg_count == 1) {
+            res.as.number = (double)entry->total_size;
+            return res;
+        }
+        int matches = 0;
+        if (args[1].type == VAL_STRING && args[1].as.string) {
+            const char *target = str_data(args[1].as.string);
+            for (int i = 0; i < entry->total_size; i++) {
+                if (entry->elements[i].type == VAL_STRING && entry->elements[i].as.string) {
+                    if (runtime_strcmp(str_data(entry->elements[i].as.string), target) == 0) matches++;
+                }
+            }
+        } else {
+            double target_num = (args[1].type == VAL_NUMBER || args[1].type == VAL_INTEGER) ? args[1].as.number : 0.0;
+            for (int i = 0; i < entry->total_size; i++) {
+                if (entry->elements[i].type == VAL_NUMBER || entry->elements[i].type == VAL_INTEGER) {
+                    if (entry->elements[i].as.number == target_num) matches++;
+                }
+            }
+        }
+        res.as.number = (double)matches;
         return res;
     }
 
-    int count = 0;
-    size_t slen = runtime_strlen(sub);
-    const char *p = str_val;
-    while ((p = runtime_strstr(p, sub)) != NULL) {
-        count++;
-        p += slen;
+    // Case 2: String occurrence search COUNT(str$, substr$)
+    if (args[0].type == VAL_STRING && args[0].as.string) {
+        if (arg_count != 2 || args[1].type != VAL_STRING || !args[1].as.string) {
+            err->code = ERR_TYPE_MISMATCH;
+            return res;
+        }
+        const char *str_val = str_data(args[0].as.string);
+        const char *sub = str_data(args[1].as.string);
+        if (runtime_strlen(str_val) == 0 || runtime_strlen(sub) == 0) return res;
+
+        int count = 0;
+        size_t slen = runtime_strlen(sub);
+        const char *p = str_val;
+        while ((p = runtime_strstr(p, sub)) != NULL) {
+            count++;
+            p += slen;
+        }
+        res.as.number = (double)count;
+        return res;
     }
 
-    res.as.number = (double)count;
+    err->code = ERR_TYPE_MISMATCH;
     return res;
 }
+
+BValue func_count_str_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err) {
+    BValue res;
+    res.type = VAL_NUMBER;
+    res.as.number = 0.0;
+    (void)uname;
+
+    if (arg_count < 1 || !args) {
+        err->code = ERR_SYNTAX;
+        err->message = "COUNT$ expects at least 1 argument";
+        return res;
+    }
+
+    // Case 1: String array reference
+    if (args[0].type == VAL_ARRAY_REF && args[0].as.string) {
+        return func_count_eval(vm, uname, arg_count, args, err);
+    }
+
+    // Case 2: Delimited dynamic array string field count COUNT$(dyn$ [, delim$])
+    if (args[0].type == VAL_STRING && args[0].as.string) {
+        const char *str_val = str_data(args[0].as.string);
+        if (runtime_strlen(str_val) == 0) return res;
+
+        const char *delim = "^";
+        if (runtime_strchr(str_val, '\xfe')) delim = "\xfe";
+        if (arg_count >= 2 && args[1].type == VAL_STRING && args[1].as.string) {
+            delim = str_data(args[1].as.string);
+        }
+
+        if (runtime_strlen(delim) == 0) {
+            res.as.number = (double)runtime_strlen(str_val);
+            return res;
+        }
+
+        int count = 1;
+        size_t dlen = runtime_strlen(delim);
+        const char *p = str_val;
+        while ((p = runtime_strstr(p, delim)) != NULL) {
+            count++;
+            p += dlen;
+        }
+        res.as.number = (double)count;
+        return res;
+    }
+
+    err->code = ERR_TYPE_MISMATCH;
+    return res;
+}
+
 
 BValue func_field_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err) {
     BValue res;
@@ -163,7 +266,6 @@ BValue func_field_eval(VMContext *vm, const char *uname, int arg_count, BValue *
     const char *cur = str_val;
     int cur_field = 1;
 
-    // Advance to the starting instance
     while (cur_field < instance && cur) {
         const char *next = runtime_strstr(cur, delim);
         if (!next) return res;
@@ -173,7 +275,6 @@ BValue func_field_eval(VMContext *vm, const char *uname, int arg_count, BValue *
 
     if (!cur) return res;
 
-    // Collect 'count' fields
     const char *start_pos = cur;
     const char *end_pos = NULL;
     for (int i = 0; i < count; i++) {
@@ -205,15 +306,21 @@ BValue func_extract_eval(VMContext *vm, const char *uname, int arg_count, BValue
         return res;
     }
 
+    int attr = (int)args[1].as.number;
+    int val = (arg_count >= 3) ? (int)args[2].as.number : 0;
+    int subval = (arg_count >= 4) ? (int)args[3].as.number : 0;
+
+    if (args[0].type == VAL_SET || args[0].type == VAL_GROUP) {
+        str_release(vm_get_str(vm), res.as.string);
+        return set_dyn_extract(vm_get_str(vm), args[0], attr, val, subval, err);
+    }
+
     if (args[0].type != VAL_STRING) {
         err->code = ERR_TYPE_MISMATCH;
         return res;
     }
 
     const char *str_val = args[0].as.string ? str_data(args[0].as.string) : "";
-    int attr = (int)args[1].as.number;
-    int val = (arg_count >= 3) ? (int)args[2].as.number : 0;
-    int subval = (arg_count >= 4) ? (int)args[3].as.number : 0;
 
     if (attr <= 0) {
         str_release(vm_get_str(vm), res.as.string);
@@ -221,7 +328,6 @@ BValue func_extract_eval(VMContext *vm, const char *uname, int arg_count, BValue
         return res;
     }
 
-    // Extract Attribute (delimiter '^' or char 254 / 0xFE)
     char am_delim[2] = {'^', 0};
     if (runtime_strchr(str_val, '\xfe')) am_delim[0] = '\xfe';
 
@@ -239,7 +345,6 @@ BValue func_extract_eval(VMContext *vm, const char *uname, int arg_count, BValue
         return a_res;
     }
 
-    // Extract Value (delimiter ']' or char 253 / 0xFD)
     char vm_delim[2] = {']', 0};
     const char *a_str = a_res.as.string ? str_data(a_res.as.string) : "";
     if (runtime_strchr(a_str, '\xfd')) vm_delim[0] = '\xfd';
@@ -259,7 +364,6 @@ BValue func_extract_eval(VMContext *vm, const char *uname, int arg_count, BValue
         return v_res;
     }
 
-    // Extract Subvalue (delimiter '\\' or char 252 / 0xFC)
     char svm_delim[2] = {'\\', 0};
     const char *v_str = v_res.as.string ? str_data(v_res.as.string) : "";
     if (runtime_strchr(v_str, '\xfc')) svm_delim[0] = '\xfc';
@@ -278,38 +382,40 @@ BValue func_extract_eval(VMContext *vm, const char *uname, int arg_count, BValue
     return s_res;
 }
 
-BValue func_insert_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err) {
+BValue func_dynarray_str_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err) {
     (void)uname;
     BValue res;
     res.type = VAL_STRING;
     res.as.string = str_create(vm_get_str(vm), "", 0);
-    if (arg_count < 3) {
+
+    if (arg_count < 1 || !args) {
         err->code = ERR_SYNTAX;
+        err->message = "DYNARRAY$ expects 1 argument";
         return res;
+    }
+
+    char *ser = set_to_dynarray(vm_get_str(vm), args[0]);
+    if (ser) {
+        str_release(vm_get_str(vm), res.as.string);
+        res.as.string = str_create(vm_get_str(vm), ser, runtime_strlen(ser));
+        HalContext *hal = hal_get();
+        if (hal && hal->mem.free) hal->mem.free(ser);
     }
     return res;
 }
 
-BValue func_delete_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err) {
+BValue func_parse_dynarray_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err) {
     (void)uname;
     BValue res;
-    res.type = VAL_STRING;
-    res.as.string = str_create(vm_get_str(vm), "", 0);
-    if (arg_count < 2) {
-        err->code = ERR_SYNTAX;
-        return res;
-    }
-    return res;
-}
+    runtime_memset(&res, 0, sizeof(res));
 
-BValue func_replace_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err) {
-    (void)uname;
-    BValue res;
-    res.type = VAL_STRING;
-    res.as.string = str_create(vm_get_str(vm), "", 0);
-    if (arg_count < 3) {
-        err->code = ERR_SYNTAX;
+    if (arg_count < 1 || !args || args[0].type != VAL_STRING || !args[0].as.string) {
+        err->code = ERR_TYPE_MISMATCH;
+        err->message = "PARSE_DYNARRAY / GROUP_MAP expects string argument";
         return res;
     }
+
+    res.type = VAL_SET;
+    res.as.set = set_from_dynarray(vm_get_str(vm), str_data(args[0].as.string));
     return res;
 }

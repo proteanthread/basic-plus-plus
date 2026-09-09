@@ -1,24 +1,72 @@
-# `SETBIT` Bit Set Operator (Universal Dual-Format)
+<!--
+Title:        SETBIT
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/eval/functions/bits/manipulation/setbit.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Function/Operator Definition
+# `SETBIT` Keyword Reference
 
-The `SETBIT` keyword sets a specific bit position (0 to 63) of a 64-bit integer to 1. It is supported in both **infix** and **prefix** notation.
+## Source Header
 
-### Syntax Signatures:
-```basic
-result = value SETBIT bit_pos
-result = SETBIT(value, bit_pos)
+```c
+// FILENAME: setbit.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine (sys_fn.c)
+// NEEDS: libcore (language_descriptor.h)
+// NEEDS: libengine (setbit.h)
+// Provides runtime implementation for the SETBIT built-in function in BASIC++
+//
+// ---- Includes ----
 ```
 
-### Operational Rules:
-- Returns `(uint64_t)value | (1ULL << (uint64_t)bit_pos)`.
-- In RPN stack evaluation blocks: `{ value bit_pos SETBIT }`.
+## 1. Description & Usage
+
+Sets (to 1) the bit at the specified zero-based bit index in an integer value.
+
+## 2. Syntax
+
+```basic
+SETBIT(val, bit)
+```
+
+## 3. Code Example
+
+```basic
+10 Val = SETBIT(val, bit)
+20 PRINT "Result: "; Val
+```
+
+## 4. Error Conditions
+
+Error 13: Type Mismatch
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Bitwise & Logical Functions
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_PURE
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 PRINT "Infix: "; 0 SETBIT 10 : REM Outputs 1024
-20 PRINT "Prefix: "; SETBIT(0, 10) : REM Outputs 1024
-```
+| Field | Value |
+|---|---|
+| Name | SETBIT |
+| Category | Bitwise & Logical Functions |
+| Syntax | SETBIT(val, bit) |
+| Description | Sets (to 1) the bit at the specified zero-based bit index in an integer value. |
+| Error Summary | Error 13: Type Mismatch |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_PURE |
+| Feature Type | FEATURE_FUNCTION |
+| Delimiter Mask | none |
+| Compatibility | none |
+| Since Version | none |
+| Source File | engine/src/eval/functions/bits/manipulation/setbit.c |

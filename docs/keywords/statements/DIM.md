@@ -1,76 +1,76 @@
-# `DIM` Array Dimension Declaration Statement
+<!--
+Title:        DIM
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/statements/variables/declaration/dim.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Keyword Definition
+# `DIM` Keyword Reference
 
-The `DIM` statement allocates and dimensions one or more subscripted array variables in memory. `DIM` sets the upper boundary (and optionally lower boundary via `TO` or `OPTION BASE`) for each dimension, allocating contiguous memory structures for numeric (integer, single, double) or string array elements.
+## Source Header
 
-### Syntax Signatures:
-```basic
-DIM [SHARED] varname(subscript1 [, subscript2, ...]) [AS type] [, varname2(...)]
-DIM varname(lower TO upper [, lower2 TO upper2, ...])
+```c
+// FILENAME: dim.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine (redim.c, vdim.c)
+// NEEDS: libcore (arrays.h, arrays.c)
+// NEEDS: libcore (language_descriptor.h, string.h)
+// NEEDS: libcore (struct.h, struct.c, variables.h, variables.c)
+// NEEDS: libengine (dim.h, eval.h, eval.c, lexer.h, lexer.c, map.h, map.c)
+// NEEDS: libengine (string.c, vm.h)
+// Provides runtime implementation for the DIM statement in BASIC++.
+//
+// ---- Includes ----
 ```
 
-### Operational Rules:
-- **Default Lower Bound**: Set by `OPTION BASE 0` (default: index 0) or `OPTION BASE 1` (index 1).
-- **Explicit Bounds (`TO`)**: Allows explicit lower and upper indices (e.g. `DIM Grid(-10 TO 10, 0 TO 100)`).
-- **Maximum Dimensions**: BASIC++ supports up to 8 dimensions (`BPP_ARRAY_MAX_DIMS = 8`).
-- **Default Dimensioning**: If an array is referenced without an explicit `DIM`, it is automatically allocated with an upper bound of 10 for each referenced subscript.
-- **Initial Values**: Numeric arrays are zero-initialized (`0` / `0.0`); string arrays are initialized to empty strings (`""`).
-- **Dynamic vs Static**: Arrays can be deallocated and reallocated using `ERASE` or resized dynamically with `REDIM`.
+## 1. Description & Usage
+
+Allocates storage space for arrays, virtual arrays, fixed strings, and class instances.
+
+## 2. Syntax
+
+```basic
+DIM [#channel,] [SHARED] [DYNAMIC | STATIC] array_name(subscripts...) [*len] [AS type [*len]] [, ...]
+```
+
+## 3. Code Example
+
+```basic
+10 DIM Arr(10)
+20 Arr(5) = 100
+30 PRINT "Arr(5) = "; Arr(5)
+```
+
+## 4. Error Conditions
+
+Error 2: Syntax Error, Error 9: Subscript out of range, Error 10: Duplicate definition
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Variables & Memory
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_SYSTEM
 
 ---
 
-## 2. Language Dialect & Compatibility
+## LanguageDescriptor (LangDesc) Quick Reference
 
-| Dialect | Syntax | Max Dims | Base Index | Notes |
-|---|---|---|---|---|
-| **GW-BASIC / BASICA** | `DIM A(10, 20)` | Up to 255 (RAM limited) | 0 (or 1 via `OPTION BASE 1`) | Static arrays only |
-| **QuickBASIC / QBASIC** | `DIM A(1 TO 100) AS INTEGER` | Up to 60 | Configurable via `TO` | Supports `AS type`, `SHARED` |
-| **ECMA-116 Full BASIC** | `DIM A(10, 20)` | Multi-dimensional | 1 default | Standard matrix support |
-| **BASIC++ (Master)** | `DIM [SHARED] A(...) [AS type]` | 8 dimensions | Configurable (0, 1, or `TO`) | Zero-initialized, 640MB memory pool |
-
----
-
-## 3. Lexical, AST, and VM Processing
-
-1. **AST Node**: `NODE_STMT_DIM` parsed in `engine/src/statements/dim.c`.
-2. **Runtime Memory**: Handled by `ArrayContext` in `engine/src/runtime/arrays.c`.
-3. **Data Structure (`BppArray`)**:
-   ```c
-   typedef struct {
-       char name[64];
-       BValueType elem_type;
-       int num_dims;
-       int lower_bounds[8];
-       int upper_bounds[8];
-       size_t total_elements;
-       BValue *elements;
-   } BppArray;
-   ```
-4. **Subscript Index Calculation**:
-   $$\text{offset} = \sum_{k=1}^{D} \left( (i_k - L_k) \times \prod_{m=k+1}^{D} (U_m - L_m + 1) \right)$$
-
----
-
-## 4. Examples
-
-### Multidimensional Lookup Table
-```basic
-10 OPTION BASE 1
-20 DIM Matrix(10, 10) AS DOUBLE
-30 FOR R = 1 TO 10
-40   FOR C = 1 TO 10
-50     Matrix(R, C) = R * C
-60   NEXT C
-70 NEXT R
-80 PRINT "Matrix(5, 7) = "; Matrix(5, 7)
-```
-
-### Explicit Range Offsets with Negative Indices
-```basic
-100 DIM Temperature(-40 TO 100)
-110 FOR T = -40 TO 100
-120   Temperature(T) = (T * 9 / 5) + 32
-130 NEXT T
-140 PRINT "0 C in Fahrenheit: "; Temperature(0)
-```
+| Field | Value |
+|---|---|
+| Name | DIM |
+| Category | Variables & Memory |
+| Syntax | DIM [#channel,] [SHARED] [DYNAMIC \| STATIC] array_name(subscripts...) [*len] [AS type [*len]] [, ...] |
+| Description | Allocates storage space for arrays, virtual arrays, fixed strings, and class instances. |
+| Error Summary | Error 2: Syntax Error, Error 9: Subscript out of range, Error 10: Duplicate definition |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_SYSTEM |
+| Feature Type | FEATURE_STATEMENT |
+| Delimiter Mask | none |
+| Compatibility | none |
+| Since Version | none |
+| Source File | engine/src/statements/variables/declaration/dim.c |

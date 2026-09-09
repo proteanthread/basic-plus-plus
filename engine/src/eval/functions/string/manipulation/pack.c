@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (string_fn.c)
 // NEEDS: libcore (hal.h, memory.h, memory.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libcore (strings.h, strings.c)
 // NEEDS: libengine (mux.h, mux.c, pack.h, string.c)
 // Provides runtime implementation for the PACK built-in function in BASIC++.
@@ -11,21 +11,25 @@
 // ---- Includes ----
 
 #include "eval/functions/string/manipulation/pack.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/strings.h"
 #include "runtime/mux.h"
 #include "runtime/string.h"
 #include "runtime/memory.h"
 #include "hal/hal.h"
+
+static const LangDesc g_pack_desc = {
+    .name = "PACK$",
+    .category = "String Functions",
+    .syntax = "PACK$(fmt$, val1 [, val2, ...])",
+    .description = "Packs binary data values into a binary string according to format template fmt$.",
+    .error_summary = "Error 5: Illegal Function Call (invalid format character), Error 13: Type Mismatch (expects string format)",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_FUNCTION
+};
 void func_pack_register(void) {
-    MicroLibMetadata meta = {
-        .name = "PACK$",
-        .category = "String Functions",
-        .syntax = "PACK$(fmt$, val1 [, val2, ...])",
-        .help_text = "Packs binary data values into a binary string according to format template fmt$.",
-        .error_codes = "Error 5: Illegal Function Call (invalid format character), Error 13: Type Mismatch (expects string format)"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_pack_desc);
 }
 
 BValue func_pack_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err) {

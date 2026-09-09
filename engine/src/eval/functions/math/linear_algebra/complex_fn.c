@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (math_fn.c)
 // NEEDS: libcore (complex_num.h, complex_num.c, math.h)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libengine (complex_fn.h, math.c, string.c)
 // Provides runtime implementation for the COMPLEX_FN built-in function in BASIC++.
 //
@@ -11,19 +11,24 @@
 
 #include "eval/functions/math/linear_algebra/complex_fn.h"
 #include "core/complex_num.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/string.h"
 
 #include "runtime/math.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_complex_desc = {
+    .name = "COMPLEX",
+    .category = "Math & Trigonometry",
+    .syntax = "COMPLEX(real, imag) | REAL(z) | IMAG(z) | CONJG(z) | ARG(z) | CABS(z) | CSIN(z) | CCOS(z) | CEXP(z) | CLOG(z) | CSQR(z)",
+    .description = "Evaluates Dartmouth DTSS Complex number arithmetic and transcendental operations.",
+    .error_summary = "Error 13: Type mismatch, Error 11: Division by zero, Error 5: Illegal function call",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_PURE,
+    .type = FEATURE_FUNCTION
+};
 void func_complex_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "COMPLEX",
-        .category = "Math & Trigonometry",
-        .syntax = "COMPLEX(real, imag) | REAL(z) | IMAG(z) | CONJG(z) | ARG(z) | CABS(z) | CSIN(z) | CCOS(z) | CEXP(z) | CLOG(z) | CSQR(z)",
-        .help_text = "Evaluates Dartmouth DTSS Complex number arithmetic and transcendental operations.",
-        .error_codes = "Error 13: Type mismatch, Error 11: Division by zero, Error 5: Illegal function call"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_complex_desc);
 }
 
 BValue func_complex_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err) {

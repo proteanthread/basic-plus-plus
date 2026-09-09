@@ -1,22 +1,69 @@
-# `TZ` Timezone Offset Function
+<!--
+Title:        TZ
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/platform/time/plat_time.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Function Definition
+# `TZ` Keyword Reference
 
-The `TZ` function returns the current local timezone offset in hours relative to UTC (e.g. `-5` for EST, `-7` for MDT, `0` for UTC).
+## Source Header
 
-### Syntax Signatures:
-```basic
-offset_hours = TZ
-offset_hours = TZ()
+```c
+// FILENAME: plat_time.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community -- All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: baspp.exe, bpp.exe, bs.exe, libengine
+// NEEDS: libcore, libkernel
+// Implements component functionality for TZ.
 ```
 
-### Operational Rules:
-- Returns numeric floating-point or integer offset in hours.
+## 1. Description & Usage
+
+Returns the numeric timezone UTC offset in minutes.
+
+## 2. Syntax
+
+```basic
+TZ
+```
+
+## 3. Code Example
+
+```basic
+10 REM TZ Demonstration
+20 PRINT "TZ executed successfully."
+```
+
+## 4. Error Conditions
+
+None
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Date & Time
+- **Subsystem**: SUBSYSTEM_PLATFORM
+- **Safety Level**: SAFETY_SAFE
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 PRINT "Timezone Offset from UTC: "; TZ; " hours"
-```
+| Field | Value |
+|---|---|
+| Name | TZ |
+| Category | Date & Time |
+| Syntax | TZ |
+| Description | Returns the numeric timezone UTC offset in minutes. |
+| Error Summary | None |
+| Subsystem | SUBSYSTEM_PLATFORM |
+| Safety Level | SAFETY_SAFE |
+| Feature Type | FEATURE_FUNCTION |
+| Delimiter Mask | none |
+| Compatibility | BASIC++ Standard |
+| Since Version | 6.0.0 |
+| Source File | engine/src/platform/time/plat_time.c |

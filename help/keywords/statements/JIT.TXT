@@ -1,0 +1,69 @@
+TITLE: JIT
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/program/stmt_jit.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+JIT KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: stmt_jit.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (common_reg_stmts.c)
+    // NEEDS: libcore, libengine, libkernel
+    // Implements the JIT statement for dynamic runtime JIT/AOT mode configuration
+    //
+    // ---- Includes ----
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Configures the Just-In-Time and Ahead-Of-Time compilation tier and execution
+mode.
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    JIT [ON | OFF | AUTO | BYTECODE | NATIVE | FAST | SAFE]
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM JIT Demonstration
+    20 PRINT "JIT executed successfully."
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Program Mgmt & Editing
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SAFE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  JIT
+Category              Program Mgmt & Editing
+Syntax                JIT [ON | OFF | AUTO | BYTECODE | NATIVE | FAST | S...
+Description           Configures the Just-In-Time and Ahead-Of-Time compi...
+Error Summary         Error 2: Syntax Error
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/program/stmt_jit.c

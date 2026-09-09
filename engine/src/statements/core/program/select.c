@@ -4,7 +4,7 @@
 // NEEDED BY: libplatform (plat_clipboard.c, plat_console.c, plat_dl.c)
 // NEEDED BY: libplatform (plat_fs.c, plat_net.c, plat_regex.c, plat_sys.c)
 // NEEDED BY: libplatform (plat_thread.c, plat_time.c)
-// NEEDS: libcore (ctype.h, ctype.c, micro_lib_metadata.h, micro_lib_metadata.c)
+// NEEDS: libcore (ctype.h, ctype.c, language_descriptor.h)
 // NEEDS: libcore (string.h)
 // NEEDS: libengine (eval.h, eval.c, stmt.h, string.c, vm.h)
 // Provides runtime implementation for the SELECT statement in BASIC++.
@@ -14,23 +14,30 @@
 #include "stmt/stmt.h"
 #include "eval/eval.h"
 #include "vm/vm.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
+
+
+#include "runtime/format/snprintf.h"
+#include "runtime/memory/alloc.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "runtime/strings.h"
+#include "runtime/ctype/ctype.h"
+
+static const LangDesc g_select_desc = {
+    .name = "SELECT",
+    .category = "Control Flow",
+    .syntax = "SELECT CASE test_expression ... CASE expression_list ... END SELECT",
+    .description = "Executes one of several blocks of statements depending on the value of an expression.",
+    .error_summary = "Error 2: Syntax Error, Error 13: Type Mismatch, Error 37: SELECT Without CASE",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SAFE,
+    .type = FEATURE_STATEMENT
+};
 
 void stmt_select_register(void) {
-    MicroLibMetadata meta = {
-        .name = "SELECT",
-        .category = "Control Flow",
-        .syntax = "SELECT CASE test_expression ... CASE expression_list ... END SELECT",
-        .help_text = "Executes one of several blocks of statements depending on the value of an expression.",
-        .error_codes = "Error 2: Syntax Error, Error 13: Type Mismatch, Error 37: SELECT Without CASE"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_select_desc);
 }
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <ctype.h>
-
 static bool is_numeric_type(ValueType t) {
     return (t == VAL_NUMBER || t == VAL_INTEGER);
 }
@@ -38,7 +45,7 @@ static bool is_numeric_type(ValueType t) {
 // @brief Helper to compare two BValue objects for equality.
 static bool values_equal(BValue v1, BValue v2) {
     if (v1.type == VAL_STRING && v2.type == VAL_STRING) {
-        return (v1.as.string && v2.as.string) ? (strcmp(str_data(v1.as.string), str_data(v2.as.string)) == 0) : (v1.as.string == v2.as.string);
+        return (v1.as.string && v2.as.string) ? (runtime_strcmp(str_data(v1.as.string), str_data(v2.as.string)) == 0) : (v1.as.string == v2.as.string);
     }
     if (is_numeric_type(v1.type) && is_numeric_type(v2.type)) {
         return v1.as.number == v2.as.number;
@@ -49,7 +56,7 @@ static bool values_equal(BValue v1, BValue v2) {
 // @brief Helper to check if v1 <= v2.
 static bool value_less_or_equal(BValue v1, BValue v2) {
     if (v1.type == VAL_STRING && v2.type == VAL_STRING) {
-        return (v1.as.string && v2.as.string) ? (strcmp(str_data(v1.as.string), str_data(v2.as.string)) <= 0) : false;
+        return (v1.as.string && v2.as.string) ? (runtime_strcmp(str_data(v1.as.string), str_data(v2.as.string)) <= 0) : false;
     }
     if (is_numeric_type(v1.type) && is_numeric_type(v2.type)) {
         return v1.as.number <= v2.as.number;
@@ -60,7 +67,7 @@ static bool value_less_or_equal(BValue v1, BValue v2) {
 // @brief Helper to check if v1 >= v2.
 static bool value_greater_or_equal(BValue v1, BValue v2) {
     if (v1.type == VAL_STRING && v2.type == VAL_STRING) {
-        return (v1.as.string && v2.as.string) ? (strcmp(str_data(v1.as.string), str_data(v2.as.string)) >= 0) : false;
+        return (v1.as.string && v2.as.string) ? (runtime_strcmp(str_data(v1.as.string), str_data(v2.as.string)) >= 0) : false;
     }
     if (is_numeric_type(v1.type) && is_numeric_type(v2.type)) {
         return v1.as.number >= v2.as.number;
@@ -71,7 +78,7 @@ static bool value_greater_or_equal(BValue v1, BValue v2) {
 // @brief Skips lines until a CASE, CASE ELSE, or END SELECT at the current nesting level is found.
 static BppError skip_to_next_case_or_end_select(VMContext *vm) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     MemoryContext *mem = vm_get_mem(vm);
     size_t count = 0;
@@ -109,11 +116,11 @@ static BppError skip_to_next_case_or_end_select(VMContext *vm) {
             }
 
             bool is_select = (tok.type == TOK_KEYWORD && tok.as.keyword == KW_SELECT) ||
-                              (tok.type == TOK_IDENT && tok.length == 6 && strncasecmp(tok.start, "SELECT", 6) == 0);
+                              (tok.type == TOK_IDENT && tok.length == 6 && runtime_strncasecmp(tok.start, "SELECT", 6) == 0);
             bool is_end    = (tok.type == TOK_KEYWORD && tok.as.keyword == KW_END) ||
-                              (tok.type == TOK_IDENT && tok.length == 3 && strncasecmp(tok.start, "END", 3) == 0);
+                              (tok.type == TOK_IDENT && tok.length == 3 && runtime_strncasecmp(tok.start, "END", 3) == 0);
             bool is_case   = (tok.type == TOK_KEYWORD && tok.as.keyword == KW_CASE) ||
-                              (tok.type == TOK_IDENT && tok.length == 4 && strncasecmp(tok.start, "CASE", 4) == 0);
+                              (tok.type == TOK_IDENT && tok.length == 4 && runtime_strncasecmp(tok.start, "CASE", 4) == 0);
 
             if (is_select) {
                 select_nesting++;
@@ -123,7 +130,7 @@ static BppError skip_to_next_case_or_end_select(VMContext *vm) {
                 lex_next(scan_lex); // Consume END
                 BppToken next_tok = lex_peek(scan_lex);
                 bool next_is_select = (next_tok.type == TOK_KEYWORD && next_tok.as.keyword == KW_SELECT) ||
-                                       (next_tok.type == TOK_IDENT && next_tok.length == 6 && strncasecmp(next_tok.start, "SELECT", 6) == 0);
+                                       (next_tok.type == TOK_IDENT && next_tok.length == 6 && runtime_strncasecmp(next_tok.start, "SELECT", 6) == 0);
                 if (next_is_select) {
                     if (select_nesting > 0) {
                         select_nesting--;
@@ -166,12 +173,12 @@ static BppError skip_to_next_case_or_end_select(VMContext *vm) {
 // @brief SELECT CASE expression
 BppError stmt_select_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     // Expect CASE keyword next
     BppToken tok = lex_next(lex);
     bool is_case = (tok.type == TOK_KEYWORD && tok.as.keyword == KW_CASE) ||
-                   (tok.type == TOK_IDENT && tok.length == 4 && strncasecmp(tok.start, "CASE", 4) == 0);
+                   (tok.type == TOK_IDENT && tok.length == 4 && runtime_strncasecmp(tok.start, "CASE", 4) == 0);
     if (!is_case) {
         err.code = 2; err.message = "Expected CASE after SELECT";
         return err;
@@ -197,10 +204,33 @@ BppError stmt_select_handler(VMContext *vm, LexerContext *lex) {
     return skip_to_next_case_or_end_select(vm);
 }
 
+static bool select_wildcard_match(const char *str, const char *pat) {
+    if (!str || !pat) return false;
+    while (*pat) {
+        if (*pat == '*') {
+            while (*pat == '*') pat++;
+            if (!*pat) return true;
+            while (*str) {
+                if (select_wildcard_match(str, pat)) return true;
+                str++;
+            }
+            return false;
+        } else if (*pat == '?' || runtime_tolower((unsigned char)*pat) == runtime_tolower((unsigned char)*str)) {
+            if (!*str && *pat != '?') return false;
+            if (!*str && *pat == '?') return false;
+            str++;
+            pat++;
+        } else {
+            return false;
+        }
+    }
+    return (*str == '\0');
+}
+
 // @brief CASE case_item1, case_item2, ... / CASE ELSE
 BppError stmt_case_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BppSelectFrame frame;
     if (!vm_select_peek(vm, &frame)) {
@@ -210,7 +240,7 @@ BppError stmt_case_handler(VMContext *vm, LexerContext *lex) {
 
     BppToken tok = lex_peek(lex);
     bool is_else = (tok.type == TOK_KEYWORD && tok.as.keyword == KW_ELSE) ||
-                   (tok.type == TOK_IDENT && tok.length == 4 && strncasecmp(tok.start, "ELSE", 4) == 0);
+                   (tok.type == TOK_IDENT && tok.length == 4 && runtime_strncasecmp(tok.start, "ELSE", 4) == 0);
 
     if (is_else) {
         lex_next(lex); // Consume ELSE
@@ -236,33 +266,59 @@ BppError stmt_case_handler(VMContext *vm, LexerContext *lex) {
     while (true) {
         tok = lex_peek(lex);
 
-        bool is_is = (tok.type == TOK_IDENT && tok.length == 2 && strncasecmp(tok.start, "IS", 2) == 0);
+        bool is_is = (tok.type == TOK_IDENT && tok.length == 2 && runtime_strncasecmp(tok.start, "IS", 2) == 0);
+        bool is_like = (tok.type == TOK_IDENT && tok.length == 4 && runtime_strncasecmp(tok.start, "LIKE", 4) == 0);
 
-        // Case 1: IS operator expression (e.g. IS >= 5)
-        if (is_is) {
+        if (is_like) {
+            lex_next(lex); // Consume 'LIKE'
+            BValue pat_val = eval_expression(vm, lex, &err);
+            if (err.code != 0) return err;
+            if (frame.val.type == VAL_STRING && pat_val.type == VAL_STRING && frame.val.as.string && pat_val.as.string) {
+                const char *s = str_data(frame.val.as.string);
+                const char *p = str_data(pat_val.as.string);
+                if (select_wildcard_match(s, p)) match = true;
+            }
+            if (pat_val.type == VAL_STRING && pat_val.as.string) {
+                str_release(vm_get_str(vm), pat_val.as.string);
+            }
+        } else if (is_is) {
             lex_next(lex); // Consume 'IS'
             BppToken op_tok = lex_next(lex);
-            BValue comp_val = eval_expression(vm, lex, &err);
-            if (err.code != 0) return err;
+            bool is_op_like = (op_tok.type == TOK_IDENT && op_tok.length == 4 && runtime_strncasecmp(op_tok.start, "LIKE", 4) == 0);
+            if (is_op_like) {
+                BValue pat_val = eval_expression(vm, lex, &err);
+                if (err.code != 0) return err;
+                if (frame.val.type == VAL_STRING && pat_val.type == VAL_STRING && frame.val.as.string && pat_val.as.string) {
+                    const char *s = str_data(frame.val.as.string);
+                    const char *p = str_data(pat_val.as.string);
+                    if (select_wildcard_match(s, p)) match = true;
+                }
+                if (pat_val.type == VAL_STRING && pat_val.as.string) {
+                    str_release(vm_get_str(vm), pat_val.as.string);
+                }
+            } else {
+                BValue comp_val = eval_expression(vm, lex, &err);
+                if (err.code != 0) return err;
 
-            bool cond = false;
-            switch (op_tok.type) {
-                case TOK_EQ: cond = values_equal(frame.val, comp_val); break;
-                case TOK_NE: cond = !values_equal(frame.val, comp_val); break;
-                case TOK_LT: cond = !value_greater_or_equal(frame.val, comp_val); break;
-                case TOK_GT: cond = !value_less_or_equal(frame.val, comp_val); break;
-                case TOK_LE: cond = value_less_or_equal(frame.val, comp_val); break;
-                case TOK_GE: cond = value_greater_or_equal(frame.val, comp_val); break;
-                default:
-                    err.code = 2; err.message = "Expected comparison operator after IS";
-                    if (comp_val.type == VAL_STRING) str_release(vm_get_str(vm), comp_val.as.string);
-                    return err;
-            }
+                bool cond = false;
+                switch (op_tok.type) {
+                    case TOK_EQ: cond = values_equal(frame.val, comp_val); break;
+                    case TOK_NE: cond = !values_equal(frame.val, comp_val); break;
+                    case TOK_LT: cond = !value_greater_or_equal(frame.val, comp_val); break;
+                    case TOK_GT: cond = !value_less_or_equal(frame.val, comp_val); break;
+                    case TOK_LE: cond = value_less_or_equal(frame.val, comp_val); break;
+                    case TOK_GE: cond = value_greater_or_equal(frame.val, comp_val); break;
+                    default:
+                        err.code = 2; err.message = "Expected comparison operator after IS";
+                        if (comp_val.type == VAL_STRING) str_release(vm_get_str(vm), comp_val.as.string);
+                        return err;
+                }
 
-            if (comp_val.type == VAL_STRING) {
-                str_release(vm_get_str(vm), comp_val.as.string);
+                if (comp_val.type == VAL_STRING) {
+                    str_release(vm_get_str(vm), comp_val.as.string);
+                }
+                if (cond) match = true;
             }
-            if (cond) match = true;
         } else {
             // Case 2: normal expression or expression TO expression
             BValue comp_val = eval_expression(vm, lex, &err);
@@ -271,7 +327,7 @@ BppError stmt_case_handler(VMContext *vm, LexerContext *lex) {
             // Check TO range
             BppToken next_tok = lex_peek(lex);
             bool is_to = (next_tok.type == TOK_KEYWORD && next_tok.as.keyword == KW_TO) ||
-                         (next_tok.type == TOK_IDENT && next_tok.length == 2 && strncasecmp(next_tok.start, "TO", 2) == 0);
+                         (next_tok.type == TOK_IDENT && next_tok.length == 2 && runtime_strncasecmp(next_tok.start, "TO", 2) == 0);
 
             if (is_to) {
                 lex_next(lex); // Consume 'TO'

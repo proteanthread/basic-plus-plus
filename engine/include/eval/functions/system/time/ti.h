@@ -1,0 +1,17 @@
+// FILENAME: ti.h
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine (common_reg_funcs.c, sys_fn.c)
+// NEEDS: libcore (types.h)
+// Declares registration and evaluation handlers for the TI, TI$, and TIMER$ system variables in BASIC++.
+
+#ifndef TI_H
+#define TI_H
+
+#include "types/types.h"
+#include "eval/eval.h"
+
+void func_ti_register(void);
+BValue func_ti_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err);
+
+#endif // TI_H

@@ -50,7 +50,7 @@ void using_parse_mask(const char *fmt_str, UsingMask *mask);
 bool using_eval_condition(double val, const UsingToken *tok);
 void using_format_output(VMContext *vm, const UsingMask *mask, int *mask_idx, BValue val, char *out_buf, size_t out_max);
 
-#include <stdio.h>
+#include "runtime/format/snprintf.h"
 
 // Input Validation API
 bool using_validate_char(char c, char mask_char, bool *uppercase, bool *lowercase);
@@ -60,7 +60,7 @@ bool using_validate_input_string(const char *input, const char *mask_str, char *
 #define PRINT_CHANNEL_PRINTER -2
 
 // Print USING internals
-void print_using_internal_ex(VMContext *vm, LexerContext *lex, int channel, FILE *stream);
+void print_using_internal_ex(VMContext *vm, LexerContext *lex, int channel, void *stream);
 void print_using_internal(VMContext *vm, LexerContext *lex, int channel);
 
 #endif // RUNTIME_USING_H

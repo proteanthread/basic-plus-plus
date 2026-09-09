@@ -1,0 +1,71 @@
+TITLE: FIELD
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/filesystem/file_ops/field.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+FIELD KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: field.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (file.h, file.c, language_descriptor.h)
+    // NEEDS: libcore (string.h, strings.h, strings.c, variables.h, variables.c)
+    // NEEDS: libengine (eval.h, eval.c, field.h, lexer.h, lexer.c, string.c, vm.h
+    // NEEDS: libplatform (platform.h)
+    // Provides runtime implementation for the FIELD statement in BASIC++.
+    //
+    // ---- Includes ----
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Allocates space in a random file buffer for record variables.
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    FIELD [#]file_num, width AS string_var [, width AS string_var...]
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM FIELD Demonstration
+    20 PRINT "FIELD executed successfully."
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error, Error 50: Field Overflow, Error 52: Bad File Number
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Filesystem I/O
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_IO
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  FIELD
+Category              Filesystem I/O
+Syntax                FIELD [#]file_num, width AS string_var [, width AS ...
+Description           Allocates space in a random file buffer for record ...
+Error Summary         Error 2: Syntax Error, Error 50: Field Overflow, Er...
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_IO
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/filesystem/file_ops/field.c

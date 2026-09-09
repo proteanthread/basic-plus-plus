@@ -1,30 +1,70 @@
-CONT Continue Program Execution Statement
-=========================================
+TITLE: CONT
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/program/cont.c
+GENERATED: no, hand-written
+STATUS: current
 
-Resumes execution of a paused BASIC program following a STOP statement or interactive interrupt.
+==============================================================================
+CONT KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: cont.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libengine (cont.h, eval.h, eval.c, lexer.h, lexer.c, string.c, vm.h)
+    // NEEDS: libkernel (security.h, security.c, vdev.h, vdev.c)
+    // Provides runtime implementation for the CONT statement in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Resumes program execution after a break or STOP statement.
 
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
     CONT
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM CONT Demonstration
+    20 PRINT "CONT executed successfully."
 
-ERROR CONDITIONS
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error, Error 17: Can't Continue
 
-  - Error 17 (ERR_CANNOT_CONTINUE): Program modified or not in breakable state.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Program Mgmt & Editing
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SAFE
 
-
-OPERATIONAL NOTES
-----------------------------------------------------------------------
-
-  Restores instruction pointer and active loop stack frame.
-
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 PRINT "Step 1"
-    20 STOP
-    30 PRINT "Step 2 (resumed)"
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  CONT
+Category              Program Mgmt & Editing
+Syntax                CONT
+Description           Resumes program execution after a break or STOP sta...
+Error Summary         Error 2: Syntax Error, Error 17: Can't Continue
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/program/cont.c

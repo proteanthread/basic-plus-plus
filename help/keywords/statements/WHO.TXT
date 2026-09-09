@@ -1,0 +1,68 @@
+TITLE: WHO
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/system/environment/who.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+WHO KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: who.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (common_reg_stmts.c)
+    // NEEDS: libcore (language_descriptor.h, session.h)
+    // NEEDS: libengine (eval.h, who.h)
+    // NEEDS: libkernel (vdev.h)
+    // Provides runtime implementation for the WHO statement in BASIC++.
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Displays active user session telemetry, job ID, TTY line, and priority status.
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    WHO
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM WHO Demonstration
+    20 PRINT "WHO executed successfully."
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+None
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Session & Multi-User
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_PURE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  WHO
+Category              Session & Multi-User
+Syntax                WHO
+Description           Displays active user session telemetry, job ID, TTY...
+Error Summary         None
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_PURE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/system/environment/who.c

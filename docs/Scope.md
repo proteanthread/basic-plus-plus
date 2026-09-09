@@ -1,60 +1,61 @@
-# BASIC++ v6.5.2 Variable Scoping & Modular Declarations
+<!--
+Title:        Scope
+Tier:         2
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/statements/introspection/scope.c, engine/include/scope/scope.h
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. OVERVIEW
+# BASIC++ v6.5.2 Variable Scoping & Lexical Blocks Architecture
 
-BASIC++ provides a comprehensive scoping hierarchy supporting root global declarations, block scopes, modular exports, targeted sharing, and procedure-level isolation.
+The authoritative specification for variable scoping, procedure frames, lexical block boundaries, module namespaces, and execution hooks in BASIC++ v6.5.2.
 
-## 2. SCOPING STATEMENTS
+---
 
-### `GLOBAL`
-Declares global variables accessible across all routines and blocks:
-- At the root level: `GLOBAL g1, g2 AS INTEGER` declares root global variables.
-- Inside a procedure: `GLOBAL g1, g2` binds the local reference directly to the root global scope.
+## 1. Variable Scoping Hierarchy
 
-### `PUBLIC` and `EXPORT`
-Exports variables from modules or procedures:
-- `PUBLIC v1, v2` — Declares variables as public.
-- `EXPORT v1, v2 [TO / FOR Routine1, Routine2]` — Exports variables to other modules or selectively exports them to target routines.
+BASIC++ provides a structured variable scoping hierarchy supporting global variables, procedure frames, and lexical isolation:
 
-### `SHARE` and `SHARED`
-Imports or targets variables across procedure boundaries:
-- `SHARED v1, v2` — Imports main-program global variables into the current subroutine or function.
-- `SHARE v1, v2 [WITH Routine1, Routine2]` — Selectively shares variables with specific named procedures.
+- **`GLOBAL var1 [, var2...]`**: Declares variables in the root global scope. Accessible from any subroutine, function, or block.
+- **`SHARED var1 [, var2...]`**: Within a `SUB` or `FUNCTION`, imports outer program variables into the local procedure frame.
+- **`LOCAL var1 [, var2...]`**: Explicitly defines procedure-local variables allocated on the stack frame and shadowed from callers.
+- **`STATIC var1 [, var2...]`**: Declares procedure-local variables whose values persist across subsequent invocations.
 
-### `LOCAL` and `STATIC`
-- `LOCAL v1, v2` — Explicitly defines variables isolated to the current procedure frame, shadowed from caller variables.
-- `STATIC v1, v2` — Retains variable state across subsequent invocations of the procedure.
+---
 
-## 3. SCOPE BLOCKS
+## 2. Lexical Scope Blocks
 
-The `SCOPE` statement creates an isolated execution context:
+The `SCOPE` statement manages lexical scope frames, namespaces, and execution hooks (implemented in `engine/src/statements/introspection/scope.c`):
+
+### A. Block Scoping
+- **`SCOPE BEGIN`**: Pushes a new lexical scope frame onto the VM scope stack.
+- **`SCOPE END`**: Pops the current lexical scope frame and releases frame-local variables.
+
+### B. Module Namespaces
+- **`SCOPE MODULE name$`**: Enters a named module namespace, isolating internal identifiers.
+
+### C. Keyword Enablement and Protection
+- **`SCOPE DISABLE keyword`**: Disables the specified keyword within the active lexical scope.
+- **`SCOPE ENABLE keyword`**: Re-enables a previously disabled keyword.
+- **`SCOPE PRIVATE symbol`**: Marks a variable or procedure symbol as private to the enclosing scope.
+
+### D. Execution Hooks
+- **`SCOPE HOOK BEFORE cmd GOSUB line|label`**: Installs a pre-execution hook called before `cmd` runs.
+- **`SCOPE HOOK AFTER cmd GOSUB line|label`**: Installs a post-execution hook called after `cmd` runs.
+- **`SCOPE HOOK CLEAR`**: Removes all registered execution hooks.
+
+---
+
+## 3. Example: Lexical Block Scoping
 
 ```basic
 10 X = 100
-20 SCOPE
-30   X = 42              ' Local X
-40   PRINT X             ' Prints 42
-50 END SCOPE
-60 PRINT X               ' Prints 100 (outer X preserved)
+20 PRINT "Outer X: "; X
+30 SCOPE BEGIN
+40   X = 42
+50   PRINT "Inner X: "; X
+60 SCOPE END
+70 PRINT "Restored Outer X: "; X
+80 END
 ```
-
-### Importing & Exporting in Scope Blocks:
-- `SCOPE IMPORT var1, var2` brings outer variables into the scope block.
-- `SCOPE EXPORT var1, var2` exposes scope-local variables to the outer program.
-
-## 4. MULTI-VARIABLE AND CHAINED FOR LOOPS
-
-BASIC++ supports flexible multi-variable parallel stepping and chained loop bounds:
-- **Multi-Variable Parallel Stepping**:
-  ```basic
-  FOR A, B, C = 1 TO 5
-    PRINT A, B, C
-  NEXT
-  ```
-  Accepts bare `NEXT`, matching variables `NEXT A, B, C`, reversed `NEXT C, B, A`, or single variable `NEXT A`.
-- **Chained Initializer**:
-  ```basic
-  FOR P=Q=R=1 TO 4
-    PRINT P, Q, R
-  NEXT P, Q, R
-  ```

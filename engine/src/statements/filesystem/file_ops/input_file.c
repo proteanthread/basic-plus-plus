@@ -15,26 +15,32 @@
 #include "runtime/variables.h"
 #include "runtime/arrays.h"
 #include "runtime/strings.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "device/vdev.h"
-#include <string.h>
-#include <stdlib.h>
-#include <ctype.h>
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "runtime/memory/alloc.h"
+#include "runtime/ctype/ctype.h"
+#include "runtime/conv/float_parse.h"
+
+static const LangDesc g_input_desc = {
+    .name = "INPUT#",
+    .category = "Filesystem I/O",
+    .syntax = "INPUT #file_num, var1 [, var2...] | LINE INPUT [#file_num,] string_var",
+    .description = "Reads data items or full line text strings from an open sequential disk file channel or console.",
+    .error_summary = "Error 2: Syntax Error, Error 52: Bad File Number, Error 62: Input Past End",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_STATEMENT
+};
 
 void stmt_input_file_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "INPUT#",
-        .category = "Filesystem I/O",
-        .syntax = "INPUT #file_num, var1 [, var2...] | LINE INPUT [#file_num,] string_var",
-        .help_text = "Reads data items or full line text strings from an open sequential disk file channel or console.",
-        .error_codes = "Error 2: Syntax Error, Error 52: Bad File Number, Error 62: Input Past End"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_input_desc);
 }
 
 BppError stmt_input_file_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BppToken hash = lex_peek(lex);
     if (hash.type == TOK_HASH) {
@@ -71,7 +77,7 @@ BppError stmt_input_file_handler(VMContext *vm, LexerContext *lex) {
 
         char var_name[64];
         if (tok.length >= sizeof(var_name)) tok.length = sizeof(var_name) - 1;
-        memcpy(var_name, tok.start, tok.length);
+        runtime_memcpy(var_name, tok.start, tok.length);
         var_name[tok.length] = '\0';
 
         bool is_array = false;
@@ -116,7 +122,7 @@ BppError stmt_input_file_handler(VMContext *vm, LexerContext *lex) {
         size_t len = 0;
         int c;
 
-        while ((c = file_getc(fc, channel)) != -1 && isspace(c) && c != '\n' && c != '\r');
+        while ((c = file_getc(fc, channel)) != -1 && runtime_isspace(c) && c != '\n' && c != '\r');
 
         if (c == -1) {
             err.code = 62;
@@ -141,15 +147,15 @@ BppError stmt_input_file_handler(VMContext *vm, LexerContext *lex) {
         field_buf[len] = '\0';
 
 
-        bool is_str = (var_name[strlen(var_name) - 1] == '$');
+        bool is_str = (var_name[runtime_strlen(var_name) - 1] == '$');
         BValue val;
-        memset(&val, 0, sizeof(val));
+        runtime_memset(&val, 0, sizeof(val));
 
         if (is_str) {
             val.type = VAL_STRING;
             val.as.string = str_create(str_ctx, field_buf, len);
         } else {
-            double num = strtod(field_buf, NULL);
+            double num = runtime_strtod(field_buf, NULL);
             val.type = VAL_NUMBER;
             val.as.number = num;
         }

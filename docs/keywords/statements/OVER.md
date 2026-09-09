@@ -1,28 +1,71 @@
-# `OVER` Transparent Text Overlay Attribute Statement
+<!--
+Title:        OVER
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/device/gfx.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Keyword Definition
+# `OVER` Keyword Reference
 
-Toggles transparent text background overlay mode (printing text without erasing background pixels).
+## Source Header
 
-### Syntax Signatures:
-```basic
-OVER over_flag%
+```c
+// FILENAME: gfx.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore, libengine, libkernel, libplatform
+// Implements virtual device and graphics rendering logic for gfx.
+//
+// ---- Includes ----
 ```
 
-### Error Handling & Boundary Conditions:
-- **Error 5 (ERR_ILLEGAL_FUNCTION_CALL)**: Flag must be 0 or 1.
+## 1. Description & Usage
 
-### Operational Notes:
-- Sinclair ZX Spectrum and Locomotive BASIC attribute emulation.
+Controls overstrike transparent printing mode (0=overwrite, 1=XOR/overstrike).
+
+## 2. Syntax
+
+```basic
+OVER state%
+```
+
+## 3. Code Example
+
+```basic
+10 REM OVER Demonstration
+20 PRINT "OVER executed successfully."
+```
+
+## 4. Error Conditions
+
+Error 5: Illegal Function Call
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: Sinclair ZX Spectrum, BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Graphics & Display
+- **Subsystem**: SUBSYSTEM_ADVANCED
+- **Safety Level**: SAFETY_SAFE
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 SCREEN 12 : CLS
-20 LINE (10, 10)-(200, 100), 2, BF
-30 OVER 1
-40 PRINT "Text over graphics"
-50 OVER 0
-```
+| Field | Value |
+|---|---|
+| Name | OVER |
+| Category | Graphics & Display |
+| Syntax | OVER state% |
+| Description | Controls overstrike transparent printing mode (0=overwrite, 1=XOR/overstrike). |
+| Error Summary | Error 5: Illegal Function Call |
+| Subsystem | SUBSYSTEM_ADVANCED |
+| Safety Level | SAFETY_SAFE |
+| Feature Type | FEATURE_STATEMENT |
+| Delimiter Mask | none |
+| Compatibility | Sinclair ZX Spectrum, BASIC++ Standard |
+| Since Version | 6.0.0 |
+| Source File | engine/src/device/gfx.c |

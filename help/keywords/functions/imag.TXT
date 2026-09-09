@@ -1,16 +1,69 @@
-IMAG Imaginary Component Extractor Function
-======================================================================
+TITLE: IMAG
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/module/mathext.c
+GENERATED: no, hand-written
+STATUS: current
 
-The IMAG function returns the imaginary part of a complex number.
+==============================================================================
+IMAG KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: mathext.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (funcreg.h, funcreg.c, math.h)
+    // NEEDS: libengine (math.c)
+    // Provides core logic and interface definitions for mathext within BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Returns the imaginary component of complex number or scalar z.
 
-    imag# = IMAG(complex_val)
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    IMAG(z)
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = IMAG(z)
+    20 PRINT "Result: "; Val
 
-CODE EXAMPLES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 13: Type Mismatch
 
-    10 PRINT IMAG(COMPLEX(10, 20))   : REM Outputs 20
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Math & Complex Numbers
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_PURE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  IMAG
+Category              Math & Complex Numbers
+Syntax                IMAG(z)
+Description           Returns the imaginary component of complex number o...
+Error Summary         Error 13: Type Mismatch
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_PURE
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         BASIC++ Standard
+Since Version         6.0.0
+Source File           engine/src/module/mathext.c

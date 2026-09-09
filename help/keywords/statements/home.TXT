@@ -1,23 +1,71 @@
-HOME Cursor Home and Screen Clearing Statement
-==============================================
+TITLE: HOME
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/graphics/stmt_home.c
+GENERATED: no, hand-written
+STATUS: current
 
-Clears the text screen and positions the cursor at row 1, column 1 (Apple II style).
+==============================================================================
+HOME KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: stmt_home.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libengine (color_map.h, eval.h, lexer.h, stmt_home.h, vm.h)
+    // NEEDS: libkernel (errors.h, vcon.h, vdev.h)
+    // Provides runtime implementation for the HOME statement in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Moves cursor to top-left (1, 1) without clearing screen, optionally setting
+text colors.
 
-    HOME
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    HOME [[fg] [, bg]]
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM HOME Demonstration
+    20 PRINT "HOME executed successfully."
 
-OPERATIONAL NOTES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error, Error 5: Illegal Function Call
 
-  Equivalent to CLS in GW-BASIC.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Graphics & Display
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SAFE
 
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 HOME
-    20 PRINT "Top-left of Apple II screen"
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  HOME
+Category              Graphics & Display
+Syntax                HOME [[fg] [, bg]]
+Description           Moves cursor to top-left (1, 1) without clearing sc...
+Error Summary         Error 2: Syntax Error, Error 5: Illegal Function Call
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/graphics/stmt_home.c

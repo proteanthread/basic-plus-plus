@@ -1,0 +1,66 @@
+TITLE: FIFO
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/functions/system/func_udx.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+FIFO KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: func_udx.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, common_reg_funcs.c
+    // NEEDS: libreg (reg_buffer.h, reg_udx.h, reg_hw.h), runtime (funcreg.h, lang
+    // Implements freestanding UDX, FIFO, LIFO functions in BASIC++.
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+First-class First In, First Out buffer operation function.
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    FIFO(op$, [val]) | FIFO.PUSH(val) | FIFO.POP()
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = FIFO(op$, [val]) | FIFO.PUSH(val) | FIFO.POP()
+    20 PRINT "Result: "; Val
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 5: Illegal Function Call
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      System & Hardware
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SAFE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  FIFO
+Category              System & Hardware
+Syntax                FIFO(op$, [val]) | FIFO.PUSH(val) | FIFO.POP()
+Description           First-class First In, First Out buffer operation fu...
+Error Summary         Error 5: Illegal Function Call
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/functions/system/func_udx.c

@@ -1,0 +1,69 @@
+TITLE: REC
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/functions/math/trig/pol_rec.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+REC KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: pol_rec.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (math_fn.c, dispatch_call.c)
+    // NEEDS: libkernel (vm.h, eval.h)
+    // Provides runtime implementation for POL and REC coordinate conversion funct
+    //
+    // ---- Includes ----
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Converts polar coordinates (r, theta) to rectangular coordinates (x, y) (Sharp
+Pocket BASIC PC-1211/PC-1500 / Casio).
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    REC(r, theta [, idx]) | REC[r, theta]
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = REC(r, theta [, id10]) | REC[r, theta]
+    20 PRINT "Result: "; Val
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 13: Type Mismatch, Error 5: Illegal Function Call
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Math & Trigonometry
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_PURE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  REC
+Category              Math & Trigonometry
+Syntax                REC(r, theta [, idx]) | REC[r, theta]
+Description           Converts polar coordinates (r, theta) to rectangula...
+Error Summary         Error 13: Type Mismatch, Error 5: Illegal Function ...
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_PURE
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/eval/functions/math/trig/pol_rec.c

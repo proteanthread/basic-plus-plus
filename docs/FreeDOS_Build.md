@@ -1,105 +1,87 @@
-# BASIC++ v6.5.2 FreeDOS Build Guide
+<!--
+Title:        FreeDOS_Build
+Tier:         2
+Applies to:   BASIC++ v6.5.2 (FreeDOS, MS-DOS, DOSBox)
+Authority:    cmake/dos16.cmake, engine/src/platform/dos/
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. OVERVIEW
+# BASIC++ FreeDOS & DOS Toolchain Build Guide
 
-BASIC++ can be compiled for FreeDOS as a 16-bit real-mode executable. This build targets the BASIC_FREEDOS_16 profile with 640 KB conventional memory, 63-level stack depth, and direct BIOS INT 10h/13h/16h calls for I/O. The FreeDOS build produces a genuine DOS BASIC interpreter that runs on real hardware or in DOSBox.
+The engineering specification and build guide for targeting FreeDOS and DOS environments using DJGPP (32-bit DPMI C17) and Open Watcom (16-bit C89/C90 educational subset).
 
-## 2. TOOLCHAIN
+---
 
-The FreeDOS build uses the Open Watcom C/C++ compiler (version 2.0), which produces 16-bit DOS executables. Cross-compilation from a modern Linux or Windows host is fully supported.
+## 1. What It Does
 
-Install Open Watcom: Download from https://github.com/open-watcom/open-watcom-v2
+1. Defines the compilation pipeline for executing BASIC++ on FreeDOS, MS-DOS, and DOSBox emulators.
+2. Specifies DJGPP (GCC C17) as the primary toolchain for producing 32-bit DPMI protected-mode executables.
+3. Specifies Open Watcom 2.0 (C89/C90) as an educational/experimental toolchain for 16-bit real-mode builds.
+4. Activates the constrained `BASIC_FREEDOS_16` profile for 16-bit real-mode operation within 640 KB conventional RAM.
+5. Replaces hosted POSIX/Win32 services with direct BIOS interrupts (INT 10h, INT 16h, INT 1Ah) and DOS syscalls (INT 21h).
+6. Configures VGA/EGA/CGA video modes through direct hardware registers and BIOS video services.
+7. Disables modern hosted subsystems (SDL2, multithreading, BSD sockets, dynamically loaded shared modules).
+8. Maps file system paths to DOS 8.3 conventions and FAT filesystem structures.
+9. Enforces memory layout boundaries: 32 KB program space, 16 KB variable space, and 16 KB string heap in 16-bit mode.
+10. Provides seamless cross-compilation from modern Linux and Windows development workstations.
 
-Set environment variables:
-```bash
-export WATCOM=/opt/watcom
-export PATH=$WATCOM/binl64:$PATH
-export INCLUDE=$WATCOM/h
-```
+---
 
-## 3. BUILD CONFIGURATION
+## 2. Why It Exists
 
-The FreeDOS build uses a separate CMake toolchain file:
+1. Preserves authentic execution capability on bare-metal vintage x86 PCs, industrial DOS controllers, and retro emulators.
+2. Satisfies the project invariant that BASIC++ must remain runnable on historic PC architectures.
+3. Distinguishes between 32-bit C17 protected-mode builds (DJGPP) and 16-bit C89/C90 real-mode builds (Open Watcom).
+4. Provides a bridge for running classic DOS BASIC programs without modern OS overhead or containerization.
+5. Implements the freestanding systems programming philosophy on legacy x86 platforms.
+6. Eliminates dependencies on heavyweight modern GUI or network libraries.
+7. Conforms to ISO/IEC 25010 Portability and Resource Utilization criteria.
+8. Enforces strict Documentation and Help Mirror Parity between Markdown and plaintext formats.
+9. Clarifies toolchain requirements, avoiding compiler language standard confusion.
+10. Documents real hardware register access (`PEEK`, `POKE`, `INP`, `OUT`) under genuine DOS.
 
-```bash
-mkdir build_dos
-cd build_dos
-cmake .. -DCMAKE_TOOLCHAIN_FILE=../cmake/dos16.cmake -DBASIC_FREEDOS_16=ON
-cmake --build .
-```
+---
 
-The BASIC_FREEDOS_16 flag enables the 16-bit memory profile and disables features that require 32/64-bit addresses or modern OS services.
+## 3. Why It Works This Way
 
-## 4. MEMORY PROFILE
+1. The core engine requires ISO C17 compliance; DJGPP provides modern GCC with full C17 support and 32-bit DPMI memory management.
+2. Open Watcom supports only C89/C90; it is designated as an educational/experimental target under the Rule #1 dialect exception, utilizing the `BASIC_FREEDOS_16` source subset.
+3. In 32-bit DPMI mode, CWSDPMI provides a flat 4 GB virtual address space, enabling the full 640 MB memory footprint.
+4. In 16-bit real mode, the segmented x86 architecture restricts code and data to 64 KB segments, necessitating static memory partitioning.
+5. Low-level interrupt thunking is isolated in `engine/src/platform/dos/dos_bios.c` and `engine/src/platform/dos/dos_low.asm`.
+6. Hardware port access via `PORT[...]`, `INP`, and `OUT` executes real x86 `in` and `out` assembly instructions directly.
+7. Screen output maps directly to video segment `0xB800` (CGA/EGA/VGA color text) or `0xA000` (Mode 13h graphics).
+8. Keyboard polling uses BIOS INT 16h AH=01h (check key) and AH=00h (read key) to avoid blocking the DOS timer interrupt.
+9. Timer events hook INT 08h / INT 1Ch (18.2 Hz timer tick) for deterministic event dispatching.
+10. Cross-compilation tools generate standard DOS executables: `.EXE` with embedded DPMI stub for 32-bit, or raw 16-bit real-mode `.EXE`.
 
-| Region | Size |
-|--------|------|
-| Program Memory | 32 KB |
-| Variable Memory | 16 KB |
-| String Heap | 16 KB |
-| Scratch Area | 8 KB |
+---
 
-Stack depths: 63 (all stacks). Named variable limit: 128. DIM arrays: 32. Array elements: 2,048.
+## 4. What Can Be Changed
 
-## 5. EXCLUDED FEATURES
+1. DJGPP compiler optimization flags (`-O2`, `-march=i386`, `-march=i486`, `-march=pentium`) in `cmake/djgpp.cmake`.
+2. DPMI server packaging (bundle `CWSDPMI.EXE` with the binary or require it in the DOS `PATH`).
+3. Memory partition allocations in the `BASIC_FREEDOS_16` profile via `engine/include/types/config.h`.
+4. Console driver selection: direct video RAM writes versus standard BIOS INT 10h TTY output.
+5. Audio driver: PC speaker frequency generation via 8253/8254 PIT (Port 42h/43h) or silent fallback.
+6. Serial communications port speed defaults (COM1/COM2 baud rate divisors in 8250 UART).
+7. Cross-compilation host environment settings (Linux DJGPP cross-prefix `i586-pc-msdosdjgpp-gcc`).
+8. FreeDOS build script parameters in `tools/build_dos.sh` and `tools/build_dos.bat`.
+9. DOSBox test configuration parameters (CPU cycles, memory size, sound card emulation).
+10. Documentation examples showing DOS-specific hardware interactions and batch automation.
 
-The FreeDOS build excludes:
+---
 
-- SDL2 graphics (no SDL2 for DOS; BIOS INT 10h is used directly).
-- Networking (no TCP/IP stack; FujiNet is unavailable).
-- TUI editor multiplexer (no ncurses; line editor only).
-- Background tasks (single-task DOS environment).
-- Module system (no dynamic library loading).
-- Segmented virtual memory (vmem).
-- DAP debug server.
-- Gemini protocol.
+## 5. What Cannot Be Changed
 
-Attempting to use excluded features produces Error 73 (Advanced feature disabled).
-
-## 6. BIOS DIRECT ACCESS
-
-On FreeDOS, POKE, PEEK, INP, and OUT access real hardware registers and memory. The BIOS emulation layer is replaced by direct BIOS interrupt calls:
-
-- INT 10h for video (CLS, LOCATE, COLOR, SCREEN modes).
-- INT 13h for disk (not typically used; file I/O goes through DOS INT 21h).
-- INT 16h for keyboard (INKEY$, INPUT).
-- INT 1Ah for time (TIMER, TIME$, DATE$).
-
-SCREEN mode changes use real BIOS mode setting. CGA modes (1, 2), EGA modes (7-10), and VGA modes (11-13) work on hardware that supports them.
-
-## 7. FILE I/O
-
-File I/O uses DOS INT 21h system calls through the platform abstraction layer. Path separators are backslashes. Filenames follow the 8.3 convention. Long filename support depends on the DOS version and LFN driver.
-
-The maximum number of open files is limited by the DOS FILES= setting in CONFIG.SYS. BASIC++ requests up to 16 file handles.
-
-## 8. RUNNING ON FREEDOS
-
-Copy the compiled BASPP.EXE to the FreeDOS system. Run from the command prompt:
-
-```
-C:\> BASPP
-BASIC++ Standard Edition v6.5.2
-72 KB RAM Available.
-
-Ok
->
-```
-
-The announced RAM is the available BASIC memory, not the total system memory. The actual banner shows the BASIC_FREEDOS_16 profile memory.
-
-## 9. RUNNING IN DOSBOX
-
-DOSBox provides a convenient way to test the FreeDOS build on modern systems:
-
-```bash
-dosbox -c "mount C /path/to/build" -c "C:" -c "BASPP.EXE"
-```
-
-DOSBox emulates CGA/EGA/VGA graphics modes, the PC speaker (SOUND, BEEP), and joystick input (STICK, STRIG).
-
-## 10. GRAPHICS ON FREEDOS
-
-SCREEN mode changes set real VGA registers. Mode 13 (320x200, 256 colors) writes directly to the VGA framebuffer at A000:0000. The BGI rasterizer operates on the real framebuffer rather than an SDL surface.
-
-PALETTE changes write to the VGA DAC registers through port 3C8h/3C9h.
+1. The ISO C17 compliance requirement for the master codebase; only the designated `BASIC_FREEDOS_16` profile permits C89/C90.
+2. The 6-line file header standard for all source files under `engine/src/platform/dos/`.
+3. The 100% mirror parity requirement between `docs/FreeDOS_Build.md` and `help/FreeDOS_Build.TXT`.
+4. The 78-column wrapping and pure 7-bit ASCII constraints for the plaintext help mirror.
+5. The 6-field provenance header requirement for Tier 2 subsystem specifications.
+6. The relational truth value invariant: relational operators must evaluate to -1 (true) and 0 (false) under DOS.
+7. The strict non-interchangeability of delimiters: `( )` infix, `[ ]` prefix/memory, `{ }` RPN/maps.
+8. The bounds-checking requirement: `UNSAFE { ... }` blocks are required for raw physical pointer dereferencing.
+9. Prohibition of hosted C library calls (`fopen`, `malloc`) in the freestanding DOS core.
+10. The 10-point dense section structure mandated for Tier 2 subsystem specifications.

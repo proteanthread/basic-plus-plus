@@ -1,30 +1,70 @@
-PRESET Reset Pixel to Background Color Statement
-================================================
+TITLE: PRESET
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/graphics/draw/preset.c
+GENERATED: no, hand-written
+STATUS: current
 
-Plots a pixel coordinate using the current background color (or specified color), erasing any existing pixel.
+==============================================================================
+PRESET KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: preset.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libengine (lexer.h, lexer.c, preset.h, string.c, vm.h)
+    // NEEDS: libkernel (errors.h)
+    // Provides runtime implementation for the PRESET statement in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Draws a pixel at coordinates (x, y), defaulting to background color.
 
-    PRESET (x%, y%) [, color%]
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    PRESET (x, y) [, color]
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = PRESET (10, y) [, color]
+    20 PRINT "Result: "; Val
 
-ERROR CONDITIONS
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 5: Illegal Function Call (coordinates out of bounds)
 
-  - Error 5 (ERR_ILLEGAL_FUNCTION_CALL): Coordinates outside screen bounds.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Graphics & Drawing
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SAFE
 
-
-OPERATIONAL NOTES
-----------------------------------------------------------------------
-
-  Convenience statement for erasing graphics points.
-
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 SCREEN 12
-    20 PSET (100, 100), 15 : REM White pixel
-    30 PRESET (100, 100)     : REM Erases pixel back to background
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  PRESET
+Category              Graphics & Drawing
+Syntax                PRESET (x, y) [, color]
+Description           Draws a pixel at coordinates (x, y), defaulting to ...
+Error Summary         Error 5: Illegal Function Call (coordinates out of ...
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/graphics/draw/preset.c

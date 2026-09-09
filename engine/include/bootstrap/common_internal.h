@@ -32,7 +32,7 @@
 #include "memory/memory.h"
 #include "platform/platform.h"
 #include "runtime/funcreg.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/spec.h"
 #include "runtime/strings.h"
 #include "runtime/variables.h"

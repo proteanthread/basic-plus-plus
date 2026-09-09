@@ -2,7 +2,7 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (sys_fn.c)
-// NEEDS: libcore (file.h, file.c, micro_lib_metadata.h, micro_lib_metadata.c)
+// NEEDS: libcore (file.h, file.c, language_descriptor.h)
 // NEEDS: libcore (string.h, strings.h, strings.c)
 // NEEDS: libengine (fid.h, string.c)
 // Provides runtime implementation for the FID built-in function in BASIC++.
@@ -12,18 +12,23 @@
 #include "eval/functions/filesystem/descriptors/fid.h"
 #include "runtime/file.h"
 #include "runtime/strings.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/string.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_fid_desc = {
+    .name = "FID",
+    .category = "File & Device Telemetry",
+    .syntax = "FID(channel) / FIN(channel)",
+    .description = "Returns file/device identification string (FID) or numeric position/length info (FIN) (Basic Four / BBx).",
+    .error_summary = "Error 13: Type Mismatch, Error 52: Bad File Number",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_FUNCTION
+};
 
 void func_fid_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "FID",
-        .category = "File & Device Telemetry",
-        .syntax = "FID(channel) / FIN(channel)",
-        .help_text = "Returns file/device identification string (FID) or numeric position/length info (FIN) (Basic Four / BBx).",
-        .error_codes = "Error 13: Type Mismatch, Error 52: Bad File Number"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_fid_desc);
 }
 
 BValue func_fid_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err) {

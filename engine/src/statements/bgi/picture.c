@@ -2,7 +2,7 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libengine (lexer.h, lexer.c, picture.h, string.c, vm.h)
 // Provides runtime implementation for the PICTURE statement in BASIC++.
 //
@@ -11,12 +11,24 @@
 #include "statements/bgi/picture.h"
 #include "vm/vm.h"
 #include "lexer/lexer.h"
-#include "runtime/micro_lib_metadata.h"
-#include <string.h>
+#include "runtime/language_descriptor.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_picture_desc = {
+    .name = "PICTURE",
+    .category = "Graphics & Sound",
+    .syntax = "PICTURE name [(parameter_list)] ... END PICTURE",
+    .description = "ECMA-116 standard statement to define a parameterized vector graphic picture macro block.",
+    .error_summary = "Error 2: Syntax Error",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SAFE,
+    .type = FEATURE_STATEMENT
+};
 
 BppError stmt_picture_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     if (!vm || !lex) {
         err.code = 5; err.message = "Null VM or lexer context";
@@ -61,12 +73,5 @@ BppError stmt_picture_handler(VMContext *vm, LexerContext *lex) {
 }
 
 void stmt_picture_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "PICTURE",
-        .category = "Graphics & Sound",
-        .syntax = "PICTURE name [(parameter_list)] ... END PICTURE",
-        .help_text = "ECMA-116 standard statement to define a parameterized vector graphic picture macro block.",
-        .error_codes = "Error 2: Syntax Error"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_picture_desc);
 }

@@ -8,6 +8,11 @@
 // ---- Includes ----
 
 #include "vm/events_internal.h"
+#include "runtime/format/snprintf.h"
+#include "runtime/string/strops.h"
+#include "runtime/string/memops.h"
+#include "runtime/ctype/ctype.h"
+#include "platform/platform.h"
 
 //
 // ---- Time String Parsing ----

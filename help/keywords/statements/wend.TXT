@@ -1,32 +1,72 @@
-WEND End of WHILE Loop Statement
-================================
+TITLE: WEND
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/loops/conditional/wend.c
+GENERATED: no, hand-written
+STATUS: current
 
-Marks the end of a WHILE loop block, branching back to the matching WHILE condition test.
+==============================================================================
+WEND KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: wend.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libengine (eval.h, eval.c, lexer.h, lexer.c, string.c, vm.h, wend.h)
+    // NEEDS: libkernel (security.h, security.c, vdev.h, vdev.c)
+    // NEEDS: libplatform (platform.h)
+    // Provides runtime implementation for the WEND statement in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Marks the end of a WHILE loop block and jumps back to re-evaluate the WHILE
+condition.
 
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
     WEND
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM WEND Demonstration
+    20 PRINT "WEND executed successfully."
 
-ERROR CONDITIONS
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 29: WEND Without WHILE
 
-  - Error 2 (ERR_SYNTAX_ERROR): WEND without matching WHILE.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Looping / Control Flow
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SAFE
 
-
-OPERATIONAL NOTES
-----------------------------------------------------------------------
-
-  Classic structured loop construct.
-
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 X = 1
-    20 WHILE X <= 5
-    30   PRINT X
-    40   X = X + 1
-    50 WEND
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  WEND
+Category              Looping / Control Flow
+Syntax                WEND
+Description           Marks the end of a WHILE loop block and jumps back ...
+Error Summary         Error 29: WEND Without WHILE
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/loops/conditional/wend.c

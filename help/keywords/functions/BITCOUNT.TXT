@@ -1,20 +1,69 @@
-BITCOUNT Population Count Function
+TITLE: BITCOUNT
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/functions/bits/manipulation/bitcount.c
+GENERATED: no, hand-written
+STATUS: current
 
-1. BASIC Usage and Function Definition
+==============================================================================
+BITCOUNT KEYWORD REFERENCE
+==============================================================================
 
-The BITCOUNT function counts the number of set bits (population count / Hamming weight) in a 64-bit integer.
+SOURCE HEADER:
+    // FILENAME: bitcount.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (sys_fn.c)
+    // NEEDS: libcore (language_descriptor.h)
+    // NEEDS: libengine (bitcount.h)
+    // Provides runtime implementation for the BITCOUNT built-in function in BASIC
+    //
+    // ---- Includes ----
 
-Syntax Signatures:
-``basic
-count = BITCOUNT(value)
-`
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Returns the population count (number of set bits) of an integer value.
 
-Operational Rules:
-- Returns the number of bits set to 1 across all 64 bits of value.
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    BITCOUNT(val)
 
-2. Code Examples
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = BITCOUNT(val)
+    20 PRINT "Result: "; Val
 
-`basic
-10 PRINT "BITCOUNT(255) = "; BITCOUNT(255) : REM Outputs 8
-20 PRINT "BITCOUNT(34359738368) = "; BITCOUNT(34359738368) : REM Outputs 1
-``
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 13: Type Mismatch
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Bitwise & Logical Functions
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_PURE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  BITCOUNT
+Category              Bitwise & Logical Functions
+Syntax                BITCOUNT(val)
+Description           Returns the population count (number of set bits) o...
+Error Summary         Error 13: Type Mismatch
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_PURE
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/eval/functions/bits/manipulation/bitcount.c

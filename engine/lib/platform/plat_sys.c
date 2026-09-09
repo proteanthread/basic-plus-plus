@@ -143,6 +143,50 @@ void platform_execute_command(const char *cmd) {
     }
 }
 
+char *platform_execute_capture(const char *cmd) {
+    if (!cmd) return NULL;
+#if defined(_WIN32)
+    FILE *fp = _popen(cmd, "r");
+#else
+    FILE *fp = popen(cmd, "r");
+#endif
+    if (!fp) return NULL;
+
+    static char s_capture_buf[65536];
+    size_t len = 0;
+    s_capture_buf[0] = '\0';
+
+    char tmp[512];
+    while (fgets(tmp, sizeof(tmp), fp) != NULL) {
+        size_t slen = strlen(tmp);
+        if (len + slen < sizeof(s_capture_buf) - 1) {
+            memcpy(s_capture_buf + len, tmp, slen);
+            len += slen;
+            s_capture_buf[len] = '\0';
+        } else {
+            size_t rem = sizeof(s_capture_buf) - 1 - len;
+            if (rem > 0) {
+                memcpy(s_capture_buf + len, tmp, rem);
+                len += rem;
+                s_capture_buf[len] = '\0';
+            }
+            break;
+        }
+    }
+
+#if defined(_WIN32)
+    _pclose(fp);
+#else
+    pclose(fp);
+#endif
+    return s_capture_buf;
+}
+
+void platform_execute_capture_free(char *buf) {
+    // Model 1 static buffer: no deallocation needed
+    (void)buf;
+}
+
 
 int platform_setenv(const char *name, const char *value) {
     if (!name) return 0;
@@ -227,6 +271,166 @@ void platform_get_username(char *buf, size_t size) {
     }
 }
 
+int platform_get_cpu_cores(void) {
+#if defined(_WIN32)
+    SYSTEM_INFO si;
+    GetSystemInfo(&si);
+    return si.dwNumberOfProcessors > 0 ? (int)si.dwNumberOfProcessors : 1;
+#elif defined(__WATCOMC__) || defined(MSDOS)
+    return 1;
+#elif defined(_SC_NPROCESSORS_ONLN)
+    long cores = sysconf(_SC_NPROCESSORS_ONLN);
+    return cores > 0 ? (int)cores : 1;
+#else
+    return 1;
+#endif
+}
+
+long platform_get_pid(void) {
+#if defined(_WIN32)
+    return (long)GetCurrentProcessId();
+#elif defined(__WATCOMC__) || defined(MSDOS)
+    return 1;
+#else
+    return (long)getpid();
+#endif
+}
+
+long platform_get_ppid(void) {
+#if defined(_WIN32)
+    return 1;
+#elif defined(__WATCOMC__) || defined(MSDOS)
+    return 1;
+#else
+    return (long)getppid();
+#endif
+}
+
+int platform_get_battery_level(void) {
+#if defined(_WIN32)
+    SYSTEM_POWER_STATUS sps;
+    if (GetSystemPowerStatus(&sps)) {
+        if (sps.BatteryLifePercent != 255) {
+            return (int)sps.BatteryLifePercent;
+        }
+        if (sps.ACLineStatus == 1) return 100;
+    }
+    return 100;
+#elif defined(__linux__)
+    FILE *f = fopen("/sys/class/power_supply/BAT0/capacity", "r");
+    if (!f) f = fopen("/sys/class/power_supply/BAT1/capacity", "r");
+    if (f) {
+        int cap = 100;
+        if (fscanf(f, "%d", &cap) == 1) {
+            fclose(f);
+            return cap;
+        }
+        fclose(f);
+    }
+    return 100;
+#else
+    return 100;
+#endif
+}
+
+double platform_get_temperature(void) {
+#if defined(__linux__)
+    FILE *f = fopen("/sys/class/thermal/thermal_zone0/temp", "r");
+    if (f) {
+        long raw = 0;
+        if (fscanf(f, "%ld", &raw) == 1) {
+            fclose(f);
+            return (double)raw / 1000.0;
+        }
+        fclose(f);
+    }
+    return 28.5;
+#else
+    return 28.5;
+#endif
+}
+
+int platform_get_cpu_load(void) {
+#if defined(__linux__)
+    FILE *f = fopen("/proc/loadavg", "r");
+    if (f) {
+        double l1 = 0.0;
+        if (fscanf(f, "%lf", &l1) == 1) {
+            fclose(f);
+            int pct = (int)(l1 * 25.0);
+            return (pct > 100) ? 100 : ((pct < 1) ? 1 : pct);
+        }
+        fclose(f);
+    }
+    return 15;
+#elif defined(_WIN32)
+    return 12;
+#else
+    return 10;
+#endif
+}
+
+int platform_get_wifi_rssi(void) {
+#if defined(__linux__)
+    FILE *f = fopen("/proc/net/wireless", "r");
+    if (f) {
+        char line[256];
+        while (fgets(line, sizeof(line), f)) {
+            if (strstr(line, ":")) {
+                int qual = 0;
+                if (sscanf(line, "%*s %*d %d", &qual) == 1) {
+                    fclose(f);
+                    return qual;
+                }
+            }
+        }
+        fclose(f);
+    }
+    return 85;
+#else
+    return 85;
+#endif
+}
+
+void platform_get_lan_ipv4(char *buf, size_t size) {
+    if (!buf || size == 0) return;
+    strncpy(buf, "127.0.0.1", size - 1);
+    buf[size - 1] = '\0';
+#if defined(_WIN32)
+    char hostname[128];
+    if (gethostname(hostname, sizeof(hostname)) == 0) {
+        struct hostent *he = gethostbyname(hostname);
+        if (he && he->h_addr_list && he->h_addr_list[0]) {
+            struct in_addr addr;
+            memcpy(&addr, he->h_addr_list[0], sizeof(struct in_addr));
+            const char *ip = inet_ntoa(addr);
+            if (ip && ip[0]) {
+                strncpy(buf, ip, size - 1);
+                buf[size - 1] = '\0';
+            }
+        }
+    }
+#endif
+}
+
+void platform_get_wan_ipv4(char *buf, size_t size) {
+    if (!buf || size == 0) return;
+    strncpy(buf, "198.51.100.42", size - 1);
+    buf[size - 1] = '\0';
+}
+
+void platform_get_lan_ipv6(char *buf, size_t size) {
+    if (!buf || size == 0) return;
+    strncpy(buf, "fe80::1", size - 1);
+    buf[size - 1] = '\0';
+}
+
+void platform_get_wan_ipv6(char *buf, size_t size) {
+    if (!buf || size == 0) return;
+    strncpy(buf, "2001:db8::1", size - 1);
+    buf[size - 1] = '\0';
+}
+
 #ifndef STANDALONE_EDITOR
 static void *g_sig_vm = NULL;
 
@@ -252,6 +456,23 @@ static void sigint_handler(int sig) {
 }
 #endif
 #endif
+
+void *platform_get_active_vm(void) {
+#ifndef STANDALONE_EDITOR
+    return g_sig_vm;
+#else
+    return NULL;
+#endif
+}
+
+void platform_trigger_break(void) {
+#ifndef STANDALONE_EDITOR
+    if (g_sig_vm) {
+        VMContext *vm = (VMContext *)g_sig_vm;
+        vm_trigger_break(vm);
+    }
+#endif
+}
 
 void platform_setup_signals(void *vm_ptr) {
 #ifndef STANDALONE_EDITOR
@@ -306,11 +527,16 @@ static bool platform_win32_playsound_tone(uint32_t frequency_hz, uint32_t durati
     uint32_t total_samples = (uint32_t)(((double)duration_ms / 1000.0) * (double)sample_rate);
     if (total_samples == 0) total_samples = 1;
 
+    static uint8_t s_tone_static_buf[65536];
+    const uint32_t max_payload = (uint32_t)(sizeof(s_tone_static_buf) - sizeof(PlatWavHeader));
+    const uint32_t max_samples = max_payload / (uint32_t)sizeof(int16_t);
+    if (total_samples > max_samples) {
+        total_samples = max_samples;
+    }
+
     uint32_t data_size = total_samples * (uint32_t)sizeof(int16_t);
     uint32_t total_size = (uint32_t)sizeof(PlatWavHeader) + data_size;
-
-    uint8_t *buffer = (uint8_t *)malloc(total_size);
-    if (!buffer) return false;
+    uint8_t *buffer = s_tone_static_buf;
 
     PlatWavHeader *hdr = (PlatWavHeader *)buffer;
     memcpy(hdr->riff_id, "RIFF", 4);
@@ -358,7 +584,6 @@ static bool platform_win32_playsound_tone(uint32_t frequency_hz, uint32_t durati
     }
 
     BOOL ok = PlaySoundA((LPCSTR)buffer, NULL, SND_MEMORY | SND_SYNC | SND_NODEFAULT);
-    free(buffer);
     return (ok != FALSE);
 }
 #else

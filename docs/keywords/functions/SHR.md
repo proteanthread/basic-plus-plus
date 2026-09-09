@@ -1,29 +1,72 @@
-# `SHR` Bitwise Shift Right (Universal Dual-Format)
+<!--
+Title:        SHR
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/eval/functions/bits/shift/shr.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Function/Operator Definition
+# `SHR` Keyword Reference
 
-The `SHR` keyword performs a bitwise right shift on a 64-bit integer value by a specified number of bit positions (0 to 63). It is fully supported in both **infix** notation and **functional/prefix** notation with identical semantics.
+## Source Header
 
-### Syntax Signatures:
-```basic
-result = value SHR shift_count
-result = SHR(value, shift_count)
+```c
+// FILENAME: shr.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine (sys_fn.c)
+// NEEDS: libcore (language_descriptor.h)
+// NEEDS: libengine (shr.h)
+// Provides runtime implementation for the SHR built-in function in BASIC++.
+//
+// ---- Includes ----
 ```
 
-### Operational Rules:
-- Performs a 64-bit bitwise right shift: `(uint64_t)value >> (uint64_t)shift_count`.
-- In RPN stack evaluation blocks: `{ value shift_count SHR }`.
-- `shift_count` must be in the range 0 to 63; values outside this range return `Error 5: Illegal Function Call`.
+## 1. Description & Usage
+
+Shifts an unsigned integer value right logically by the specified bit count.
+
+## 2. Syntax
+
+```basic
+SHR(val, count) or val SHR count
+```
+
+## 3. Code Example
+
+```basic
+10 Val = SHR(val, count) or val SHR count
+20 PRINT "Result: "; Val
+```
+
+## 4. Error Conditions
+
+Error 13: Type Mismatch
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Bitwise & Logical Functions
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_PURE
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 REM Infix notation
-20 PRINT "1024 SHR 4 = "; 1024 SHR 4 : REM Outputs 64
-30 REM Functional prefix notation
-40 PRINT "SHR(34359738368, 5) = "; SHR(34359738368, 5) : REM Outputs 1073741824
-50 REM RPN evaluation
-60 PRINT "RPN: "; { 256 3 SHR } : REM Outputs 32
-```
+| Field | Value |
+|---|---|
+| Name | SHR |
+| Category | Bitwise & Logical Functions |
+| Syntax | SHR(val, count) or val SHR count |
+| Description | Shifts an unsigned integer value right logically by the specified bit count. |
+| Error Summary | Error 13: Type Mismatch |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_PURE |
+| Feature Type | FEATURE_FUNCTION |
+| Delimiter Mask | none |
+| Compatibility | none |
+| Since Version | none |
+| Source File | engine/src/eval/functions/bits/shift/shr.c |

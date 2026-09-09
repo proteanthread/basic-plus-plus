@@ -1,0 +1,68 @@
+TITLE: SUM
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/functions/math/algebra/math_sum.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+SUM KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: math_sum.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (math_fn.c)
+    // NEEDS: libcore (language_descriptor.h)
+    // NEEDS: libengine (math_sum.h)
+    // Provides runtime implementation for the mathematical SUM built-in function 
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Returns the sum of numeric arguments, set elements, or array elements (ANSI
+Full BASIC / Dartmouth).
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    SUM(val1, val2 [, ...]) or SUM(arr) or SUM{...} or SUM[arr]
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = SUM(val1, val2 [, ...]) or SUM(arr) or SUM{...} or SUM[arr]
+    20 PRINT "Result: "; Val
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 13: Type Mismatch
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Math & Statistics Functions
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_PURE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  SUM
+Category              Math & Statistics Functions
+Syntax                SUM(val1, val2 [, ...]) or SUM(arr) or SUM{...} or ...
+Description           Returns the sum of numeric arguments, set elements,...
+Error Summary         Error 13: Type Mismatch
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_PURE
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/eval/functions/math/algebra/math_sum.c

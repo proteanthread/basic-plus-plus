@@ -1,16 +1,70 @@
-AND Logical and Bitwise Conjunction Operator
-======================================================================
+TITLE: AND
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/functions/bits/logic/and.c
+GENERATED: no, hand-written
+STATUS: current
 
-The AND operator performs bitwise or logical conjunction.
+==============================================================================
+AND KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: and.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (sys_fn.c)
+    // NEEDS: libcore (language_descriptor.h)
+    // NEEDS: libengine (and.h)
+    // Provides runtime implementation for the AND built-in function in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Performs bitwise and logical AND conjunction on integers or boolean values
+(supports dual prefix & infix notation).
 
-    result = expr1 AND expr2
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    AND(val1, val2 [, ...]) or val1 AND val2
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = AND(val1, val2 [, ...]) or val1 AND val2
+    20 PRINT "Result: "; Val
 
-CODE EXAMPLES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 13: Type Mismatch (AND expects numeric arguments)
 
-    10 PRINT (5 AND 3)   : REM Outputs 1
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Bitwise & Logical Functions
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_PURE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  AND
+Category              Bitwise & Logical Functions
+Syntax                AND(val1, val2 [, ...]) or val1 AND val2
+Description           Performs bitwise and logical AND conjunction on int...
+Error Summary         Error 13: Type Mismatch (AND expects numeric argume...
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_PURE
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/eval/functions/bits/logic/and.c

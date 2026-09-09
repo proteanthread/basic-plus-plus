@@ -1,17 +1,70 @@
-TAN Tangent Trigonometric Function
-======================================================================
+TITLE: TAN
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/functions/math/trig/tan.c
+GENERATED: no, hand-written
+STATUS: current
 
-The TAN function calculates the trigonometric tangent of an angle in
-radians.
+==============================================================================
+TAN KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: runtime_tan.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (math_fn.c)
+    // NEEDS: libcore (math.h, language_descriptor.h, string.h)
+    // NEEDS: libengine (math.c, string.c, runtime_tan.h)
+    // Provides runtime implementation for the TAN built-in function in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Returns the trigonometric tangent of an angle (radians by default, degrees or
+grads if DEGREE/GRAD mode).
 
-    result# = TAN(angle_radians)
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    TAN(angle)
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = TAN(angle)
+    20 PRINT "Result: "; Val
 
-CODE EXAMPLES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 13: Type Mismatch (TAN expects one numeric argument)
 
-    10 PRINT TAN(0)   : REM Outputs 0
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Math Functions
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_PURE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  TAN
+Category              Math Functions
+Syntax                TAN(angle)
+Description           Returns the trigonometric tangent of an angle (radi...
+Error Summary         Error 13: Type Mismatch (TAN expects one numeric ar...
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_PURE
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/eval/functions/math/trig/tan.c

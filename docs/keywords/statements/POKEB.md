@@ -1,24 +1,71 @@
-# `POKEB` Write Banked Memory Byte Statement
+<!--
+Title:        POKEB
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/runtime/memory/alloc.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Keyword Definition
+# `POKEB` Keyword Reference
 
-The `POKEB` statement writes an 8-bit unsigned byte value ($0$ to $255$) directly into an explicit 64KB memory bank and address offset without altering the global `BANK` register.
+## Source Header
 
-### Syntax Signatures:
-```basic
-POKEB bank_number%, offset_address, byte_value%
+```c
+// FILENAME: alloc.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libboot, libcore, libengine, libkernel
+// NEEDS: libcore (alloc.h, memops.h, memops.c)
+// Freestanding allocator bridge implementation.
+//
+// ---- Includes ----
 ```
 
-### Operational Rules:
-- **Explicit Banking**: Directly targets the specified bank without modifying the active `BANK` selection.
-- **Value Clamping/Validation**: `byte_value` must be between $0$ and $255$.
-- **Security Check**: Enforced via `CAP_MEM` security permissions.
+## 1. Description & Usage
+
+Writes an unsigned 8-bit byte directly to physical or virtual memory address.
+
+## 2. Syntax
+
+```basic
+POKEB address, byte_val
+```
+
+## 3. Code Example
+
+```basic
+10 REM POKEB Demonstration
+20 PRINT "POKEB executed successfully."
+```
+
+## 4. Error Conditions
+
+Error 5: Illegal Function Call, Error 70: Permission Denied
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Hardware & Memory
+- **Subsystem**: SUBSYSTEM_PLATFORM
+- **Safety Level**: SAFETY_UNSAFE
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 POKEB 1, &H1000, 42
-20 PRINT "Value written to Bank 1: "; PEEKB(1, &H1000)
-```
+| Field | Value |
+|---|---|
+| Name | POKEB |
+| Category | Hardware & Memory |
+| Syntax | POKEB address, byte_val |
+| Description | Writes an unsigned 8-bit byte directly to physical or virtual memory address. |
+| Error Summary | Error 5: Illegal Function Call, Error 70: Permission Denied |
+| Subsystem | SUBSYSTEM_PLATFORM |
+| Safety Level | SAFETY_UNSAFE |
+| Feature Type | FEATURE_STATEMENT |
+| Delimiter Mask | none |
+| Compatibility | BASIC++ Standard |
+| Since Version | 6.0.0 |
+| Source File | engine/src/runtime/memory/alloc.c |

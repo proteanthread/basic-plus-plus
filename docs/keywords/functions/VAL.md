@@ -1,24 +1,74 @@
-# `VAL` String Numeric Value Parser Function
+<!--
+Title:        VAL
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/eval/functions/string/conversion/val.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Function Definition
+# `VAL` Keyword Reference
 
-The `VAL` function parses a string representation of a number and returns its 64-bit floating-point numeric value.
+## Source Header
 
-### Syntax Signatures:
-```basic
-numeric_val# = VAL(string_expression$)
+```c
+// FILENAME: val.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine (string_fn.c)
+// NEEDS: libcore (memory.h, memory.c)
+// NEEDS: libcore (language_descriptor.h, string.h)
+// NEEDS: libcore (strings.h, strings.c)
+// NEEDS: libengine (string.c, val.h)
+// Provides runtime implementation for the VAL built-in function in BASIC++.
+//
+// ---- Includes ----
 ```
 
-### Operational Rules:
-- Skips leading whitespace and parses signs, decimal digits, decimal points, and scientific notation exponents (`1.2E-3`).
-- Stops parsing at the first non-numeric character.
-- Returns `0` if the string contains no parseable numeric prefix.
+## 1. Description & Usage
+
+Returns the numeric value represented by string str$. Returns 0 if str$ is not a valid number.
+
+## 2. Syntax
+
+```basic
+VAL(str$)
+```
+
+## 3. Code Example
+
+```basic
+10 Val = VAL(str$)
+20 PRINT "Result: "; Val
+```
+
+## 4. Error Conditions
+
+Error 13: Type Mismatch (VAL expects one string argument)
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: String Functions
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_IO
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 S$ = "123.456 meters"
-20 PRINT VAL(S$) : REM Outputs 123.456
-```
+| Field | Value |
+|---|---|
+| Name | VAL |
+| Category | String Functions |
+| Syntax | VAL(str$) |
+| Description | Returns the numeric value represented by string str$. Returns 0 if str$ is not a valid number. |
+| Error Summary | Error 13: Type Mismatch (VAL expects one string argument) |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_IO |
+| Feature Type | FEATURE_FUNCTION |
+| Delimiter Mask | none |
+| Compatibility | none |
+| Since Version | none |
+| Source File | engine/src/eval/functions/string/conversion/val.c |

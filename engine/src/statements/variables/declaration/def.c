@@ -2,7 +2,7 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (eval_expr_internal.h, exec_internal.h, sub_internal.h)
-// NEEDS: libcore (ctype.h, ctype.c, micro_lib_metadata.h, micro_lib_metadata.c)
+// NEEDS: libcore (ctype.h, ctype.c, language_descriptor.h)
 // NEEDS: libcore (string.h, strings.h, strings.c, variables.h, variables.c)
 // NEEDS: libengine (def.h, eval.h, eval.c, lexer.h, lexer.c, string.c, vm.h)
 // NEEDS: libkernel (errors.h)
@@ -11,21 +11,33 @@
 // ---- Includes ----
 
 #include "statements/variables/declaration/def.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "types/errors.h"
 #include "vm/vm.h"
 #include "lexer/lexer.h"
 #include "runtime/variables.h"
 #include "runtime/strings.h"
 #include "eval/eval.h"
-#include <string.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "runtime/format/snprintf.h"
+#include "runtime/memory/alloc.h"
 #include <stdbool.h>
-#include <ctype.h>
+#include "runtime/ctype/ctype.h"
+
+static const LangDesc g_def_desc = {
+    .name = "DEF",
+    .category = "Function Definitions",
+    .syntax = "DEF FNname[(args)] = expr",
+    .description = "Defines a user-defined numeric or string function.",
+    .error_summary = "Error 2: Syntax Error, Error 13: Type Mismatch",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_STATEMENT
+};
 
 #ifdef _WIN32
-#define strcasecmp _stricmp
+#define runtime_strcasecmp runtime_strcasecmp
 #endif
 
 BppError stmt_defseg_handler(VMContext *vm, LexerContext *lex);
@@ -49,30 +61,30 @@ void def_fn_register(const char *name, int param_count, char param_names[][64], 
 
     DefFnEntry *curr = g_def_fn_head;
     while (curr) {
-        if (strcasecmp(curr->fn_name, name) == 0) {
+        if (runtime_strcasecmp(curr->fn_name, name) == 0) {
             curr->param_count = param_count;
             curr->is_multiline = false;
             for (int i = 0; i < param_count && i < 4; i++) {
-                strncpy(curr->param_names[i], param_names[i], 63);
+                runtime_strncpy(curr->param_names[i], param_names[i], 63);
                 curr->param_names[i][63] = '\0';
             }
-            strncpy(curr->expr_body, expr_body, sizeof(curr->expr_body) - 1);
+            runtime_strncpy(curr->expr_body, expr_body, sizeof(curr->expr_body) - 1);
             curr->expr_body[sizeof(curr->expr_body) - 1] = '\0';
             return;
         }
         curr = curr->next;
     }
 
-    DefFnEntry *node = (DefFnEntry *)calloc(1, sizeof(DefFnEntry));
+    DefFnEntry *node = (DefFnEntry *)runtime_calloc(1, sizeof(DefFnEntry));
     if (!node) return;
-    strncpy(node->fn_name, name, sizeof(node->fn_name) - 1);
+    runtime_strncpy(node->fn_name, name, sizeof(node->fn_name) - 1);
     node->param_count = param_count;
     node->is_multiline = false;
     for (int i = 0; i < param_count && i < 4; i++) {
-        strncpy(node->param_names[i], param_names[i], 63);
+        runtime_strncpy(node->param_names[i], param_names[i], 63);
         node->param_names[i][63] = '\0';
     }
-    strncpy(node->expr_body, expr_body, sizeof(node->expr_body) - 1);
+    runtime_strncpy(node->expr_body, expr_body, sizeof(node->expr_body) - 1);
     node->expr_body[sizeof(node->expr_body) - 1] = '\0';
 
     node->next = g_def_fn_head;
@@ -84,13 +96,13 @@ void def_fn_register_multiline(const char *name, int param_count, char param_nam
 
     DefFnEntry *curr = g_def_fn_head;
     while (curr) {
-        if (strcasecmp(curr->fn_name, name) == 0) {
+        if (runtime_strcasecmp(curr->fn_name, name) == 0) {
             curr->param_count = param_count;
             curr->is_multiline = true;
             curr->start_line = start_line;
             curr->end_line = end_line;
             for (int i = 0; i < param_count && i < 4; i++) {
-                strncpy(curr->param_names[i], param_names[i], 63);
+                runtime_strncpy(curr->param_names[i], param_names[i], 63);
                 curr->param_names[i][63] = '\0';
             }
             curr->expr_body[0] = '\0';
@@ -99,15 +111,15 @@ void def_fn_register_multiline(const char *name, int param_count, char param_nam
         curr = curr->next;
     }
 
-    DefFnEntry *node = (DefFnEntry *)calloc(1, sizeof(DefFnEntry));
+    DefFnEntry *node = (DefFnEntry *)runtime_calloc(1, sizeof(DefFnEntry));
     if (!node) return;
-    strncpy(node->fn_name, name, sizeof(node->fn_name) - 1);
+    runtime_strncpy(node->fn_name, name, sizeof(node->fn_name) - 1);
     node->param_count = param_count;
     node->is_multiline = true;
     node->start_line = start_line;
     node->end_line = end_line;
     for (int i = 0; i < param_count && i < 4; i++) {
-        strncpy(node->param_names[i], param_names[i], 63);
+        runtime_strncpy(node->param_names[i], param_names[i], 63);
         node->param_names[i][63] = '\0';
     }
     node->expr_body[0] = '\0';
@@ -120,7 +132,7 @@ bool def_fn_exists(const char *name) {
     if (!name) return false;
     DefFnEntry *curr = g_def_fn_head;
     while (curr) {
-        if (strcasecmp(curr->fn_name, name) == 0) return true;
+        if (runtime_strcasecmp(curr->fn_name, name) == 0) return true;
         curr = curr->next;
     }
     return false;
@@ -128,7 +140,7 @@ bool def_fn_exists(const char *name) {
 
 BValue def_fn_eval(VMContext *vm, const char *name, BValue *args, int argc, BppError *err, bool *found) {
     BValue res;
-    memset(&res, 0, sizeof(res));
+    runtime_memset(&res, 0, sizeof(res));
     res.type = VAL_NUMBER;
     res.as.number = 0.0;
     if (found) *found = false;
@@ -137,7 +149,7 @@ BValue def_fn_eval(VMContext *vm, const char *name, BValue *args, int argc, BppE
 
     DefFnEntry *curr = g_def_fn_head;
     while (curr) {
-        if (strcasecmp(curr->fn_name, name) == 0) {
+        if (runtime_strcasecmp(curr->fn_name, name) == 0) {
             if (found) *found = true;
             VariableContext *vc = vm_get_var(vm);
 
@@ -160,16 +172,16 @@ BValue def_fn_eval(VMContext *vm, const char *name, BValue *args, int argc, BppE
             if (!curr->is_multiline) {
                 LexerContext *fn_lex = lex_init(vm_get_mem(vm), curr->expr_body);
                 BppError fn_err;
-                memset(&fn_err, 0, sizeof(fn_err));
+                runtime_memset(&fn_err, 0, sizeof(fn_err));
                 res = eval_expression(vm, fn_lex, &fn_err);
                 if (err) *err = fn_err;
                 lex_shutdown(fn_lex);
             } else {
                 // Multi-line execution
                 char prev_active_fn[64];
-                strncpy(prev_active_fn, g_active_def_fn, 63);
+                runtime_strncpy(prev_active_fn, g_active_def_fn, 63);
                 prev_active_fn[63] = '\0';
-                strncpy(g_active_def_fn, curr->fn_name, 63);
+                runtime_strncpy(g_active_def_fn, curr->fn_name, 63);
                 g_active_def_fn[63] = '\0';
 
                 BValue *old_fn_var = var_lookup(vc, curr->fn_name, false);
@@ -196,7 +208,7 @@ BValue def_fn_eval(VMContext *vm, const char *name, BValue *args, int argc, BppE
                                     BppToken nxt = lex_peek(end_lex);
                                     if (nxt.type != TOK_EOL && nxt.type != TOK_EOF) {
                                         BppError end_err;
-                                        memset(&end_err, 0, sizeof(end_err));
+                                        runtime_memset(&end_err, 0, sizeof(end_err));
                                         BValue end_ret = eval_expression(vm, end_lex, &end_err);
                                         if (end_err.code == 0) {
                                             var_assign(vc, curr->fn_name, end_ret);
@@ -234,7 +246,7 @@ BValue def_fn_eval(VMContext *vm, const char *name, BValue *args, int argc, BppE
                 } else {
                     var_assign(vc, curr->fn_name, (BValue){.type = VAL_NUMBER, .as.number = 0.0});
                 }
-                strncpy(g_active_def_fn, prev_active_fn, 63);
+                runtime_strncpy(g_active_def_fn, prev_active_fn, 63);
             }
 
             for (int i = 0; i < curr->param_count && i < 4; i++) {
@@ -258,7 +270,7 @@ BValue def_fn_eval(VMContext *vm, const char *name, BValue *args, int argc, BppE
 
 BppError stmt_fnend_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     if (!vm || !lex) return err;
 
     BppToken tok = lex_peek(lex);
@@ -276,9 +288,61 @@ BppError stmt_fnend_handler(VMContext *vm, LexerContext *lex) {
     return err;
 }
 
+static BppError stmt_defvar_handler(VMContext *vm, LexerContext *lex) {
+    BppError err;
+    runtime_memset(&err, 0, sizeof(err));
+
+    BppToken vtok = lex_next(lex);
+    if (vtok.type != TOK_IDENT && vtok.type != TOK_KEYWORD) {
+        err.code = 2;
+        err.message = "Expected variable name after DEF VAR";
+        return err;
+    }
+
+    char vname[64] = {0};
+    size_t vlen = (vtok.length < sizeof(vname) - 1) ? vtok.length : sizeof(vname) - 1;
+    runtime_memcpy(vname, vtok.start, vlen);
+    vname[vlen] = '\0';
+
+    char read_fn[64] = {0};
+    char write_fn[64] = {0};
+
+    while (true) {
+        BppToken peek = lex_peek(lex);
+        if (peek.type == TOK_EOL || peek.type == TOK_EOF) {
+            break;
+        }
+
+        BppToken mod_tok = lex_next(lex);
+        char mod_name[32] = {0};
+        size_t mlen = (mod_tok.length < sizeof(mod_name) - 1) ? mod_tok.length : sizeof(mod_name) - 1;
+        runtime_memcpy(mod_name, mod_tok.start, mlen);
+        mod_name[mlen] = '\0';
+
+        if (runtime_strcasecmp(mod_name, "READ") == 0 || (mod_tok.type == TOK_KEYWORD && mod_tok.as.keyword == KW_READ)) {
+            BppToken target_tok = lex_next(lex);
+            size_t tlen = (target_tok.length < sizeof(read_fn) - 1) ? target_tok.length : sizeof(read_fn) - 1;
+            runtime_memcpy(read_fn, target_tok.start, tlen);
+            read_fn[tlen] = '\0';
+        } else if (runtime_strcasecmp(mod_name, "WRITE") == 0) {
+            BppToken target_tok = lex_next(lex);
+            size_t tlen = (target_tok.length < sizeof(write_fn) - 1) ? target_tok.length : sizeof(write_fn) - 1;
+            runtime_memcpy(write_fn, target_tok.start, tlen);
+            write_fn[tlen] = '\0';
+        } else {
+            err.code = 2;
+            err.message = "Expected READ or WRITE in DEF VAR";
+            return err;
+        }
+    }
+
+    var_register_basic_dynamic(vm_get_var(vm), vname, read_fn[0] ? read_fn : NULL, write_fn[0] ? write_fn : NULL);
+    return err;
+}
+
 BppError stmt_def_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BppToken tok = lex_peek(lex);
     if (tok.type == TOK_KEYWORD && tok.as.keyword == KW_DEF) {
@@ -291,18 +355,21 @@ BppError stmt_def_handler(VMContext *vm, LexerContext *lex) {
     }
 
     char fn_name[64] = {0};
-    if (tok.type == TOK_IDENT) {
+    if (tok.type == TOK_IDENT || tok.type == TOK_KEYWORD) {
         tok = lex_next(lex);
         size_t len = (tok.length < sizeof(fn_name) - 1) ? tok.length : sizeof(fn_name) - 1;
-        memcpy(fn_name, tok.start, len);
+        runtime_memcpy(fn_name, tok.start, len);
         fn_name[len] = '\0';
-        if (strcasecmp(fn_name, "SEG") == 0) {
+        if (runtime_strcasecmp(fn_name, "SEG") == 0) {
             return stmt_defseg_handler(vm, lex);
         }
-        if (strcasecmp(fn_name, "FN") == 0 && lex_peek(lex).type == TOK_IDENT) {
+        if (runtime_strcasecmp(fn_name, "VAR") == 0) {
+            return stmt_defvar_handler(vm, lex);
+        }
+        if (runtime_strcasecmp(fn_name, "FN") == 0 && lex_peek(lex).type == TOK_IDENT) {
             BppToken next_ident = lex_next(lex);
             size_t nlen = (next_ident.length < 50) ? next_ident.length : 50;
-            memcpy(fn_name + 2, next_ident.start, nlen);
+            runtime_memcpy(fn_name + 2, next_ident.start, nlen);
             fn_name[2 + nlen] = '\0';
         }
     } else {
@@ -324,7 +391,7 @@ BppError stmt_def_handler(VMContext *vm, LexerContext *lex) {
             }
             if (param_count < 4) {
                 size_t plen = (ptok.length < 63) ? ptok.length : 63;
-                memcpy(param_names[param_count], ptok.start, plen);
+                runtime_memcpy(param_names[param_count], ptok.start, plen);
                 param_names[param_count][plen] = '\0';
                 param_count++;
             }
@@ -410,7 +477,7 @@ BppError stmt_def_handler(VMContext *vm, LexerContext *lex) {
 
 static BppError stmt_def_range_helper(VMContext *vm, LexerContext *lex, ValueType type) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     VariableContext *vc = vm_get_var(vm);
 
     while (true) {
@@ -423,7 +490,7 @@ static BppError stmt_def_range_helper(VMContext *vm, LexerContext *lex, ValueTyp
             return err;
         }
 
-        char start_letter = (char)toupper((unsigned char)tok.start[0]);
+        char start_letter = (char)runtime_toupper((unsigned char)tok.start[0]);
         char end_letter = start_letter;
 
         BppToken next = lex_peek(lex);
@@ -434,7 +501,7 @@ static BppError stmt_def_range_helper(VMContext *vm, LexerContext *lex, ValueTyp
                 err.code = 2; err.message = "Expected end letter in DEF range";
                 return err;
             }
-            end_letter = (char)toupper((unsigned char)end_tok.start[0]);
+            end_letter = (char)runtime_toupper((unsigned char)end_tok.start[0]);
         }
 
         var_set_def_type(vc, NULL, start_letter, end_letter, type);
@@ -455,19 +522,12 @@ BppError stmt_defcpx_handler(VMContext *vm, LexerContext *lex) {
 
 BppError stmt_defusr_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     (void)vm; (void)lex;
     return err;
 }
 
 void stmt_def_register(void) {
-    MicroLibMetadata meta = {
-        .name = "DEF",
-        .category = "Function Definitions",
-        .syntax = "DEF FNname[(args)] = expr",
-        .help_text = "Defines a user-defined numeric or string function.",
-        .error_codes = "Error 2: Syntax Error, Error 13: Type Mismatch"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_def_desc);
 }
 

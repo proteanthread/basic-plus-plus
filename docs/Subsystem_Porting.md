@@ -1,92 +1,55 @@
-# BASIC++ v6.5.2 Subsystem Porting
+<!--
+Title:        Subsystem Porting
+Tier:         2
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot, bppc, trans, detok)
+Authority:    engine/CMakeLists.txt, engine/Engine_Features.md
+Generated:    no
+Status:       Active
+-->
 
-## 1. OVERVIEW
+# BASIC++ Subsystem Porting & Micro-Library Extraction
 
-When porting individual subsystems to new environments, each subsystem can be isolated from the full BASIC++ engine. The 12-library modular architecture allows subsystems to be extracted, adapted, and linked independently.
+The engineering guide detailing how to isolate, extract, and reuse individual BASIC++ subsystems and micro-libraries in standalone external applications.
 
-## 2. SUBSYSTEM ISOLATION
+## 1. Modular Subsystem Architecture
 
-Each library in the chain has explicit dependencies:
+BASIC++ v6.5.2 organizes all engine subsystems into an 11-modular library spectrum linked accumulatively (`libboot` through `libadvanced`, plus `libinterop_core`). Subsystems are designed with explicit unidirectional dependencies, allowing clean extraction of specific subsystems without linking the entire desktop runtime.
 
-- **libboot** → No dependencies (freestanding C17).
-- **libplatform** → OS headers only (no engine dependencies).
-- **libkernel** → libboot + libplatform.
-- **libengine** → libkernel.
-- **libhardware** → libkernel (BIOS, vmem are self-contained with libkernel API).
-- **libserver** → libkernel + libplatform (network, filesystem).
-- **libscript** → libengine (file I/O for batch runner).
-- **libcore** → libengine (REPL, formatting).
-- **libflex** → libengine (metaprogramming).
-- **libstandard** → libcore + libflex (TUI, editor).
-- **libadvanced** → libstandard (SDL2 graphics, multimedia).
-- **libext** → Any preceding library.
+### 1.1 Accumulative Library Chain
 
-## 3. EXTRACTING THE BIOS SUBSYSTEM
+| Library | Subsystem Role | Core Dependencies | Primary Source Modules |
+| :--- | :--- | :--- | :--- |
+| `libboot` | Bootstrap Sequence Controller | None (Freestanding C17) | `engine/src/bootstrap/boot.c` |
+| `libplatform` | Operating System Abstraction | Host C Runtime | `engine/src/platform/` |
+| `libkernel` | VM Context, Lexer, Memory, BIOS, VDev | `libboot`, `libplatform` | `engine/src/vm/`, `lexer/`, `memory/` |
+| `libengine` | AST Evaluator, Parser, Variables | `libkernel` | `engine/src/eval/`, `parser/` |
+| `libhardware` | Segmented Memory (`vmem`), BGI Rasterizer | `libkernel` | `engine/src/device/bgi/` |
+| `libserver` | Network Sockets, Gemini, Task System | `libkernel`, `libplatform` | `engine/src/device/vnet.c` |
+| `libscript` | Batch Script Runner, File I/O | `libengine` | `engine/src/statements/filesystem/` |
+| `libcore` | REPL, Numeric Formatter, Metadata | `engine/src/runtime/numfmt.c` |
+| `libflex` | Metaprogramming (`ALIAS`, `OVERRIDE`) | `libengine` | `engine/src/scope/`, `module/` |
+| `libstandard` | TUI Editor Multiplexer, DAP Debug Server | `libcore`, `libflex` | `engine/src/editor/` |
+| `libadvanced` | SDL2 Graphics, Sound, OpenGL Bindings | `libstandard` | `engine/src/device/gfx.c` |
 
-The BIOS subsystem (libbios, engine/src/bios/) can be extracted for use in other projects:
+---
 
-1. Copy engine/src/bios/ and engine/include/bios/.
-2. The BIOS compiles as freestanding C17 using only `<stdint.h>`, `<stdbool.h>`, `<stddef.h>`.
-3. Implement the HAL dispatch functions for your target environment.
-4. Link with your project.
+## 2. Extracting Standalone Subsystems
 
-The BIOS subsystem provides PC BIOS emulation without requiring the BASIC++ VM.
+### 2.1 Extracting the BIOS Subsystem (`libbios`)
+The PC/XT/AT BIOS emulator (`engine/src/bios/`) provides complete virtual BIOS interrupt emulation:
+1. Copy `engine/src/bios/` and `engine/include/bios/`.
+2. Compile under freestanding ISO C17 with standard integer types (`<stdint.h>`, `<stdbool.h>`, `<stddef.h>`).
+3. Bind the `BiosHAL` dispatch struct to your host environment.
+4. Provides full PC interrupt trapping (INT 10h, 13h, 16h, 1Ah) with zero external engine dependencies.
 
-## 4. EXTRACTING THE BGI SUBSYSTEM
+### 2.2 Extracting the BGI Rasterizer Subsystem (`libbgi`)
+The Borland Graphics Interface rasterizer (`engine/src/device/bgi/`) provides software graphics rendering:
+1. Copy `engine/src/device/bgi/` and `engine/include/device/bgi/`.
+2. Supply a linear framebuffer pointer (`uint8_t* framebuffer`).
+3. Provides line drawing, circle/arc rasterization, flood fill, polygon clipping, and vector stroke font rendering.
 
-The BGI rasterizer (libbgi, engine/src/device/bgi/) can be extracted for standalone graphics:
-
-1. Copy engine/src/device/bgi/ and engine/include/device/bgi/.
-2. The BGI requires the font library (libfont) for text rendering.
-3. Provide a framebuffer output function (SDL surface, raw memory, or file output).
-4. Call BGI functions directly from C code.
-
-## 5. EXTRACTING THE LEXER
-
-The lexer (engine/src/lexer/lexer.c) can be extracted for use in tools that need to parse BASIC++ source:
-
-1. Copy engine/src/lexer/ and engine/include/lexer/.
-2. Copy engine/include/types/ for token and keyword definitions.
-3. The lexer depends only on standard C17 library functions.
-
-## 6. PORTING THE PLATFORM LAYER TO RTOS
-
-For real-time operating systems (FreeRTOS, Zephyr, NuttX):
-
-**plat_console**: Map to UART driver. Use interrupt-driven character reception for INKEY$.
-
-**plat_fs**: Map to the RTOS filesystem (FATFS for SD cards, SPIFFS/LittleFS for flash).
-
-**plat_time**: Map to the RTOS tick counter or hardware timer.
-
-**plat_thread**: Map to RTOS mutex and semaphore primitives. Even single-threaded usage needs mutex stubs because some subsystems use mutexes for safety.
-
-## 7. PORTING TO WEB (WASM)
-
-BASIC++ can be compiled to WebAssembly using Emscripten:
-
-**plat_console**: Map to JavaScript console API or a virtual terminal widget.
-
-**plat_fs**: Map to Emscripten's virtual filesystem (MEMFS or IDBFS).
-
-**plat_time**: Map to JavaScript Date.now() and setTimeout.
-
-**plat_net**: Map to WebSocket API (XMLHttpRequest is synchronous and not suitable).
-
-The WASM build excludes SDL2 graphics, dynamic library loading, and thread support.
-
-## 8. SUBSYSTEM COMPILATION FLAGS
-
-Each subsystem can be individually enabled or disabled:
-
-```cmake
-set(SUPPORT_GRAPHICS OFF)    # Exclude BGI
-set(SUPPORT_NET OFF)          # Exclude networking
-set(SUPPORT_VMEM OFF)         # Exclude segmented memory
-set(SUPPORT_EDITOR OFF)       # Exclude TUI editor
-set(SUPPORT_BIOS OFF)         # Exclude BIOS emulation
-set(SUPPORT_SOUND OFF)        # Exclude audio
-set(SUPPORT_MODULE OFF)       # Exclude module system
-```
-
-Disabled subsystems are compiled out entirely — they add zero code size and zero RAM usage.
+### 2.3 Extracting the Lexer and Tokenizer
+The lexical scanner (`engine/src/lexer/lexer.c`) can be extracted into external tools and IDE formatters:
+1. Copy `engine/src/lexer/` and `engine/include/lexer/`.
+2. Copy `engine/include/types/` for token enumerations (`BppToken`, `BppKeywordId`).
+3. Performs zero-copy lexical tokenization across all vintage and modern BASIC keywords.

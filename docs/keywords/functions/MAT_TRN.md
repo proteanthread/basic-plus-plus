@@ -1,23 +1,72 @@
-# `MAT_TRN` Matrix Transpose Statement
+<!--
+Title:        MAT_TRN
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/module/mathext.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Keyword Definition
+# `MAT_TRN` Keyword Reference
 
-The `MAT ... = TRN(A)` statement computes the matrix transpose $A^T$ of matrix $A$ by swapping row and column indices ($B_{j,i} = A_{i,j}$).
+## Source Header
 
-### Syntax Signatures:
-```basic
-MAT B = TRN(A)
+```c
+// FILENAME: mathext.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore (funcreg.h, funcreg.c, math.h)
+// NEEDS: libengine (math.c)
+// Provides core logic and interface definitions for mathext within BASIC++.
+//
+// ---- Includes ----
 ```
 
-### Operational Rules:
-- If $A$ is $M\times N$, $B$ must be dimensioned $N\times M$.
+## 1. Description & Usage
+
+Computes the matrix transpose by swapping rows and columns.
+
+## 2. Syntax
+
+```basic
+MAT_TRN(matrix)
+```
+
+## 3. Code Example
+
+```basic
+10 Val = MAT_TRN(matri10)
+20 PRINT "Result: "; Val
+```
+
+## 4. Error Conditions
+
+Error 5: Illegal Function Call
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Matrix Operations
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_PURE
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 DIM A(2, 3), B(3, 2)
-20 MAT B = TRN(A)
-30 PRINT "Matrix transposed."
-```
+| Field | Value |
+|---|---|
+| Name | MAT_TRN |
+| Category | Matrix Operations |
+| Syntax | MAT_TRN(matrix) |
+| Description | Computes the matrix transpose by swapping rows and columns. |
+| Error Summary | Error 5: Illegal Function Call |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_PURE |
+| Feature Type | FEATURE_FUNCTION |
+| Delimiter Mask | none |
+| Compatibility | BASIC++ Standard |
+| Since Version | 6.0.0 |
+| Source File | engine/src/module/mathext.c |

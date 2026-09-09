@@ -1,0 +1,68 @@
+TITLE: NFC
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/system/hardware/stmt_nfc.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+NFC KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: stmt_nfc.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore, libengine
+    // Implements the NFC statement for RFID / NFC tag and card operations.
+    //
+    // ---- Includes ----
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Controls external PN532 / MFRC522 NFC & 13.56 MHz RFID readers over I2C/SPI.
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    NFC.INIT [addr] | NFC.SCAN uid_var$ | NFC.READ block, data_var$ | NFC.WRITE block, data$ | NFC.EMULATE uid$
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM NFC Demonstration
+    20 PRINT "NFC executed successfully."
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error, Error 13: Type Mismatch
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Hardware & IoT
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_IO
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  NFC
+Category              Hardware & IoT
+Syntax                NFC.INIT [addr] | NFC.SCAN uid_var$ | NFC.READ bloc...
+Description           Controls external PN532 / MFRC522 NFC & 13.56 MHz R...
+Error Summary         Error 2: Syntax Error, Error 13: Type Mismatch
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_IO
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/system/hardware/stmt_nfc.c

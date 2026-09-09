@@ -34,6 +34,13 @@ BppError stmt_seekgt_handler(VMContext *vm, LexerContext *lex);
 void stmt_isam_register(void);
 void isam_system_shutdown(void);
 
+// ISAM inspection and record access helpers for Wave 13 & 14
+bool isam_is_active(int channel);
+int isam_get_keycount(int channel);
+const char *isam_get_current_key(int channel);
+bool isam_read_record(VMContext *vm, int channel, const char *key, BValue *out_val);
+bool isam_write_record(VMContext *vm, int channel, const char *key, BValue val);
+
 #ifdef __cplusplus
 }
 #endif

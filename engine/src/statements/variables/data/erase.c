@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
 // NEEDS: libcore (arrays.h, arrays.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libengine (erase.h, string.c)
 // Provides runtime implementation for the ERASE statement in BASIC++.
 //
@@ -11,23 +11,28 @@
 
 #include "statements/variables/data/erase.h"
 #include "runtime/arrays.h"
-#include "runtime/micro_lib_metadata.h"
-#include <string.h>
+#include "runtime/language_descriptor.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_erase_desc = {
+    .name = "ERASE",
+    .category = "Variables & Memory",
+    .syntax = "ERASE array_name1 [, array_name2...]",
+    .description = "Eliminates dynamic arrays from memory and reallocates storage space.",
+    .error_summary = "Error 2: Syntax Error, Error 10: Array Not Dimensioned",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SYSTEM,
+    .type = FEATURE_STATEMENT
+};
 
 void stmt_erase_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "ERASE",
-        .category = "Variables & Memory",
-        .syntax = "ERASE array_name1 [, array_name2...]",
-        .help_text = "Eliminates dynamic arrays from memory and reallocates storage space.",
-        .error_codes = "Error 2: Syntax Error, Error 10: Array Not Dimensioned"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_erase_desc);
 }
 
 BppError stmt_erase_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     ArrayContext *ac = vm_get_arr(vm);
 
     while (true) {
@@ -40,7 +45,7 @@ BppError stmt_erase_handler(VMContext *vm, LexerContext *lex) {
 
         char arr_name[64];
         if (tok.length >= sizeof(arr_name)) tok.length = sizeof(arr_name) - 1;
-        memcpy(arr_name, tok.start, tok.length);
+        runtime_memcpy(arr_name, tok.start, tok.length);
         arr_name[tok.length] = '\0';
 
         arr_erase(ac, arr_name);

@@ -1,34 +1,69 @@
-CINT Convert to Integer Function
-======================================================================
+TITLE: CINT
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/type.c
+GENERATED: no, hand-written
+STATUS: current
 
-The CINT function converts a numeric expression to an integer by
-rounding to the nearest whole integer.
+==============================================================================
+CINT KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: type.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libengine (type.h)
+    // Provides core logic and interface definitions for type within BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Converts numeric expression to 16-bit or 32-bit integer, rounding fractional
+part (banker's rounding).
 
-    result% = CINT(numeric_expression)
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    CINT(expr)
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = CINT(e10pr)
+    20 PRINT "Result: "; Val
 
-OPERATIONAL RULES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 6: Overflow, Error 13: Type Mismatch
 
-  - Rounds to nearest integer (e.g. CINT(4.6) = 5).
-  - Out of range values in 16-bit legacy mode raise Error 6 (ERR_OVERFLOW).
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       GW-BASIC, QBASIC, BASIC++ Standard
+Since Version: 6.0.0
+Category:      Type Conversion
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_PURE
 
-
-ERROR CODES
-----------------------------------------------------------------------
-
-  Error Code  Name                  Condition
-  ----------  --------------------  ----------------------------------
-  6           ERR_OVERFLOW          Value exceeds integer range
-  13          ERR_TYPE_MISMATCH     String argument provided
-
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 PRINT CINT(12.7)   : REM Outputs 13
-    20 PRINT CINT(-3.2)   : REM Outputs -3
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  CINT
+Category              Type Conversion
+Syntax                CINT(expr)
+Description           Converts numeric expression to 16-bit or 32-bit int...
+Error Summary         Error 6: Overflow, Error 13: Type Mismatch
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_PURE
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         GW-BASIC, QBASIC, BASIC++ Standard
+Since Version         6.0.0
+Source File           engine/src/eval/type.c

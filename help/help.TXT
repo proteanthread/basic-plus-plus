@@ -1,0 +1,82 @@
+Title:        help
+Tier:         4
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot, bppc, detok, trans)
+Authority:    engine/
+Generated:    no
+Status:       Active
+
+BASIC++ v6.5.2 MASTER DOCUMENTATION AND HELP NAVIGATION INDEX
+
+1. THE INTERACTIVE HELP SYSTEM
+
+BASIC++ provides a fully integrated, zero-dependency interactive
+documentation system built directly into the language runtime. Developers
+can query documentation at the REPL prompt or inspect the filesystem trees.
+
+In-Engine Interactive Commands:
+- HELP: Displays general help usage and active keyword categories.
+- HELP <keyword>: Queries reference documentation and syntax for a specific
+  keyword, function, or statement (e.g. HELP PRINT, HELP MID$).
+- CATALOG: Displays the categorized tabular inventory of all active language
+  vocabulary.
+- CATALOG <category>: Filters vocabulary by functional category (e.g.
+  CATALOG "Graphics").
+- CATEGORY: Lists all active functional classification domains.
+- CATEGORY <keyword>: Identifies the specific domain for a given keyword.
+
+
+2. FIVE-TIER DOCUMENTATION TAXONOMY
+
+All documentation across the repository is strictly structured into five
+architectural tiers:
+
+Tier 0: Language Standard Specification
+The authoritative syntax and semantic standard for BASIC++ v6.5.2:
+- standard.md / standard.TXT: ISO/ECMA-aligned core specification.
+
+Tier 1: System-Wide Guides
+Comprehensive manuals defining system capabilities, operational procedures,
+and runtime architecture:
+- Users_Guide: Executable options, REPL commands, CLI flags.
+- Programmers_Guide: Language syntax, expressions, data types.
+- Developer_Guide: Engine architecture, C17 coding standards, CMake builds.
+- Extension_Guide: Native C17 plugins, shared libraries, dynamic modules.
+- Options_Reference: OPTION directives (BASE, EXPLICIT, etc.).
+- Library_Guide: 12-library modular architecture and layering.
+
+Tier 2: Subsystem Specifications
+Technical specifications describing individual runtime subsystems and
+hardware targets:
+- Systems_Programming_Manual: Bare-metal systems programming, memory
+  banking, and hardware access.
+- Freestanding_Kernel_Architecture: ISO C17 freestanding kernel.
+- BGI_Graphics_And_SDL2_Decomposition: BGI graphics engine and rasterizer.
+- Virtual_Network: Sockets, Gemini, Gopher, TNFS, and FujiNet.
+- Compiler_Transpiler_Tool_Targets: bppc compiler and trans transpiler.
+- FreeDOS_Build: 16-bit real mode target and Open Watcom build.
+
+Tier 3: Per-Item Reference Pages (One File Per Item)
+Exhaustive reference pages for every statement, function, and variable:
+- Statements: keywords/statements/<NAME> (371 files).
+- Builtin Functions: keywords/functions/<NAME> (316 files).
+- System Variables: keywords/variables/<NAME> (155 files).
+- Subsystem APIs: api/, io/, Introspection/.
+
+Tier 4: Quick-Reference Cards and Master Catalogs
+Fast lookup sheets and master indexes:
+- Quick_Reference: Syntax cheat-sheet and operator quick reference.
+- catalog: Master vocabulary inventory table.
+- Keyword: Keyword enumeration catalog and ID mapping.
+- Engine_Features: Active engine subsystem inventory.
+- help: Root documentation navigation index.
+
+
+3. 100% MIRROR PARITY GUARANTEE
+
+Every Markdown document in docs/*.md is mirrored by an identical plaintext
+document in help/*.TXT. Help files are strictly formatted for terminal
+display:
+- Pure 7-bit ASCII encoding (0 non-ASCII bytes).
+- Standard CRLF line endings.
+- Strictly wrapped at <= 78 columns.
+- Zero markdown backticks, raw HTML tags, or formatting pipes.

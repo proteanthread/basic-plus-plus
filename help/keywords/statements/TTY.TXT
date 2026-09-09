@@ -1,0 +1,68 @@
+TITLE: TTY
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/system/environment/tty.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+TTY KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: tty.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (common_reg_stmts.c)
+    // NEEDS: libcore (language_descriptor.h, session.h)
+    // NEEDS: libengine (eval.h, tty.h)
+    // NEEDS: libkernel (vdev.h)
+    // Provides runtime implementation for the TTY statement in BASIC++.
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Displays or sets the current virtual terminal/teleprinter channel number.
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    TTY [tty_number%]
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM TTY Demonstration
+    20 PRINT "TTY executed successfully."
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 13: Type Mismatch
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Session & Multi-User
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_PURE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  TTY
+Category              Session & Multi-User
+Syntax                TTY [tty_number%]
+Description           Displays or sets the current virtual terminal/telep...
+Error Summary         Error 13: Type Mismatch
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_PURE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/system/environment/tty.c

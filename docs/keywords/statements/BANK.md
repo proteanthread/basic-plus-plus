@@ -1,28 +1,71 @@
-# `BANK` Memory Bank Selection Statement
+<!--
+Title:        BANK
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/device/vdev.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Keyword Definition
+# `BANK` Keyword Reference
 
-The `BANK` statement selects the active 64KB memory bank in BASIC++'s virtual segmented memory architecture (`vmem`). Subsequent `PEEK`, `POKE`, `PEEKB`, `POKEB`, and `DEF SEG` operations operate within the selected bank unless overridden.
+## Source Header
 
-### Syntax Signatures:
-```basic
-BANK bank_number%
-current_bank% = BANK()
+```c
+// FILENAME: vdev.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: baspp.exe, bpp.exe, bs.exe, libboot, libcore, libengine, libkern
+// NEEDS: libcore (alloc.h, ctype.h, hal.h, memops.h, runtime_snprintf.h, stro
+// Implements virtual device subsystem, registry, subdevice multiplexing, and 
+//
+// ---- Includes ----
 ```
 
-### Operational Rules:
-- **Bank Range**: $0 \le \text{bank\_number} < \text{RAMBANKS}()$ (defaults to 16 virtual 64KB banks = 1MB virtual address space, scalable up to 1024 banks).
-- **Security Check**: Requires memory access capability (`CAP_MEM`). Unauthorized access triggers Error 70 (`ERR_PERMISSION_DENIED`).
-- **Bank 0**: Default primary system bank containing virtual BIOS Data Area (BDA) and system buffers.
+## 1. Description & Usage
+
+Selects active expanded memory bank (EMS/XMS or retro banked RAM) for segmented addressing.
+
+## 2. Syntax
+
+```basic
+BANK bank_number%
+```
+
+## 3. Code Example
+
+```basic
+10 REM BANK Demonstration
+20 PRINT "BANK executed successfully."
+```
+
+## 4. Error Conditions
+
+Error 5: Illegal Function Call
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: Commodore 128 BASIC 7.0, BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Hardware & Memory
+- **Subsystem**: SUBSYSTEM_PLATFORM
+- **Safety Level**: SAFETY_SAFE
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 PRINT "Available memory banks: "; RAMBANKS()
-20 BANK 1 : REM Switch to Bank 1
-30 POKE &H1000, &H42
-40 PRINT "Read back from Bank 1: &H"; HEX$(PEEK(&H1000))
-50 BANK 0 : REM Return to Bank 0
-```
+| Field | Value |
+|---|---|
+| Name | BANK |
+| Category | Hardware & Memory |
+| Syntax | BANK bank_number% |
+| Description | Selects active expanded memory bank (EMS/XMS or retro banked RAM) for segmented addressing. |
+| Error Summary | Error 5: Illegal Function Call |
+| Subsystem | SUBSYSTEM_PLATFORM |
+| Safety Level | SAFETY_SAFE |
+| Feature Type | FEATURE_STATEMENT |
+| Delimiter Mask | none |
+| Compatibility | Commodore 128 BASIC 7.0, BASIC++ Standard |
+| Since Version | 6.0.0 |
+| Source File | engine/src/device/vdev.c |

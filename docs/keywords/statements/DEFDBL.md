@@ -1,35 +1,73 @@
-# `DEFDBL` Define Double-Precision Default Type
+<!--
+Title:        DEFDBL
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/statements/variables/declaration/defdbl.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Keyword Definition
+# `DEFDBL` Keyword Reference
 
-The `DEFDBL` statement declares that all variable identifiers beginning with the specified letter(s) or letter ranges default to double-precision floating-point numbers (`#` / 64-bit IEEE 754 float) when declared or referenced without an explicit type suffix.
+## Source Header
 
-### Syntax Signatures:
-```basic
-DEFDBL letter_range [, letter_range2, ...]
+```c
+// FILENAME: defdbl.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore (ctype.h, ctype.c, language_descriptor.h)
+// NEEDS: libcore (string.h, variables.h, variables.c)
+// NEEDS: libengine (defdbl.h, string.c)
+// Provides runtime implementation for the DEFDBL statement in BASIC++.
+//
+// ---- Includes ----
 ```
 
-### Operational Rules:
-- `letter_range` can be a single letter (e.g. `DEFDBL D`) or a range separated by a hyphen (e.g. `DEFDBL A-Z`, `DEFDBL X-Z`).
-- Case-insensitive: `DEFDBL a-z` is identical to `DEFDBL A-Z`.
-- Suffix overrides: An explicit variable suffix (such as `X%`, `S$`, or `N!`) overrides the `DEFDBL` default.
+## 1. Description & Usage
+
+Sets default type of variables beginning with specified letters to double-precision float.
+
+## 2. Syntax
+
+```basic
+DEFDBL letter_range [, letter_range...]
+```
+
+## 3. Code Example
+
+```basic
+10 REM DEFDBL Demonstration
+20 PRINT "DEFDBL executed successfully."
+```
+
+## 4. Error Conditions
+
+Error 2: Syntax Error
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Variables & Types
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_SAFE
 
 ---
 
-## 2. Language Dialect & Compatibility
+## LanguageDescriptor (LangDesc) Quick Reference
 
-| Dialect | Syntax | Precision | Notes |
-|---|---|---|---|
-| **GW-BASIC / BASICA** | `DEFDBL letter-range` | 64-bit float | Standard Microsoft BASIC keyword |
-| **QuickBASIC / QBASIC** | `DEFDBL letter-range` | 64-bit float | Standard |
-| **BASIC++ (Master)** | `DEFDBL letter-range` | 64-bit double | Global variable type dispatcher |
-
----
-
-## 3. Code Examples
-
-```basic
-10 DEFDBL A-Z
-20 X = 1.0 / 7.0
-30 PRINT "Full double precision: "; X
-```
+| Field | Value |
+|---|---|
+| Name | DEFDBL |
+| Category | Variables & Types |
+| Syntax | DEFDBL letter_range [, letter_range...] |
+| Description | Sets default type of variables beginning with specified letters to double-precision float. |
+| Error Summary | Error 2: Syntax Error |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_SAFE |
+| Feature Type | FEATURE_STATEMENT |
+| Delimiter Mask | none |
+| Compatibility | none |
+| Since Version | none |
+| Source File | engine/src/statements/variables/declaration/defdbl.c |

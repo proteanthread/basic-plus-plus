@@ -1,0 +1,67 @@
+TITLE: CONSOL
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/functions/system/hardware/func_vintage_vars.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+CONSOL KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: func_vintage_vars.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (common_reg_funcs.c, eval_ident_builtin.c)
+    // NEEDS: libcore (language_descriptor.h, strings.h)
+    // NEEDS: libengine (func_vintage_vars.h)
+    // Provides runtime implementation and LanguageDescriptors for vintage dialect
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Returns the Atari 8-bit console key mask (Option=4, Select=2, Start=1).
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    CONSOL
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM CONSOL Demonstration
+    20 PRINT "CONSOL executed successfully."
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+None
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Hardware & Peripherals
+Subsystem:     SUBSYSTEM_PLATFORM
+Safety Level:  SAFETY_PURE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  CONSOL
+Category              Hardware & Peripherals
+Syntax                CONSOL
+Description           Returns the Atari 8-bit console key mask (Option=4,...
+Error Summary         None
+Subsystem             SUBSYSTEM_PLATFORM
+Safety Level          SAFETY_PURE
+Feature Type          FEATURE_VARIABLE
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/eval/functions/system/hardware/func_vint...

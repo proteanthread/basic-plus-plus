@@ -2,7 +2,7 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libengine (bios.h, bios.c, eval.h, eval.c, out.h, string.c)
 // NEEDS: libkernel (bus.h, bus.c, security.h, security.c)
 // Provides runtime implementation for the OUT statement in BASIC++.
@@ -14,23 +14,28 @@
 #include "device/bus.h"
 #include "bios/bios.h"
 #include "security/security.h"
-#include "runtime/micro_lib_metadata.h"
-#include <string.h>
+#include "runtime/language_descriptor.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_out_desc = {
+    .name = "OUT",
+    .category = "System & Hardware I/O",
+    .syntax = "OUT port, data",
+    .description = "Sends a byte (0-255) to a hardware or virtual I/O port address.",
+    .error_summary = "Error 2: Syntax Error, Error 5: Illegal Function Call, Error 13: Type Mismatch",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SYSTEM,
+    .type = FEATURE_STATEMENT
+};
 
 void stmt_out_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "OUT",
-        .category = "System & Hardware I/O",
-        .syntax = "OUT port, data",
-        .help_text = "Sends a byte (0-255) to a hardware or virtual I/O port address.",
-        .error_codes = "Error 2: Syntax Error, Error 5: Illegal Function Call, Error 13: Type Mismatch"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_out_desc);
 }
 
 BppError stmt_out_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BValue pval = eval_expression(vm, lex, &err);
     if (err.code != 0) return err;

@@ -20,5 +20,6 @@ BValue func_crypto_decrypt(VMContext *vm, int argc, BValue *argv, BppError *err)
 BValue func_crypto_hash(VMContext *vm, int argc, BValue *argv, BppError *err);
 BValue func_crypto_hmac(VMContext *vm, int argc, BValue *argv, BppError *err);
 BValue func_crypto_key(VMContext *vm, int argc, BValue *argv, BppError *err);
+void   func_crypto_register(void);
 
 #endif // EVAL_FUNCTIONS_SYSTEM_SECURITY_FUNC_CRYPTO_H

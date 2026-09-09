@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (string_fn.c)
 // NEEDS: libcore (memory.h, memory.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libcore (strings.h, strings.c)
 // NEEDS: libengine (rad.h, string.c)
 // Provides runtime implementation for the RAD built-in function in BASIC++.
@@ -11,19 +11,24 @@
 // ---- Includes ----
 
 #include "eval/functions/string/conversion/rad.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/strings.h"
 #include "runtime/string.h"
 #include "runtime/memory.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_rad_desc = {
+    .name = "RAD$",
+    .category = "String Functions",
+    .syntax = "RAD$(numeric_val)",
+    .description = "Converts an integer to a DEC Radix-50 encoded 3-character string.",
+    .error_summary = "Error 13: Type Mismatch",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_FUNCTION
+};
 void func_rad_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "RAD$",
-        .category = "String Functions",
-        .syntax = "RAD$(numeric_val)",
-        .help_text = "Converts an integer to a DEC Radix-50 encoded 3-character string.",
-        .error_codes = "Error 13: Type Mismatch"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_rad_desc);
 }
 
 static char rad50_char(int code) {

@@ -2,7 +2,7 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (sys_fn.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c)
+// NEEDS: libcore (language_descriptor.h)
 // NEEDS: libengine (point_fn.h, vm.h)
 // NEEDS: libkernel (vcon.h, vcon.c)
 // Provides runtime implementation for the POINT_FN built-in function in BASIC++.
@@ -10,19 +10,23 @@
 // ---- Includes ----
 
 #include "eval/functions/ui/graphics/point_fn.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "vm/vm.h"
 #include "device/vcon.h"
 
+static const LangDesc g_point_desc = {
+    .name = "POINT",
+    .category = "Graphics Functions",
+    .syntax = "color% = POINT(x%, y%) | coord% = POINT(mode%)",
+    .description = "Returns the color of the pixel at (x, y) or the current graphics coordinate.",
+    .error_summary = "Error 13: Type Mismatch (POINT expects 1 or 2 numeric arguments)",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_FUNCTION
+};
+
 void func_point_fn_register(void) {
-    MicroLibMetadata meta = {
-        .name = "POINT",
-        .category = "Graphics Functions",
-        .syntax = "color% = POINT(x%, y%) | coord% = POINT(mode%)",
-        .help_text = "Returns the color of the pixel at (x, y) or the current graphics coordinate.",
-        .error_codes = "Error 13: Type Mismatch (POINT expects 1 or 2 numeric arguments)"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_point_desc);
 }
 
 BValue func_point_fn_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err) {

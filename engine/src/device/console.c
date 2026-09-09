@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
 // NEEDS: libcore (hal.h, logger.h, logger.c, memops.h, memops.c)
-// NEEDS: libcore (snprintf.h, snprintf.c, strops.h, strops.c)
+// NEEDS: libcore (runtime_snprintf.h, runtime_snprintf.c, strops.h, strops.c)
 // NEEDS: libengine (bios.h, bios.c)
 // NEEDS: libkernel (vcon.h, vcon.c, vdev.h, vdev.c)
 // NEEDS: libplatform (platform.h)
@@ -21,6 +21,7 @@
 #include "runtime/string/strops.h"
 #include "runtime/format/snprintf.h"
 #include "hal/hal.h"
+#include "eval/functions/system/hardware/func_baud.h"
 
 extern bool platform_mouse_is_visible(void);
 extern void platform_mouse_get_position(int *col, int *row);
@@ -150,6 +151,11 @@ static int con_putc(VDev *dev, int c) {
     char c_str[2] = {(char)c, '\0'};
     log_write_out(c_str, 1);
     raw_console_write(c_str, 1);
+    uint32_t delay_ms = baud_get_char_delay_ms(0);
+    if (delay_ms > 0) {
+        raw_console_flush();
+        baud_pace_char(0);
+    }
     console_draw_mouse_cursor();
     return c;
 }
@@ -180,7 +186,16 @@ static int con_puts(VDev *dev, const char *s) {
     if (s) {
         size_t len = runtime_strlen(s);
         log_write_out(s, len);
-        raw_console_write(s, len);
+        uint32_t delay_ms = baud_get_char_delay_ms(0);
+        if (delay_ms > 0) {
+            for (size_t i = 0; i < len; ++i) {
+                raw_console_write(&s[i], 1);
+                raw_console_flush();
+                baud_pace_char(0);
+            }
+        } else {
+            raw_console_write(s, len);
+        }
     }
     console_draw_mouse_cursor();
     return 0;
@@ -222,9 +237,22 @@ static char *con_gets(VDev *dev, char *buf, size_t size) {
     size_t idx = 0;
     while (idx < size - 1) {
         int ch = hal->io.console_getchar();
-        if (ch == -1 || ch == 3 || ch == 4 || ch == 26) {
+        if (ch == -1 || ch == 4 || ch == 26) {
             if (idx == 0) return NULL;
             break;
+        }
+        if (ch == 3) {
+            if (idx > 0) {
+                while (idx > 0) {
+                    raw_console_write("\b \b", 3);
+                    idx--;
+                }
+                raw_console_flush();
+                continue;
+            } else {
+                platform_trigger_break();
+                return NULL;
+            }
         }
         if (ch == '\r' || ch == '\n') {
             buf[idx++] = '\n';

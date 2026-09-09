@@ -9,8 +9,9 @@
 // ---- Includes ----
 
 #include "stmt/stmt.h"
-#include <stdlib.h>
-#include <string.h>
+#include "runtime/memory/alloc.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
 
 typedef struct {
     BppKeywordId   kw;
@@ -28,14 +29,14 @@ struct StmtRegistry {
 
 StmtRegistry *stmt_registry_init(MemoryContext *mem) {
     if (!mem) return NULL;
-    StmtRegistry *reg = (StmtRegistry *)calloc(1, sizeof(StmtRegistry));
+    StmtRegistry *reg = (StmtRegistry *)runtime_calloc(1, sizeof(StmtRegistry));
     if (!reg) return NULL;
     reg->mem = mem;
     reg->capacity = 32;
     reg->count = 0;
-    reg->entries = (StmtEntry *)calloc(reg->capacity, sizeof(StmtEntry));
+    reg->entries = (StmtEntry *)runtime_calloc(reg->capacity, sizeof(StmtEntry));
     if (!reg->entries) {
-        free(reg);
+        runtime_free(reg);
         return NULL;
     }
     return reg;
@@ -43,8 +44,8 @@ StmtRegistry *stmt_registry_init(MemoryContext *mem) {
 
 void stmt_registry_shutdown(StmtRegistry *reg) {
     if (!reg) return;
-    free(reg->entries);
-    free(reg);
+    runtime_free(reg->entries);
+    runtime_free(reg);
 }
 
 void stmt_register(StmtRegistry *reg, BppKeywordId kw, BppStmtHandler handler, const char *name, uint32_t flags) {
@@ -63,9 +64,9 @@ void stmt_register(StmtRegistry *reg, BppKeywordId kw, BppStmtHandler handler, c
     // Grow registry if full
     if (reg->count >= reg->capacity) {
         size_t new_cap = reg->capacity * 2;
-        StmtEntry *new_entries = (StmtEntry *)realloc(reg->entries, new_cap * sizeof(StmtEntry));
+        StmtEntry *new_entries = (StmtEntry *)runtime_realloc(reg->entries, new_cap * sizeof(StmtEntry));
         if (!new_entries) return;
-        memset(&new_entries[reg->capacity], 0, (new_cap - reg->capacity) * sizeof(StmtEntry));
+        runtime_memset(&new_entries[reg->capacity], 0, (new_cap - reg->capacity) * sizeof(StmtEntry));
         reg->entries = new_entries;
         reg->capacity = new_cap;
     }

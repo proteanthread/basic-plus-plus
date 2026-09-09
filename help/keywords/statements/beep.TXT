@@ -1,41 +1,73 @@
-BEEP Speaker Bell Tone Statement
-================================
+TITLE: BEEP
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/sound/synthesis/beep.c
+GENERATED: no, hand-written
+STATUS: current
 
-Emits standard 800 Hz alert tones through the system speaker for a specified number of repetitions with an optional delay in seconds between beeps.
+==============================================================================
+BEEP KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: beep.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libcore (strings.h, strings.c)
+    // NEEDS: libengine (beep.h, eval.h, eval.c, lexer.h, lexer.c, string.c, vm.h)
+    // NEEDS: libkernel (errors.h, security.h, security.c, vdev.h, vdev.c)
+    // NEEDS: libplatform (platform.h)
+    // Provides runtime implementation for the BEEP statement in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Emits standard 800 Hz speaker beep tones for count repetitions with optional
+delay in seconds (default 1 beep, 1.0s delay).
 
-    BEEP
-    BEEP count
-    BEEP count, delay
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    BEEP [count [, delay]]
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM BEEP Demonstration
+    20 PRINT "BEEP executed successfully."
 
-PARAMETERS
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error, Error 5: Illegal Function Call, Error 13: Type Mismatch
 
-    count (Optional Numeric Expression): Number of times to beep (default 1).
-          If 0, performs a silent no-op. Must be >= 0.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Sound & Audio
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_IO
 
-    delay (Optional Numeric Expression): Delay in seconds between beeps (default 1.0).
-          Fractional seconds supported (e.g. 0.25, 0.5). Must be >= 0.
-
-
-OPERATIONAL NOTES
-----------------------------------------------------------------------
-
-  Routes through the platform audio subsystem (platform_sound_beep)
-  and virtual audio devices.
-  In multi-beep sequences, the delay occurs strictly between beeps.
-
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 PRINT "Single Beep:"
-    20 BEEP
-    30 PRINT "Beep 3 times (1.0s delay):"
-    40 BEEP 3
-    50 PRINT "Beep 4 times with fast 0.25s delay:"
-    60 BEEP 4, 0.25
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  BEEP
+Category              Sound & Audio
+Syntax                BEEP [count [, delay]]
+Description           Emits standard 800 Hz speaker beep tones for count ...
+Error Summary         Error 2: Syntax Error, Error 5: Illegal Function Ca...
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_IO
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/sound/synthesis/beep.c

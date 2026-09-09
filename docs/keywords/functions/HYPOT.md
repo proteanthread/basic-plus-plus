@@ -1,27 +1,72 @@
-# `HYPOT` Euclidean Norm (Universal Dual-Format)
+<!--
+Title:        HYPOT
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/eval/functions/math/trig/hypot.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Function/Operator Definition
+# `HYPOT` Keyword Reference
 
-The `HYPOT` keyword computes the Euclidean distance / norm $\sqrt{\sum x_i^2}$ without intermediate overflow or underflow. It is supported in both **infix** notation (`a HYPOT b`) and **prefix/variadic** functional notation (`HYPOT(a, b [, c...])`).
+## Source Header
 
-### Syntax Signatures:
-```basic
-hypotenuse = sideA HYPOT sideB
-hypotenuse = HYPOT(sideA, sideB [, sideC, ...])
+```c
+// FILENAME: hypot.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine (math_fn.c)
+// NEEDS: libcore (math.h, language_descriptor.h, string.h)
+// NEEDS: libengine (hypot.h, math.c, string.c)
+// Provides runtime implementation for the HYPOT built-in function in BASIC++.
+//
+// ---- Includes ----
 ```
 
-### Operational Rules:
-- Infix `a HYPOT b`: returns $\sqrt{a^2 + b^2}$.
-- Prefix `HYPOT(a, b, ...)`: returns $\sqrt{a^2 + b^2 + c^2 + \dots}$.
-- In RPN stack evaluation blocks: `{ 3 4 HYPOT }`.
+## 1. Description & Usage
+
+Returns the Euclidean norm runtime_sqrt(sum of squares) of arguments (supports dual prefix & infix notation).
+
+## 2. Syntax
+
+```basic
+HYPOT(val1, val2 [, ...]) or val1 HYPOT val2
+```
+
+## 3. Code Example
+
+```basic
+10 Val = HYPOT(val1, val2 [, ...]) or val1 HYPOT val2
+20 PRINT "Result: "; Val
+```
+
+## 4. Error Conditions
+
+Error 13: Type Mismatch (HYPOT expects numeric arguments)
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Math Functions
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_PURE
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 REM Infix notation
-20 PRINT "3 HYPOT 4 = "; 3 HYPOT 4 : REM Outputs 5
-30 REM Functional prefix notation (variadic 3D)
-40 PRINT "HYPOT(1, 2, 2) = "; HYPOT(1, 2, 2) : REM Outputs 3
-```
+| Field | Value |
+|---|---|
+| Name | HYPOT |
+| Category | Math Functions |
+| Syntax | HYPOT(val1, val2 [, ...]) or val1 HYPOT val2 |
+| Description | Returns the Euclidean norm runtime_sqrt(sum of squares) of arguments (supports dual prefix & infix notation). |
+| Error Summary | Error 13: Type Mismatch (HYPOT expects numeric arguments) |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_PURE |
+| Feature Type | FEATURE_FUNCTION |
+| Delimiter Mask | none |
+| Compatibility | none |
+| Since Version | none |
+| Source File | engine/src/eval/functions/math/trig/hypot.c |

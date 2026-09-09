@@ -17,5 +17,6 @@
 
 BppError stmt_check_handler(VMContext *vm, LexerContext *lex);
 void stmt_check_register(void);
+BValue func_check_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err);
 
 #endif // STATEMENTS_DEBUG_CHECK_H

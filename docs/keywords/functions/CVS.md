@@ -1,38 +1,71 @@
-# `CVS` Convert String to Single-Precision Number Function
+<!--
+Title:        CVS
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/eval/builtins/string_fn.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Function Definition
+# `CVS` Keyword Reference
 
-The `CVS` (Convert to Single) function unpacks a 4-byte binary string and converts it into an IEEE 754 32-bit single-precision floating-point number.
+## Source Header
 
-### Syntax Signatures:
-```basic
-result! = CVS(string_4_bytes)
+```c
+// FILENAME: string_fn.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore, libengine
+// Provides core logic and interface definitions for string_fn within BASIC++.
+//
+// ---- Includes ----
 ```
 
-### Operational Rules:
-- **String Length Requirement**: Exactly 4 bytes in length. If length is not 4, Error 5 (`ERR_ILLEGAL_FUNCTION_CALL`) is triggered.
-- **Binary Format**: Unpacks 4 bytes as single-precision float (`float` in C17).
-- **Inverse Operation**: Inverse of `MKS$(number!)` (`MKSSTR`).
+## 1. Description & Usage
+
+Decodes a 4-byte fielded binary string into a single-precision floating-point number.
+
+## 2. Syntax
+
+```basic
+CVS(4byte_str$)
+```
+
+## 3. Code Example
+
+```basic
+10 Val = CVS(4byte_str$)
+20 PRINT "Result: "; Val
+```
+
+## 4. Error Conditions
+
+Error 5: Illegal Function Call (length != 4)
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: GW-BASIC, QBASIC, BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Binary & Byte Conversion
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_PURE
 
 ---
 
-## 2. Language Dialect & Compatibility
+## LanguageDescriptor (LangDesc) Quick Reference
 
-| Dialect | Syntax | Bit Width | Format |
-|---|---|---|---|
-| **GW-BASIC / BASICA** | `CVS(A$)` | 32-bit | MBF or IEEE |
-| **QuickBASIC / QBASIC** | `CVS(A$)` | 32-bit | IEEE 754 Single |
-| **BASIC++ (Master)** | `CVS(A$)` | 32-bit | IEEE 754 Single (`float`) |
-
----
-
-## 3. Examples
-
-```basic
-10 OPEN "R", #1, "floats.dat", 4
-20 FIELD #1, 4 AS VAL_RAW$
-30 GET #1, 1
-40 V! = CVS(VAL_RAW$)
-50 PRINT "Single float value: "; V!
-60 CLOSE #1
-```
+| Field | Value |
+|---|---|
+| Name | CVS |
+| Category | Binary & Byte Conversion |
+| Syntax | CVS(4byte_str$) |
+| Description | Decodes a 4-byte fielded binary string into a single-precision floating-point number. |
+| Error Summary | Error 5: Illegal Function Call (length != 4) |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_PURE |
+| Feature Type | FEATURE_FUNCTION |
+| Delimiter Mask | none |
+| Compatibility | GW-BASIC, QBASIC, BASIC++ Standard |
+| Since Version | 6.0.0 |
+| Source File | engine/src/eval/builtins/string_fn.c |

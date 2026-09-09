@@ -1,22 +1,72 @@
-# `ROUND` Numeric Rounding Function
+<!--
+Title:        ROUND
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/eval/functions/math/algebra/round.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Function Definition
+# `ROUND` Keyword Reference
 
-The `ROUND` function rounds a numeric expression to a designated number of decimal places using standard half-up rounding arithmetic.
+## Source Header
 
-### Syntax Signatures:
-```basic
-rounded# = ROUND(numeric_expression [, decimal_places%])
+```c
+// FILENAME: runtime_round.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine (math_fn.c)
+// NEEDS: libcore (math.h, language_descriptor.h, string.h)
+// NEEDS: libengine (math.c, runtime_round.h, string.c)
+// Provides runtime implementation for the ROUND built-in function in BASIC++.
+//
+// ---- Includes ----
 ```
 
-### Operational Rules:
-- If `decimal_places%` is omitted, rounds to nearest whole integer.
+## 1. Description & Usage
+
+Rounds a numeric expression x to the specified number of decimal places (default 0).
+
+## 2. Syntax
+
+```basic
+ROUND(x [, decimals])
+```
+
+## 3. Code Example
+
+```basic
+10 Val = ROUND(10 [, decimals])
+20 PRINT "Result: "; Val
+```
+
+## 4. Error Conditions
+
+Error 13: Type Mismatch (ROUND expects 1 or 2 numeric arguments)
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Math Functions
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_PURE
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 PRINT ROUND(3.14159, 2) : REM Outputs 3.14
-20 PRINT ROUND(4.5)        : REM Outputs 5
-```
+| Field | Value |
+|---|---|
+| Name | ROUND |
+| Category | Math Functions |
+| Syntax | ROUND(x [, decimals]) |
+| Description | Rounds a numeric expression x to the specified number of decimal places (default 0). |
+| Error Summary | Error 13: Type Mismatch (ROUND expects 1 or 2 numeric arguments) |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_PURE |
+| Feature Type | FEATURE_FUNCTION |
+| Delimiter Mask | none |
+| Compatibility | none |
+| Since Version | none |
+| Source File | engine/src/eval/functions/math/algebra/round.c |

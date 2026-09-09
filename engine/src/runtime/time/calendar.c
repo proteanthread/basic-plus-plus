@@ -4,7 +4,7 @@
 // NEEDED BY: libengine (context.c, eval_internal.h, vm_internal.h)
 // NEEDED BY: libhardware (bios_int1a.c)
 // NEEDED BY: libstandard (edit_render.c)
-// NEEDS: libcore (calendar.h, memops.h, memops.c, snprintf.h, snprintf.c)
+// NEEDS: libcore (calendar.h, memops.h, memops.c, runtime_snprintf.h, runtime_snprintf.c)
 // NEEDS: libcore (strops.h, strops.c)
 // Freestanding calendar date and day calculation implementation.
 //

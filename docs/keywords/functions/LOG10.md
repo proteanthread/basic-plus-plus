@@ -1,21 +1,72 @@
-# `LOG10` Common Logarithm (Base-10) Function
+<!--
+Title:        LOG10
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/eval/functions/math/algebra/log10.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Function Definition
+# `LOG10` Keyword Reference
 
-The `LOG10` function calculates the base-10 logarithm of a positive numeric argument.
+## Source Header
 
-### Syntax Signatures:
-```basic
-result# = LOG10(numeric_expression)
+```c
+// FILENAME: log10.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine (math_fn.c)
+// NEEDS: libcore (math.h, language_descriptor.h, string.h)
+// NEEDS: libengine (log10.h, math.c, string.c)
+// Provides runtime implementation for the LOG10 built-in function in BASIC++.
+//
+// ---- Includes ----
 ```
 
-### Operational Rules:
-- **Domain Constraint**: Requires $x > 0$. Non-positive values trigger Error 5 (`ERR_ILLEGAL_FUNCTION_CALL`).
+## 1. Description & Usage
+
+Returns the base-10 logarithm of x (x > 0).
+
+## 2. Syntax
+
+```basic
+LOG10(x) | LGT(x)
+```
+
+## 3. Code Example
+
+```basic
+10 Val = LOG10(10) | LGT(10)
+20 PRINT "Result: "; Val
+```
+
+## 4. Error Conditions
+
+Error 5: Illegal Function Call (x <= 0), Error 13: Type Mismatch (LOG10 expects one numeric argument)
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Math & Trigonometry
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_PURE
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 PRINT LOG10(10000) : REM Outputs 4
-```
+| Field | Value |
+|---|---|
+| Name | LOG10 |
+| Category | Math & Trigonometry |
+| Syntax | LOG10(x) \| LGT(x) |
+| Description | Returns the base-10 logarithm of x (x > 0). |
+| Error Summary | Error 5: Illegal Function Call (x <= 0), Error 13: Type Mismatch (LOG10 expects one numeric argument) |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_PURE |
+| Feature Type | FEATURE_FUNCTION |
+| Delimiter Mask | none |
+| Compatibility | none |
+| Since Version | none |
+| Source File | engine/src/eval/functions/math/algebra/log10.c |

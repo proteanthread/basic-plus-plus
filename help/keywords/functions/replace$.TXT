@@ -1,17 +1,70 @@
-REPLACE$ Substring Replacement Function
-======================================================================
+TITLE: REPLACE$
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/functions/string/manipulation/func_replace.c
+GENERATED: no, hand-written
+STATUS: current
 
-The REPLACE$ function replaces occurrences of a search string with a
-replacement string.
+==============================================================================
+REPLACE$ KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: func_replace.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (string_fn.c)
+    // NEEDS: libengine (func_replace.h, vm.h)
+    // NEEDS: libcore (language_descriptor.h, strings.h, string.h, memory.h, array
+    // Provides runtime implementation for REPLACE and REPLACE$ in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Replaces elements in numeric arrays, string arrays, strings, or dynamic
+arrays.
 
-    res$ = REPLACE$(source$, search$, replacement$)
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    REPLACE$(target$, search$, replace$ [, count [, mode]]) | REPLACE(arr, pos, val) | REPLACE$(dyn$, attr, val$)
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = REPLACE$(target$, search$, replace$ [, count [, mode]]) | REPLACE(arr, pos, val) | REPLACE$(dyn$, attr, val$)
+    20 PRINT "Result: "; Val
 
-CODE EXAMPLES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 13: Type Mismatch, Error 7: Out of Memory
 
-    10 PRINT REPLACE$("AAA", "A", "B")   : REM Outputs "BBB"
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Array & String Functions
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_IO
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  REPLACE$
+Category              Array & String Functions
+Syntax                REPLACE$(target$, search$, replace$ [, count [, mod...
+Description           Replaces elements in numeric arrays, string arrays,...
+Error Summary         Error 13: Type Mismatch, Error 7: Out of Memory
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_IO
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/eval/functions/string/manipulation/func_...

@@ -2,26 +2,30 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (sys_fn.c)
-// NEEDS: libcore (file.h, file.c, micro_lib_metadata.h, micro_lib_metadata.c)
+// NEEDS: libcore (file.h, file.c, language_descriptor.h)
 // NEEDS: libengine (freefile.h, vm.h)
 // Provides runtime implementation for the FREEFILE built-in function in BASIC++.
 //
 // ---- Includes ----
 
 #include "eval/functions/filesystem/descriptors/freefile.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/file.h"
 #include "vm/vm.h"
 
+static const LangDesc g_freefile_desc = {
+    .name = "FREEFILE",
+    .category = "Filesystem Functions",
+    .syntax = "ch% = FREEFILE",
+    .description = "Returns the next available file channel number.",
+    .error_summary = "Error 13: Type Mismatch (FREEFILE expects no arguments)",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_FUNCTION
+};
+
 void func_freefile_register(void) {
-    MicroLibMetadata meta = {
-        .name = "FREEFILE",
-        .category = "Filesystem Functions",
-        .syntax = "ch% = FREEFILE",
-        .help_text = "Returns the next available file channel number.",
-        .error_codes = "Error 13: Type Mismatch (FREEFILE expects no arguments)"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_freefile_desc);
 }
 
 BValue func_freefile_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err) {

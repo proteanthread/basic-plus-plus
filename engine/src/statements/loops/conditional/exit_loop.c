@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
 // NEEDS: libcore (ctype.h, ctype.c, memory.h, memory.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libengine (eval.h, eval.c, exit_loop.h, lexer.h, lexer.c, string.c)
 // NEEDS: libengine (vm.h)
 // NEEDS: libkernel (security.h, security.c, vdev.h, vdev.c)
@@ -15,27 +15,33 @@
 #include "vm/vm.h"
 #include "lexer/lexer.h"
 #include "eval/eval.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 
-void stmt_exit_loop_register(void) {
-    MicroLibMetadata meta = {
-        .name = "EXIT",
-        .category = "Looping / Control Flow",
-        .syntax = "EXIT {FOR|DO|WHILE|SUB|FUNCTION}",
-        .help_text = "Prematurely exits an active loop, SUB, or FUNCTION block.",
-        .error_codes = "Error 2: Syntax Error, Error 33: Invalid EXIT Scope"
-    };
-    microlib_register(&meta);
-}
+
 #include "device/vdev.h"
 #include "security/security.h"
 #include "memory/memory.h"
-#include <string.h>
-#include <ctype.h>
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "runtime/ctype/ctype.h"
 
+static const LangDesc g_exit_desc = {
+    .name = "EXIT",
+    .category = "Looping / Control Flow",
+    .syntax = "EXIT {FOR|DO|WHILE|SUB|FUNCTION}",
+    .description = "Prematurely exits an active loop, SUB, or FUNCTION block.",
+    .error_summary = "Error 2: Syntax Error, Error 33: Invalid EXIT Scope",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SAFE,
+    .type = FEATURE_STATEMENT
+};
+
+void stmt_exit_loop_register(void) {
+    lang_desc_register(&g_exit_desc);
+}
 static BppError skip_to_matching_token(VMContext *vm, BppKeywordId end_kw) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     MemoryContext *mem = vm_get_mem(vm);
     size_t count = 0;
@@ -79,7 +85,7 @@ static BppError skip_to_matching_token(VMContext *vm, BppKeywordId end_kw) {
 
 BppError stmt_exit_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     if (!vm || !lex) {
         err.code = 5; err.message = "Null VM or lexer context";
@@ -122,24 +128,24 @@ BppError stmt_exit_handler(VMContext *vm, LexerContext *lex) {
         }
     } else if (tok.type == TOK_IDENT) {
         size_t len = (tok.length < sizeof(name) - 1) ? tok.length : sizeof(name) - 1;
-        memcpy(name, tok.start, len);
-        for (size_t i = 0; i < len; i++) name[i] = (char)toupper((unsigned char)name[i]);
+        runtime_memcpy(name, tok.start, len);
+        for (size_t i = 0; i < len; i++) name[i] = (char)runtime_toupper((unsigned char)name[i]);
 
-        if (strcmp(name, "DO") == 0) {
+        if (runtime_strcmp(name, "DO") == 0) {
             BppLineNumber line = 0; const char *pos = NULL;
             if (!vm_do_pop(vm, &line, &pos)) {
                 err.code = 33; err.message = "EXIT DO without DO";
                 return err;
             }
             return skip_to_matching_token(vm, KW_LOOP);
-        } else if (strcmp(name, "FOR") == 0) {
+        } else if (runtime_strcmp(name, "FOR") == 0) {
             BppForFrame frame;
             if (!vm_for_pop(vm, NULL, &frame)) {
                 err.code = 33; err.message = "EXIT FOR without FOR";
                 return err;
             }
             return skip_to_matching_token(vm, KW_NEXT);
-        } else if (strcmp(name, "SUB") == 0) {
+        } else if (runtime_strcmp(name, "SUB") == 0) {
             BppSubFrame frame;
             if (!vm_sub_pop(vm, &frame)) {
                 err.code = 33; err.message = "EXIT SUB without SUB";
@@ -147,7 +153,7 @@ BppError stmt_exit_handler(VMContext *vm, LexerContext *lex) {
             }
             vm_jump(vm, frame.line, frame.pos);
             return err;
-        } else if (strcmp(name, "FUNCTION") == 0) {
+        } else if (runtime_strcmp(name, "FUNCTION") == 0) {
             BppSubFrame frame;
             if (!vm_sub_pop(vm, &frame)) {
                 err.code = 33; err.message = "EXIT FUNCTION without FUNCTION";

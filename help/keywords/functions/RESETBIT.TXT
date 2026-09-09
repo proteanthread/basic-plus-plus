@@ -1,22 +1,70 @@
-RESETBIT Bit Clear Operator (Universal Dual-Format)
+TITLE: RESETBIT
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/functions/bits/manipulation/resetbit.c
+GENERATED: no, hand-written
+STATUS: current
 
-1. BASIC Usage and Function/Operator Definition
+==============================================================================
+RESETBIT KEYWORD REFERENCE
+==============================================================================
 
-The RESETBIT keyword clears a specific bit position (0 to 63) of a 64-bit integer to 0. It is supported in both infix and prefix notation.
+SOURCE HEADER:
+    // FILENAME: resetbit.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (sys_fn.c)
+    // NEEDS: libcore (language_descriptor.h)
+    // NEEDS: libengine (resetbit.h)
+    // Provides runtime implementation for the RESETBIT built-in function in BASIC
+    //
+    // ---- Includes ----
 
-Syntax Signatures:
-``basic
-result = value RESETBIT bit_pos
-result = RESETBIT(value, bit_pos)
-`
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Clears (sets to 0) the bit at the specified zero-based bit index in an integer
+value.
 
-Operational Rules:
-- Returns (uint64t)value & ~(1ULL << (uint64t)bit_pos).
-- In RPN stack evaluation blocks: { value bit_pos RESETBIT }.
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    RESETBIT(val, bit)
 
-2. Code Examples
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = RESETBIT(val, bit)
+    20 PRINT "Result: "; Val
 
-`basic
-10 PRINT "Infix: "; 1024 RESETBIT 10 : REM Outputs 0
-20 PRINT "Prefix: "; RESETBIT(1024, 10) : REM Outputs 0
-``
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 13: Type Mismatch
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Bitwise & Logical Functions
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_PURE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  RESETBIT
+Category              Bitwise & Logical Functions
+Syntax                RESETBIT(val, bit)
+Description           Clears (sets to 0) the bit at the specified zero-ba...
+Error Summary         Error 13: Type Mismatch
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_PURE
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/eval/functions/bits/manipulation/resetbit.c

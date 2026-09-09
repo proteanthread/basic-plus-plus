@@ -1,144 +1,65 @@
-# BASIC++ v6.5.2 System and Environment
+<!--
+Title:        System_And_Environment
+Tier:         2
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/eval/functions/system/environment/, engine/src/statements/system/
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. SYSTEM INFORMATION
+# BASIC++ v6.5.2 System & Environment Architecture
 
-INFO displays the complete system configuration including version, build target, dialect, memory profile, security level, and available subsystems:
+The authoritative specification for environment variables, command-line arguments, system clocks, memory inspection, and virtual hardware access in BASIC++ v6.5.2.
 
-```basic
-> INFO
-BASIC++ Standard Edition v6.5.2 "Phoenix"
-Build: baspp (Standard Console & SDL Combined)
-Dialect: GWBS (GW-BASIC Compatible)
-Memory: MODERN (640 MB)
-Security: OPEN (Level 0)
-Platform: Windows x64
-Keywords: 367
-Errors: 43 codes
-Libraries: 12
-Modules: 3 loaded
-```
+---
 
-VER or VERSION displays the version string: `BASIC++ v6.5.2`. VER$ returns the version as a string for use in expressions: `IF VER$ >= "6.5" THEN ...`.
+## 1. Operating System Environment & Arguments
 
-## 2. ENVIRONMENT VARIABLES
+BASIC++ provides direct, portable access to the host operating system environment:
 
-ENVIRON$("NAME") reads an environment variable from the host operating system:
+- **`ENVIRON$("VARIABLE")`**: Returns the value of host environment variable `VARIABLE`, or an empty string if undefined.
+- **`ENVIRON "VAR=VALUE"`**: Sets or exports an environment variable in the active process environment.
+- **`COMMAND$`**: Returns the raw command-line argument string passed to the script or executable.
 
-```basic
-10 PRINT "Home: "; ENVIRON$("HOME")
-20 PRINT "User: "; ENVIRON$("USERNAME")
-30 PRINT "Path: "; ENVIRON$("PATH")
-40 PRINT "Temp: "; ENVIRON$("TEMP")
-```
+---
 
-ENVIRON "NAME=VALUE" sets an environment variable for the current process and its children:
+## 2. System Clock, Date, and High-Resolution Timers
 
-```basic
-10 ENVIRON "MYAPP_CONFIG=production"
-20 SHELL "myapp.exe"
-```
+- **`DATE$`**: Returns the current host calendar date in `MM-DD-YYYY` format. In administrative sessions, assigning `DATE$ = "MM-DD-YYYY"` sets the system date.
+- **`TIME$`**: Returns the current 24-hour clock time in `HH:MM:SS` format. Assigning `TIME$ = "HH:MM:SS"` sets the system clock.
+- **`TIMER`**: Built-in numeric function returning the number of elapsed seconds since midnight with sub-millisecond precision.
 
-The change affects only the current process. It does not modify the system environment permanently.
+---
 
-## 3. SYSTEM FUNCTIONS
+## 3. Memory and Hardware Access (Virtualization & Safety)
 
-HOSTNAME$ returns the machine's network hostname.
+In hosted executables (`baspp`, `bpp`, `bs`), direct hardware and physical memory accesses are safely virtualized within the `libbios` and `vmem` sandboxes:
 
-USERNAME$ returns the current user's login name.
+- **`PEEK(address)`**: Reads a byte from the virtualized memory space at `address`.
+- **`POKE address, value`**: Writes byte `value` (0-255) to the virtualized memory space at `address`.
+- **`DEF SEG [= segment]`**: Sets the active segment base address for subsequent `PEEK`, `POKE`, `BSAVE`, and `BLOAD` operations.
+- **`INP(port)`**: Reads a byte from the virtualized hardware port `port`.
+- **`OUT port, value`**: Writes byte `value` to the virtualized hardware port `port`.
+- **`FRE(0)`**: Returns the remaining free program memory pool size in bytes.
 
-PATH$ returns the system PATH environment variable.
+---
 
-PWD$ returns the current working directory.
+## 4. Process Lifecycle
 
-DIALECT$ returns the active dialect name ("GWBS", "QBAS", "SBAS", "E116", etc.).
+- **`SYSTEM [exit_code]`**: Immediately terminates program execution, reclaims allocated VM resources, and returns control to the operating system with `exit_code` (default `0`).
 
-MEMMAP$ returns the active memory profile ("MODERN", "LITE", "FREEDOS", "EMBEDDED").
+---
 
-CLOCK$ returns a full timestamp string.
-
-## 4. DATE AND TIME
-
-DATE$ returns the current date as "MM-DD-YYYY":
+## 5. Example: Environment and Timing Inspection
 
 ```basic
-10 PRINT DATE$           ' e.g., "08-15-2026"
+10 REM System & Environment Demo
+20 PRINT "OS Path:     "; ENVIRON$("PATH")
+30 PRINT "Command arg: "; COMMAND$
+40 PRINT "System Date: "; DATE$; " Time: "; TIME$
+50 Start = TIMER
+60 FOR I = 1 TO 100000 : NEXT I
+70 Elapsed = TIMER - Start
+80 PRINT "Elapsed loop time: "; Elapsed; " seconds"
+90 PRINT "Free memory: "; FRE(0); " bytes"
 ```
-
-TIME$ returns the current time as "HH:MM:SS":
-
-```basic
-10 PRINT TIME$           ' e.g., "14:30:45"
-```
-
-TIMER returns the number of seconds elapsed since midnight as a double-precision value:
-
-```basic
-10 Start = TIMER
-20 ' ... do work ...
-30 Elapsed = TIMER - Start
-40 PRINT "Elapsed:"; Elapsed; "seconds"
-```
-
-TICKS returns the system tick count (platform-dependent resolution).
-
-DATE$ and TIME$ can be assigned to set the system clock (requires appropriate OS permissions and security level 0 or 1):
-
-```basic
-10 DATE$ = "12-25-2026"
-20 TIME$ = "00:00:00"
-```
-
-## 5. PROCESS EXIT
-
-SYSTEM exits the interpreter. SYSTEM n exits with the specified exit code. BYE is an alias for SYSTEM 0.
-
-```basic
-10 IF ErrorOccurred THEN SYSTEM 1
-20 SYSTEM 0
-```
-
-ERRORLEVEL contains the exit code of the last SHELL command:
-
-```basic
-10 SHELL "command"
-20 IF ERRORLEVEL > 0 THEN PRINT "Command failed"
-```
-
-## 6. THE SHELL COMMAND
-
-SHELL "command" executes an OS command and returns when it completes:
-
-```basic
-10 SHELL "dir *.bas"            ' Windows
-20 SHELL "ls -la *.bas"         ' Linux
-```
-
-SHELL with no argument opens an interactive OS shell. Type EXIT to return to BASIC++.
-
-SHELL is denied at security levels 2 and above.
-
-## 7. EXEC STATEMENT
-
-EXEC has two behaviors depending on context:
-
-Inside a program, EXEC "string" interprets the string as if typed at the BASIC++ prompt. If the string has a line number, the line is stored. If not, it is executed immediately. This is the self-programming facility (see Self_Programming.md).
-
-As a process operation, EXEC replaces the BASIC++ process with the specified command (on Unix, this is the exec system call). Unlike SHELL, EXEC does not return.
-
-## 8. RANDOM NUMBERS
-
-RANDOMIZE seeds the pseudo-random number generator. RANDOMIZE TIMER uses the current time (common pattern for non-reproducible sequences). RANDOMIZE n uses a specific seed for reproducible sequences.
-
-RND returns the next pseudo-random number in the range [0, 1). RND(0) repeats the last number. RND(n) where n < 0 seeds the generator.
-
-```basic
-10 RANDOMIZE TIMER
-20 FOR I = 1 TO 6
-30   DiceRoll = INT(RND * 6) + 1
-40   PRINT DiceRoll;
-50 NEXT I
-```
-
-## 9. SLEEP AND DELAY
-
-SLEEP n pauses for n seconds. SLEEP with no argument waits for a keypress. DELAY n pauses for n milliseconds. PAUSE displays a prompt and waits for a keypress.

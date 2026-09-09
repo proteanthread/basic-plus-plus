@@ -1,32 +1,74 @@
-LOCK File Range Locking Statement
-=================================
+TITLE: LOCK
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/filesystem/file_ops/lock.c
+GENERATED: no, hand-written
+STATUS: current
 
-Locks a record range or byte region in an open file channel to prevent concurrent process modification.
+==============================================================================
+LOCK KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: lock.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libcore (strings.h, strings.c)
+    // NEEDS: libengine (eval.h, eval.c, lexer.h, lexer.c, lock.h, string.c, vm.h)
+    // NEEDS: libkernel (errors.h, security.h, security.c, vdev.h, vdev.c)
+    // NEEDS: libplatform (platform.h)
+    // Provides runtime implementation for the LOCK statement in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Locks a file on disk (Apple /// Business BASIC) or locks a file channel/record
+range (QuickBASIC).
 
-    LOCK [#]filenum% [, [start_record&] TO end_record&]
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    LOCK filepath$ | LOCK [#]file_num [, [record_start] [TO record_end]]
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM LOCK Demonstration
+    20 PRINT "LOCK executed successfully."
 
-ERROR CONDITIONS
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 52: Bad File Number, Error 53: File Not Found, Error 70: Permission
+Denied
 
-  - Error 70 (ERR_PERMISSION_DENIED): Record already locked by another process.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      File & Resource Locking
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_IO
 
-
-OPERATIONAL NOTES
-----------------------------------------------------------------------
-
-  Multi-process safe record locking.
-
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 OPEN "R", #1, "DATA.DAT", 128
-    20 LOCK #1, 10 TO 20 : REM Lock records 10..20
-    30 REM Perform atomic updates
-    40 UNLOCK #1, 10 TO 20
-    50 CLOSE #1
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  LOCK
+Category              File & Resource Locking
+Syntax                LOCK filepath$ | LOCK [#]file_num [, [record_start]...
+Description           Locks a file on disk (Apple /// Business BASIC) or ...
+Error Summary         Error 52: Bad File Number, Error 53: File Not Found...
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_IO
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/filesystem/file_ops/lock.c

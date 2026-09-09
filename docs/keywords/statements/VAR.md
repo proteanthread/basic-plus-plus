@@ -1,37 +1,69 @@
-# `VAR` Variable Declaration Statement
+<!--
+Title:        VAR
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/variable/var.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Statement Definition
+# `VAR` Keyword Reference
 
-The `VAR` statement provides modern, concise local or module-level variable declaration with optional type inference or explicit type annotation.
+## Source Header
 
-### Syntax Signatures:
-```basic
-VAR varname [AS Type] [= initial_expression]
+```c
+// FILENAME: var.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community -- All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: baspp.exe, bpp.exe, bs.exe, libengine
+// NEEDS: libcore, libkernel
+// Implements component functionality for VAR.
 ```
 
-### Operational Rules:
-- **Type Inference**: If `AS Type` is omitted, the variable's type is inferred from the type of the `initial_expression`.
-- **Initialization**: Automatically initializes the variable to the evaluated value of `initial_expression` upon declaration.
-- **Explicit Scoping**: When declared within a `SUB` or `FUNCTION`, the variable is local to that procedure frame.
+## 1. Description & Usage
+
+Declares a block-scoped typed variable with optional immediate initialization expression.
+
+## 2. Syntax
+
+```basic
+VAR [DIM] varname [AS type] [= expr]
+```
+
+## 3. Code Example
+
+```basic
+10 REM VAR Demonstration
+20 PRINT "VAR executed successfully."
+```
+
+## 4. Error Conditions
+
+Error 2: Syntax Error, Error 13: Type Mismatch
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Variables & Memory
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_SAFE
 
 ---
 
-## 2. Language Dialect & Compatibility
+## LanguageDescriptor (LangDesc) Quick Reference
 
-| Dialect | Syntax | Type Inference | Initializer Support |
-|---|---|---|---|
-| **GW-BASIC / BASICA** | *None* | No | No |
-| **QuickBASIC / QBASIC** | `DIM var AS Type` | No | No |
-| **Visual Basic .NET** | `Dim var = value` | Yes | Yes |
-| **BASIC++ (Master)** | `VAR var [AS Type] [= val]` | Yes | Yes |
-
----
-
-## 3. Examples
-
-```basic
-10 VAR Count% = 100
-20 VAR Message$ = "System initialized"
-30 VAR Rate# = 1.05
-40 PRINT Message$; " Count: "; Count%; " Rate: "; Rate#
-```
+| Field | Value |
+|---|---|
+| Name | VAR |
+| Category | Variables & Memory |
+| Syntax | VAR [DIM] varname [AS type] [= expr] |
+| Description | Declares a block-scoped typed variable with optional immediate initialization expression. |
+| Error Summary | Error 2: Syntax Error, Error 13: Type Mismatch |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_SAFE |
+| Feature Type | FEATURE_STATEMENT |
+| Delimiter Mask | none |
+| Compatibility | BASIC++ Standard |
+| Since Version | 6.0.0 |
+| Source File | engine/src/variable/var.c |

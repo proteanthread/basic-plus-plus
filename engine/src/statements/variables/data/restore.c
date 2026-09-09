@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
 // NEEDS: libcore (file.h, file.c, metadata.h, metadata.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libcore (strings.h, strings.c)
 // NEEDS: libengine (eval.h, eval.c, lexer.h, lexer.c, restore.h, string.c)
 // NEEDS: libengine (vm.h)
@@ -18,23 +18,28 @@
 #include "runtime/file.h"
 #include "runtime/metadata.h"
 #include "runtime/strings.h"
-#include "runtime/micro_lib_metadata.h"
-#include <string.h>
+#include "runtime/language_descriptor.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_restore_desc = {
+    .name = "RESTORE",
+    .category = "Variables & Memory",
+    .syntax = "RESTORE [line_number | label] | RESTORE #file_num",
+    .description = "Resets the DATA statement reading pointer or file position to the beginning or specified line.",
+    .error_summary = "Error 2: Syntax Error, Error 13: Type Mismatch",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SYSTEM,
+    .type = FEATURE_STATEMENT
+};
 
 void stmt_restore_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "RESTORE",
-        .category = "Variables & Memory",
-        .syntax = "RESTORE [line_number | label] | RESTORE #file_num",
-        .help_text = "Resets the DATA statement reading pointer or file position to the beginning or specified line.",
-        .error_codes = "Error 2: Syntax Error, Error 13: Type Mismatch"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_restore_desc);
 }
 
 BppError stmt_restore_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BppToken tok = lex_peek(lex);
     if (tok.type == TOK_HASH) {
@@ -59,7 +64,7 @@ BppError stmt_restore_handler(VMContext *vm, LexerContext *lex) {
     if (tok.type == TOK_GLOBAL_LABEL || tok.type == TOK_IDENT) {
         char label_name[64];
         int len = (int)(tok.length < sizeof(label_name) - 1 ? tok.length : sizeof(label_name) - 1);
-        memcpy(label_name, (tok.type == TOK_GLOBAL_LABEL) ? tok.as.string : tok.start, len);
+        runtime_memcpy(label_name, (tok.type == TOK_GLOBAL_LABEL) ? tok.as.string : tok.start, len);
         label_name[len] = '\0';
 
         char filename[256];

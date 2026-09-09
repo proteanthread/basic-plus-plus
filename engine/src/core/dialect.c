@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (context.c, print.c, try.c)
 // NEEDS: libcore (alloc.h, alloc.c, dialect.h, hal.h, memops.h, memops.c)
-// NEEDS: libcore (snprintf.h, snprintf.c, strops.h, strops.c)
+// NEEDS: libcore (runtime_snprintf.h, runtime_snprintf.c, strops.h, strops.c)
 // Provides core logic and interface definitions for dialect within BASIC++.
 //
 // ---- Includes ----

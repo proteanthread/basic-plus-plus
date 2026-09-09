@@ -2,7 +2,7 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
-// NEEDS: libcore (file.h, file.c, micro_lib_metadata.h, micro_lib_metadata.c)
+// NEEDS: libcore (file.h, file.c, language_descriptor.h)
 // NEEDS: libcore (string.h)
 // NEEDS: libengine (eval.h, eval.c, find.h, string.c)
 // NEEDS: libkernel (errors.h)
@@ -14,33 +14,67 @@
 #include "statements/filesystem/binary_ops/find.h"
 #include "eval/eval.h"
 #include "runtime/file.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "types/errors.h"
 #include "platform/platform.h"
-#include <string.h>
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "statements/variables/data/pick_locate.h"
+
+static const LangDesc g_find_desc = {
+    .name = "FIND",
+    .category = "Filesystem I/O",
+    .syntax = "FIND [#]channel [, RECORD record_number]",
+    .description = "DEC RSTS/E RMS-11 statement to position the file pointer at a specific record without data transfer.",
+    .error_summary = "Error 2: Syntax Error, Error 52: Bad File Number, Error 63: Bad Record Number",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_STATEMENT
+};
 
 void stmt_find_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "FIND",
-        .category = "Filesystem I/O",
-        .syntax = "FIND [#]channel [, RECORD record_number]",
-        .help_text = "DEC RSTS/E RMS-11 statement to position the file pointer at a specific record without data transfer.",
-        .error_codes = "Error 2: Syntax Error, Error 52: Bad File Number, Error 63: Bad Record Number"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_find_desc);
 }
 
 BppError stmt_find_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BppToken peek = lex_peek(lex);
+    bool had_hash = false;
     if (peek.type == TOK_HASH) {
         lex_next(lex);
+        had_hash = true;
+    }
+
+    if (!had_hash) {
+        const char *in_pos = NULL;
+        if (pick_locate_has_in_clause(lex, &in_pos)) {
+            size_t tlen = (size_t)(in_pos - lex_get_pos(lex));
+            char *tbuf = (char *)mem_scratch_alloc(vm_get_mem(vm), tlen + 1);
+            if (tbuf) {
+                runtime_memcpy(tbuf, lex_get_pos(lex), tlen);
+                tbuf[tlen] = '\0';
+                LexerContext *sub = lex_init(vm_get_mem(vm), tbuf);
+                BValue target_val = eval_expression(vm, sub, &err);
+                lex_shutdown(sub);
+                if (err.code != 0) return err;
+                lex_set_pos(lex, in_pos);
+                return stmt_pick_locate_execute(vm, lex, target_val);
+            }
+        }
     }
 
     BValue ch_val = eval_expression(vm, lex, &err);
     if (err.code != 0) return err;
+
+    if (!had_hash) {
+        BppToken after = lex_peek(lex);
+        if ((after.type == TOK_KEYWORD && after.as.keyword == KW_IN) ||
+            (after.type == TOK_IDENT && after.length == 2 && runtime_strncasecmp(after.start, "IN", 2) == 0)) {
+            return stmt_pick_locate_execute(vm, lex, ch_val);
+        }
+    }
     if (ch_val.type != VAL_NUMBER && ch_val.type != VAL_INTEGER) {
         if (ch_val.type == VAL_STRING && ch_val.as.string) str_release(vm_get_str(vm), ch_val.as.string);
         err.code = ERR_TYPE_MISMATCH;

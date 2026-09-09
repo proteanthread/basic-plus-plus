@@ -8,6 +8,8 @@
 // ---- Includes ----
 
 #include "eval/eval_expr_internal.h"
+#include "runtime/format/snprintf.h"
+#include "runtime/string/strops.h"
 
 //
 // ---- Array Parsing and Slicing ----
@@ -33,14 +35,18 @@ bool eval_parse_array_access(VMContext *vm, LexerContext *lex, const char *name_
         }
     }
 
-    lex_next(lex); // Consume '('
+    BppTokenType open_tok = lex_peek(lex).type;
+    BppTokenType close_delim = (open_tok == TOK_LBRACKET) ? TOK_RBRACKET : TOK_RPAREN;
+    if (open_tok == TOK_LPAREN || open_tok == TOK_LBRACKET) {
+        lex_next(lex); // Consume '(' or '['
+    }
 
     SliceDim slices[4] = {0};
     int num_indices = 0;
     bool has_slice = false;
 
-    if (lex_peek(lex).type == TOK_RPAREN) {
-        lex_next(lex); // Consume ')'
+    if (lex_peek(lex).type == close_delim) {
+        lex_next(lex); // Consume ')' or ']'
         out_val->type = VAL_ARRAY_REF;
         out_val->as.string = str_create(vm_get_str(vm), resolved_name, runtime_strlen(resolved_name));
         return true;
@@ -95,15 +101,15 @@ bool eval_parse_array_access(VMContext *vm, LexerContext *lex, const char *name_
         BppToken next_tok = lex_peek(lex);
         if (next_tok.type == TOK_COMMA) {
             lex_next(lex); // Consume ','
-        } else if (next_tok.type == TOK_RPAREN) {
+        } else if (next_tok.type == close_delim) {
             break;
         } else {
             out_err->code = 2;
-            out_err->message = "Expected ',' or ')' in array index list";
+            out_err->message = (close_delim == TOK_RBRACKET) ? "Expected ',' or ']' in array index list" : "Expected ',' or ')' in array index list";
             return false;
         }
     }
-    lex_next(lex); // Consume ')'
+    lex_next(lex); // Consume ')' or ']'
 
     if (has_slice) {
         static int slice_counter = 0;

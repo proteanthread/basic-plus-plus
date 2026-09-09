@@ -9,8 +9,9 @@
 // ---- Includes ----
 
 #include "memory/memory.h"
-#include <stdlib.h>
-#include <string.h>
+#include "runtime/memory/alloc.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
 
 struct MemArena {
     char   *base;
@@ -20,11 +21,11 @@ struct MemArena {
 
 MemArena *mem_arena_create(size_t capacity) {
     if (capacity == 0) capacity = 64 * 1024;
-    MemArena *arena = (MemArena *)calloc(1, sizeof(MemArena));
+    MemArena *arena = (MemArena *)runtime_calloc(1, sizeof(MemArena));
     if (!arena) return NULL;
-    arena->base = (char *)calloc(1, capacity);
+    arena->base = (char *)runtime_calloc(1, capacity);
     if (!arena->base) {
-        free(arena);
+        runtime_free(arena);
         return NULL;
     }
     arena->capacity = capacity;
@@ -34,8 +35,8 @@ MemArena *mem_arena_create(size_t capacity) {
 
 void mem_arena_destroy(MemArena *arena) {
     if (!arena) return;
-    if (arena->base) free(arena->base);
-    free(arena);
+    if (arena->base) runtime_free(arena->base);
+    runtime_free(arena);
 }
 
 void *mem_arena_alloc(MemArena *arena, size_t size) {
@@ -47,7 +48,7 @@ void *mem_arena_alloc(MemArena *arena, size_t size) {
     }
     void *ptr = arena->base + arena->used;
     arena->used += aligned_size;
-    memset(ptr, 0, size);
+    runtime_memset(ptr, 0, size);
     return ptr;
 }
 

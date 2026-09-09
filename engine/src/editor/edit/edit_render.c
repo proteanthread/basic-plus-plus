@@ -10,6 +10,9 @@
 
 #include "editor/edit_internal.h"
 #include "runtime/time/calendar.h"
+#include "runtime/format/snprintf.h"
+#include "runtime/string/strops.h"
+#include "runtime/string/memops.h"
 
 int edit_get_render_x(int row, int physical_x) {
     int rx = 0;

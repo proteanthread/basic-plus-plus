@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
 // NEEDS: libcore (memory.h, memory.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libengine (delete.h, isam.h, isam.c, lexer.h, lexer.c, string.c, vm.h)
 // NEEDS: libkernel (errors.h)
 // Provides runtime implementation for the DELETE statement in BASIC++.
@@ -15,13 +15,25 @@
 #include "vm/vm.h"
 #include "lexer/lexer.h"
 #include "memory/memory.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "statements/db/isam/isam.h"
-#include <string.h>
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_delete_desc = {
+    .name = "DELETE",
+    .category = "Program Mgmt & Editing",
+    .syntax = "DELETE [start_line] [- [end_line]]",
+    .description = "Deletes specified line numbers or ranges of lines from program memory.",
+    .error_summary = "Error 2: Syntax Error, Error 8: Undefined Line Number",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SAFE,
+    .type = FEATURE_STATEMENT
+};
 
 BppError stmt_delete_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     if (!vm || !lex) {
         err.code = ERR_ILLEGAL_FUNCTION_CALL;
         return err;
@@ -98,12 +110,5 @@ BppError stmt_delete_handler(VMContext *vm, LexerContext *lex) {
 }
 
 void stmt_delete_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "DELETE",
-        .category = "Program Mgmt & Editing",
-        .syntax = "DELETE [start_line] [- [end_line]]",
-        .help_text = "Deletes specified line numbers or ranges of lines from program memory.",
-        .error_codes = "Error 2: Syntax Error, Error 8: Undefined Line Number"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_delete_desc);
 }

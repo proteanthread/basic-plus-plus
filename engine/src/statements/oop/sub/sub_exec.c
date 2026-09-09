@@ -8,13 +8,16 @@
 // ---- Includes ----
 
 #include "statements/oop/sub_internal.h"
+#include "runtime/format/snprintf.h"
+#include "runtime/string/strops.h"
+#include "runtime/string/memops.h"
 
 //
 // ---- Subroutine Call Execution ----
 
 BppError vm_call_sub_procedure(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     if (!vm || !lex) {
         err.code = 5; err.message = "Null VM or lexer context";
@@ -29,7 +32,7 @@ BppError vm_call_sub_procedure(VMContext *vm, LexerContext *lex) {
 
     char sub_name[128] = {0};
     size_t len = (name_tok.length < sizeof(sub_name) - 1) ? name_tok.length : sizeof(sub_name) - 1;
-    memcpy(sub_name, name_tok.start, len);
+    runtime_memcpy(sub_name, name_tok.start, len);
     sub_name[len] = '\0';
 
     while (lex_peek(lex).type == TOK_PERIOD) {
@@ -41,12 +44,12 @@ BppError vm_call_sub_procedure(VMContext *vm, LexerContext *lex) {
         }
         char sub_part[64];
         size_t slen = (sub_tok.length < sizeof(sub_part) - 1) ? sub_tok.length : sizeof(sub_part) - 1;
-        memcpy(sub_part, sub_tok.start, slen);
+        runtime_memcpy(sub_part, sub_tok.start, slen);
         sub_part[slen] = '\0';
 
         char combined[128];
-        snprintf(combined, sizeof(combined), "%s.%s", sub_name, sub_part);
-        strncpy(sub_name, combined, sizeof(sub_name) - 1);
+        runtime_snprintf(combined, sizeof(combined), "%s.%s", sub_name, sub_part);
+        runtime_strncpy(sub_name, combined, sizeof(sub_name) - 1);
         sub_name[sizeof(sub_name) - 1] = '\0';
     }
 
@@ -54,16 +57,16 @@ BppError vm_call_sub_procedure(VMContext *vm, LexerContext *lex) {
     const char *target_text = NULL;
     bool is_lib = false;
     BValue obj_this;
-    memset(&obj_this, 0, sizeof(obj_this));
+    runtime_memset(&obj_this, 0, sizeof(obj_this));
     bool has_obj_this = false;
 
     if (!find_procedure_ex(vm, sub_name, KW_SUB, &target_line, &target_text, &is_lib)) {
-        if (strchr(sub_name, '.') != NULL) {
+        if (runtime_strchr(sub_name, '.') != NULL) {
             char base_name[64] = {0};
-            const char *dot_pos = strchr(sub_name, '.');
+            const char *dot_pos = runtime_strchr(sub_name, '.');
             size_t b_len = (size_t)(dot_pos - sub_name);
             if (b_len < sizeof(base_name)) {
-                memcpy(base_name, sub_name, b_len);
+                runtime_memcpy(base_name, sub_name, b_len);
                 base_name[b_len] = '\0';
                 const char *method_name = dot_pos + 1;
                 BValue *var_val = var_lookup(vm_get_var(vm), base_name, false);
@@ -71,9 +74,9 @@ BppError vm_call_sub_procedure(VMContext *vm, LexerContext *lex) {
                     BValue type_val;
                     if (map_get(var_val->as.map, "__type__", &type_val) && type_val.type == VAL_STRING && type_val.as.string) {
                         char class_method[128];
-                        snprintf(class_method, sizeof(class_method), "%s.%s", str_data(type_val.as.string), method_name);
+                        runtime_snprintf(class_method, sizeof(class_method), "%s.%s", str_data(type_val.as.string), method_name);
                         if (find_procedure_ex(vm, class_method, KW_SUB, &target_line, &target_text, &is_lib)) {
-                            strncpy(sub_name, class_method, sizeof(sub_name) - 1);
+                            runtime_strncpy(sub_name, class_method, sizeof(sub_name) - 1);
                             sub_name[sizeof(sub_name) - 1] = '\0';
                             obj_this = *var_val;
                             map_add_ref(obj_this.as.map);
@@ -90,7 +93,7 @@ BppError vm_call_sub_procedure(VMContext *vm, LexerContext *lex) {
     }
 
     FormalParam formal_params[16];
-    memset(formal_params, 0, sizeof(formal_params));
+    runtime_memset(formal_params, 0, sizeof(formal_params));
     int param_count = parse_formal_params(vm_get_mem(vm), target_text, formal_params, 16);
 
     BValue args[16];
@@ -122,7 +125,7 @@ BppError vm_call_sub_procedure(VMContext *vm, LexerContext *lex) {
                 LexerContext *def_lex = lex_init(vm_get_mem(vm), formal_params[i].default_expr);
                 if (def_lex) {
                     BppError def_err;
-                    memset(&def_err, 0, sizeof(def_err));
+                    runtime_memset(&def_err, 0, sizeof(def_err));
                     BValue evaled_def = eval_expression(vm, def_lex, &def_err);
                     if (def_err.code == 0) {
                         var_assign(vc, formal_params[i].name, evaled_def);
@@ -167,7 +170,7 @@ BppError vm_call_sub_procedure(VMContext *vm, LexerContext *lex) {
     int nest = 0;
     while (cur_exec_line > 0 && vm_is_running(vm) && !vm_has_error(vm)) {
         BppSubFrame cur_f;
-        if (!vm_sub_peek(vm, &cur_f) || strcasecmp(cur_f.name, sub_name) != 0) {
+        if (!vm_sub_peek(vm, &cur_f) || runtime_strcasecmp(cur_f.name, sub_name) != 0) {
             break;
         }
 
@@ -203,10 +206,10 @@ BppError vm_call_sub_procedure(VMContext *vm, LexerContext *lex) {
                 if (nest > 0) nest--;
                 else is_end_proc = true;
             } else if (tok.type == TOK_IDENT) {
-                if ((tok.length == 6 && strncasecmp(tok.start, "SUBEND", 6) == 0) ||
-                    (tok.length == 6 && strncasecmp(tok.start, "ENDSUB", 6) == 0) ||
-                    (tok.length == 11 && strncasecmp(tok.start, "ENDFUNCTION", 11) == 0) ||
-                    (tok.length == 5 && strncasecmp(tok.start, "FNEND", 5) == 0)) {
+                if ((tok.length == 6 && runtime_strncasecmp(tok.start, "SUBEND", 6) == 0) ||
+                    (tok.length == 6 && runtime_strncasecmp(tok.start, "ENDSUB", 6) == 0) ||
+                    (tok.length == 11 && runtime_strncasecmp(tok.start, "ENDFUNCTION", 11) == 0) ||
+                    (tok.length == 5 && runtime_strncasecmp(tok.start, "FNEND", 5) == 0)) {
                     if (nest > 0) nest--;
                     else is_end_proc = true;
                 }
@@ -246,7 +249,7 @@ BppError vm_call_sub_procedure(VMContext *vm, LexerContext *lex) {
     }
 
     BppSubFrame pop_f;
-    if (vm_sub_peek(vm, &pop_f) && strcasecmp(pop_f.name, sub_name) == 0) {
+    if (vm_sub_peek(vm, &pop_f) && runtime_strcasecmp(pop_f.name, sub_name) == 0) {
         vm_sub_pop(vm, &pop_f);
     }
     for (int i = 0; i < param_count && i < 16; i++) {

@@ -2,19 +2,16 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (incr.c)
-// NEEDS: libengine (lexer.h, lexer.c, vm.h)
-// Provides runtime implementation for the INCR statement in BASIC++.
-//
-// ---- Includes ----
+// NEEDS: libcore (types.h)
+// Declares the INCR statement handler interface in BASIC++.
 
-#ifndef STMT_INCR_H
-#define STMT_INCR_H
+#ifndef INCR_H
+#define INCR_H
 
-#include "vm/vm.h"
-#include "lexer/lexer.h"
+#include "types/types.h"
+#include "eval/eval.h"
 
-void stmt_incr_register(void);
 BppError stmt_incr_handler(VMContext *vm, LexerContext *lex);
-BppError stmt_decr_handler(VMContext *vm, LexerContext *lex);
+void stmt_incr_register(void);
 
-#endif // STMT_INCR_H
+#endif // INCR_H

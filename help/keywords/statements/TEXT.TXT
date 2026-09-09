@@ -1,0 +1,73 @@
+TITLE: TEXT
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/filesystem/binary_ops/text.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+TEXT KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: text.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (file.h, file.c, language_descriptor.h)
+    // NEEDS: libcore (string.h)
+    // NEEDS: libengine (eval.h, eval.c, string.c, text.h)
+    // NEEDS: libkernel (errors.h)
+    // Provides runtime implementation for the TEXT statement in BASIC++.
+    //
+    // ---- Includes ----
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Opens a file channel in sequential text output mode (SDS 940 / DEC PDP-10
+Super BASIC).
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    TEXT #channel, "encoding_spec"
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM TEXT Demonstration
+    20 PRINT "TEXT executed successfully."
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error, Error 52: Bad File Number, Error 55: File Already Open,
+Error 70: Permission Denied
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Filesystem I/O
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_IO
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  TEXT
+Category              Filesystem I/O
+Syntax                TEXT #channel, "encoding_spec"
+Description           Opens a file channel in sequential text output mode...
+Error Summary         Error 2: Syntax Error, Error 52: Bad File Number, E...
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_IO
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/filesystem/binary_ops/text.c

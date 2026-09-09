@@ -1,0 +1,72 @@
+TITLE: GOPHER
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/network/stmt_gopher.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+GOPHER KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: stmt_gopher.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (gopher.h, gopher.c)
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libcore (strops.h, strops.c)
+    // NEEDS: libengine (eval.h, eval.c, lexer.h, lexer.c, stmt_gopher.h, string.c
+    // NEEDS: libengine (vm.h)
+    // Implements GOPHER statement for hosting RFC 1436 Gopher menus and servers.
+    //
+    // ---- Includes ----
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Hosts RFC 1436 Gopher directory menus or fetches Gopher items.
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    GOPHER.SERVE [port] [, root_dir$] | GOPHER.GET$(url$)
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = GOPHER.SERVE [port] [, root_dir$] | GOPHER.GET$(url$)
+    20 PRINT "Result: "; Val
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error, Error 13: Type Mismatch
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Network & Cloud
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SAFE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  GOPHER
+Category              Network & Cloud
+Syntax                GOPHER.SERVE [port] [, root_dir$] | GOPHER.GET$(url$)
+Description           Hosts RFC 1436 Gopher directory menus or fetches Go...
+Error Summary         Error 2: Syntax Error, Error 13: Type Mismatch
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/network/stmt_gopher.c

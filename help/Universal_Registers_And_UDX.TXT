@@ -1,0 +1,63 @@
+TITLE: Universal_Registers_And_UDX
+TIER: 2
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/system/stmt_udx.c,
+engine/src/statements/system/stmt_reg.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+UNIVERSAL REGISTER BUS, CALCULATORS & UDX ARCHITECTURE
+==============================================================================
+
+The authoritative specification for the universal register bus (REG.*),
+Prefix (PN) and Postfix (RPN) operational calculators, Universal Data
+Exchange (UDX), and delimiter orthogonality in BASIC++ v6.5.2.
+
+
+1. OVERVIEW AND STRUCTURAL INVARIANTS
+
+BASIC++ implements a unified data bus architecture built on two
+complementary foundations:
+
+* Universal Register Bus (libreg): A bank of fast, typed virtual CPU
+  registers (REG.A-REG.Z, REG.R0-REG.R15) providing low-latency storage.
+* Universal Data Exchange (UDX): A shared-memory channel and transfer
+  mechanism (stmt_udx.c) enabling zero-copy data routing.
+* Strict Delimiter Orthogonality: Non-interchangeable delimiter rules:
+  - ( ): Infix algebraic grouping and function argument lists.
+  - [ ]: Prefix Polish Notation (PN), array/string slicing.
+  - { }: Postfix Reverse Polish Notation (RPN), dictionary maps.
+
+
+2. THE UNIVERSAL REGISTER BUS (REG.*)
+
+Registers are addressed directly in expressions and assignment statements:
+* Scalar registers: REG.A, REG.B, REG.X, REG.Y.
+* Indexed vector registers: REG.R(0) through REG.R(15).
+* Register operations: REG.RESET, REG.DUMP, REG.SWAP REG.A, REG.B.
+
+
+3. OPERATIONAL CALCULATORS: PREFIX (PN) AND POSTFIX (RPN)
+
+BASIC++ integrates dedicated stack calculators:
+* Prefix Polish Notation ([ ]): [+ 10 (* 2 5)] evaluates in prefix order.
+* Postfix Reverse Polish Notation ({ }): { 10 2 5 * + } evaluates in RPN.
+
+
+4. UNIVERSAL DATA EXCHANGE (UDX)
+
+Implemented in engine/src/statements/system/stmt_udx.c:
+* UDX TRANSFER src, dst: Streams data directly between channels.
+* UDX CHANNEL name$, discipline$: Configures named UDX pipe (FIFO/LIFO).
+
+
+5. EXAMPLE: REGISTER OPERATIONS AND PREFIX CALCULATOR
+
+    10 REM Universal Registers & Prefix Math
+    20 REG.A = 42
+    30 REG.B = 100
+    40 REG.SWAP REG.A, REG.B
+    50 PRINT "REG.A: "; REG.A; " REG.B: "; REG.B
+    60 Result = [+ REG.A (* REG.B 2)]
+    70 PRINT "Prefix Expression Result: "; Result

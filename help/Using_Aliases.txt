@@ -1,122 +1,73 @@
-======================================================================
-  BASIC++ V6.5.2 USING ALIASES
-======================================================================
+TITLE: Using_Aliases
+TIER: 2
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/introspection/alias.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+BASIC++ v6.5.2 USING ALIASES ARCHITECTURE
+==============================================================================
+
+The authoritative specification for keyword aliasing, syntax renaming,
+operator re-mapping, and identifier synonyms in BASIC++ v6.5.2.
 
 
-======================================================================
-  1. THE ALIAS STATEMENT
-======================================================================
+1. THE ALIAS STATEMENT
 
-ALIAS creates a new name for an existing keyword, statement, or function. The alias behaves identically to the original ? it is a syntactic synonym, not a wrapper or macro:
+The ALIAS statement creates an alternative name for an existing keyword,
+statement, function, or operator (engine/src/statements/introspection/
+alias.c).
 
-10 ALIAS "DISPLAY" AS "PRINT"
-20 DISPLAY "Hello, World!"      ' Works exactly like PRINT
-
-After this alias, DISPLAY can be used anywhere PRINT would be used, with all the same syntax (semicolons, commas, USING, #channel, etc.).
-
-
-======================================================================
-  2. ALIAS SYNTAX
-======================================================================
-
-ALIAS "new_name" AS "original_name" creates the alias. Both names are case-insensitive. The original keyword remains available ? ALIAS adds a name, it does not replace the original.
-
-10 ALIAS "AFFICHER" AS "PRINT"      ' French
-20 ALIAS "LIRE" AS "INPUT"          ' French
-30 ALIAS "SI" AS "IF"               ' French
-40 ALIAS "ALORS" AS "THEN"          ' French
-50 ALIAS "FIN" AS "END"             ' French
-
-After these aliases, a program can be written entirely in French keywords:
-
-100 AFFICHER "Bonjour!"
-110 LIRE "Votre nom: "; Nom$
-120 SI Nom$ = "" ALORS FIN
-130 AFFICHER "Bienvenue, "; Nom$
+The alias behaves identically to the original keyword: it is an exact
+syntactic synonym evaluated through the primary parser dispatch table,
+not a text substitution macro. The original keyword remains fully
+accessible.
 
 
-======================================================================
-  3. USE CASES
-======================================================================
+2. SYNTAX AND OPERATIONS
+
+A. Keyword Aliasing:
+    ALIAS new_name = original_keyword
+
+Creates new_name as a synonym for original_keyword. Both identifiers are
+case-insensitive.
+
+B. Operator Aliasing:
+    ALIAS OPER new_op = original_op
+
+Maps an alternative operator token to an existing operator.
+
+C. Alias Management:
+* ALIAS LIST: Displays all currently active alias mappings.
+* ALIAS CLEAR: Removes all user-defined aliases and restores defaults.
 
 
-----------------------------------------------------------------------
-  Localization
-----------------------------------------------------------------------
+3. PROTECTED SYSTEM KEYWORDS
 
-ALIAS allows BASIC++ to be used with keywords in any human language. Teachers can create alias sets for their students' native language.
+To prevent unrecoverable VM corruption, core control flow and
+introspection keywords cannot be aliased or overridden:
 
+* SCOPE, ALIAS, KEYWORD, OVERRIDE
+* REM, END, STOP, NEW, RUN, CLEAR
 
-----------------------------------------------------------------------
-  Compatibility
-----------------------------------------------------------------------
-
-Programs from one BASIC dialect can use aliases to map unfamiliar keywords:
-
-10 ALIAS "REPEAT" AS "DO"           ' Map REPeat to DO
-20 ALIAS "ENDREPEAT" AS "LOOP"      ' Map END REPeat to LOOP
+Attempting to redefine any protected keyword generates Error 13:
+Permission Denied.
 
 
-----------------------------------------------------------------------
-  Abbreviation
-----------------------------------------------------------------------
+4. USE CASES
 
-Frequently used keywords can be abbreviated:
-
-10 ALIAS "P" AS "PRINT"
-20 ALIAS "I" AS "INPUT"
-30 P "Quick typing!"
+* Natural Language Localization: French, Spanish, or German synonyms.
+* Dialect Parity: Mapping vintage dialect synonyms (e.g., CLS to HOME).
+* Shorthand Typing: Creating concise shortcuts for interactive commands.
 
 
-----------------------------------------------------------------------
-  Domain-Specific Languages
-----------------------------------------------------------------------
+5. EXAMPLE: KEYWORD SYNONYMS
 
-Aliases can create domain-specific vocabularies:
-
-10 ALIAS "MEASURE" AS "INPUT"
-20 ALIAS "RECORD" AS "PRINT"
-30 ALIAS "SAMPLE" AS "READ"
-
-
-======================================================================
-  4. ALIAS FOR FUNCTIONS
-======================================================================
-
-ALIAS works with functions as well as statements:
-
-10 ALIAS "LONGUEUR" AS "LEN"
-20 ALIAS "GAUCHE$" AS "LEFT$"
-30 PRINT LONGUEUR("HELLO")          ' Prints 5
-40 PRINT GAUCHE$("HELLO", 3)        ' Prints HEL
-
-
-======================================================================
-  5. LISTING AND REMOVING ALIASES
-======================================================================
-
-ALIAS with no arguments lists all active aliases:
-
-> ALIAS
-Active aliases:
-  DISPLAY -> PRINT
-  AFFICHER -> PRINT
-  LONGUEUR -> LEN
-
-ALIAS$ returns the original keyword for an alias: PRINT ALIAS$("DISPLAY") prints "PRINT". If the name is not an alias, ALIAS$ returns the name itself.
-
-REMOVE "DISPLAY" removes the alias. The original keyword remains unaffected.
-
-
-======================================================================
-  6. PERSISTENCE
-======================================================================
-
-Aliases defined in a program persist for the duration of the session. They are cleared by NEW. Aliases can be saved in a startup file that runs before the main program using CHAIN or MERGE.
-
-
-======================================================================
-  7. IMPLEMENTATION
-======================================================================
-
-ALIAS is implemented in engine/src/statements/dialect/alias.c. It modifies the lexer's keyword lookup table by adding an entry that maps the alias name to the same keyword ID as the original. This means aliased keywords are recognized at lex time and produce the same token type, ensuring complete compatibility with all statement handlers.
+    10 REM Alias Statement Demo
+    20 ALIAS DISPLAY = PRINT
+    30 ALIAS ASK = INPUT
+    40 DISPLAY "Hello from aliased DISPLAY statement!"
+    50 ASK "Enter your name: ", UserName$
+    60 DISPLAY "Welcome, "; UserName$
+    70 ALIAS CLEAR

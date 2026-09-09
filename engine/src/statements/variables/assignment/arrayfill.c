@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
 // NEEDS: libcore (arrays.h, arrays.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libcore (strings.h, strings.c)
 // NEEDS: libengine (arrayfill.h, eval.h, eval.c, lexer.h, lexer.c, string.c)
 // NEEDS: libengine (vm.h)
@@ -17,18 +17,23 @@
 #include "eval/eval.h"
 #include "runtime/arrays.h"
 #include "runtime/strings.h"
-#include "runtime/micro_lib_metadata.h"
-#include <string.h>
+#include "runtime/language_descriptor.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_arrayfill_desc = {
+    .name = "ARRAYFILL",
+    .category = "Arrays & Matrices",
+    .syntax = "ARRAYFILL array_name(), fill_value",
+    .description = "Fills all elements of the specified array with the given value.",
+    .error_summary = "Error 2: Syntax Error, Error 9: Subscript out of range, Error 13: Type Mismatch",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SAFE,
+    .type = FEATURE_STATEMENT
+};
 
 void stmt_arrayfill_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "ARRAYFILL",
-        .category = "Arrays & Matrices",
-        .syntax = "ARRAYFILL array_name(), fill_value",
-        .help_text = "Fills all elements of the specified array with the given value.",
-        .error_codes = "Error 2: Syntax Error, Error 9: Subscript out of range, Error 13: Type Mismatch"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_arrayfill_desc);
 }
 
 BppError stmt_arrayfill_handler(VMContext *vm, LexerContext *lex) {
@@ -44,7 +49,7 @@ BppError stmt_arrayfill_handler(VMContext *vm, LexerContext *lex) {
 
     char arr_name[64];
     size_t len = (name_tok.length < sizeof(arr_name) - 1) ? name_tok.length : sizeof(arr_name) - 1;
-    memcpy(arr_name, name_tok.start, len);
+    runtime_memcpy(arr_name, name_tok.start, len);
     arr_name[len] = '\0';
 
     // Optional () after array name

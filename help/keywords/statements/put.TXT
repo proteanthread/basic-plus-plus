@@ -1,31 +1,73 @@
-PUT Random File Record Write or Graphics Blit Statement
-=======================================================
+TITLE: PUT
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/filesystem/file_ops/put.c
+GENERATED: no, hand-written
+STATUS: current
 
-Writes a record buffer to a random-access file, or blits a sprite image from an array onto the screen.
+==============================================================================
+PUT KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: put.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (arrays.h, arrays.c, file.h, file.c)
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libengine (bgi.h, bgi.c, eval.h, eval.c, lexer.h, lexer.c)
+    // NEEDS: libengine (map.h, map.c, put.h, string.c, vm.h)
+    // NEEDS: libplatform (platform.h)
+    // Provides runtime implementation for the PUT statement in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Writes a record from the FIELD buffer into a random-access file or draws a
+memory array onto the screen.
 
-    PUT [#]filenum% [, record_number&]
-    PUT (x1%, y1%), array% [, {PSET | PRESET | AND | OR | XOR}]
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    PUT [#]file_num [, record_number] | PUT (x, y), array_name [, action]
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = PUT [#]file_num [, record_number] | PUT (10, y), array_name [, action]
+    20 PRINT "Result: "; Val
 
-ERROR CONDITIONS
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error, Error 52: Bad File Number, Error 63: Bad Record Number
 
-  - Error 52 (ERR_BAD_FILE_NUMBER): File channel not open.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Filesystem I/O & Graphics
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_IO
 
-
-OPERATIONAL NOTES
-----------------------------------------------------------------------
-
-  XOR blitting enables non-destructive sprite animation.
-
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 OPEN "R", #1, "DATA.DAT", 64
-    20 PUT #1, 1 : REM Write record 1
-    30 CLOSE #1
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  PUT
+Category              Filesystem I/O & Graphics
+Syntax                PUT [#]file_num [, record_number] | PUT (x, y), arr...
+Description           Writes a record from the FIELD buffer into a random...
+Error Summary         Error 2: Syntax Error, Error 52: Bad File Number, E...
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_IO
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/filesystem/file_ops/put.c

@@ -2,7 +2,7 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (call.c, exec_internal.h)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libcore (variables.h, variables.c)
 // NEEDS: libengine (bios.h, bios.c, eval.h, eval.c, interrupt.h, map.h, map.c)
 // NEEDS: libengine (string.c, time.h, time.c)
@@ -14,17 +14,25 @@
 #include "eval/eval.h"
 #include "runtime/variables.h"
 #include "runtime/map.h"
-#include "runtime/micro_lib_metadata.h"
-#include "bios/bios.h"
-#include <string.h>
-#include <stdio.h>
-#include <time.h>
+#include "runtime/language_descriptor.h"
 
-#if defined(_WIN32)
-#include <windows.h>
-#else
-#include <sys/time.h>
-#endif
+static const LangDesc g_interrupt_desc = {
+    .name = "INTERRUPT",
+    .category = "System & Hardware",
+    .syntax = "CALL INTERRUPT(int_num%, inregs, outregs) / INTERRUPT int_num%, inregs, outregs",
+    .description = "",
+    .error_summary = "None",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SYSTEM,
+    .type = FEATURE_STATEMENT
+};
+
+#include "bios/bios.h"
+#include "platform/platform.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "runtime/format/snprintf.h"
+#include "runtime/ctype/ctype.h"
 
 static void get_struct_reg(VMContext *vm, const char *prefix, const char *field, uint16_t *out_reg) {
     VariableContext *vc = vm_get_var(vm);
@@ -37,8 +45,8 @@ static void get_struct_reg(VMContext *vm, const char *prefix, const char *field,
             return;
         }
         char upper_field[32];
-        size_t flen = strlen(field);
-        for (size_t i = 0; i <= flen; i++) upper_field[i] = (char)toupper((unsigned char)field[i]);
+        size_t flen = runtime_strlen(field);
+        for (size_t i = 0; i <= flen; i++) upper_field[i] = (char)runtime_toupper((unsigned char)field[i]);
         if (map_get(base_val->as.map, upper_field, &fval)) {
             *out_reg = (uint16_t)((long)fval.as.number & 0xFFFF);
             return;
@@ -46,7 +54,7 @@ static void get_struct_reg(VMContext *vm, const char *prefix, const char *field,
     }
     // 2. Flat lookup "prefix.field"
     char varname[128];
-    snprintf(varname, sizeof(varname), "%s.%s", prefix, field);
+    runtime_snprintf(varname, sizeof(varname), "%s.%s", prefix, field);
     BValue *val = var_lookup(vc, varname, false);
     if (val && (val->type == VAL_NUMBER || val->type == VAL_INTEGER)) {
         *out_reg = (uint16_t)((long)val->as.number & 0xFFFF);
@@ -73,14 +81,14 @@ static void set_struct_reg(VMContext *vm, const char *prefix, const char *field,
 
     // 2. Set flat variable "prefix.field"
     char varname[128];
-    snprintf(varname, sizeof(varname), "%s.%s", prefix, field);
+    runtime_snprintf(varname, sizeof(varname), "%s.%s", prefix, field);
     var_assign(vc, varname, val);
 }
 
 static BppError execute_interrupt(VMContext *vm, uint8_t int_num, const char *in_name, const char *out_name, bool is_extended) {
-    BppError err; memset(&err, 0, sizeof(err));
+    BppError err; runtime_memset(&err, 0, sizeof(err));
     BiosRegs regs;
-    memset(&regs, 0, sizeof(regs));
+    runtime_memset(&regs, 0, sizeof(regs));
 
     // Unpack input registers
     get_struct_reg(vm, in_name, "ax", &regs.ax);
@@ -110,7 +118,8 @@ static BppError execute_interrupt(VMContext *vm, uint8_t int_num, const char *in
             // Get Date: CX=year, DH=month, DL=day, AL=day of week
             time_t rawtime;
             time(&rawtime);
-            struct tm *ti = localtime(&rawtime);
+            struct tm ti_buf;
+            struct tm *ti = platform_localtime(&rawtime, &ti_buf);
             if (ti) {
                 regs.cx = (uint16_t)(ti->tm_year + 1900);
                 regs.dx = (uint16_t)(((ti->tm_mon + 1) << 8) | ti->tm_mday);
@@ -120,7 +129,8 @@ static BppError execute_interrupt(VMContext *vm, uint8_t int_num, const char *in
             // Get Time: CH=hour, CL=minute, DH=second, DL=hundredths
             time_t rawtime;
             time(&rawtime);
-            struct tm *ti = localtime(&rawtime);
+            struct tm ti_buf;
+            struct tm *ti = platform_localtime(&rawtime, &ti_buf);
             if (ti) {
                 regs.cx = (uint16_t)((ti->tm_hour << 8) | ti->tm_min);
                 regs.dx = (uint16_t)((ti->tm_sec << 8) | 0);
@@ -132,7 +142,8 @@ static BppError execute_interrupt(VMContext *vm, uint8_t int_num, const char *in
             // Get System Clock Ticks since midnight (18.2 Hz)
             time_t rawtime;
             time(&rawtime);
-            struct tm *ti = localtime(&rawtime);
+            struct tm ti_buf;
+            struct tm *ti = platform_localtime(&rawtime, &ti_buf);
             if (ti) {
                 long sec_midnight = ti->tm_hour * 3600 + ti->tm_min * 60 + ti->tm_sec;
                 long ticks = (long)(sec_midnight * 18.2065);
@@ -168,7 +179,7 @@ static BppError execute_interrupt(VMContext *vm, uint8_t int_num, const char *in
 }
 
 static BppError parse_interrupt_args(VMContext *vm, LexerContext *lex, bool is_extended) {
-    BppError err; memset(&err, 0, sizeof(err));
+    BppError err; runtime_memset(&err, 0, sizeof(err));
     bool has_lparen = false;
     BppToken tok = lex_peek(lex);
     if (tok.type == TOK_LPAREN) {
@@ -189,7 +200,7 @@ static BppError parse_interrupt_args(VMContext *vm, LexerContext *lex, bool is_e
     if (tok.type != TOK_IDENT && tok.type != TOK_KEYWORD) { err.code = 2; err.message = "Expected input register variable"; return err; }
     char in_name[64] = {0};
     size_t len = (tok.length < 63) ? tok.length : 63;
-    memcpy(in_name, tok.start, len);
+    runtime_memcpy(in_name, tok.start, len);
 
     tok = lex_next(lex);
     if (tok.type != TOK_COMMA) { err.code = 2; err.message = "Expected comma after inregs"; return err; }
@@ -199,7 +210,7 @@ static BppError parse_interrupt_args(VMContext *vm, LexerContext *lex, bool is_e
     if (tok.type != TOK_IDENT && tok.type != TOK_KEYWORD) { err.code = 2; err.message = "Expected output register variable"; return err; }
     char out_name[64] = {0};
     len = (tok.length < 63) ? tok.length : 63;
-    memcpy(out_name, tok.start, len);
+    runtime_memcpy(out_name, tok.start, len);
 
     if (has_lparen) {
         tok = lex_next(lex);
@@ -218,10 +229,5 @@ BppError stmt_interruptx_handler(VMContext *vm, LexerContext *lex) {
 }
 
 void stmt_interrupt_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "INTERRUPT",
-        .category = "System & Hardware",
-        .syntax = "CALL INTERRUPT(int_num%, inregs, outregs) / INTERRUPT int_num%, inregs, outregs"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_interrupt_desc);
 }

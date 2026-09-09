@@ -1,0 +1,72 @@
+<!--
+Title:        DESTROY
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/statements/filesystem/binary_ops/destroy.c
+Generated:    no, hand-written
+Status:       current
+-->
+
+# `DESTROY` Keyword Reference
+
+## Source Header
+
+```c
+// FILENAME: destroy.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore (language_descriptor.h)
+// NEEDS: libengine (destroy.h, kill.h, kill.c)
+// Provides runtime implementation for the DESTROY statement in BASIC++.
+//
+// ---- Includes ----
+```
+
+## 1. Description & Usage
+
+Apple /// Business BASIC alias for KILL. Deletes a file from the disk.
+
+## 2. Syntax
+
+```basic
+DESTROY filename$
+```
+
+## 3. Code Example
+
+```basic
+10 REM DESTROY Demonstration
+20 PRINT "DESTROY executed successfully."
+```
+
+## 4. Error Conditions
+
+Error 2: Syntax Error, Error 53: File Not Found, Error 70: Permission Denied
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Filesystem
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_IO
+
+---
+
+## LanguageDescriptor (LangDesc) Quick Reference
+
+| Field | Value |
+|---|---|
+| Name | DESTROY |
+| Category | Filesystem |
+| Syntax | DESTROY filename$ |
+| Description | Apple /// Business BASIC alias for KILL. Deletes a file from the disk. |
+| Error Summary | Error 2: Syntax Error, Error 53: File Not Found, Error 70: Permission Denied |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_IO |
+| Feature Type | FEATURE_STATEMENT |
+| Delimiter Mask | none |
+| Compatibility | none |
+| Since Version | none |
+| Source File | engine/src/statements/filesystem/binary_ops/destroy.c |

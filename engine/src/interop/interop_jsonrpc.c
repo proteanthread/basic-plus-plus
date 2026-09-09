@@ -10,9 +10,11 @@
 // ---- Includes ----
 
 #include "interop/interop_jsonrpc.h"
-#include <string.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "runtime/format/snprintf.h"
+#include "runtime/memory/alloc.h"
+#include "runtime/conv/num_parse.h"
 
 static const char* skip_whitespace(const char* p) {
     while (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r') p++;
@@ -41,7 +43,7 @@ static bool parse_string(const char** p, char* out, size_t max_len) {
 
 bool jsonrpc_parse_request(const char* json_str, JsonRpcRequest* req) {
     if (!json_str || !req) return false;
-    memset(req, 0, sizeof(JsonRpcRequest));
+    runtime_memset(req, 0, sizeof(JsonRpcRequest));
     
     const char* p = skip_whitespace(json_str);
     if (*p != '{') return false;
@@ -56,10 +58,10 @@ bool jsonrpc_parse_request(const char* json_str, JsonRpcRequest* req) {
                 if (*p == ':') {
                     p++;
                     p = skip_whitespace(p);
-                    if (strncmp(key, "method", 64) == 0) {
+                    if (runtime_strncmp(key, "method", 64) == 0) {
                         parse_string(&p, req->method, sizeof(req->method));
-                    } else if (strncmp(key, "id", 64) == 0) {
-                        req->id = atoi(p);
+                    } else if (runtime_strncmp(key, "id", 64) == 0) {
+                        req->id = runtime_atoi(p);
                         while (*p >= '0' && *p <= '9') p++;
                     } else {
                         while (*p && *p != ',' && *p != '}') p++;
@@ -73,18 +75,18 @@ bool jsonrpc_parse_request(const char* json_str, JsonRpcRequest* req) {
         if (*p == ',') p++;
     }
     
-    return strlen(req->method) > 0;
+    return runtime_strlen(req->method) > 0;
 }
 
 void jsonrpc_format_response(const JsonRpcResponse* res, char* buffer, size_t buf_size) {
     if (!buffer || buf_size == 0) return;
     
     if (res->error_code != 0) {
-        snprintf(buffer, buf_size, 
+        runtime_snprintf(buffer, buf_size, 
                  "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":%d,\"message\":\"%s\"},\"id\":%d}",
                  res->error_code, res->error_message, res->id);
     } else {
-        snprintf(buffer, buf_size, 
+        runtime_snprintf(buffer, buf_size, 
                  "{\"jsonrpc\":\"2.0\",\"result\":%s,\"id\":%d}",
                  res->result[0] ? res->result : "null", res->id);
     }
@@ -92,9 +94,9 @@ void jsonrpc_format_response(const JsonRpcResponse* res, char* buffer, size_t bu
 
 void jsonrpc_format_error(JsonRpcResponse* res, int error_code, const char* error_message) {
     if (!res) return;
-    memset(res, 0, sizeof(JsonRpcResponse));
+    runtime_memset(res, 0, sizeof(JsonRpcResponse));
     res->error_code = error_code;
     if (error_message) {
-        strncpy(res->error_message, error_message, sizeof(res->error_message) - 1);
+        runtime_strncpy(res->error_message, error_message, sizeof(res->error_message) - 1);
     }
 }

@@ -10,7 +10,7 @@
 #include "runtime/crypto_engine.h"
 #include "runtime/string/strops.h"
 #include "runtime/string/memops.h"
-#include <stdio.h>
+#include "runtime/format/snprintf.h"
 
 // SHA-256 implementation
 #define ROTR(x, n) (((x) >> (n)) | ((x) << (32 - (n))))

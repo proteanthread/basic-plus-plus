@@ -1,25 +1,72 @@
-# `CEXP` Complex Exponential Function
+<!--
+Title:        CEXP
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/module/mathext.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Function Definition
+# `CEXP` Keyword Reference
 
-The `CEXP` function calculates the exponential $e^z$ of a complex number $z = x + iy$:
+## Source Header
 
-$$e^{x + iy} = e^x (\cos y + i \sin y)$$
-
-### Syntax Signatures:
-```basic
-res_complex = CEXP(complex_val)
+```c
+// FILENAME: mathext.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore (funcreg.h, funcreg.c, math.h)
+// NEEDS: libengine (math.c)
+// Provides core logic and interface definitions for mathext within BASIC++.
+//
+// ---- Includes ----
 ```
 
-### Operational Rules:
-- Returns complex number result structure.
+## 1. Description & Usage
+
+Computes the complex exponential e^z of complex number z.
+
+## 2. Syntax
+
+```basic
+CEXP(z)
+```
+
+## 3. Code Example
+
+```basic
+10 Val = CEXP(z)
+20 PRINT "Result: "; Val
+```
+
+## 4. Error Conditions
+
+Error 13: Type Mismatch
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Math & Complex Numbers
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_PURE
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 Z = COMPLEX(0, 3.1415926535)
-20 RES = CEXP(Z)
-30 PRINT "e^(i*PI) = "; REAL(RES); " + "; IMAG(RES); "i (expected -1)"
-```
+| Field | Value |
+|---|---|
+| Name | CEXP |
+| Category | Math & Complex Numbers |
+| Syntax | CEXP(z) |
+| Description | Computes the complex exponential e^z of complex number z. |
+| Error Summary | Error 13: Type Mismatch |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_PURE |
+| Feature Type | FEATURE_FUNCTION |
+| Delimiter Mask | none |
+| Compatibility | BASIC++ Standard |
+| Since Version | 6.0.0 |
+| Source File | engine/src/module/mathext.c |

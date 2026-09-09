@@ -10,14 +10,15 @@
 #ifndef VARIABLES_INTERNAL_H
 #define VARIABLES_INTERNAL_H
 
-#include <ctype.h>
-#include <math.h>
+#include "runtime/ctype/ctype.h"
+#include "runtime/math/math.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include "runtime/format/snprintf.h"
+#include "runtime/memory/alloc.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
 
 #include "debug/logger.h"
 #include "device/vcon.h"
@@ -25,6 +26,7 @@
 #include "memory/memory.h"
 #include "platform/platform.h"
 #include "runtime/map.h"
+#include "runtime/set.h"
 #include "runtime/num_format.h"
 #include "runtime/strings.h"
 #include "runtime/variables.h"
@@ -43,6 +45,7 @@
 typedef struct VarEntry {
     char            *name;
     BValue           value;
+    size_t           max_len;
     struct VarEntry *next;
 } VarEntry;
 
@@ -52,11 +55,24 @@ typedef struct ScopeDefMapping {
     struct ScopeDefMapping *next;
 } ScopeDefMapping;
 
+#define DIRECT_VAR_CACHE_SIZE 256
+
 typedef struct VarCacheEntry {
-    char    name[64];
-    BValue *val_ptr;
-    bool    valid;
+    char     name[64];
+    uint32_t hash;
+    BValue  *val_ptr;
+    bool     valid;
 } VarCacheEntry;
+
+typedef struct DynamicVarEntry {
+    char                    name[64];
+    BppVarGetter            getter;
+    BppVarSetter            setter;
+    char                    read_fn[64];
+    char                    write_fn[64];
+    void                   *user_data;
+    struct DynamicVarEntry *next;
+} DynamicVarEntry;
 
 struct VariableContext {
     MemoryContext   *mem;
@@ -73,8 +89,10 @@ struct VariableContext {
     ScopeDefMapping *scope_defs;
     bool             case_sensitive;
 
-    VarCacheEntry    mru_cache[VAR_CACHE_SIZE];
-    uint8_t          mru_head;
+    BValue           fast_scalars[26];
+    bool             fast_scalars_valid[26];
+    VarCacheEntry    direct_cache[DIRECT_VAR_CACHE_SIZE];
+    DynamicVarEntry *dynamic_vars;
 };
 
 //
@@ -86,5 +104,6 @@ unsigned int hash_name(VariableContext *ctx, const char *name);
 void normalize_name(VariableContext *ctx, char *out, const char *in, size_t max_len);
 bool is_magic_virtual_var(const char *name);
 BValue *get_magic_virtual_var(VariableContext *ctx, const char *norm_name);
+DynamicVarEntry *var_find_dynamic(VariableContext *ctx, const char *name);
 
 #endif // VARIABLES_INTERNAL_H

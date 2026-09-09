@@ -1,18 +1,69 @@
-BASIC++ FUNCTION REFERENCE: MKS$ / MKSSTR
-======================================================================
+TITLE: MKSSTR
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/builtins/string_fn.c
+GENERATED: no, hand-written
+STATUS: current
 
-1. SYNTAX & DESCRIPTION
-  result$ = MKS$(single_expr!)
+==============================================================================
+MKSSTR KEYWORD REFERENCE
+==============================================================================
 
-Converts a 32-bit single-precision floating-point number into a 4-byte binary
-string. Deserialized using CVS.
+SOURCE HEADER:
+    // FILENAME: string_fn.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore, libengine
+    // Provides core logic and interface definitions for string_fn within BASIC++.
+    //
+    // ---- Includes ----
 
-2. PARAMETERS & RETURN VALUES
-- single_expr!: Single-precision float.
-- Returns: 4-byte binary string.
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Encodes a single-precision floating-point number into a 4-byte fielded binary
+string.
 
-3. ERROR CODES
-- Error 13 (ERR_TYPE_MISMATCH): Non-numeric argument.
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    MKSSTR(sng_val!) | MKS$(sng_val!)
 
-4. EXAMPLES
-  10 LSET S$ = MKS$(25.5)
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = MKSSTR(sng_val!) | MKS$(sng_val!)
+    20 PRINT "Result: "; Val
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 14: Out of String Space
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       GW-BASIC, QBASIC, BASIC++ Standard
+Since Version: 6.0.0
+Category:      Binary & Byte Conversion
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_PURE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  MKSSTR
+Category              Binary & Byte Conversion
+Syntax                MKSSTR(sng_val!) | MKS$(sng_val!)
+Description           Encodes a single-precision floating-point number in...
+Error Summary         Error 14: Out of String Space
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_PURE
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         GW-BASIC, QBASIC, BASIC++ Standard
+Since Version         6.0.0
+Source File           engine/src/eval/builtins/string_fn.c

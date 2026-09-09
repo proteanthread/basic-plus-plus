@@ -1,25 +1,67 @@
-break Execution Breakpoint Statement
-====================================
+TITLE: break
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/ast/eval_ast.c
+GENERATED: no, hand-written
+STATUS: current
 
-Configures or triggers an immediate breakpoint in the program execution engine.
+==============================================================================
+BREAK KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: eval_ast.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community -- All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: baspp.exe, bpp.exe, bs.exe, libengine
+    // NEEDS: libcore, libkernel
+    // Implements component functionality for break.
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Immediately exits the innermost active loop (FOR, WHILE, DO), or invokes the
+interactive debugger breakpoint.
 
-    BREAK [ON | OFF]
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    BREAK
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM BREAK Demonstration
+    20 PRINT "BREAK executed successfully."
 
-OPERATIONAL NOTES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 5: Illegal Function Call (outside loop)
 
-  Integrates with interactive debugger and DAP server.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Control Flow
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SAFE
 
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 BREAK ON
-    20 FOR I = 1 TO 10
-    30   IF I = 5 THEN BREAK
-    40 NEXT I
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  BREAK
+Category              Control Flow
+Syntax                BREAK
+Description           Immediately exits the innermost active loop (FOR, W...
+Error Summary         Error 5: Illegal Function Call (outside loop)
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         BASIC++ Standard
+Since Version         6.0.0
+Source File           engine/src/eval/ast/eval_ast.c

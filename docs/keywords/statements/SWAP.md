@@ -1,26 +1,74 @@
-# `SWAP` Variable Exchange Statement
+<!--
+Title:        SWAP
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/statements/variables/assignment/swap.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Keyword Definition
+# `SWAP` Keyword Reference
 
-The `SWAP` statement exchanges the values of two variables or array elements of identical data types without requiring a temporary third variable.
+## Source Header
 
-### Syntax Signatures:
-```basic
-SWAP variable1, variable2
-SWAP array(i), array(j)
+```c
+// FILENAME: swap.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine (exchange.c)
+// NEEDS: libcore (arrays.h, arrays.c)
+// NEEDS: libcore (language_descriptor.h, string.h)
+// NEEDS: libcore (variables.h, variables.c)
+// NEEDS: libengine (eval.h, eval.c, string.c, swap.h)
+// Provides runtime implementation for the SWAP statement in BASIC++.
+//
+// ---- Includes ----
 ```
 
-### Operational Rules:
-- **Type Requirement**: Both operands must have identical types (both numeric, or both string). Swapping mismatched types raises Error 13 (`ERR_TYPE_MISMATCH`).
-- **String Safety**: Exchanges reference-counted string pointers safely without double-freeing or memory leaks.
+## 1. Description & Usage
+
+Exchanges the values of two variables or array elements of identical types.
+
+## 2. Syntax
+
+```basic
+SWAP variable1, variable2
+```
+
+## 3. Code Example
+
+```basic
+10 REM SWAP Demonstration
+20 PRINT "SWAP executed successfully."
+```
+
+## 4. Error Conditions
+
+Error 2: Syntax Error, Error 13: Type Mismatch
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Variables & Memory
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_SYSTEM
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 A$ = "Hello" : B$ = "World"
-20 PRINT "Before: A="; A$; " B="; B$
-30 SWAP A$, B$
-40 PRINT "After : A="; A$; " B="; B$
-```
+| Field | Value |
+|---|---|
+| Name | SWAP |
+| Category | Variables & Memory |
+| Syntax | SWAP variable1, variable2 |
+| Description | Exchanges the values of two variables or array elements of identical types. |
+| Error Summary | Error 2: Syntax Error, Error 13: Type Mismatch |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_SYSTEM |
+| Feature Type | FEATURE_STATEMENT |
+| Delimiter Mask | none |
+| Compatibility | none |
+| Since Version | none |
+| Source File | engine/src/statements/variables/assignment/swap.c |

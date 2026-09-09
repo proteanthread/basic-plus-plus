@@ -1,0 +1,260 @@
+REFORMAT CHECK Report for superstartrek.bas
+
+Total Lines: 425, Diagnostics: 2 Errors, 49 Warnings
+STRICT Ready: NO
+
+[WARNING] Line 5180: Empty block body between FOR (line 5150) and NEXT (line 5180)
+  WHAT: Empty block body between FOR (line 5150) and NEXT (line 5180)
+  WHY:  An empty block body usually indicates dead code or incomplete logic.
+  HOW:  Add statements inside the block or remove the empty block pair.
+
+[WARNING] Line 5890: Empty block body between FOR (line 5870) and NEXT (line 5890)
+  WHAT: Empty block body between FOR (line 5870) and NEXT (line 5890)
+  WHY:  An empty block body usually indicates dead code or incomplete logic.
+  HOW:  Add statements inside the block or remove the empty block pair.
+
+[ERROR] Line 670: FOR at line 670 has no matching NEXT
+  WHAT: FOR at line 670 has no matching NEXT
+  WHY:  Every structured control block must be closed before end of file.
+  HOW:  Add 'NEXT' before end of procedure/file.
+
+[ERROR] Line 530: FOR at line 530 has no matching NEXT
+  WHAT: FOR at line 530 has no matching NEXT
+  WHY:  Every structured control block must be closed before end of file.
+  HOW:  Add 'NEXT' before end of procedure/file.
+
+[WARNING] Line 4260: GOTO 1990 at line 4260 jumps into the middle of a FOR block (lines 1910-4230)
+  WHAT: GOTO 1990 at line 4260 jumps into the middle of a FOR block (lines 1910-4230)
+  WHY:  Jumping directly into a structured block bypasses initialization and breaks control flow.
+  HOW:  Restructure the GOTO target to enter the block at its opener statement.
+
+[WARNING] Line 4280: GOTO 1990 at line 4280 jumps into the middle of a FOR block (lines 1910-4230)
+  WHAT: GOTO 1990 at line 4280 jumps into the middle of a FOR block (lines 1910-4230)
+  WHY:  Jumping directly into a structured block bypasses initialization and breaks control flow.
+  HOW:  Restructure the GOTO target to enter the block at its opener statement.
+
+[WARNING] Line 4670: GOTO 1990 at line 4670 jumps into the middle of a FOR block (lines 1910-4230)
+  WHAT: GOTO 1990 at line 4670 jumps into the middle of a FOR block (lines 1910-4230)
+  WHY:  Jumping directly into a structured block bypasses initialization and breaks control flow.
+  HOW:  Restructure the GOTO target to enter the block at its opener statement.
+
+[WARNING] Line 4700: GOTO 1990 at line 4700 jumps into the middle of a FOR block (lines 1910-4230)
+  WHAT: GOTO 1990 at line 4700 jumps into the middle of a FOR block (lines 1910-4230)
+  WHY:  Jumping directly into a structured block bypasses initialization and breaks control flow.
+  HOW:  Restructure the GOTO target to enter the block at its opener statement.
+
+[WARNING] Line 4700: GOTO 1990 at line 4700 jumps into the middle of a FOR block (lines 1720-4670)
+  WHAT: GOTO 1990 at line 4700 jumps into the middle of a FOR block (lines 1720-4670)
+  WHY:  Jumping directly into a structured block bypasses initialization and breaks control flow.
+  HOW:  Restructure the GOTO target to enter the block at its opener statement.
+
+[WARNING] Line 4730: GOTO 1990 at line 4730 jumps into the middle of a FOR block (lines 1910-4230)
+  WHAT: GOTO 1990 at line 4730 jumps into the middle of a FOR block (lines 1910-4230)
+  WHY:  Jumping directly into a structured block bypasses initialization and breaks control flow.
+  HOW:  Restructure the GOTO target to enter the block at its opener statement.
+
+[WARNING] Line 4730: GOTO 1990 at line 4730 jumps into the middle of a FOR block (lines 1720-4670)
+  WHAT: GOTO 1990 at line 4730 jumps into the middle of a FOR block (lines 1720-4670)
+  WHY:  Jumping directly into a structured block bypasses initialization and breaks control flow.
+  HOW:  Restructure the GOTO target to enter the block at its opener statement.
+
+[WARNING] Line 4800: GOTO 1990 at line 4800 jumps into the middle of a FOR block (lines 1910-4230)
+  WHAT: GOTO 1990 at line 4800 jumps into the middle of a FOR block (lines 1910-4230)
+  WHY:  Jumping directly into a structured block bypasses initialization and breaks control flow.
+  HOW:  Restructure the GOTO target to enter the block at its opener statement.
+
+[WARNING] Line 4800: GOTO 1990 at line 4800 jumps into the middle of a FOR block (lines 1720-4670)
+  WHAT: GOTO 1990 at line 4800 jumps into the middle of a FOR block (lines 1720-4670)
+  WHY:  Jumping directly into a structured block bypasses initialization and breaks control flow.
+  HOW:  Restructure the GOTO target to enter the block at its opener statement.
+
+[WARNING] Line 5260: GOTO 1990 at line 5260 jumps into the middle of a FOR block (lines 1910-4230)
+  WHAT: GOTO 1990 at line 5260 jumps into the middle of a FOR block (lines 1910-4230)
+  WHY:  Jumping directly into a structured block bypasses initialization and breaks control flow.
+  HOW:  Restructure the GOTO target to enter the block at its opener statement.
+
+[WARNING] Line 5260: GOTO 1990 at line 5260 jumps into the middle of a FOR block (lines 1720-4670)
+  WHAT: GOTO 1990 at line 5260 jumps into the middle of a FOR block (lines 1720-4670)
+  WHY:  Jumping directly into a structured block bypasses initialization and breaks control flow.
+  HOW:  Restructure the GOTO target to enter the block at its opener statement.
+
+[WARNING] Line 5490: GOTO 1990 at line 5490 jumps into the middle of a FOR block (lines 1910-4230)
+  WHAT: GOTO 1990 at line 5490 jumps into the middle of a FOR block (lines 1910-4230)
+  WHY:  Jumping directly into a structured block bypasses initialization and breaks control flow.
+  HOW:  Restructure the GOTO target to enter the block at its opener statement.
+
+[WARNING] Line 5490: GOTO 1990 at line 5490 jumps into the middle of a FOR block (lines 1720-4670)
+  WHAT: GOTO 1990 at line 5490 jumps into the middle of a FOR block (lines 1720-4670)
+  WHY:  Jumping directly into a structured block bypasses initialization and breaks control flow.
+  HOW:  Restructure the GOTO target to enter the block at its opener statement.
+
+[WARNING] Line 5530: GOTO 1990 at line 5530 jumps into the middle of a FOR block (lines 1910-4230)
+  WHAT: GOTO 1990 at line 5530 jumps into the middle of a FOR block (lines 1910-4230)
+  WHY:  Jumping directly into a structured block bypasses initialization and breaks control flow.
+  HOW:  Restructure the GOTO target to enter the block at its opener statement.
+
+[WARNING] Line 5530: GOTO 1990 at line 5530 jumps into the middle of a FOR block (lines 1720-4670)
+  WHAT: GOTO 1990 at line 5530 jumps into the middle of a FOR block (lines 1720-4670)
+  WHY:  Jumping directly into a structured block bypasses initialization and breaks control flow.
+  HOW:  Restructure the GOTO target to enter the block at its opener statement.
+
+[WARNING] Line 5580: GOTO 1990 at line 5580 jumps into the middle of a FOR block (lines 1910-4230)
+  WHAT: GOTO 1990 at line 5580 jumps into the middle of a FOR block (lines 1910-4230)
+  WHY:  Jumping directly into a structured block bypasses initialization and breaks control flow.
+  HOW:  Restructure the GOTO target to enter the block at its opener statement.
+
+[WARNING] Line 5580: GOTO 1990 at line 5580 jumps into the middle of a FOR block (lines 1720-4670)
+  WHAT: GOTO 1990 at line 5580 jumps into the middle of a FOR block (lines 1720-4670)
+  WHY:  Jumping directly into a structured block bypasses initialization and breaks control flow.
+  HOW:  Restructure the GOTO target to enter the block at its opener statement.
+
+[WARNING] Line 5610: GOTO 1990 at line 5610 jumps into the middle of a FOR block (lines 1910-4230)
+  WHAT: GOTO 1990 at line 5610 jumps into the middle of a FOR block (lines 1910-4230)
+  WHY:  Jumping directly into a structured block bypasses initialization and breaks control flow.
+  HOW:  Restructure the GOTO target to enter the block at its opener statement.
+
+[WARNING] Line 5610: GOTO 1990 at line 5610 jumps into the middle of a FOR block (lines 1720-4670)
+  WHAT: GOTO 1990 at line 5610 jumps into the middle of a FOR block (lines 1720-4670)
+  WHY:  Jumping directly into a structured block bypasses initialization and breaks control flow.
+  HOW:  Restructure the GOTO target to enter the block at its opener statement.
+
+[WARNING] Line 5660: GOTO 1990 at line 5660 jumps into the middle of a FOR block (lines 1910-4230)
+  WHAT: GOTO 1990 at line 5660 jumps into the middle of a FOR block (lines 1910-4230)
+  WHY:  Jumping directly into a structured block bypasses initialization and breaks control flow.
+  HOW:  Restructure the GOTO target to enter the block at its opener statement.
+
+[WARNING] Line 5660: GOTO 1990 at line 5660 jumps into the middle of a FOR block (lines 1720-4670)
+  WHAT: GOTO 1990 at line 5660 jumps into the middle of a FOR block (lines 1720-4670)
+  WHY:  Jumping directly into a structured block bypasses initialization and breaks control flow.
+  HOW:  Restructure the GOTO target to enter the block at its opener statement.
+
+[WARNING] Line 5980: GOTO 1990 at line 5980 jumps into the middle of a FOR block (lines 1910-4230)
+  WHAT: GOTO 1990 at line 5980 jumps into the middle of a FOR block (lines 1910-4230)
+  WHY:  Jumping directly into a structured block bypasses initialization and breaks control flow.
+  HOW:  Restructure the GOTO target to enter the block at its opener statement.
+
+[WARNING] Line 5980: GOTO 1990 at line 5980 jumps into the middle of a FOR block (lines 1720-4670)
+  WHAT: GOTO 1990 at line 5980 jumps into the middle of a FOR block (lines 1720-4670)
+  WHY:  Jumping directly into a structured block bypasses initialization and breaks control flow.
+  HOW:  Restructure the GOTO target to enter the block at its opener statement.
+
+[WARNING] Line 5980: GOTO 1990 at line 5980 jumps into the middle of a FOR block (lines 1600-5760)
+  WHAT: GOTO 1990 at line 5980 jumps into the middle of a FOR block (lines 1600-5760)
+  WHY:  Jumping directly into a structured block bypasses initialization and breaks control flow.
+  HOW:  Restructure the GOTO target to enter the block at its opener statement.
+
+[WARNING] Line 5980: GOTO 1990 at line 5980 jumps into the middle of a FOR block (lines 1590-5950)
+  WHAT: GOTO 1990 at line 5980 jumps into the middle of a FOR block (lines 1590-5950)
+  WHY:  Jumping directly into a structured block bypasses initialization and breaks control flow.
+  HOW:  Restructure the GOTO target to enter the block at its opener statement.
+
+[WARNING] Line 7290: GOTO 1990 at line 7290 jumps into the middle of a FOR block (lines 1910-4230)
+  WHAT: GOTO 1990 at line 7290 jumps into the middle of a FOR block (lines 1910-4230)
+  WHY:  Jumping directly into a structured block bypasses initialization and breaks control flow.
+  HOW:  Restructure the GOTO target to enter the block at its opener statement.
+
+[WARNING] Line 7290: GOTO 1990 at line 7290 jumps into the middle of a FOR block (lines 1720-4670)
+  WHAT: GOTO 1990 at line 7290 jumps into the middle of a FOR block (lines 1720-4670)
+  WHY:  Jumping directly into a structured block bypasses initialization and breaks control flow.
+  HOW:  Restructure the GOTO target to enter the block at its opener statement.
+
+[WARNING] Line 7290: GOTO 1990 at line 7290 jumps into the middle of a FOR block (lines 1600-5760)
+  WHAT: GOTO 1990 at line 7290 jumps into the middle of a FOR block (lines 1600-5760)
+  WHY:  Jumping directly into a structured block bypasses initialization and breaks control flow.
+  HOW:  Restructure the GOTO target to enter the block at its opener statement.
+
+[WARNING] Line 7290: GOTO 1990 at line 7290 jumps into the middle of a FOR block (lines 1590-5950)
+  WHAT: GOTO 1990 at line 7290 jumps into the middle of a FOR block (lines 1590-5950)
+  WHY:  Jumping directly into a structured block bypasses initialization and breaks control flow.
+  HOW:  Restructure the GOTO target to enter the block at its opener statement.
+
+[WARNING] Line 7850: GOTO 1990 at line 7850 jumps into the middle of a FOR block (lines 1910-4230)
+  WHAT: GOTO 1990 at line 7850 jumps into the middle of a FOR block (lines 1910-4230)
+  WHY:  Jumping directly into a structured block bypasses initialization and breaks control flow.
+  HOW:  Restructure the GOTO target to enter the block at its opener statement.
+
+[WARNING] Line 7850: GOTO 1990 at line 7850 jumps into the middle of a FOR block (lines 1720-4670)
+  WHAT: GOTO 1990 at line 7850 jumps into the middle of a FOR block (lines 1720-4670)
+  WHY:  Jumping directly into a structured block bypasses initialization and breaks control flow.
+  HOW:  Restructure the GOTO target to enter the block at its opener statement.
+
+[WARNING] Line 7850: GOTO 1990 at line 7850 jumps into the middle of a FOR block (lines 1600-5760)
+  WHAT: GOTO 1990 at line 7850 jumps into the middle of a FOR block (lines 1600-5760)
+  WHY:  Jumping directly into a structured block bypasses initialization and breaks control flow.
+  HOW:  Restructure the GOTO target to enter the block at its opener statement.
+
+[WARNING] Line 7850: GOTO 1990 at line 7850 jumps into the middle of a FOR block (lines 1590-5950)
+  WHAT: GOTO 1990 at line 7850 jumps into the middle of a FOR block (lines 1590-5950)
+  WHY:  Jumping directly into a structured block bypasses initialization and breaks control flow.
+  HOW:  Restructure the GOTO target to enter the block at its opener statement.
+
+[WARNING] Line 7990: GOTO 5690 at line 7990 jumps into the middle of a FOR block (lines 1600-5760)
+  WHAT: GOTO 5690 at line 7990 jumps into the middle of a FOR block (lines 1600-5760)
+  WHY:  Jumping directly into a structured block bypasses initialization and breaks control flow.
+  HOW:  Restructure the GOTO target to enter the block at its opener statement.
+
+[WARNING] Line 7990: GOTO 5690 at line 7990 jumps into the middle of a FOR block (lines 1590-5950)
+  WHAT: GOTO 5690 at line 7990 jumps into the middle of a FOR block (lines 1590-5950)
+  WHY:  Jumping directly into a structured block bypasses initialization and breaks control flow.
+  HOW:  Restructure the GOTO target to enter the block at its opener statement.
+
+[WARNING] Line 8020: GOTO 5690 at line 8020 jumps into the middle of a FOR block (lines 1600-5760)
+  WHAT: GOTO 5690 at line 8020 jumps into the middle of a FOR block (lines 1600-5760)
+  WHY:  Jumping directly into a structured block bypasses initialization and breaks control flow.
+  HOW:  Restructure the GOTO target to enter the block at its opener statement.
+
+[WARNING] Line 8020: GOTO 5690 at line 8020 jumps into the middle of a FOR block (lines 1590-5950)
+  WHAT: GOTO 5690 at line 8020 jumps into the middle of a FOR block (lines 1590-5950)
+  WHY:  Jumping directly into a structured block bypasses initialization and breaks control flow.
+  HOW:  Restructure the GOTO target to enter the block at its opener statement.
+
+[WARNING] Line 8480: GOTO 1990 at line 8480 jumps into the middle of a FOR block (lines 1910-4230)
+  WHAT: GOTO 1990 at line 8480 jumps into the middle of a FOR block (lines 1910-4230)
+  WHY:  Jumping directly into a structured block bypasses initialization and breaks control flow.
+  HOW:  Restructure the GOTO target to enter the block at its opener statement.
+
+[WARNING] Line 8480: GOTO 1990 at line 8480 jumps into the middle of a FOR block (lines 1720-4670)
+  WHAT: GOTO 1990 at line 8480 jumps into the middle of a FOR block (lines 1720-4670)
+  WHY:  Jumping directly into a structured block bypasses initialization and breaks control flow.
+  HOW:  Restructure the GOTO target to enter the block at its opener statement.
+
+[WARNING] Line 8480: GOTO 1990 at line 8480 jumps into the middle of a FOR block (lines 1600-5760)
+  WHAT: GOTO 1990 at line 8480 jumps into the middle of a FOR block (lines 1600-5760)
+  WHY:  Jumping directly into a structured block bypasses initialization and breaks control flow.
+  HOW:  Restructure the GOTO target to enter the block at its opener statement.
+
+[WARNING] Line 8480: GOTO 1990 at line 8480 jumps into the middle of a FOR block (lines 1590-5950)
+  WHAT: GOTO 1990 at line 8480 jumps into the middle of a FOR block (lines 1590-5950)
+  WHY:  Jumping directly into a structured block bypasses initialization and breaks control flow.
+  HOW:  Restructure the GOTO target to enter the block at its opener statement.
+
+[WARNING] Line 8500: GOTO 8120 at line 8500 jumps into the middle of a FOR block (lines 820-8480)
+  WHAT: GOTO 8120 at line 8500 jumps into the middle of a FOR block (lines 820-8480)
+  WHY:  Jumping directly into a structured block bypasses initialization and breaks control flow.
+  HOW:  Restructure the GOTO target to enter the block at its opener statement.
+
+[WARNING] Line 8520: GOTO 1990 at line 8520 jumps into the middle of a FOR block (lines 1910-4230)
+  WHAT: GOTO 1990 at line 8520 jumps into the middle of a FOR block (lines 1910-4230)
+  WHY:  Jumping directly into a structured block bypasses initialization and breaks control flow.
+  HOW:  Restructure the GOTO target to enter the block at its opener statement.
+
+[WARNING] Line 8520: GOTO 1990 at line 8520 jumps into the middle of a FOR block (lines 1720-4670)
+  WHAT: GOTO 1990 at line 8520 jumps into the middle of a FOR block (lines 1720-4670)
+  WHY:  Jumping directly into a structured block bypasses initialization and breaks control flow.
+  HOW:  Restructure the GOTO target to enter the block at its opener statement.
+
+[WARNING] Line 8520: GOTO 1990 at line 8520 jumps into the middle of a FOR block (lines 1600-5760)
+  WHAT: GOTO 1990 at line 8520 jumps into the middle of a FOR block (lines 1600-5760)
+  WHY:  Jumping directly into a structured block bypasses initialization and breaks control flow.
+  HOW:  Restructure the GOTO target to enter the block at its opener statement.
+
+[WARNING] Line 8520: GOTO 1990 at line 8520 jumps into the middle of a FOR block (lines 1590-5950)
+  WHAT: GOTO 1990 at line 8520 jumps into the middle of a FOR block (lines 1590-5950)
+  WHY:  Jumping directly into a structured block bypasses initialization and breaks control flow.
+  HOW:  Restructure the GOTO target to enter the block at its opener statement.
+
+[WARNING] Line 8520: GOTO 1990 at line 8520 jumps into the middle of a FOR block (lines 820-8480)
+  WHAT: GOTO 1990 at line 8520 jumps into the middle of a FOR block (lines 820-8480)
+  WHY:  Jumping directly into a structured block bypasses initialization and breaks control flow.
+  HOW:  Restructure the GOTO target to enter the block at its opener statement.
+

@@ -9,10 +9,15 @@
 //
 // ---- Includes ----
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include "platform/platform.h"
+#include "hal/hal.h"
+#include "types/version.h"
+#include "runtime/format/snprintf.h"
+#include "runtime/memory/alloc.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
 #include <stdbool.h>
+#include <stdarg.h>
 
 typedef struct {
     unsigned char token;
@@ -106,47 +111,81 @@ static const char *lookup_token(unsigned char tok) {
     return NULL;
 }
 
-#include "types/version.h"
+static int detok_getc(void *f) {
+    unsigned char c;
+    if (platform_file_read(f, &c, 1) == 1) return (int)c;
+    return -1;
+}
+
+static void detok_puts(void *out, const char *str) {
+    if (out) {
+        platform_file_printf(out, "%s", str);
+    } else {
+        platform_console_puts(str);
+    }
+}
+
+static void detok_putc(void *out, int c) {
+    if (out) {
+        char ch = (char)c;
+        platform_file_write(out, &ch, 1);
+    } else {
+        platform_console_putchar(c);
+    }
+}
+
+static void detok_printf(void *out, const char *fmt, ...) {
+    char buf[512];
+    va_list args;
+    va_start(args, fmt);
+    runtime_vsnprintf(buf, sizeof(buf), fmt, args);
+    va_end(args);
+    if (out) {
+        platform_file_printf(out, "%s", buf);
+    } else {
+        platform_console_puts(buf);
+    }
+}
 
 int main(int argc, char **argv) {
     if (argc < 2) {
-        printf("GW-BASIC Detokenizer (detok) - v%s\n", BASIC_VERSION_STRING);
-        printf("Usage: detok <input.bas> [output.txt]\n");
+        platform_console_printf("GW-BASIC Detokenizer (detok) - v%s\n", BASIC_VERSION_STRING);
+        platform_console_puts("Usage: detok <input.bas> [output.txt]\n");
         return 1;
     }
 
     const char *infile = argv[1];
-    FILE *in = fopen(infile, "rb");
+    void *in = platform_file_open(infile, "rb");
     if (!in) {
-        fprintf(stderr, "Error: Could not open input file '%s'\n", infile);
+        platform_console_eprintf("Error: Could not open input file '%s'\n", infile);
         return 1;
     }
 
-    FILE *out = stdout;
+    void *out = NULL;
     if (argc >= 3) {
-        out = fopen(argv[2], "w");
+        out = platform_file_open(argv[2], "w");
         if (!out) {
-            fclose(in);
-            fprintf(stderr, "Error: Could not open output file '%s'\n", argv[2]);
+            platform_file_close(in);
+            platform_console_eprintf("Error: Could not open output file '%s'\n", argv[2]);
             return 1;
         }
     }
 
     // 1. Check Signature Byte
-    int sig = fgetc(in);
+    int sig = detok_getc(in);
     if (sig != 0xFF) {
-        fprintf(stderr, "Warning: File does not start with signature byte 0xFF. Proceeding anyway.\n");
-        if (sig != EOF) {
-            rewind(in);
+        platform_console_eputs("Warning: File does not start with signature byte 0xFF. Proceeding anyway.\n");
+        if (sig != -1) {
+            platform_file_seek(in, 0, IO_SEEK_SET);
         }
     }
 
     // 2. Decode lines
     while (true) {
         // Read next line offset pointer (2 bytes)
-        int addr_low = fgetc(in);
-        int addr_high = fgetc(in);
-        if (addr_low == EOF || addr_high == EOF) break;
+        int addr_low = detok_getc(in);
+        int addr_high = detok_getc(in);
+        if (addr_low == -1 || addr_high == -1) break;
 
         unsigned short next_addr = (unsigned short)(addr_low | (addr_high << 8));
         if (next_addr == 0x0000) {
@@ -155,37 +194,39 @@ int main(int argc, char **argv) {
         }
 
         // Read line number (2 bytes)
-        int num_low = fgetc(in);
-        int num_high = fgetc(in);
-        if (num_low == EOF || num_high == EOF) break;
+        int num_low = detok_getc(in);
+        int num_high = detok_getc(in);
+        if (num_low == -1 || num_high == -1) break;
         unsigned short line_num = (unsigned short)(num_low | (num_high << 8));
 
-        fprintf(out, "%u ", line_num);
+        detok_printf(out, "%u ", line_num);
 
         // Read statement characters/tokens until 0x00 (EOL)
         while (true) {
-            int c = fgetc(in);
-            if (c == 0x00 || c == EOF) {
+            int c = detok_getc(in);
+            if (c == 0x00 || c == -1) {
                 break;
             }
 
             if (c >= 0x80) {
                 const char *kw = lookup_token((unsigned char)c);
                 if (kw) {
-                    fprintf(out, "%s", kw);
+                    detok_puts(out, kw);
                 } else {
-                    fprintf(out, "[TOKEN:0x%02X]", c);
+                    detok_printf(out, "[TOKEN:0x%02X]", c);
                 }
             } else {
-                fputc(c, out);
+                detok_putc(out, c);
             }
         }
-        fprintf(out, "\n");
+        detok_puts(out, "\n");
     }
 
-    fclose(in);
-    if (out != stdout) {
-        fclose(out);
+    platform_file_close(in);
+    if (out) {
+        platform_file_close(out);
+    } else {
+        platform_console_flush();
     }
 
     return 0;

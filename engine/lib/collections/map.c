@@ -11,18 +11,19 @@
 
 #include "runtime/collections.h"
 #include "platform/platform.h"
-#include <stdlib.h>
-#include <string.h>
+#include "runtime/memory/alloc.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
 
 BppMap *map_create(void) {
-    BppMap *map = (BppMap *)calloc(1, sizeof(BppMap));
+    BppMap *map = (BppMap *)runtime_calloc(1, sizeof(BppMap));
     if (!map) return NULL;
     map->ref_count = 1;
     map->capacity = 8;
     map->count = 0;
-    map->entries = (BppMapEntry *)calloc((size_t)map->capacity, sizeof(BppMapEntry));
+    map->entries = (BppMapEntry *)runtime_calloc((size_t)map->capacity, sizeof(BppMapEntry));
     if (!map->entries) {
-        free(map);
+        runtime_free(map);
         return NULL;
     }
     return map;
@@ -40,9 +41,9 @@ void map_release(void *str_ctx, BppMap *map) {
     map->ref_count--;
     if (map->ref_count <= 0) {
         for (int i = 0; i < map->count; ++i) {
-            if (map->entries[i].key) free(map->entries[i].key);
+            if (map->entries[i].key) runtime_free(map->entries[i].key);
         }
-        free(map->entries);
-        free(map);
+        runtime_free(map->entries);
+        runtime_free(map);
     }
 }

@@ -1,33 +1,73 @@
-CALL Procedure & External Function Call Statement
-=================================================
+TITLE: CALL
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/oop/call.c
+GENERATED: no, hand-written
+STATUS: current
 
-Executes a defined SUB subprogram or external dynamic library procedure.
+==============================================================================
+CALL KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: call.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (perform.c)
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libengine (call.h, eval.h, eval.c, interrupt.h, interrupt.c)
+    // NEEDS: libengine (lexer.h, lexer.c, map.h, map.c, string.c, sub.h, sub.c)
+    // NEEDS: libengine (vm.h)
+    // NEEDS: libkernel (security.h, security.c, vdev.h, vdev.c)
+    // Provides runtime implementation for the CALL statement in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Transfers control to a SUB procedure or C extension routine.
 
-    CALL ProcedureName [(arg1 [, arg2...])]
-    ProcedureName arg1, arg2...
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    CALL name [(argument_list)]
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = CALL name [(argument_list)]
+    20 PRINT "Result: "; Val
 
-ERROR CONDITIONS
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error, Error 35: Subprogram Not Defined, Error 36: Parameter
+Mismatch
 
-  - Error 35 (ERR_SUBPROGRAM_UNDEFINED): Called subprogram does not exist.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Control Flow
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SAFE
 
-
-OPERATIONAL NOTES
-----------------------------------------------------------------------
-
-  Supports passing variables by reference or expressions by value.
-
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 DECLARE SUB Greet(Name$)
-    20 CALL Greet("BASIC++")
-    30 SUB Greet(N$)
-    40   PRINT "Hello, "; N$
-    50 END SUB
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  CALL
+Category              Control Flow
+Syntax                CALL name [(argument_list)]
+Description           Transfers control to a SUB procedure or C extension...
+Error Summary         Error 2: Syntax Error, Error 35: Subprogram Not Def...
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/oop/call.c

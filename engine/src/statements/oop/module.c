@@ -2,7 +2,7 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (exec_internal.h, help.c, system.c)
-// NEEDS: libcore (ctype.h, ctype.c, micro_lib_metadata.h, micro_lib_metadata.c)
+// NEEDS: libcore (ctype.h, ctype.c, language_descriptor.h)
 // NEEDS: libcore (module.h, string.h)
 // NEEDS: libengine (lexer.h, lexer.c, scope.h, scope.c, stmt.h, string.c)
 // NEEDS: libkernel (security.h, security.c, vdev.h, vdev.c)
@@ -16,18 +16,41 @@
 #include "scope/scope.h"
 #include "security/security.h"
 #include "device/vdev.h"
-#include "runtime/micro_lib_metadata.h"
-#include <stdio.h>
-#include <string.h>
-#include <ctype.h>
+#include "runtime/language_descriptor.h"
+#include "runtime/format/snprintf.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "runtime/ctype/ctype.h"
+
+static const LangDesc g_module_desc = {
+    .name = "MODULE",
+    .category = "Introspection",
+    .syntax = "MODULE \"ModuleName\" [EXPORTS sym1, sym2, ...]",
+    .description = "Defines a module scope namespace, or loads/unloads dynamic extension modules.",
+    .error_summary = "Error 2: Syntax Error, Error 53: File Not Found, Error 70: Permission Denied",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_STATEMENT
+};
+
+static const LangDesc g_import_desc = {
+    .name = "IMPORT",
+    .category = "Modular Execution",
+    .syntax = "MODULE \"ModuleName\" [EXPORTS sym1, sym2, ...]",
+    .description = "Imports a module scope namespace or external BASIC++ source module.",
+    .error_summary = "Error 2: Syntax Error, Error 53: File Not Found",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_STATEMENT
+};
 
 #if defined(_MSC_VER)
-#define strcasecmp _stricmp
+#define runtime_strcasecmp runtime_strcasecmp
 #endif
 
 BppError stmt_module_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     VDevContext *vdev = vm_get_vdev(vm);
 
     BppToken tok = lex_peek(lex);
@@ -68,17 +91,17 @@ BppError stmt_module_handler(VMContext *vm, LexerContext *lex) {
     if (tok.type == TOK_KEYWORD || tok.type == TOK_IDENT) {
         char word[64];
         size_t len = tok.length < 63 ? tok.length : 63;
-        memcpy(word, tok.start, len);
+        runtime_memcpy(word, tok.start, len);
         word[len] = '\0';
 
-        if (strcasecmp(word, "END") == 0) {
+        if (runtime_strcasecmp(word, "END") == 0) {
             lex_next(lex);
             scope_namespace_exit(vm);
             vdev_printf(vdev, "Exited MODULE scope namespace.\n");
             return err;
         }
 
-        if (strcasecmp(word, "IMPORT") == 0) {
+        if (runtime_strcasecmp(word, "IMPORT") == 0) {
             lex_next(lex);
             BppToken path_tok = lex_next(lex);
             if (path_tok.type != TOK_STRING && path_tok.type != TOK_IDENT) {
@@ -88,7 +111,7 @@ BppError stmt_module_handler(VMContext *vm, LexerContext *lex) {
             }
             char path[256];
             size_t plen = path_tok.length < 255 ? path_tok.length : 255;
-            memcpy(path, path_tok.start, plen);
+            runtime_memcpy(path, path_tok.start, plen);
             path[plen] = '\0';
 
             if (module_activate(path, vm) == 0) {
@@ -102,7 +125,7 @@ BppError stmt_module_handler(VMContext *vm, LexerContext *lex) {
         }
 
         // Subcommand: LOAD
-        if (tok.as.keyword == KW_LOAD || strcasecmp(word, "LOAD") == 0) {
+        if (tok.as.keyword == KW_LOAD || runtime_strcasecmp(word, "LOAD") == 0) {
             lex_next(lex);
             BppToken path_tok = lex_next(lex);
             if (path_tok.type != TOK_STRING && path_tok.type != TOK_IDENT) {
@@ -116,7 +139,7 @@ BppError stmt_module_handler(VMContext *vm, LexerContext *lex) {
 
             char path[256];
             size_t plen = path_tok.length < 255 ? path_tok.length : 255;
-            memcpy(path, path_tok.start, plen);
+            runtime_memcpy(path, path_tok.start, plen);
             path[plen] = '\0';
 
             if (security_check_path(path, 0) != 0) {
@@ -131,7 +154,7 @@ BppError stmt_module_handler(VMContext *vm, LexerContext *lex) {
         }
 
         // Subcommand: UNLOAD
-        if (tok.as.keyword == KW_UNLOAD || strcasecmp(word, "UNLOAD") == 0) {
+        if (tok.as.keyword == KW_UNLOAD || runtime_strcasecmp(word, "UNLOAD") == 0) {
             lex_next(lex);
             BppToken name_tok = lex_next(lex);
             if (name_tok.type != TOK_STRING && name_tok.type != TOK_IDENT) {
@@ -142,7 +165,7 @@ BppError stmt_module_handler(VMContext *vm, LexerContext *lex) {
 
             char mname[128];
             size_t mlen = name_tok.length < 127 ? name_tok.length : 127;
-            memcpy(mname, name_tok.start, mlen);
+            runtime_memcpy(mname, name_tok.start, mlen);
             mname[mlen] = '\0';
 
             if (module_deactivate(mname) == 0) {
@@ -154,7 +177,7 @@ BppError stmt_module_handler(VMContext *vm, LexerContext *lex) {
         }
 
         // Subcommand: INFO
-        if (tok.as.keyword == KW_INFO || strcasecmp(word, "INFO") == 0) {
+        if (tok.as.keyword == KW_INFO || runtime_strcasecmp(word, "INFO") == 0) {
             lex_next(lex);
             BppToken name_tok = lex_next(lex);
             if (name_tok.type != TOK_STRING && name_tok.type != TOK_IDENT) {
@@ -165,7 +188,7 @@ BppError stmt_module_handler(VMContext *vm, LexerContext *lex) {
 
             char mname[128];
             size_t mlen = name_tok.length < 127 ? name_tok.length : 127;
-            memcpy(mname, name_tok.start, mlen);
+            runtime_memcpy(mname, name_tok.start, mlen);
             mname[mlen] = '\0';
 
             const BppModuleInfo *m = module_find(mname);
@@ -192,7 +215,7 @@ BppError stmt_module_handler(VMContext *vm, LexerContext *lex) {
         }
 
         // Subcommand: LIST
-        if (tok.as.keyword == KW_LIST || strcasecmp(word, "LIST") == 0) {
+        if (tok.as.keyword == KW_LIST || runtime_strcasecmp(word, "LIST") == 0) {
             lex_next(lex);
             return stmt_module_handler(vm, lex);
         }
@@ -201,7 +224,7 @@ BppError stmt_module_handler(VMContext *vm, LexerContext *lex) {
         BppToken mod_name_tok = lex_next(lex);
         char mod_name[64];
         size_t nlen = mod_name_tok.length < 63 ? mod_name_tok.length : 63;
-        memcpy(mod_name, mod_name_tok.start, nlen);
+        runtime_memcpy(mod_name, mod_name_tok.start, nlen);
         mod_name[nlen] = '\0';
 
         if (vm_is_running(vm)) {
@@ -246,7 +269,7 @@ BppError stmt_module_handler(VMContext *vm, LexerContext *lex) {
         lex_next(lex);
         char mname[128];
         size_t mlen = tok.length < 127 ? tok.length : 127;
-        memcpy(mname, tok.start, mlen);
+        runtime_memcpy(mname, tok.start, mlen);
         mname[mlen] = '\0';
 
         scope_namespace_enter(vm, mname);
@@ -261,7 +284,7 @@ BppError stmt_module_handler(VMContext *vm, LexerContext *lex) {
 
 BppError stmt_import_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     if (!vm || !lex) return err;
 
     BppToken tok = lex_next(lex);
@@ -269,7 +292,7 @@ BppError stmt_import_handler(VMContext *vm, LexerContext *lex) {
         char path[256] = {0};
         if (tok.as.string) {
             size_t len = (tok.length < sizeof(path) - 1) ? tok.length : sizeof(path) - 1;
-            memcpy(path, tok.as.string, len);
+            runtime_memcpy(path, tok.as.string, len);
         } else if (tok.start) {
             const char *src = tok.start;
             size_t len = tok.length;
@@ -278,14 +301,14 @@ BppError stmt_import_handler(VMContext *vm, LexerContext *lex) {
                 len -= 2;
             }
             if (len >= sizeof(path)) len = sizeof(path) - 1;
-            memcpy(path, src, len);
+            runtime_memcpy(path, src, len);
         }
         err = vm_load_library_file(vm, path);
         return err;
     } else if (tok.type == TOK_IDENT || tok.type == TOK_KEYWORD) {
         char mod_name[128] = {0};
         size_t len = (tok.length < sizeof(mod_name) - 1) ? tok.length : sizeof(mod_name) - 1;
-        memcpy(mod_name, tok.start, len);
+        runtime_memcpy(mod_name, tok.start, len);
         scope_namespace_enter(vm, mod_name);
         module_activate(mod_name, vm);
         return err;
@@ -295,22 +318,8 @@ BppError stmt_import_handler(VMContext *vm, LexerContext *lex) {
 }
 
 void stmt_module_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "MODULE",
-        .category = "Introspection",
-        .syntax = "MODULE name | MODULE LOAD path | MODULE UNLOAD name | MODULE INFO name",
-        .help_text = "Defines a module scope namespace, or loads/unloads dynamic extension modules.",
-        .error_codes = "Error 2: Syntax Error, Error 53: File Not Found, Error 70: Permission Denied"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_module_desc);
 
-    static const MicroLibMetadata import_meta = {
-        .name = "IMPORT",
-        .category = "Modular Execution",
-        .syntax = "IMPORT module_name | IMPORT \"file.bas\"",
-        .help_text = "Imports a module scope namespace or external BASIC++ source module.",
-        .error_codes = "Error 2: Syntax Error, Error 53: File Not Found"
-    };
-    microlib_register(&import_meta);
+    lang_desc_register(&g_import_desc);
 }
 

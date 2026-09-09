@@ -11,16 +11,27 @@
 #include "vm/vm.h"
 #include "lexer/lexer.h"
 #include "eval/eval.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/strings.h"
 #include "runtime/string/strops.h"
 #include "runtime/variables.h"
 #include "esp32_hal.h"
-#include <string.h>
+#include "runtime/string/memops.h"
+
+static const LangDesc g_nfc_desc = {
+    .name = "NFC",
+    .category = "Hardware & IoT",
+    .syntax = "NFC.INIT [addr] | NFC.SCAN uid_var$ | NFC.READ block, data_var$ | NFC.WRITE block, data$ | NFC.EMULATE uid$",
+    .description = "Controls external PN532 / MFRC522 NFC & 13.56 MHz RFID readers over I2C/SPI.",
+    .error_summary = "Error 2: Syntax Error, Error 13: Type Mismatch",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_STATEMENT
+};
 
 BppError stmt_nfc_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     bool is_init = false;
     bool is_scan = false;
@@ -61,12 +72,12 @@ BppError stmt_nfc_handler(VMContext *vm, LexerContext *lex) {
         if (tok.type == TOK_IDENT) {
             char var_name[64];
             size_t nlen = (tok.length < sizeof(var_name) - 1) ? tok.length : sizeof(var_name) - 1;
-            memcpy(var_name, tok.start, nlen);
+            runtime_memcpy(var_name, tok.start, nlen);
             var_name[nlen] = '\0';
             const char *uid = "04:5A:2B:C1:89:33";
             BValue val;
             val.type = VAL_STRING;
-            val.as.string = str_create(vm_get_str(vm), uid, strlen(uid));
+            val.as.string = str_create(vm_get_str(vm), uid, runtime_strlen(uid));
             var_assign(vm_get_var(vm), var_name, val);
         }
         return err;
@@ -83,12 +94,12 @@ BppError stmt_nfc_handler(VMContext *vm, LexerContext *lex) {
         if (tok.type == TOK_IDENT) {
             char var_name[64];
             size_t nlen = (tok.length < sizeof(var_name) - 1) ? tok.length : sizeof(var_name) - 1;
-            memcpy(var_name, tok.start, nlen);
+            runtime_memcpy(var_name, tok.start, nlen);
             var_name[nlen] = '\0';
             const char *block_data = "NFC-BLOCK-DATA-42";
             BValue val;
             val.type = VAL_STRING;
-            val.as.string = str_create(vm_get_str(vm), block_data, strlen(block_data));
+            val.as.string = str_create(vm_get_str(vm), block_data, runtime_strlen(block_data));
             var_assign(vm_get_var(vm), var_name, val);
         }
         (void)block_val;
@@ -123,12 +134,5 @@ BppError stmt_nfc_handler(VMContext *vm, LexerContext *lex) {
 }
 
 void stmt_nfc_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "NFC",
-        .category = "Hardware & IoT",
-        .syntax = "NFC.INIT [addr] | NFC.SCAN uid_var$ | NFC.READ block, data_var$ | NFC.WRITE block, data$ | NFC.EMULATE uid$",
-        .help_text = "Controls external PN532 / MFRC522 NFC & 13.56 MHz RFID readers over I2C/SPI.",
-        .error_codes = "Error 2: Syntax Error, Error 13: Type Mismatch"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_nfc_desc);
 }

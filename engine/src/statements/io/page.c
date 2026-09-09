@@ -2,7 +2,7 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
-// NEEDS: libcore (file.h, file.c, micro_lib_metadata.h, micro_lib_metadata.c)
+// NEEDS: libcore (file.h, file.c, language_descriptor.h)
 // NEEDS: libcore (string.h)
 // NEEDS: libengine (eval.h, eval.c, page.h, string.c)
 // NEEDS: libkernel (errors.h, vdev.h, vdev.c)
@@ -14,42 +14,56 @@
 #include "eval/eval.h"
 #include "runtime/file.h"
 #include "device/vdev.h"
-#include "runtime/micro_lib_metadata.h"
+#include "device/vcon.h"
+#include "runtime/language_descriptor.h"
 #include "types/errors.h"
-#include <string.h>
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_page_desc = {
+    .name = "PAGE",
+    .category = "Input / Output",
+    .syntax = "PAGE [#channel,] [height]",
+    .description = "Sets lines per page before form-feed or emits a page eject (DEC PDP-10 / ECMA-116).",
+    .error_summary = "Error 2: Syntax error, Error 5: Illegal function call, Error 52: Bad file number",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_STATEMENT
+};
+
+static const LangDesc g_nopage_desc = {
+    .name = "NOPAGE",
+    .category = "Input / Output",
+    .syntax = "NOPAGE [#channel]",
+    .description = "Disables automatic page boundary wrapping and form feeds (DEC / ECMA-116).",
+    .error_summary = "Error 2: Syntax error, Error 52: Bad file number",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_STATEMENT
+};
+
+static const LangDesc g_nomargin_desc = {
+    .name = "NOMARGIN",
+    .category = "Input / Output",
+    .syntax = "NOMARGIN [#channel]",
+    .description = "Disables automatic line width wrapping limit (DEC / ECMA-116).",
+    .error_summary = "Error 2: Syntax error, Error 52: Bad file number",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_STATEMENT
+};
 
 void stmt_page_register(void) {
-    static const MicroLibMetadata meta_page = {
-        .name = "PAGE",
-        .category = "Input / Output",
-        .syntax = "PAGE [#channel,] [height]",
-        .help_text = "Sets lines per page before form-feed or emits a page eject (DEC PDP-10 / ECMA-116).",
-        .error_codes = "Error 2: Syntax error, Error 5: Illegal function call, Error 52: Bad file number"
-    };
-    microlib_register(&meta_page);
+    lang_desc_register(&g_page_desc);
 
-    static const MicroLibMetadata meta_nopage = {
-        .name = "NOPAGE",
-        .category = "Input / Output",
-        .syntax = "NOPAGE [#channel]",
-        .help_text = "Disables automatic page boundary wrapping and form feeds (DEC / ECMA-116).",
-        .error_codes = "Error 2: Syntax error, Error 52: Bad file number"
-    };
-    microlib_register(&meta_nopage);
+    lang_desc_register(&g_nopage_desc);
 
-    static const MicroLibMetadata meta_nomargin = {
-        .name = "NOMARGIN",
-        .category = "Input / Output",
-        .syntax = "NOMARGIN [#channel]",
-        .help_text = "Disables automatic line width wrapping limit (DEC / ECMA-116).",
-        .error_codes = "Error 2: Syntax error, Error 52: Bad file number"
-    };
-    microlib_register(&meta_nomargin);
+    lang_desc_register(&g_nomargin_desc);
 }
 
 BppError stmt_page_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BppToken tok = lex_peek(lex);
     if (tok.type == TOK_KEYWORD && tok.as.keyword == KW_PAGE) {
@@ -58,7 +72,12 @@ BppError stmt_page_handler(VMContext *vm, LexerContext *lex) {
     }
 
     if (tok.type == TOK_EOF || tok.type == TOK_EOL) {
-        // Emits form feed / page eject
+        // Tektronix 4050 / ECMA-116: Clear screen and emit form feed / page eject
+        VConContext *vcon = vm_get_vcon(vm);
+        if (vcon) {
+            vcon_clear_screen(vcon, 0, -3);
+            vcon_locate(vcon, 0, 1, 1);
+        }
         vdev_putc(vm_get_vdev(vm), '\f');
         return err;
     }
@@ -114,7 +133,7 @@ BppError stmt_page_handler(VMContext *vm, LexerContext *lex) {
 
 BppError stmt_nopage_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BppToken tok = lex_peek(lex);
     if (tok.type == TOK_KEYWORD && tok.as.keyword == KW_NOPAGE) {
@@ -133,7 +152,7 @@ BppError stmt_nopage_handler(VMContext *vm, LexerContext *lex) {
 
 BppError stmt_nomargin_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BppToken tok = lex_peek(lex);
     if (tok.type == TOK_KEYWORD && tok.as.keyword == KW_NOMARGIN) {

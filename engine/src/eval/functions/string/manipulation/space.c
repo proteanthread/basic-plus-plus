@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (string_fn.c)
 // NEEDS: libcore (hal.h, memory.h, memory.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libcore (strings.h, strings.c)
 // NEEDS: libengine (space.h, string.c)
 // Provides runtime implementation for the SPACE built-in function in BASIC++.
@@ -11,20 +11,25 @@
 // ---- Includes ----
 
 #include "eval/functions/string/manipulation/space.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/strings.h"
 #include "runtime/string.h"
 #include "runtime/memory.h"
 #include "hal/hal.h"
+#include "runtime/string/memops.h"
+
+static const LangDesc g_space_desc = {
+    .name = "SPACE$",
+    .category = "String Functions",
+    .syntax = "SPACE$(n)",
+    .description = "Returns a string consisting of n space characters.",
+    .error_summary = "Error 5: Illegal Function Call (n < 0), Error 13: Type Mismatch (SPACE$ expects one numeric argument)",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_FUNCTION
+};
 void func_space_register(void) {
-    MicroLibMetadata meta = {
-        .name = "SPACE$",
-        .category = "String Functions",
-        .syntax = "SPACE$(n)",
-        .help_text = "Returns a string consisting of n space characters.",
-        .error_codes = "Error 5: Illegal Function Call (n < 0), Error 13: Type Mismatch (SPACE$ expects one numeric argument)"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_space_desc);
 }
 
 BValue func_space_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err) {

@@ -1,0 +1,71 @@
+TITLE: DEF
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/variables/declaration/def.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+DEF KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: def.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (eval_expr_internal.h, exec_internal.h, sub_internal.h
+    // NEEDS: libcore (ctype.h, ctype.c, language_descriptor.h)
+    // NEEDS: libcore (string.h, strings.h, strings.c, variables.h, variables.c)
+    // NEEDS: libengine (def.h, eval.h, eval.c, lexer.h, lexer.c, string.c, vm.h)
+    // NEEDS: libkernel (errors.h)
+    // Provides runtime implementation for the DEF statement in BASIC++.
+    //
+    // ---- Includes ----
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Defines a user-defined numeric or string function.
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    DEF FNname[(args)] = expr
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = DEF FNname[(args)] = e10pr
+    20 PRINT "Result: "; Val
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error, Error 13: Type Mismatch
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Function Definitions
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_IO
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  DEF
+Category              Function Definitions
+Syntax                DEF FNname[(args)] = expr
+Description           Defines a user-defined numeric or string function.
+Error Summary         Error 2: Syntax Error, Error 13: Type Mismatch
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_IO
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/variables/declaration/def.c

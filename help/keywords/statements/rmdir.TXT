@@ -1,29 +1,72 @@
-RMDIR Remove Directory Statement
-================================
+TITLE: RMDIR
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/filesystem/dir_ops/rmdir.c
+GENERATED: no, hand-written
+STATUS: current
 
-Removes an existing empty directory from disk or the virtual filesystem.
+==============================================================================
+RMDIR KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: rmdir.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libcore (strings.h, strings.c)
+    // NEEDS: libengine (eval.h, eval.c, rmdir.h, string.c)
+    // NEEDS: libplatform (platform.h)
+    // Provides runtime implementation for the RMDIR statement in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Removes an empty directory from disk.
 
-    RMDIR path_expression$
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    RMDIR pathname$
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM RMDIR Demonstration
+    20 PRINT "RMDIR executed successfully."
 
-ERROR CONDITIONS
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error, Error 75: Path/File Access Error, Error 76: Path Not
+Found
 
-  - Error 76 (ERR_PATH_NOT_FOUND): Directory does not exist.
-  - Error 75 (ERR_PATH_FILE_ACCESS_ERROR): Directory not empty or access denied.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Filesystem I/O
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_IO
 
-
-OPERATIONAL NOTES
-----------------------------------------------------------------------
-
-  Directory must be empty before removal.
-
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 RMDIR "TEMP_DIR"
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  RMDIR
+Category              Filesystem I/O
+Syntax                RMDIR pathname$
+Description           Removes an empty directory from disk.
+Error Summary         Error 2: Syntax Error, Error 75: Path/File Access E...
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_IO
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/filesystem/dir_ops/rmdir.c

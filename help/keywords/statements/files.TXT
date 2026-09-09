@@ -1,29 +1,72 @@
-FILES Filesystem Directory Listing Statement
-============================================
+TITLE: FILES
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/filesystem/dir_ops/files.c
+GENERATED: no, hand-written
+STATUS: current
 
-Displays a formatted list of files and directories on the active screen matching an optional wildcard.
+==============================================================================
+FILES KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: files.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (ctype.h, ctype.c, file.h, file.c)
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libengine (eval.h, eval.c, files.h, lexer.h, lexer.c, string.c, vm.h
+    // NEEDS: libkernel (errors.h, security.h, security.c, vdev.h, vdev.c)
+    // NEEDS: libplatform (platform.h)
+    // Provides runtime implementation for the FILES statement in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Displays directory listing matching specified file pattern.
 
-    FILES [pattern$]
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    FILES [filespec]
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM FILES Demonstration
+    20 PRINT "FILES executed successfully."
 
-ERROR CONDITIONS
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error, Error 53: File Not Found, Error 70: Permission Denied
 
-  - Error 76 (ERR_PATH_NOT_FOUND): Path not found.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Filesystem I/O
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_IO
 
-
-OPERATIONAL NOTES
-----------------------------------------------------------------------
-
-  Standard GW-BASIC directory listing command.
-
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 FILES "*.DAT"
-    20 FILES "C:\GAMES\*.BAS"
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  FILES
+Category              Filesystem I/O
+Syntax                FILES [filespec]
+Description           Displays directory listing matching specified file ...
+Error Summary         Error 2: Syntax Error, Error 53: File Not Found, Er...
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_IO
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/filesystem/dir_ops/files.c

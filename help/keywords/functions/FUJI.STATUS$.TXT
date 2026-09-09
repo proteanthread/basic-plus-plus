@@ -1,0 +1,69 @@
+TITLE: FUJI.STATUS$
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/functions/system/hardware/func_fujinet.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+FUJI.STATUS$ KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: func_fujinet.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (sys_fn.c)
+    // NEEDS: libcore (string.h, strings.h, strings.c)
+    // NEEDS: libengine (func_fujinet.h, string.c)
+    // Implements FUJI.STATUS$(), FUJI.SSID$(), FUJI.IP$(), and FUJI.JSON.GET$() f
+    //
+    // ---- Includes ----
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Returns active FujiNet adapter network connection status string.
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    FUJI.STATUS$()
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = FUJI.STATUS$()
+    20 PRINT "Result: "; Val
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+None
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Hardware & FujiNet
+Subsystem:     SUBSYSTEM_HARDWARE
+Safety Level:  SAFETY_IO
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  FUJI.STATUS$
+Category              Hardware & FujiNet
+Syntax                FUJI.STATUS$()
+Description           Returns active FujiNet adapter network connection s...
+Error Summary         None
+Subsystem             SUBSYSTEM_HARDWARE
+Safety Level          SAFETY_IO
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/eval/functions/system/hardware/func_fuji...

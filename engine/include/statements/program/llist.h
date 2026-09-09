@@ -16,5 +16,6 @@
 #include "lexer/lexer.h"
 
 BppError stmt_llist_handler(VMContext *vm, LexerContext *lex);
+void stmt_llist_register(void);
 
 #endif // STATEMENTS_PROGRAM_LLIST_H

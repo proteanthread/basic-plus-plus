@@ -1,26 +1,68 @@
-DATE / DATE$ System Date Function & Variable
-======================================================================
+TITLE: DATE
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/functions/datetime/dateserial.c
+GENERATED: no, hand-written
+STATUS: current
 
-The DATE$ variable/function returns the current system calendar date
-formatted as "MM-DD-YYYY". Numeric DATE returns YYYYMMDD.
+==============================================================================
+DATE KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: dateserial.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (common_reg_funcs.c, sys_fn.c)
+    // NEEDS: libcore (language_descriptor.h, math.h)
+    // NEEDS: libengine (dateserial.h, datetime_common.h)
+    // Provides runtime implementation for the DATESERIAL function in BASIC++.
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Returns the current calendar date formatted according to system locale or
+integer epoch day.
 
-    current_date$ = DATE$
-    numeric_date& = DATE
-    DATE$ = "MM-DD-YYYY"
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    DATE or DATE()
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = DATE or DATE()
+    20 PRINT "Result: "; Val
 
-OPERATIONAL RULES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+None
 
-  - DATE$ returns a 10-character string "MM-DD-YYYY".
-  - DATE returns an integer (e.g. 20260815).
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Date & Time
+Subsystem:     SUBSYSTEM_PLATFORM
+Safety Level:  SAFETY_SAFE
 
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 PRINT "Date: "; DATE$
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  DATE
+Category              Date & Time
+Syntax                DATE or DATE()
+Description           Returns the current calendar date formatted accordi...
+Error Summary         None
+Subsystem             SUBSYSTEM_PLATFORM
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         BASIC++ Standard
+Since Version         6.0.0
+Source File           engine/src/eval/functions/datetime/dateserial.c

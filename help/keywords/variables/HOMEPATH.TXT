@@ -1,0 +1,69 @@
+TITLE: HOMEPATH
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/introspection/introspection.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+HOMEPATH KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: introspection.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (language_descriptor.h, memops.h)
+    // NEEDS: libengine (introspection.h, stmt.h)
+    // NEEDS: libkernel (security.h, vdev.h)
+    // NEEDS: libplatform (platform.h)
+    // Provides runtime implementation for system diagnostic statements in BASIC++
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Outputs the user home directory path to console.
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    HOMEPATH
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM HOMEPATH Demonstration
+    20 PRINT "HOMEPATH executed successfully."
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+None
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Introspection
+Subsystem:     SUBSYSTEM_PLATFORM
+Safety Level:  SAFETY_SAFE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  HOMEPATH
+Category              Introspection
+Syntax                HOMEPATH
+Description           Outputs the user home directory path to console.
+Error Summary         None
+Subsystem             SUBSYSTEM_PLATFORM
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/introspection/introspection.c

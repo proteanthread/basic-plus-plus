@@ -1,110 +1,112 @@
-# BASIC++ v6.5.2 Memory Maps
+<!--
+Title:        Memory_Maps
+Tier:         2
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/include/types/config.h, engine/src/memory/
+Generated:    no, manual reference
+Status:       current
+-->
 
-## 1. MEMORY ARCHITECTURE
+# BASIC++ v6.5.2 Memory Maps & Partition Architecture
 
-BASIC++ uses a flat memory model where all allocations come from a single address space managed by the MemoryContext (engine/include/memory/memory.h). The total memory pool is divided into four regions: program memory, variable memory, string heap, and scratch area. The sizes of these regions depend on the build profile.
+## 1. MEMORY ARCHITECTURE OVERVIEW
 
-## 2. MODERN 64-BIT PROFILE (baspp)
-
-The standard desktop edition allocates 640 MB total:
+BASIC++ manages memory through certified allocation models that divide process memory into four dedicated regions: Program Memory, Variable Memory, String Heap, and Scratch Area. Total pool sizing and stack limits are configured per build profile in `engine/include/types/config.h`.
 
 ```text
 +------------------------------------------+  0x00000000
-|  Program Memory        (128 MB)          |
-|  - Line-numbered source storage          |
-|  - ProgramStore sorted index             |
-+------------------------------------------+  0x08000000
-|  Variable Memory       (128 MB)          |
-|  - Named variable table                  |
-|  - Array element storage                 |
-|  - TYPE/CLASS instance data              |
-+------------------------------------------+  0x10000000
-|  String Heap           (256 MB)          |
-|  - Reference-counted BppStringRef blocks |
-|  - Garbage collected when near capacity  |
-+------------------------------------------+  0x20000000
-|  Scratch Area          (128 MB)          |
-|  - Temporary evaluation results          |
-|  - Expression evaluator stacks           |
-|  - Statement handler working buffers     |
-+------------------------------------------+  0x28000000
+|  Program Memory                          |  Line-numbered source storage
++------------------------------------------+
+|  Variable Memory                         |  Symbol table, arrays, UDT instances
++------------------------------------------+
+|  String Heap                             |  Managed string descriptor arena
++------------------------------------------+
+|  Scratch Area                            |  Temporary AST and evaluator stacks
++------------------------------------------+
 ```
 
-Stack depths: GosubStack 1023, ForStack 1023, WhileStack 1023, DoStack 1023, SelectStack 1023, SubStack 1023, TryStack 255. Named variable limit: 8192. DIM arrays: 4096. Array elements: 4,194,304. User-defined functions: 256.
+## 2. MODERN 64-BIT DESKTOP PROFILE (baspp)
 
-## 3. LITE 64-BIT PROFILE (bpp)
+The flagship desktop edition allocates 640 MB (`671088640L` bytes) by default:
 
-The lite edition allocates 384 MB total:
+| Region | Allocation | Responsibilities |
+| :--- | :--- | :--- |
+| **Program Memory** | 128 MB | Canonical line-numbered source, `ProgramStore` index |
+| **Variable Memory** | 128 MB | Named variable symbols, array elements, UDT instances |
+| **String Heap** | 256 MB | Managed immutable string descriptors, compacting GC |
+| **Scratch Area** | 128 MB | Evaluation operator stacks, statement working buffers |
 
-| Region | Size |
-|--------|------|
-| Program Memory | 64 MB |
-| Variable Memory | 64 MB |
-| String Heap | 192 MB |
-| Scratch Area | 64 MB |
+Stack depths: 1023 (Gosub, For, While, Do, Select, Sub), TryStack 255. Limits: 8192 named variables, 4096 DIM arrays, 4,194,304 maximum array elements, 256 user-defined functions.
 
-Stack depths: same as modern (1023). Named variable limit: 8192. DIM arrays: 4096. Array elements: 4,194,304.
+## 3. LITE INTERACTIVE PROFILE (bpp)
 
-## 4. BATCH RUNNER PROFILE (bs)
+The lite terminal REPL allocates 384 MB (`402653184L` bytes) total:
 
-The batch script runner allocates 64 MB total with smaller region sizes appropriate for scripted, non-interactive workloads.
+| Region | Allocation | Responsibilities |
+| :--- | :--- | :--- |
+| **Program Memory** | 64 MB | Source line text and index |
+| **Variable Memory** | 64 MB | Named variables and array allocations |
+| **String Heap** | 192 MB | String descriptor storage |
+| **Scratch Area** | 64 MB | Expression evaluation scratch space |
 
-## 5. FREEDOS 16-BIT PROFILE
+Stack depths: 1023. Limits: 8192 named variables, 4096 DIM arrays, 4,194,304 array elements.
 
-The FreeDOS profile fits within the 640 KB conventional memory limit of real-mode DOS:
+## 4. BATCH SCRIPT RUNNER PROFILE (bs)
 
-| Region | Size |
-|--------|------|
-| Program Memory | 32 KB |
-| Variable Memory | 16 KB |
-| String Heap | 16 KB |
-| Scratch Area | 8 KB |
+The headless batch runner allocates 64 MB (`67108864L` bytes) optimized for automation:
+- **Program Memory**: 16 MB
+- **Variable Memory**: 16 MB
+- **String Heap**: 16 MB
+- **Scratch Area**: 16 MB
 
-Stack depths: 63. Named variable limit: 128. DIM arrays: 32. Array elements: 2,048. User-defined functions: 16.
+## 5. MICROCONTROLLER & IOT PROFILE (iot)
 
-## 6. EMBEDDED PROFILE
+The embedded micro-REPL allocates a compact 2 MB (`2097152L` bytes) static pool:
+- **Program Memory**: 512 KB
+- **Variable Memory**: 512 KB
+- **String Heap**: 512 KB
+- **Scratch Area**: 512 KB
 
-The embedded profile targets microcontrollers with under 64 KB of RAM:
+## 6. FREEDOS 16-BIT PROFILE
 
-| Region | Size |
-|--------|------|
-| Program Memory | 8 KB |
-| Variable Memory | 4 KB |
-| String Heap | 4 KB |
-| Scratch Area | 2 KB |
+The FreeDOS real-mode profile fits within 640 KB conventional RAM:
+- **Program Memory**: 32 KB
+- **Variable Memory**: 16 KB
+- **String Heap**: 16 KB
+- **Scratch Area**: 8 KB
 
-Stack depths: 31. Named variable limit: 64. DIM arrays: 16. Array elements: 512. User-defined functions: 8.
+Stack depths: 63. Limits: 128 named variables, 32 DIM arrays, 2048 array elements, 16 user functions.
 
-## 7. MEMORY INTROSPECTION
+## 7. EMBEDDED CONSTRAINED PROFILE
 
-The following functions query the current memory state:
+For resource-restricted microcontrollers (32 KB RAM / 128 KB flash):
+- **Program Memory**: 8 KB
+- **Variable Memory**: 4 KB
+- **String Heap**: 4 KB
+- **Scratch Area**: 2 KB
 
-FRE(0) — Free bytes in the string heap.
-FRE(-1) — Largest contiguous free block in the string heap.
-FRE(-2) — Free bytes in the variable memory region.
+Total runtime footprint: ~18 KB RAM. Stack depths: 31. Limits: 64 named variables, 16 DIM arrays, 512 elements.
 
-MEMMAP$ returns the name of the active memory profile as a string: "MODERN", "LITE", "FREEDOS", or "EMBEDDED".
+## 8. MEMORY INTROSPECTION FUNCTIONS
 
-The INFO command displays the complete memory configuration including all region sizes and current usage.
+- `FRE(0)`: Returns free bytes remaining in the string heap.
+- `FRE(-1)`: Returns the largest contiguous free memory block in the string arena.
+- `FRE(-2)`: Returns available bytes in the variable memory partition.
+- `MEMMAP$`: System variable returning active memory profile name ("MODERN", "LITE", "BATCH", "IOT", "FREEDOS").
+- `INFO`: Interactive command displaying current allocations and real-time usage.
 
-## 8. MEMORY CONFIGURATION DEFINES
+## 9. COMPILE-TIME PREPROCESSOR DEFINES
 
-The memory profile is controlled by preprocessor defines in engine/include/types/config.h:
+Memory profiles are configured via preprocessor definitions in `engine/include/types/config.h`:
+- `BASIC_DEFAULT_PROG_MEM`: Program memory size in bytes.
+- `BASIC_DEFAULT_VAR_MEM`: Variable memory size in bytes.
+- `BASIC_DEFAULT_STR_MEM`: String heap size in bytes.
+- `BASIC_DEFAULT_SCRATCH_MEM`: Scratch area size in bytes.
+- `BASIC_DEFAULT_MAX_VARS`: Maximum named variable count.
+- `BASIC_DEFAULT_STACK_DEPTH`: Control-flow stack depth ceiling.
+- `BASIC_DEFAULT_MAX_DIM`: Maximum active DIM array descriptors.
+- `BASIC_DEFAULT_MAX_ELEMENTS`: Maximum total elements per array.
 
-| Define | Purpose |
-|--------|---------|
-| BASIC_DEFAULT_PROG_MEM | Program memory size in bytes |
-| BASIC_DEFAULT_VAR_MEM | Variable memory size in bytes |
-| BASIC_DEFAULT_STR_MEM | String heap size in bytes |
-| BASIC_DEFAULT_SCRATCH_MEM | Scratch area size in bytes |
-| BASIC_DEFAULT_MAX_VARS | Maximum named variables |
-| BASIC_DEFAULT_STACK_DEPTH | Maximum stack depth |
-| BASIC_DEFAULT_MAX_DIM | Maximum DIM arrays |
-| BASIC_DEFAULT_MAX_ELEMENTS | Maximum array elements |
-| BASIC_DEFAULT_MAX_DEFFN | Maximum user-defined functions |
+## 10. DYNAMIC ARENA SCALING
 
-These values are set differently depending on which profile macros are defined: BASIC_FREEDOS_16, BASIC_EMBEDDED, BASIC_LITE_BUILD, or the default modern profile.
-
-## 9. DYNAMIC SCALING
-
-On modern hosts, BASIC++ can dynamically scale memory usage beyond the default profile. The total announced memory (640 MB for standard) is the default allocation. If the host has sufficient memory, the interpreter can expand regions on demand. The CLEAR statement with a memory argument explicitly sets the string heap size: `CLEAR 1000000` allocates 1 MB for strings.
+On modern desktop platforms, the announced pool size represents the default reserve. Memory arenas can expand dynamically if required by large datasets. The `CLEAR [bytes]` statement allows explicit reallocation of the string arena at runtime.

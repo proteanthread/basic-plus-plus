@@ -2,25 +2,30 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (math_fn.c)
-// NEEDS: libcore (math.h, micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (math.h, language_descriptor.h, string.h)
 // NEEDS: libengine (log2.h, math.c, string.c)
 // Provides runtime implementation for the LOG2 built-in function in BASIC++.
 //
 // ---- Includes ----
 
 #include "eval/functions/math/algebra/log2.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/math.h"
 #include "runtime/string.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_log2_desc = {
+    .name = "LOG2",
+    .category = "Math & Trigonometry",
+    .syntax = "LOG2(x)",
+    .description = "Returns the base-2 logarithm of x (x > 0).",
+    .error_summary = "Error 5: Illegal Function Call (x <= 0), Error 13: Type Mismatch (LOG2 expects one numeric argument)",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_PURE,
+    .type = FEATURE_FUNCTION
+};
 void func_log2_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "LOG2",
-        .category = "Math & Trigonometry",
-        .syntax = "LOG2(x)",
-        .help_text = "Returns the base-2 logarithm of x (x > 0).",
-        .error_codes = "Error 5: Illegal Function Call (x <= 0), Error 13: Type Mismatch (LOG2 expects one numeric argument)"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_log2_desc);
 }
 
 BValue func_log2_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err) {

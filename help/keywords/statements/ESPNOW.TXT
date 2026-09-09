@@ -1,0 +1,69 @@
+TITLE: ESPNOW
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/system/wireless/stmt_espnow.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+ESPNOW KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: stmt_espnow.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore, libengine, libserver
+    // Implements the ESPNOW statement for fast peer-to-peer radio linking.
+    //
+    // ---- Includes ----
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Transmits connectionless low-latency 2.4 GHz packets between ESP32 peers
+without Wi-Fi router.
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    ESPNOW.INIT [channel] | ESPNOW.ADD.PEER mac$ [, channel] | ESPNOW.SEND mac$, data$ | ESPNOW.RECV var$
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM ESPNOW Demonstration
+    20 PRINT "ESPNOW executed successfully."
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error, Error 13: Type Mismatch
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Wireless & IoT
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_IO
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  ESPNOW
+Category              Wireless & IoT
+Syntax                ESPNOW.INIT [channel] | ESPNOW.ADD.PEER mac$ [, cha...
+Description           Transmits connectionless low-latency 2.4 GHz packet...
+Error Summary         Error 2: Syntax Error, Error 13: Type Mismatch
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_IO
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/system/wireless/stmt_espnow.c

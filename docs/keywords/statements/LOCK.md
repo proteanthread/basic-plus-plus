@@ -1,28 +1,75 @@
-# `LOCK` File Range Locking Statement
+<!--
+Title:        LOCK
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/statements/filesystem/file_ops/lock.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Keyword Definition
+# `LOCK` Keyword Reference
 
-Locks a record range or byte region in an open file channel to prevent concurrent process modification.
+## Source Header
 
-### Syntax Signatures:
-```basic
-LOCK [#]filenum% [, [start_record&] TO end_record&]
+```c
+// FILENAME: lock.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore (language_descriptor.h, string.h)
+// NEEDS: libcore (strings.h, strings.c)
+// NEEDS: libengine (eval.h, eval.c, lexer.h, lexer.c, lock.h, string.c, vm.h)
+// NEEDS: libkernel (errors.h, security.h, security.c, vdev.h, vdev.c)
+// NEEDS: libplatform (platform.h)
+// Provides runtime implementation for the LOCK statement in BASIC++.
+//
+// ---- Includes ----
 ```
 
-### Error Handling & Boundary Conditions:
-- **Error 70 (ERR_PERMISSION_DENIED)**: Record already locked by another process.
+## 1. Description & Usage
 
-### Operational Notes:
-- Multi-process safe record locking.
+Locks a file on disk (Apple /// Business BASIC) or locks a file channel/record range (QuickBASIC).
+
+## 2. Syntax
+
+```basic
+LOCK filepath$ | LOCK [#]file_num [, [record_start] [TO record_end]]
+```
+
+## 3. Code Example
+
+```basic
+10 REM LOCK Demonstration
+20 PRINT "LOCK executed successfully."
+```
+
+## 4. Error Conditions
+
+Error 52: Bad File Number, Error 53: File Not Found, Error 70: Permission Denied
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: File & Resource Locking
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_IO
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 OPEN "R", #1, "DATA.DAT", 128
-20 LOCK #1, 10 TO 20 : REM Lock records 10..20
-30 REM Perform atomic updates
-40 UNLOCK #1, 10 TO 20
-50 CLOSE #1
-```
+| Field | Value |
+|---|---|
+| Name | LOCK |
+| Category | File & Resource Locking |
+| Syntax | LOCK filepath$ \| LOCK [#]file_num [, [record_start] [TO record_end]] |
+| Description | Locks a file on disk (Apple /// Business BASIC) or locks a file channel/record range (QuickBASIC). |
+| Error Summary | Error 52: Bad File Number, Error 53: File Not Found, Error 70: Permission Denied |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_IO |
+| Feature Type | FEATURE_STATEMENT |
+| Delimiter Mask | none |
+| Compatibility | none |
+| Since Version | none |
+| Source File | engine/src/statements/filesystem/file_ops/lock.c |

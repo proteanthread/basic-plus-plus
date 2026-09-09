@@ -17,5 +17,6 @@
 
 BppError stmt_renum_handler(VMContext *vm, LexerContext *lex);
 void stmt_renum_register(void);
+BValue func_renum_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err);
 
 #endif // STATEMENTS_PROGRAM_RENUM_H

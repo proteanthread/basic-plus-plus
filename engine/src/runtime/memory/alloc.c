@@ -84,7 +84,7 @@ bool runtime_mem_init_pool(void *buffer, size_t pool_size) {
     pool_start = (uint8_t *)aligned;
     pool_total_size = pool_size - offset;
 
-    // Single initial free block
+    // Single initial runtime_free block
     first_block = (RuntimeMemBlockHeader *)pool_start;
     first_block->magic = RUNTIME_MEM_MAGIC_FREE;
     first_block->is_free = 1;
@@ -126,7 +126,7 @@ const RuntimeMemHooks *runtime_mem_get_hooks(void) {
 static void *pool_alloc(size_t size) {
     if (!pool_start) {
         // Fallback: lazily declare static pool if uninitialized
-        static uint8_t default_static_pool[1024 * 1024]; // 1MB minimum static pool
+        static uint8_t default_static_pool[16 * 1024 * 1024]; // 16MB default static pool
         if (!runtime_mem_init_pool(default_static_pool, sizeof(default_static_pool))) {
             return NULL;
         }
@@ -209,7 +209,7 @@ static void pool_free(void *ptr) {
 
     RuntimeMemBlockHeader *block = (RuntimeMemBlockHeader *)((uint8_t *)ptr - BLOCK_HEADER_SIZE);
     if (block->magic != RUNTIME_MEM_MAGIC_ALLOC || block->is_free != 0) {
-        return; // Double free or invalid pointer
+        return; // Double runtime_free or invalid pointer
     }
 
     block->is_free = 1;
@@ -224,7 +224,7 @@ static void pool_free(void *ptr) {
         mem_stats.active_blocks--;
     }
 
-    // Coalesce with next block if free
+    // Coalesce with next block if runtime_free
     if (block->next && block->next->is_free) {
         RuntimeMemBlockHeader *next = block->next;
         block->size += BLOCK_HEADER_SIZE + next->size + BLOCK_FOOTER_SIZE;
@@ -237,7 +237,7 @@ static void pool_free(void *ptr) {
         footer->size = block->size;
     }
 
-    // Coalesce with prev block if free
+    // Coalesce with prev block if runtime_free
     if (block->prev && block->prev->is_free) {
         RuntimeMemBlockHeader *prev = block->prev;
         prev->size += BLOCK_HEADER_SIZE + block->size + BLOCK_FOOTER_SIZE;

@@ -1,17 +1,67 @@
-HOURS Current Hour Function
-======================================================================
+TITLE: HOURS
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/functions/datetime/hour.c
+GENERATED: no, hand-written
+STATUS: current
 
-The HOURS function returns the current hour of the day (0 to 23).
+==============================================================================
+HOURS KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: hour.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (common_reg_funcs.c, sys_fn.c)
+    // NEEDS: libcore (language_descriptor.h)
+    // NEEDS: libengine (datetime_common.h, hour.h)
+    // Provides runtime implementation for the HOUR function in BASIC++.
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Returns the hour component (0 to 23) of the current or specified time.
 
-    hr% = HOURS
-    hr% = HOURS()
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    HOURS [(time_expr)]
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = HOURS [(time_e10pr)]
+    20 PRINT "Result: "; Val
 
-CODE EXAMPLES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 5: Illegal Function Call
 
-    10 PRINT "Hour: "; HOURS
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Date & Time
+Subsystem:     SUBSYSTEM_PLATFORM
+Safety Level:  SAFETY_SAFE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  HOURS
+Category              Date & Time
+Syntax                HOURS [(time_expr)]
+Description           Returns the hour component (0 to 23) of the current...
+Error Summary         Error 5: Illegal Function Call
+Subsystem             SUBSYSTEM_PLATFORM
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         BASIC++ Standard
+Since Version         6.0.0
+Source File           engine/src/eval/functions/datetime/hour.c

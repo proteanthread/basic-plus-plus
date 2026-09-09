@@ -2,7 +2,7 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libcore (strings.h, strings.c)
 // NEEDS: libengine (eval.h, eval.c, key.h, lexer.h, lexer.c, string.c, vm.h)
 // NEEDS: libkernel (errors.h, vcon.h, vcon.c, vdev.h, vdev.c)
@@ -19,25 +19,30 @@
 #include "runtime/strings.h"
 #include "device/vcon.h"
 #include "device/vdev.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "platform/platform.h"
-#include <string.h>
-#include <stdio.h>
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "runtime/format/snprintf.h"
+
+static const LangDesc g_key_desc = {
+    .name = "KEY",
+    .category = "Event Trapping & Console",
+    .syntax = "KEY ON | KEY OFF | KEY LIST | KEY n, string$ | KEY(n) {ON|OFF|STOP}",
+    .description = "Enables, disables, or customizes function key softkey display and key event trapping.",
+    .error_summary = "Error 2: Syntax Error, Error 5: Illegal Function Call, Error 13: Type Mismatch",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SAFE,
+    .type = FEATURE_STATEMENT
+};
 
 void stmt_key_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "KEY",
-        .category = "Event Trapping & Console",
-        .syntax = "KEY ON | KEY OFF | KEY LIST | KEY n, string$ | KEY(n) {ON|OFF|STOP}",
-        .help_text = "Enables, disables, or customizes function key softkey display and key event trapping.",
-        .error_codes = "Error 2: Syntax Error, Error 5: Illegal Function Call, Error 13: Type Mismatch"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_key_desc);
 }
 
 BppError stmt_key_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     if (!vm || !lex) {
         err.code = ERR_ILLEGAL_FUNCTION_CALL;
         return err;

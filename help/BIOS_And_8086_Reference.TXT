@@ -1,0 +1,270 @@
+Title:        BIOS_And_8086_Reference
+Tier:         1
+Applies to:   BASIC++ v6.5.2
+Authority:    engine/src/bios/ (11 files), engine/src/reg/reg_hw.c,
+              engine/src/statements/system/bios.c,
+              engine/src/statements/system/hardware/interrupt.c,
+              engine/include/basicpp_sys.h
+Generated:    no, hand-written
+Status:       current
+
+==============================================================================
+BIOS AND 8086 REFERENCE
+==============================================================================
+
+The IBM PC BIOS micro-library, the 8086 machine model, and how a BASIC++
+program reaches them.
+
+This answers two questions that came up together: what does the BIOS micro-
+library actually implement, and is there an 8088/8086 emulator. The answers
+are different in shape: the BIOS layer is real and partial; the CPU layer is a
+real machine with almost no instruction decoder.
+
+1. THE BIOS MICRO-LIBRARY
+------------------------------------------------------------------------------
+
+engine/src/bios/ is eleven files implementing an IBM PC BIOS as a first-class
+subsystem rather than a shim.
+
+The machine model
+------------------------------------------------------------------------------
+
+bios.c creates a BiosContext for one of four machines, each with its authentic
+ROM revision date and clock speed:
+
+  Model                ROM revision  Clock
+  -------------------  ------------  --------
+  BIOS_MODEL_IBM_PC    1981-04-24    4.77 MHz
+  BIOS_MODEL_IBM_XT    1982-11-08    4.77 MHz
+  BIOS_MODEL_IBM_AT    1984-01-10    6.00 MHz
+  BIOS_MODEL_IBM_PCJR  1983-06-01    4.77 MHz
+
+Per-model personality files carry the differences: bios_pc.c (17 KB, the
+largest), bios_xt.c, bios_at.c, bios_jr.c.
+
+The context provides what a BIOS provides:
+
+  Function                               Purpose
+  -------------------------------------  -------------------------------------
+  bios_get_bda(ctx)                      The BIOS Data Area at segment 0x40
+  bios_peek, bios_poke, and their _raw   Memory access, with and without the
+  forms                                  observer
+  bios_inp, bios_out                     Port I/O
+  bios_post_code                         POST codes, as a real machine emits
+                                         at boot
+  bios_set_vram_observer                 A hook that fires when video memory
+                                         is written, so a modern renderer can
+                                         follow a program that pokes the
+                                         screen
+  bios_register_interrupt,               Register and dispatch an interrupt
+  bios_interrupt                         handler
+  bios_set_memory_map,                   Machine configuration
+  bios_set_clock_mode,
+  bios_set_clock_freq
+
+The VRAM observer is the part worth pausing on: a vintage program that writes
+directly to 0xB800 gets its output rendered, on a modern host, without knowing
+anything has changed. That is what makes Rule #1 achievable for programs that
+bypassed the BIOS entirely.
+
+The interrupt services
+------------------------------------------------------------------------------
+
+Four interrupt handlers are implemented, each in its own file. What each one
+covers, read from the case labels:
+
+INT 10h  --  video (bios_int10.c)
+
+  AH   Service
+  ---  --------------------
+  00h  Set video mode
+  02h  Set cursor position
+  03h  Read cursor position
+  0Eh  Teletype output
+
+Absent: 05h set active page, 06h/07h scroll, 08h read attribute/character,
+09h/0Ah write character, 0Ch/0Dh write/read pixel, 0Fh get video mode, 13h
+write string.
+
+INT 13h  --  disk (bios_int13.c)
+
+  AH   Service
+  ---  -----------------------------
+  00h  Reset disk subsystem
+  01h  Read status of last operation
+  08h  Read drive parameters
+
+Absent, and this is the consequential gap: 02h read sectors, 03h write
+sectors, 41h extensions check, 42h extended read. Those four are exactly what
+a bootloader uses, which is why this file gates the MBR boot work. See the
+7.0.0 plan, phase 3.6.
+
+INT 16h  --  keyboard (bios_int16.c)
+
+  AH   Service
+  ---  ----------------------------
+  00h  Read key character, blocking
+  01h  Check keyboard buffer status
+  02h  Read shift flags
+
+Absent: 10h, 11h, 12h  --  the extended forms an AT-class program uses.
+
+INT 1Ah  --  time (bios_int1a.c)
+
+  AH   Service
+  ---  -------------------------
+  00h  Read system timer ticks
+  01h  Set system timer ticks
+  02h  Read real-time clock time
+  04h  Read real-time clock date
+
+Absent: 03h set RTC time, 05h set RTC date.
+
+Not present at all: INT 11h equipment list, INT 12h memory size, INT 14h
+serial, INT 15h system services, INT 17h printer.
+
+2. REACHING THE BIOS FROM BASIC
+------------------------------------------------------------------------------
+
+Two statements, both vintage idioms.
+
+BIOS int_num invokes a BIOS interrupt using the variables AX%, BX%, CX% and
+DX% as the register file. It is the CALL INTERRUPT idiom from QuickBASIC's
+QB.BI, spelled more directly.
+
+    10 AX% = &H0E41          ' AH=0Eh teletype, AL=41h 'A'
+    20 BX% = 0
+    30 BIOS &H10
+
+INTERRUPT (statements/system/hardware/interrupt.c, 9 KB) is the more general
+software-interrupt statement.
+
+Alongside them, PEEK, POKE, DEF SEG, DEF USR, INP, OUT, WAIT, RBYTE and WBYTE
+give the rest of the vintage hardware surface. See Physical_Device_Access
+section 3, and note the limits recorded there: 8- and 16-bit port I/O only,
+x86 and x86_64 only, and silent compilation to a no-op on other architectures.
+
+3. THE 8086 CPU
+------------------------------------------------------------------------------
+
+bios_cpu8086.c is where a reader's expectation and the code diverge most, so
+it is worth being precise about which parts are real.
+
+What is real
+------------------------------------------------------------------------------
+
+The machine. Registers through reg_hw (engine/src/reg/reg_hw.c, 21 KB), named-
+register get and set, and a BiosCpu8086Context.
+
+The reset state, correctly. bios_cpu8086_reset sets CS = 0xF000, IP = 0xFFF0,
+FLAGS = 0x0002. That is the actual 8086 power-on state: the reset vector at
+F000:FFF0, sixteen bytes below the top of the 1 MB address space, and bit 1 of
+FLAGS reserved-set.
+
+The memory model. Physical addresses are computed as (cs << 4) + ip and
+bounds-checked against 1,048,576, which is the real segment:offset scheme and
+the real 1 MB limit.
+
+Interrupt dispatch, correctly. bios_cpu8086_int reads the vector from the
+interrupt vector table at 0000:(int_num * 4), pushes FLAGS, then CS, then IP
+onto the stack at SS:SP in that order and little-endian, and loads the
+handler's CS:IP. That is exactly what the hardware does.
+
+What is not
+------------------------------------------------------------------------------
+
+The instruction decoder. bios_cpu8086_step fetches an opcode and switches on
+it. There are three cases:
+
+  Opcode  Instruction
+  ------  -----------
+  0x90    NOP
+  0xF4    HLT
+  0xCF    IRET
+
+Everything else falls to default. There is no MOV, no arithmetic, no jump, no
+CALL, no string instruction, no ModR/M decoding at all.
+
+The honest summary
+------------------------------------------------------------------------------
+
+BASIC++ has an 8086 machine, not an 8086 emulator. The registers, the memory
+model, the reset vector and the interrupt mechanism are correct and would
+support an emulator. The thing that would make it one  --  a decoder for the
+roughly 256 primary opcodes and their ModR/M forms  --  has three entries.
+
+A program cannot execute 8086 machine code here. BLOAD a .COM file and CALL it
+and it will stop at the first instruction that is not NOP, HLT or IRET.
+
+Whether to complete the decoder or reduce the claim is decision 3 of the 7.0.0
+plan; the recommendation there is to schedule it separately, because it is
+large and nothing else depends on it except the cycle-accuracy claims.
+
+4. WHAT CPUSPEED DOES, AND DOES NOT
+------------------------------------------------------------------------------
+
+Worth stating here because the name misleads.
+
+CPUSPEED governs the rate of I/O and console output, so that a program written
+for a 4.77 MHz machine paces its screen output the way it did on one. It does
+not emulate CPU execution speed, throttle the interpreter, or relate to the
+8086 emulator. SPEED is the related statement.
+
+See func_cpuspeed.c (15 KB) and plat_hw_speed.c.
+
+5. USING THE BIOS LAYER AS A MICRO-LIBRARY FROM C
+------------------------------------------------------------------------------
+
+The whole bios/ subsystem is usable from a C host independently of BASIC:
+
+    BiosContext *bios = bios_create(BIOS_MODEL_IBM_XT);
+    bios_init(bios);
+
+    BiosVRAMObserver obs = { .on_write = my_render_callback, .user = my_ctx };
+    bios_set_vram_observer(bios, &obs);
+
+    BiosRegs regs = { .ax = 0x0E41 };
+    bios_interrupt(bios, 0x10, &regs);
+
+    bios_destroy(bios);
+
+bios_register_interrupt lets a host supply its own handler for any vector,
+which is how you extend the set in section 1 without modifying the engine.
+
+See Micro_Libraries_Architecture for the wider micro-library model and
+BIOS_Porting_Guide and IBM_BIOS_Porting for porting to a non-PC machine.
+
+6. WHAT TO DO ABOUT THE GAPS
+------------------------------------------------------------------------------
+
+  Gap                          Consequence                       Plan item
+  ---------------------------  --------------------------------  -------------
+  INT 13h 02h/03h/41h/42h      No bootloader can read its next   3.6
+                               stage
+  INT 10h graphics services    A vintage graphics program must   not scheduled
+                               use SCREEN and the BGI layer
+                               instead of the BIOS
+  INT 16h extended             AT-class keyboard handling        not scheduled
+                               unavailable
+  INT 11h, 12h, 14h, 15h, 17h  Equipment, memory size, serial,   not scheduled
+                               system, printer services absent
+  The 8086 decoder             Machine code cannot execute       decision 3
+
+None of these prevent a BASIC program from running. They prevent a program
+that was written against the BIOS rather than against BASIC from running, and
+they prevent BASIC++ from booting a machine itself.
+
+SEE ALSO
+------------------------------------------------------------------------------
+
+  Physical_Device_Access for PEEK, POKE, INP, OUT and their limits
+  Micro_Libraries_Architecture for the micro-library model
+  BIOS_Porting_Guide, IBM_BIOS_Porting, Subsystem_Porting
+  Memory_Maps for the address space
+  Universal_Registers_And_UDX for reg_hw and the register model
+  Implementation_Status for the evidence register
+  project notes/MBR_LEGACY_BOOT_PROMPT for the boot work INT 13h gates
+
+==============================================================================
+END OF DOCUMENT
+==============================================================================

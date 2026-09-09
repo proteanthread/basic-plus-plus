@@ -1,0 +1,78 @@
+<!--
+Title:        Universal Timesharing and Mainframe Integration Architecture
+Tier:         2
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/
+Generated:    no
+Status:       Active
+-->
+
+# Universal Timesharing and Mainframe Integration Architecture
+
+## 1. Architectural Overview & Historical Lineage
+
+BASIC++ v6.5.2 achieves complete, native execution compatibility with the historical spectrum of commercial, scientific, and educational **Timesharing BASIC dialects (1960–1979)**. All timesharing syntax constructs, byte packing/unpacking routines, arbitrary-precision decimal string arithmetic, matrix algebra suites, teletype control statements, and session telemetry functions operate within a unified non-recursive C17 virtual machine with zero regressions to baseline GW-BASIC, QBASIC, or modern extensions.
+
+```
++-------------------------------------------------------------------------------+
+|                    HISTORICAL MAINFRAME & TIMESHARING LINEAGE                 |
++-------------------------------------------------------------------------------+
+| 1964: DTSS Dartmouth BASIC (GE-225/635) -> 1965: GE Mark I/II Time-Sharing   |
+| 1968: HP 2000 Time-Shared BASIC --------> 1974: HP 3000 MPE / Business BASIC  |
+| 1969: DEC PDP-11 RSTS/E BASIC-PLUS ------> 1975: DEC BASIC-PLUS-2 / VAX BASIC |
+| 1969: Tymshare Super BASIC (SDS 940) ----> 1970: IBM CALL/360 & VS-BASIC      |
+| 1970s: Univac 1100, Burroughs CANDE, CDC Kronos/NOS, Multics, Prime PRIMOS    |
++-------------------------------------------------------------------------------+
+```
+
+---
+
+## 2. Mainframe Ecosystem Features & Subsystems
+
+### 2.1 Digital Equipment Corporation (DEC PDP-10 / PDP-11 / VAX)
+- **DEC Byte Packing & Binary Floating-Point Representation**:
+  - `CVT$%(n%)`: Converts 16-bit integer into a 2-byte binary string (compatible with `MKI$`).
+  - `CVT%$(s$)`: Converts 2-byte binary string into a 16-bit signed integer (compatible with `CVI`).
+  - `CVT$F(s$)`: Converts 4-byte IEEE/DEC string into single-precision float (compatible with `CVS`).
+  - `CVTF$(f!)`: Converts single-precision float into 4-byte binary string (compatible with `MKS$`).
+  - `SWAP%(n%)`: Exchanges high and low bytes of a 16-bit integer word.
+  - `RAD$(n&)`: Encodes 32-bit integer into 6-character Radix-50 ASCII representation.
+- **DEC String Transformation Engine**:
+  - `CVT$$(s$, bitmask)` / `EDIT$(s$, bitmask)`: High-performance string manipulation via 10 bitmask flags (strip spaces, discard control characters, uppercase conversion, bracket translation).
+- **High-Precision Decimal String Arithmetic (VAX BASIC / BP2)**:
+  - `SUM$(a$, b$)`: Arbitrary-precision decimal addition.
+  - `DIF$(a$, b$)`: Arbitrary-precision decimal subtraction.
+  - `PROD$(a$, b$ [, prec])`: Arbitrary-precision decimal multiplication with rounding.
+  - `QUO$(a$, b$ [, prec])`: Arbitrary-precision decimal division with precision truncation.
+  - `PLACE$(a$, prec)`: High-precision decimal rounding and formatting.
+
+### 2.2 Tymshare & Scientific Data Systems (SDS 940 / XDS 940)
+- **`CHANGE` Statement**:
+  - Bidirectional string-to-array ASCII decoding (`CHANGE str$ TO arr()`) and array-to-string reconstruction (`CHANGE arr() TO str$`).
+- **`UNLESS` Statement & Trailing Conditionals**:
+  - Native standalone conditional execution (`UNLESS condition THEN ... ELSE ...`).
+  - Trailing unnested postfix modifiers (`statement IF cond UNLESS cond2 WHILE cond3 UNTIL cond4`).
+
+### 2.3 Hewlett-Packard (HP 2000 / HP 3000 TSB)
+- **Substring Slicing & In-Place Mutation**:
+  - Bracket extraction (`sub$ = A$[start, end]`) and single-index slicing (`sub$ = A$[start]`).
+  - In-place substring replacement (`A$[start, end] = replacement$`).
+- **Terminal Input & Print Formatting**:
+  - `ENTER timeout_sec, var`: Timed input that automatically aborts if no keypress is detected within the specified timeout.
+  - `LIN(n)`: Prints $n$ line breaks (or clears to form feed for $n = -1$).
+  - `SPA(n)`: Prints $n$ horizontal spaces.
+
+### 2.4 Dartmouth DTSS & General Electric (GE-225 / GE-635)
+- **Comprehensive Matrix Math (`MAT`)**:
+  - Initialization: `MAT A = CON(r, c)`, `MAT A = ZER(r, c)`, `MAT A = IDN(r, c)`.
+  - Arithmetic: `MAT C = A + B`, `MAT C = A - B`, `MAT C = (k) * A`, `MAT C = A * B`.
+  - Linear Algebra: `MAT C = TRN(A)`, `MAT C = INV(A)`.
+
+---
+
+## 3. Verification & Dialect Test Coverage
+
+The timesharing implementation is verified through dedicated master test suites:
+- `tests/timeshare_master_comprehensive.bas`: 16/16 test packages PASSED.
+- `tests/vintage_ecosystems_master.bas`: 14/14 test packages PASSED.
+- `tests/vintage_deep_fuzz_stress.bas`: 8/8 tests PASSED.

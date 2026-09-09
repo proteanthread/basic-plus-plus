@@ -1,121 +1,79 @@
-======================================================================
-  BASIC++ V6.5.2 SINCLAIR BASIC (ZX SPECTRUM) DIALECT
-======================================================================
+TITLE: Sinclair_BASIC
+TIER: 2
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/gfx/, engine/src/audio/audio_synth.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+BASIC++ v6.5.2 SINCLAIR BASIC (ZX SPECTRUM) ARCHITECTURE
+==============================================================================
+
+The authoritative specification for Sinclair ZX Spectrum BASIC language
+compatibility, attribute-based graphics, sound generation, and string
+slicing in BASIC++ v6.5.2.
 
 
-======================================================================
-  1. HISTORY
-======================================================================
+1. HISTORY & ARCHITECTURAL OVERVIEW
 
-Sinclair BASIC was the built-in language of the ZX Spectrum series (1982-1992). It featured a unique single-keypress keyword entry system, attribute-based color graphics, and BEEP for sound generation. BASIC++ implements Sinclair BASIC compatibility through the SINC dialect configuration.
+Sinclair BASIC was the resident ROM programming language of the Sinclair
+ZX Spectrum series (1982-1992). It was renowned for its attribute-based
+color graphics model, single-statement sound synthesis (BEEP), and
+flexible string range slicing.
 
-
-======================================================================
-  2. ACTIVATING SINCLAIR MODE
-======================================================================
-
-10 DIALECT "SINC"
-
-Or launch with: baspp --dialect=SINC.
+In BASIC++ v6.5.2, Sinclair BASIC features are integrated directly into
+the unified master dialect with zero dialect switches or mode gates
+(upholding the Zero DIALECT invariant). All Sinclair constructs parse and
+execute natively alongside standard QBASIC and GW-BASIC statements.
 
 
-======================================================================
-  3. COLOR ATTRIBUTES
-======================================================================
+2. COLOR ATTRIBUTES AND BORDER CONTROL
 
-Sinclair BASIC uses INK, PAPER, BORDER, BRIGHT, FLASH, INVERSE, and OVER for color control:
+The ZX Spectrum graphical memory model separated character glyphs from
+color attributes. BASIC++ provides direct statements replicating this
+behavior across both console and graphical modes:
 
-10 BORDER 1              ' Blue border
-20 PAPER 0               ' Black background
-30 INK 7                 ' White text
-40 CLS
-50 PRINT "Hello, Spectrum!"
-
-INK n sets the foreground (ink) color (0-7). PAPER n sets the background (paper) color (0-7). BORDER n sets the screen border color (0-7). BRIGHT n enables bright mode (n=1 for bright, n=0 for normal). FLASH n enables flashing (n=1 for flash, n=0 for normal).
-
-Standard Spectrum colors: 0=Black, 1=Blue, 2=Red, 3=Magenta, 4=Green, 5=Cyan, 6=Yellow, 7=White. With BRIGHT 1, colors become their brighter variants.
+* BORDER color: Sets the display border color (0 to 7: Black, Blue,
+  Red, Magenta, Green, Cyan, Yellow, White).
+* INK color: Sets the active foreground drawing and text color (0-7).
+* PAPER color: Sets the active background drawing and text color (0-7).
+* BRIGHT flag: Toggles attribute high-intensity mode (0 = normal, 1).
+* FLASH flag: Toggles attribute flashing mode (0 = steady, 1).
+* INVERSE flag: Toggles video color inversion (0 = standard, 1).
 
 
-======================================================================
-  4. INVERSE AND OVER
-======================================================================
+3. SOUND GENERATION (BEEP)
 
-INVERSE 1 swaps ink and paper for subsequent output. INVERSE 0 returns to normal. OVER 1 enables overprint mode (XOR characters onto existing screen content). OVER 0 returns to normal.
+The Sinclair BEEP statement generates tone synthesis on the system sound
+generator:
 
+    BEEP duration, pitch
 
-======================================================================
-  5. PRINT AT
-======================================================================
+* duration: Floating-point duration of the tone in seconds.
+* pitch: Signed semi-tone offset relative to Middle C (0 = Middle C /
+  261.63 Hz, positive values ascend chromatically, negative descend).
 
-Sinclair BASIC uses PRINT AT row, col for cursor positioning (equivalent to LOCATE):
-
-10 PRINT AT 10, 15; "Center of screen"
-20 PRINT AT 0, 0; "Top left"
-
-AT positions are 0-based in Sinclair BASIC (row 0-21, col 0-31 for 32-column mode). BASIC++ accepts both 0-based (Sinclair) and 1-based (GW-BASIC) positioning depending on the active dialect.
+Implemented via the delayed-load audio HAL in engine/src/audio/
+audio_synth.c.
 
 
-======================================================================
-  6. BEEP
-======================================================================
+4. STRING RANGE SLICING
 
-Sinclair BASIC's BEEP statement takes duration and pitch parameters:
+Sinclair BASIC introduced slice indexing using the TO operator. BASIC++
+supports this syntax natively for string extraction and assignment:
 
-10 BEEP 0.5, 0           ' Middle C for 0.5 seconds
-20 BEEP 0.5, 2           ' D
-30 BEEP 0.5, 4           ' E
-40 BEEP 1, 7             ' G for 1 second
-
-Duration is in seconds. Pitch is in semitones relative to middle C (0 = middle C, 12 = C one octave up, -12 = C one octave down). This differs from GW-BASIC's SOUND statement which takes frequency in Hz and duration in ticks.
+* s$(start TO end): Extracts substring from start to end (1-based).
+* s$(start TO): Extracts substring from start to end of string.
+* s$(TO end): Extracts substring from beginning of string to end.
 
 
-======================================================================
-  7. GRAPHICS
-======================================================================
+5. EXAMPLE: SINCLAIR COLOR ATTRIBUTES AND TONE
 
-Sinclair BASIC graphics use a 256x192 pixel resolution with attribute-based coloring (each 8x8 cell shares one ink and paper color):
-
-PLOT x, y ? Set a pixel (equivalent to PSET).
-DRAW dx, dy ? Draw a line from the current position by dx, dy pixels.
-DRAW dx, dy, angle ? Draw an arc.
-CIRCLE x, y, radius ? Draw a circle.
-
-10 BORDER 0 : PAPER 0 : INK 7 : CLS
-20 FOR I = 0 TO 255
-30   PLOT I, 96 + SIN(I / 40) * 80
-40 NEXT I
-
-
-======================================================================
-  8. SCREEN$ AND ATTR
-======================================================================
-
-SCREEN$(row, col) returns the character displayed at the specified position. ATTR(row, col) returns the attribute byte at the specified position.
-
-
-======================================================================
-  9. PAUSE
-======================================================================
-
-PAUSE n suspends execution for n/50 seconds (PAL timing) or n/60 seconds (NTSC timing). PAUSE 0 waits indefinitely until a key is pressed.
-
-
-======================================================================
-  10. INPUT
-======================================================================
-
-Sinclair BASIC INPUT uses a different visual style: it clears the bottom lines of the screen and displays the input area there. BASIC++ emulates this behavior in SINC dialect mode.
-
-
-======================================================================
-  11. SPECTRUM-SPECIFIC FUNCTIONS
-======================================================================
-
-INKEY$ reads a single key without waiting (same as GW-BASIC). PEEK and POKE access the ZX Spectrum memory map emulation. Key Spectrum addresses: 16384 (screen memory start), 22528 (attribute area start), 23693 (system variable ATTR_P for permanent attribute).
-
-
-======================================================================
-  12. COMPATIBILITY NOTES
-======================================================================
-
-When running Spectrum BASIC programs: INK/PAPER/BORDER map to BASIC++ color operations through the VCon device. BEEP is translated to frequency/duration parameters. AT-based positioning is converted to 1-based coordinates internally. POKE/PEEK to Spectrum memory addresses are handled by the BIOS emulation layer's Spectrum memory map module.
+    10 REM Sinclair Attributes & Sound Demo
+    20 BORDER 1 : PAPER 7 : INK 2 : CLS
+    30 PRINT "ZX Spectrum Native Emulation"
+    40 BEEP 0.25, 0    ' Middle C
+    50 BEEP 0.25, 4    ' E above Middle C
+    60 BEEP 0.5, 7     ' G above Middle C
+    70 A$ = "BASIC++ LANGUAGE"
+    80 PRINT "Sliced: "; A$(1 TO 7)

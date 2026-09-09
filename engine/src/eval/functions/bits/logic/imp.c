@@ -2,24 +2,29 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (sys_fn.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c)
+// NEEDS: libcore (language_descriptor.h)
 // NEEDS: libengine (imp.h)
 // Provides runtime implementation for the IMP built-in function in BASIC++.
 //
 // ---- Includes ----
 
 #include "eval/functions/bits/logic/imp.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_imp_desc = {
+    .name = "IMP",
+    .category = "Bitwise & Logical Functions",
+    .syntax = "IMP(val1, val2) or val1 IMP val2",
+    .description = "Performs bitwise and logical implication (NOT val1 OR val2) on integers or boolean values.",
+    .error_summary = "Error 13: Type Mismatch",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_PURE,
+    .type = FEATURE_FUNCTION
+};
 
 void func_imp_register(void) {
-    MicroLibMetadata meta = {
-        .name = "IMP",
-        .category = "Bitwise & Logical Functions",
-        .syntax = "IMP(val1, val2) or val1 IMP val2",
-        .help_text = "Performs bitwise and logical implication (NOT val1 OR val2) on integers or boolean values.",
-        .error_codes = "Error 13: Type Mismatch"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_imp_desc);
 }
 
 BValue func_imp_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err) {

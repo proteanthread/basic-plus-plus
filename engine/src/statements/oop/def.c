@@ -2,7 +2,7 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (eval_expr_internal.h, exec_internal.h, sub_internal.h)
-// NEEDS: libcore (ctype.h, ctype.c, micro_lib_metadata.h, micro_lib_metadata.c)
+// NEEDS: libcore (ctype.h, ctype.c, language_descriptor.h)
 // NEEDS: libcore (string.h, variables.h, variables.c)
 // NEEDS: libengine (eval.h, eval.c, lexer.h, lexer.c, stmt.h, string.c, vm.h)
 // Provides runtime implementation for the DEF statement in BASIC++.
@@ -14,13 +14,26 @@
 #include "vm/vm.h"
 #include "runtime/variables.h"
 #include "eval/eval.h"
-#include "runtime/micro_lib_metadata.h"
-#include <string.h>
-#include <ctype.h>
+#include "runtime/language_descriptor.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "runtime/ctype/ctype.h"
+#include "runtime/format/snprintf.h"
+
+static const LangDesc g_defint_desc = {
+    .name = "DEFINT",
+    .category = "Variables & Memory",
+    .syntax = "DEFINT | DEFSNG | DEFDBL | DEFSTR letter_range [, letter_range...]",
+    .description = "Sets the default implicit data type for variables starting with specified letters.",
+    .error_summary = "Error 2: Syntax Error, Error 5: Illegal Function Call",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SYSTEM,
+    .type = FEATURE_STATEMENT
+};
 
 static BppError parse_def_range(VMContext *vm, LexerContext *lex, ValueType type) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     VariableContext *var = vm_get_var(vm);
     const char *scope = vm_get_active_proc(vm);
 
@@ -36,11 +49,11 @@ static BppError parse_def_range(VMContext *vm, LexerContext *lex, ValueType type
 
         char name[64];
         size_t clen = (tok.length < 63) ? tok.length : 63;
-        memcpy(name, tok.start, clen);
+        runtime_memcpy(name, tok.start, clen);
         name[clen] = '\0';
         
         for (size_t i = 0; i < clen; i++) {
-            name[i] = (char)toupper((unsigned char)name[i]);
+            name[i] = (char)runtime_toupper((unsigned char)name[i]);
         }
         
         // Append type suffix if not already present to force explicit declaration
@@ -53,27 +66,27 @@ static BppError parse_def_range(VMContext *vm, LexerContext *lex, ValueType type
         }
 
         if (num_vars < 16) {
-            snprintf(var_names[num_vars], sizeof(var_names[num_vars]), "%s", name);
+            runtime_snprintf(var_names[num_vars], sizeof(var_names[num_vars]), "%s", name);
             num_vars++;
         }
 
         BppToken next = lex_peek(lex);
         if (next.type == TOK_MINUS) {
-            if (strlen(name) != 2 || !isalpha((unsigned char)name[0])) {
+            if (runtime_strlen(name) != 2 || !runtime_isalpha((unsigned char)name[0])) {
                 err.code = 2; err.message = "Expected single letter (A-Z) before '-' in DEF range";
                 return err;
             }
             lex_next(lex); // Consume '-'
             BppToken end_tok = lex_next(lex);
-            if (end_tok.type != TOK_IDENT || end_tok.length != 1 || !isalpha((unsigned char)end_tok.start[0])) {
+            if (end_tok.type != TOK_IDENT || end_tok.length != 1 || !runtime_isalpha((unsigned char)end_tok.start[0])) {
                 err.code = 2; err.message = "Expected single letter (A-Z) after '-' in DEF range";
                 return err;
             }
-            char end_letter = (char)toupper((unsigned char)end_tok.start[0]);
+            char end_letter = (char)runtime_toupper((unsigned char)end_tok.start[0]);
             var_set_def_type(var, scope, name[0], end_letter, type);
         } else {
             // If length 2 (1 char + 1 suffix), also define implicit type for that letter for legacy support
-            if (clen == 1 && isalpha((unsigned char)name[0])) {
+            if (clen == 1 && runtime_isalpha((unsigned char)name[0])) {
                 var_set_def_type(var, scope, name[0], name[0], type);
             }
             // Explicitly declare the variable so it has the correct type regardless of implicit scope
@@ -141,7 +154,7 @@ BppError stmt_defstr_handler(VMContext *vm, LexerContext *lex) {
 
 BppError stmt_defusr_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     int usr_idx = 0;
     BppToken tok = lex_peek(lex);
@@ -153,7 +166,7 @@ BppError stmt_defusr_handler(VMContext *vm, LexerContext *lex) {
         if (tok.length >= 4 && (tok.start[0] == 'U' || tok.start[0] == 'u') &&
             (tok.start[1] == 'S' || tok.start[1] == 's') &&
             (tok.start[2] == 'R' || tok.start[2] == 'r') &&
-            isdigit((unsigned char)tok.start[3])) {
+            runtime_isdigit((unsigned char)tok.start[3])) {
             usr_idx = tok.start[3] - '0';
             lex_next(lex);
         }
@@ -181,13 +194,6 @@ BppError stmt_defusr_handler(VMContext *vm, LexerContext *lex) {
 }
 
 void stmt_def_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "DEFINT",
-        .category = "Variables & Memory",
-        .syntax = "DEFINT | DEFSNG | DEFDBL | DEFSTR letter_range [, letter_range...]",
-        .help_text = "Sets the default implicit data type for variables starting with specified letters.",
-        .error_codes = "Error 2: Syntax Error, Error 5: Illegal Function Call"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_defint_desc);
 }
 

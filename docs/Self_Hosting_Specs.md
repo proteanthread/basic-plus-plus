@@ -1,108 +1,58 @@
-# BASIC++ v6.5.2 Self-Hosting Specifications
+<!--
+Title:        Self_Hosting_Specs
+Tier:         2
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/runtime/spec.c, engine/src/docgen/docgen.c, engine/include/runtime/language_descriptor.h
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. OVERVIEW
+# BASIC++ v6.5.2 Self-Hosting Specifications & Metaprogramming
 
-BASIC++ supports defining, validating, generating, and documenting its own language specifications natively through BASIC++ scripts, modules, and the specification system. This capability is called "dialect metaprogramming" — the language can describe itself.
+The authoritative specification for programmatic language definitions, keyword descriptor registries, validation, and documentation generation in BASIC++ v6.5.2.
 
-## 2. THE SPECIFICATION SYSTEM
+---
 
-The specification system (engine/src/runtime/spec.c) provides statements for defining language specifications programmatically:
+## 1. Overview and Architecture
 
-SPEC DEFINE name$ creates a new named specification. SPEC KEYWORD name$, category$, syntax$ registers a keyword in the specification. SPEC FUNCTION name$, params$, returns$, desc$ registers a function. SPEC VALIDATE runs validation checks against the active specification.
+BASIC++ supports programmatic introspection and generation of its own language descriptors natively. The core engine maintains a structured metadata catalog representing every keyword, statement, function, operator, and command.
+
+The specification system is implemented in:
+- `engine/src/runtime/spec.c`: Maintains the `SpecObject` registry mapping keyword IDs, syntactic categories, library bindings, and safety levels.
+- `engine/src/docgen/docgen.c`: Generates structured documentation (Markdown, HTML, plaintext help catalogs) from the active `LanguageDescriptor` metadata table.
+
+*(Note: Under the Zero DIALECT and META invariant, previous experimental `DIALECT DEFINE` and `METADATA` statements were purged. Language specifications are strictly self-hosting architectural descriptors.)*
+
+---
+
+## 2. The Specification Registry
+
+The `SPEC` statement provides programmatic access to language specification entries:
+
+- **`SPEC DEFINE name$`**: Initializes a named language specification domain.
+- **`SPEC KEYWORD name$, category$, syntax$`**: Registers a keyword entry with its category and syntactic pattern.
+- **`SPEC FUNCTION name$, params$, returns$, desc$`**: Registers a function specification entry with signature and return type.
+- **`SPEC VALIDATE`**: Executes structural validation checks across all registered specification objects.
+
+---
+
+## 3. Documentation Generation (`DOCGEN`)
+
+The `DOCGEN` subsystem generates automated language documentation directly from the compiled engine descriptor tables:
+
+- **`DOCGEN "HELP", target_file$`**: Emits standardized Tier 4 plaintext help catalogs.
+- **`DOCGEN "CATALOG", target_file$`**: Emits the master keyword catalog index.
+- **`DOCGEN "MARKDOWN", target_dir$`**: Emits Tier 3 keyword reference pages conforming to the 3-tier canonical format.
+
+---
+
+## 4. Example: Specification Declaration and Validation
 
 ```basic
-10 SPEC DEFINE "MyDialect"
-20 SPEC KEYWORD "SHOUT", "statement", "SHOUT expression"
-30 SPEC KEYWORD "WHISPER", "statement", "WHISPER expression"
-40 SPEC FUNCTION "LOUD$", "(s$)", "STRING", "Convert to uppercase with !"
+10 REM Register Custom Module Specification
+20 SPEC DEFINE "SensorModule"
+30 SPEC KEYWORD "READ.SENSOR", "Hardware & Network", "READ.SENSOR port, var"
+40 SPEC FUNCTION "SENSOR.VAL", "(port)", "NUMBER", "Reads raw sensor value"
 50 SPEC VALIDATE
-60 PRINT "Specification valid: "; SPEC.VALID
+60 PRINT "Specification registered and validated."
 ```
-
-## 3. DIALECT CONFIGURATION
-
-A BASIC++ program can define a custom dialect by specifying which keywords are available, how they parse, and what defaults apply:
-
-```basic
-10 DIALECT DEFINE "TEACHING"
-20 DIALECT ALLOW "PRINT", "INPUT", "IF", "THEN", "ELSE", "END"
-30 DIALECT ALLOW "FOR", "NEXT", "GOTO", "GOSUB", "RETURN"
-40 DIALECT DENY "SHELL", "POKE", "EXEC", "KILL"
-50 DIALECT DEFAULT "OPTION BASE", 1
-60 DIALECT ACTIVATE "TEACHING"
-```
-
-The DIALECT DEFINE/ALLOW/DENY/DEFAULT/ACTIVATE sequence creates a restricted dialect suitable for educational environments. Only allowed keywords are recognized; denied keywords produce syntax errors.
-
-## 4. DOCUMENTATION GENERATION
-
-The DOCGEN statement generates documentation from the specification and metadata registries:
-
-```basic
-10 DOCGEN "HELP", "output_help.txt"    ' Generate HELP text
-20 DOCGEN "CATALOG", "catalog.txt"      ' Generate CATALOG listing
-30 DOCGEN "HTML", "reference.html"      ' Generate HTML reference
-```
-
-The documentation generator (engine/src/docgen/docgen.c) reads the MetadataRegistry and produces formatted output in the specified format.
-
-## 5. METADATA REGISTRY
-
-Every keyword, function, and statement in BASIC++ can have metadata attached:
-
-```basic
-10 METADATA "PRINT", "category", "Output"
-20 METADATA "PRINT", "syntax", "PRINT [expression] [; | ,] ..."
-30 METADATA "PRINT", "description", "Outputs values to the console"
-40 METADATA "PRINT", "example", "PRINT ""Hello, World!"""
-50 METADATA "PRINT", "since", "1.0"
-```
-
-The HELP command reads this metadata to display interactive help. The CATALOG command reads it to display the keyword catalog.
-
-## 6. SELF-VALIDATION
-
-A BASIC++ program can validate its own correctness using the built-in test framework:
-
-```basic
-10 TEST "Arithmetic"
-20   ASSERT 2 + 2 = 4
-30   ASSERT 10 / 3 = 3.333333, 0.0001
-40   ASSERT SQR(144) = 12
-50 ENDTEST
-60 TEST "Strings"
-70   ASSERT LEN("HELLO") = 5
-80   ASSERT LEFT$("HELLO", 3) = "HEL"
-90   ASSERT UCASE$("hello") = "HELLO"
-100 ENDTEST
-```
-
-SELFTEST runs all TEST blocks and reports pass/fail results.
-
-## 7. LANGUAGE EXTENSION
-
-The KEYWORD statement registers a new keyword that maps to a BASIC++ subroutine:
-
-```basic
-10 KEYWORD "SHOUT" AS 5000
-20 ' Now SHOUT works as a statement
-30 SHOUT "Hello!"
-40 END
-5000 ' Handler for SHOUT
-5010 ' Parameter is passed via the keyword mechanism
-5020 PRINT UCASE$(KEYWORD.PARAM$); "!"
-5030 RETURN
-```
-
-The REMOVE statement removes a registered keyword: `REMOVE "SHOUT"`.
-
-## 8. SPECIFICATION EXPORT
-
-Specifications can be saved to files for reuse:
-
-```basic
-10 SPEC SAVE "mydialect.spec"
-20 SPEC LOAD "mydialect.spec"
-```
-
-This allows sharing dialect definitions between programs and between users.

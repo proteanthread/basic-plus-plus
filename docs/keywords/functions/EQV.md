@@ -1,24 +1,72 @@
-# `EQV` Logical and Bitwise Equivalence Operator (Universal Dual-Format)
+<!--
+Title:        EQV
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/eval/functions/bits/logic/eqv.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Operator/Function Definition
+# `EQV` Keyword Reference
 
-The `EQV` keyword performs bitwise equivalence on 64-bit integer operands or logical equivalence on boolean expressions. It is supported in both **infix** and **prefix** notation.
+## Source Header
 
-### Syntax Signatures:
-```basic
-result = expr1 EQV expr2
-result = EQV(expr1, expr2)
+```c
+// FILENAME: eqv.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine (sys_fn.c)
+// NEEDS: libcore (language_descriptor.h)
+// NEEDS: libengine (eqv.h)
+// Provides runtime implementation for the EQV built-in function in BASIC++.
+//
+// ---- Includes ----
 ```
 
-### Operational Rules:
-- Performs bitwise equivalence: `~((int64_t)expr1 ^ (int64_t)expr2)`.
-- In RPN stack evaluation blocks: `{ expr1 expr2 EQV }`.
+## 1. Description & Usage
+
+Performs bitwise and logical equivalence (NOT XOR) on integers or boolean values.
+
+## 2. Syntax
+
+```basic
+EQV(val1, val2) or val1 EQV val2
+```
+
+## 3. Code Example
+
+```basic
+10 Val = EQV(val1, val2) or val1 EQV val2
+20 PRINT "Result: "; Val
+```
+
+## 4. Error Conditions
+
+Error 13: Type Mismatch
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Bitwise & Logical Functions
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_PURE
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 PRINT "Infix: "; 15 EQV 15 : REM Outputs -1 (True)
-20 PRINT "Prefix: "; EQV(15, 15) : REM Outputs -1 (True)
-```
+| Field | Value |
+|---|---|
+| Name | EQV |
+| Category | Bitwise & Logical Functions |
+| Syntax | EQV(val1, val2) or val1 EQV val2 |
+| Description | Performs bitwise and logical equivalence (NOT XOR) on integers or boolean values. |
+| Error Summary | Error 13: Type Mismatch |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_PURE |
+| Feature Type | FEATURE_FUNCTION |
+| Delimiter Mask | none |
+| Compatibility | none |
+| Since Version | none |
+| Source File | engine/src/eval/functions/bits/logic/eqv.c |

@@ -8,13 +8,15 @@
 // ---- Includes ----
 
 #include "statements/oop/sub_internal.h"
+#include "runtime/string/strops.h"
+#include "runtime/string/memops.h"
 
 //
 // ---- User Function & Method Invocation ----
 
 BValue invoke_user_function(VMContext *vm, const char *name, BValue *args, int argc, BppError *err) {
     BValue val;
-    memset(&val, 0, sizeof(val));
+    runtime_memset(&val, 0, sizeof(val));
     val.type = VAL_NUMBER;
     val.as.number = 0.0;
 
@@ -38,11 +40,11 @@ BValue invoke_user_function(VMContext *vm, const char *name, BValue *args, int a
         return val;
     }
 
-    const char *dot = strchr(name, '.');
+    const char *dot = runtime_strchr(name, '.');
     const char *fn_var = dot ? (dot + 1) : name;
 
     FormalParam formal_params[16];
-    memset(formal_params, 0, sizeof(formal_params));
+    runtime_memset(formal_params, 0, sizeof(formal_params));
     int param_count = parse_formal_params(vm_get_mem(vm), target_text, formal_params, 16);
 
     VariableContext *vc = vm_get_var(vm);
@@ -74,7 +76,7 @@ BValue invoke_user_function(VMContext *vm, const char *name, BValue *args, int a
         var_assign(vc, "THIS", args[0]);
         var_assign(vc, "ME", args[0]);
 
-        if (param_count > 0 && (strcasecmp(formal_params[0].name, "THIS") == 0 || strcasecmp(formal_params[0].name, "ME") == 0)) {
+        if (param_count > 0 && (runtime_strcasecmp(formal_params[0].name, "THIS") == 0 || runtime_strcasecmp(formal_params[0].name, "ME") == 0)) {
             arg_offset = 0;
         } else if (argc >= param_count + 1) {
             arg_offset = 1;
@@ -100,7 +102,7 @@ BValue invoke_user_function(VMContext *vm, const char *name, BValue *args, int a
                 LexerContext *def_lex = lex_init(vm_get_mem(vm), formal_params[i].default_expr);
                 if (def_lex) {
                     BppError def_err;
-                    memset(&def_err, 0, sizeof(def_err));
+                    runtime_memset(&def_err, 0, sizeof(def_err));
                     BValue evaled_def = eval_expression(vm, def_lex, &def_err);
                     if (def_err.code == 0) {
                         var_assign(vc, formal_params[i].name, evaled_def);
@@ -167,11 +169,34 @@ BValue invoke_user_function(VMContext *vm, const char *name, BValue *args, int a
             if (tok.type == TOK_KEYWORD && (tok.as.keyword == KW_PUBLIC || tok.as.keyword == KW_PRIVATE)) {
                 tok = lex_next(chk_lex);
             }
+            bool is_proc_start = false;
             if (tok.type == TOK_KEYWORD && (tok.as.keyword == KW_SUB || tok.as.keyword == KW_FUNCTION || tok.as.keyword == KW_DEF || tok.as.keyword == KW_PROCEDURE)) {
+                is_proc_start = true;
+            } else if (tok.type == TOK_IDENT) {
+                if ((tok.length == 8 && runtime_strncasecmp(tok.start, "FUNCTION", 8) == 0) ||
+                    (tok.length == 3 && runtime_strncasecmp(tok.start, "SUB", 3) == 0) ||
+                    (tok.length == 3 && runtime_strncasecmp(tok.start, "DEF", 3) == 0) ||
+                    (tok.length == 9 && runtime_strncasecmp(tok.start, "PROCEDURE", 9) == 0)) {
+                    is_proc_start = true;
+                }
+            }
+
+            if (is_proc_start) {
                 nest++;
             } else if (tok.type == TOK_KEYWORD && tok.as.keyword == KW_END) {
                 BppToken ntok = lex_next(chk_lex);
+                bool is_proc_end_kw = false;
                 if (ntok.type == TOK_KEYWORD && (ntok.as.keyword == KW_SUB || ntok.as.keyword == KW_FUNCTION || ntok.as.keyword == KW_DEF || ntok.as.keyword == KW_PROCEDURE)) {
+                    is_proc_end_kw = true;
+                } else if (ntok.type == TOK_IDENT) {
+                    if ((ntok.length == 8 && runtime_strncasecmp(ntok.start, "FUNCTION", 8) == 0) ||
+                        (ntok.length == 3 && runtime_strncasecmp(ntok.start, "SUB", 3) == 0) ||
+                        (ntok.length == 3 && runtime_strncasecmp(ntok.start, "DEF", 3) == 0) ||
+                        (ntok.length == 9 && runtime_strncasecmp(ntok.start, "PROCEDURE", 9) == 0)) {
+                        is_proc_end_kw = true;
+                    }
+                }
+                if (is_proc_end_kw) {
                     if (nest > 0) nest--;
                     else is_end_proc = true;
                 }
@@ -179,10 +204,10 @@ BValue invoke_user_function(VMContext *vm, const char *name, BValue *args, int a
                 if (nest > 0) nest--;
                 else is_end_proc = true;
             } else if (tok.type == TOK_IDENT) {
-                if ((tok.length == 6 && strncasecmp(tok.start, "SUBEND", 6) == 0) ||
-                    (tok.length == 6 && strncasecmp(tok.start, "ENDSUB", 6) == 0) ||
-                    (tok.length == 11 && strncasecmp(tok.start, "ENDFUNCTION", 11) == 0) ||
-                    (tok.length == 5 && strncasecmp(tok.start, "FNEND", 5) == 0)) {
+                if ((tok.length == 6 && runtime_strncasecmp(tok.start, "SUBEND", 6) == 0) ||
+                    (tok.length == 6 && runtime_strncasecmp(tok.start, "ENDSUB", 6) == 0) ||
+                    (tok.length == 11 && runtime_strncasecmp(tok.start, "ENDFUNCTION", 11) == 0) ||
+                    (tok.length == 5 && runtime_strncasecmp(tok.start, "FNEND", 5) == 0)) {
                     if (nest > 0) nest--;
                     else is_end_proc = true;
                 }
@@ -222,7 +247,7 @@ BValue invoke_user_function(VMContext *vm, const char *name, BValue *args, int a
     }
 
     BValue *res_ptr = var_lookup(vc, fn_var, false);
-    if (!res_ptr && strncmp(fn_var, "OPERATOR_", 9) == 0) {
+    if (!res_ptr && runtime_strncmp(fn_var, "OPERATOR_", 9) == 0) {
         res_ptr = var_lookup(vc, "OPERATOR", false);
     }
     if (res_ptr) {
@@ -239,8 +264,14 @@ BValue invoke_user_function(VMContext *vm, const char *name, BValue *args, int a
             map_release(vm_get_str(vm), old_fn_val.as.map);
         }
     } else {
-        BValue def_num = {.type = VAL_NUMBER, .as.number = 0.0};
-        var_assign(vc, fn_var, def_num);
+        size_t flen = runtime_strlen(fn_var);
+        if (flen > 0 && fn_var[flen - 1] == '$') {
+            BValue def_str = {.type = VAL_STRING, .as.string = NULL};
+            var_assign(vc, fn_var, def_str);
+        } else {
+            BValue def_num = {.type = VAL_NUMBER, .as.number = 0.0};
+            var_assign(vc, fn_var, def_num);
+        }
     }
 
     for (int i = 0; i < param_count && i < 16; i++) {

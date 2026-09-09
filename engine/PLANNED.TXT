@@ -1,0 +1,278 @@
+===============================================================================
+BASIC++ Master Planned Subsystems & Dialect Gap Analysis Reference
+===============================================================================
+Location: engine/PLANNED.TXT
+
+Authoritative Planned Subsystems Reference: An exhaustive catalog of missing
+keywords, statements, functions, compiler passes, virtual hardware interfaces,
+and dialect specifications across the 60-year history of BASIC (1964-2026),
+synthesized from source/, v5/, project notes/, git history, and historical
+language specifications.
+
+-------------------------------------------------------------------------------
+1. Executive Summary & Core Compiler/VM Roadmap
+-------------------------------------------------------------------------------
+
+The BASIC++ v6.5.2 engine provides a unified, non-recursive, C17 runtime
+executing interpreted AST statements and bytecode. To achieve full universal
+dialect emulation and native compilation, the following core subsystems are
+actively planned:
+
+1.1 Native Whole-Program AOT Compiler (bppc.exe / bppc):
+  - Whole-Program AST Restructuring: Analyzes global program structure, infers
+    strict variable types, and eliminates runtime symbol lookup overhead.
+  - Optional Line Numbers in Multi-Statement Files: Supports pure modern
+    structured BASIC syntax without line numbers across multi-module projects.
+  - Freestanding C17 Code Generation: Emits standard ISO C17 source code
+    compiling via MSVC, GCC, Clang, or Zig into zero-dependency binaries.
+  - Bytecode VM Stub Injection: Generates lightweight executable stubs
+    embedding pre-compiled Universal IR bytecode.
+
+1.2 Cross-Dialect Source-to-Source Transpiler (trans.exe / trans):
+  - Bidirectional Dialect Translation: Translates between legacy dialects
+    (GW-BASIC, QBASIC, Super BASIC, ECMA-116, Dartmouth) and BASIC++.
+  - Dialect Metaprogramming & Introspection: Natively validates, translates,
+    and generates language specifications using BASIC++ macros and metadata.
+
+1.3 16-Bit Real Mode Segmented Memory Virtualization (vmem):
+  - DEF SEG = segment: Full 20-bit address calculation (Phys = SEG*16 + OFF).
+  - Memory Trapping & Bounds Validation: Safe emulation of IBM PC BIOS Data
+    Area (0x0040:0x0000), CGA/MDA/EGA VRAM (0xB800:0x0000, 0xA000:0x0000).
+  - CALL ABSOLUTE(args..., addr): Sandboxed machine-code execution via libcpu8086.
+
+1.4 Multi-Modal Built-In Editors:
+  - MS-DOS EDLIN (--edlin / mod_edlin.h): Line editor emulation (A, D, E, I,
+    L, M, P, R, S, W, Q).
+  - Bill Joy VI (--vi / mod_vi.h): Modal text editor (Normal, Insert, Visual, Ex).
+  - WordStar 3.3/4.0 (--ws / mod_ws.h): Control-key diamond cursor control (^E,
+    ^X, ^S, ^D, ^A, ^F) and block commands (^KB, ^KK, ^KV, ^KC, ^KY).
+
+1.5 FujiNet Hardware Bus & IoT SIO Virtualization:
+  - FujiNet Network Device (N:): URL stream I/O (OPEN "N:HTTP://...", #1).
+  - TNFS Remote Filesystem: Native mounting of remote TNFS file archives.
+  - Microcontroller Embedded HAL: Freestanding C17 for ESP32, STM32, RP2040, AVR.
+
+-------------------------------------------------------------------------------
+2. Mainframe & Timesharing Dialects Gap Analysis
+-------------------------------------------------------------------------------
+
+Historical Mainframe & Timesharing Lineage:
+  1964: DTSS Dartmouth BASIC (GE-225/635) -> 1965: GE Mark I/II Time-Sharing
+  1968: HP 2000 Time-Shared BASIC --------> 1974: HP 3000 MPE / Business BASIC
+  1969: DEC PDP-11 RSTS/E BASIC-PLUS ------> 1975: DEC BASIC-PLUS-2 / VAX BASIC
+  1969: Tymshare Super BASIC (SDS 940) ----> 1970: IBM CALL/360 & VS-BASIC
+  1970s: Univac 1100, Burroughs CANDE, CDC Kronos/NOS, Multics, Prime PRIMOS
+
+2.1 Dartmouth DTSS BASIC (1st Ed 1964 to 7th Ed 1979 / SBASIC):
+  - Planned Statements: DEF FN... / FNEND multi-line blocks, CHANGE array TO
+    string$ / CHANGE string$ TO array, LINPUT, MARGIN, PAGE, TIM, TIME.
+  - Matrix Operations: MAT INPUT, MAT PRINT, MAT READ, MAT +, MAT -, MAT *,
+    MAT INV, MAT TRN, MAT ZER, MAT CON, MAT IDN.
+
+2.2 GE Mark I & Mark II Time-Sharing BASIC:
+  - Planned Statements: EDIT, BUILD, EXTRACT, MERGE, ALTER.
+
+2.3 HP 2000 & HP 3000 Time-Shared BASIC (MPE 3000, Business BASIC, HP 3000/V):
+  - Substring Slicing: A$(start, end) and A$(start) syntax without MID$/LEFT$.
+  - File System: ASSIGN #ch TO file$, FILES file1, file2..., PRINT #ch, rec;,
+    READ #ch, rec;, ADVANCE #ch, recs, RESTORE #ch.
+  - System Commands: CATALOG, NAME, PURGE, PROTECT, UNPROTECT, LOCK, UNLOCK.
+
+2.4 DEC Timesharing Lineage (TSS-8, BASIC-10, BASIC-PLUS, BP2, VAX BASIC):
+  - Postfix Modifiers: stmt IF cond, stmt UNLESS cond, stmt FOR..., stmt WHILE,
+    stmt UNTIL.
+  - Virtual Array: DIM #ch, array(d1, d2) mapping multi-megabyte arrays to disk.
+  - Record Mapping & Locking: MAP (map_name), FIELD #ch, GET #ch, PUT #ch,
+    FIND #ch, KEY condition, RESTORE #ch, KEY key.
+  - String Functions: CVT$%, CVT%$, CVT$F, CVTF$, XLATE$, COMP%, RAD$, NUM$,
+    NUM1$, VAL%.
+
+2.5 Tymshare Super BASIC (SDS 940, XDS 940, PDP-10):
+  - Planned Capabilities: Command-line dynamic execution, INSPECT variable,
+    MODIFY line, ON expr GOTO... ELSE line_def, colon/semicolon delimiters.
+
+2.6 IBM Mainframe Lineage (CALL/360, VS-BASIC, ITF, 5100, Series/1, S/34/36/38, AS/400):
+  - CALL/360 & VS-BASIC: LET required/optional, DEF FN local args, PRINT USING
+    with EBCDIC, RESET, BACKSPACE #ch, REWIND #ch, PAUSE [prompt$].
+  - Series/1 & S/34/36: ATTACH task, POST event, WAIT event, keyed file access.
+
+2.7 Univac 1100 Series CTS / Exec 8 Time-Sharing BASIC:
+  - 36-bit word length integer arithmetic, FILE #ch: "NAME", multi-file locks.
+
+2.8 Burroughs B5500 / B6700 CANDE Time-Sharing BASIC:
+  - Tagged word architecture, INTEGER/REAL ARRAY dynamic bounds, SCAN, WHILE.
+
+2.9 CDC 6000 / Cyber Kronos & NOS Time-Sharing BASIC:
+  - 60-bit floating-point math (14 decimal digits precision), Display Code 6-bit.
+
+2.10 Honeywell Multics BASIC:
+  - Segmented virtual memory addresses, structured IF...THEN...ELSE...END IF.
+
+2.11 Data General Extended / TSS BASIC (Nova / Eclipse RDOS, AOS, TSS):
+  - INPUT (timeout, max_chars) var$, OPEN (ch, "file", mode), READ (ch, rec, err).
+
+2.12 Prime Computer Prime BASIC / BASIC/VM (PRIMOS):
+  - Virtual Memory pointer binding, segmented string heap up to 32 MB.
+
+2.13 ICL 1900 / 2900 Maximop & George 3 BASIC:
+  - 24-bit/48-bit arithmetic models, DATA file redirection, TRACE ON/OFF.
+
+2.14 Wang 3300 Timesharing BASIC & Harris Vulcan / VOS BASIC:
+  - CRT character formatting (HEXOF$, VER$), sector READ #ch, sec, off; vars.
+
+2.15 PICK System / MultiValue Pick BASIC:
+  - Dynamic arrays with 3-level delimiters: Item Marks (CHR$(255)), Field Marks
+    (CHR$(254)/AM), Value Marks (CHR$(253)/VM), Subvalue Marks (CHR$(252)/SVM).
+  - Statements: EXTRACT, INSERT, REPLACE, DELETE, LOCATE.
+
+2.16 MAI Basic Four / Thoroughbred / ProvideX Business BASIC:
+  - ROUND statement precision, variable record lengths, KEYED/DIRECT file open,
+    EXTRACT (read with lock), FIND (read with lock exception).
+
+-------------------------------------------------------------------------------
+3. International Standards Gap Analysis
+-------------------------------------------------------------------------------
+
+3.1 ANSI X3.113-1987 & ECMA-116 Full BASIC:
+  - PROGRAM prog_name ... END PROGRAM
+  - Multi-line function blocks: DEF fn(args) ... END DEF
+  - Subprograms: SUB sub(args) ... END SUB with CALL sub
+  - Structured decision blocks: SELECT CASE ... CASE ... END SELECT
+  - Exception Handling: WHEN EXCEPTION USE handler ... USE ... END WHEN (RETRY, CONTINUE).
+  - Module 1 (Graphics): SET WINDOW, SET VIEWPORT, PLOT POINTS, PLOT LINES, PLOT AREA.
+  - Module 2 (Real Time): WHEN EVENT event USE handler, WAIT DURATION, WAIT TIME.
+  - Module 3 (Fixed Decimal): OPTION ARITHMETIC FIXED (BCD financial precision).
+  - Module 5 (Character Input): GET KEY var$, INPUT TIMEOUT(sec) var$.
+
+3.2 ANSI X3.60-1978 & ECMA-55 Minimal BASIC:
+  - Fully conformant in BASIC++ v6.5.2.
+
+-------------------------------------------------------------------------------
+4. Tandy / Radio Shack TRS-80 Family Lineage
+-------------------------------------------------------------------------------
+
+4.1 TRS-80 Models I / III / 4 & Business Models (II, 12, 16, 16B, 6000):
+  - Level I (1977): PRINT AT(pos), SET(x,y), RESET, POINT, MEM, P./G. abbreviations.
+  - Level II / Model III (1978): CMD "D", CMD "R", DEFUSR[n], VARPTR, PEEK, POKE,
+    INP, OUT, TRON, TROFF.
+  - Model 4 / TRSDOS 6.x & LS-DOS: 80x24 text screen, SOUND, TIME$, DATE$, MEM.
+  - Third-Party DOS (NEWDOS/80, LDOS, DosPLUS, MULTIDOS): CMD "DIR", CMD "KILL",
+    CMD "PROT", CMD "SEEK", CMD "COPY", CMD "LOAD".
+
+4.2 Tandy Color Computer (CoCo 1, 2, 3) & MC-10:
+  - Color BASIC & Extended Color BASIC: PCLS, SCREEN, COLOR, PSET, PRESET, LINE,
+    CIRCLE, PAINT, GET, PUT, SOUND, PLAY, AUDIO ON/OFF, MOTOR ON/OFF, JOYSTK.
+  - Super Extended Color BASIC (CoCo 3): HSCREEN (1..4), HCOLOR, HCLS, HLINE,
+    HCIRCLE, HPAINT, HGET, HPUT, HPRINT, RGB, CMP, PALETTE slot, col, WIDTH 32|40|80,
+    LOCATE col, row, ATTR fg, bg, blink, under.
+
+4.3 Tandy Model 100 / 102 / 200 Portable Handhelds:
+  - CMOS Portable: TIME$, DATE$, DAY$, POWER [sec], POWER CONT, COM ON/OFF/STOP,
+    KEY(n) ON/OFF/STOP, MOTOR ON/OFF, IPL "filename", SCREEN 0, 0 (40x8 LCD).
+
+-------------------------------------------------------------------------------
+5. Sharp Pocket Computer Lineage (PC-1211, PC-1500, PC-1251, PC-1246, PC-1270, PC-1260)
+-------------------------------------------------------------------------------
+
+  - Angle Modes: DEGREE, RADIAN, GRAD.
+  - Trigonometric & Math: SIN, COS, TAN, ASN, ACS, ATN, LN, EXP, LOG, SQR, ABS, SGN, PI.
+  - Display & Audio: BEEP pulses [, dur [, freq]], PRINT #ch; expr, USING, CURSOR,
+    WAIT, PAUSE.
+  - Matrix & System: MEM$, STATUS, ARUN.
+
+-------------------------------------------------------------------------------
+6. Microsoft DOS & CP/M Compilers
+-------------------------------------------------------------------------------
+
+6.1 IBM PC BASICA & GW-BASIC (Standard & Tandy 1000):
+  - Tandy 1000: SCREEN 11 (320x200 16-col), SCREEN 12 (640x200 16-col),
+    SOUND voice, freq, dur, vol, NOISE type, vol, dur.
+  - Event Trapping: ON TIMER, ON KEY, ON COM, ON STRIG, ON PLAY.
+
+6.2 Microsoft QuickBASIC 1.0-4.5, PDS 7.0-7.1 & VB for DOS 1.0:
+  - Control Structures: DO WHILE/UNTIL ... LOOP, EXIT DO/FOR/SUB/DEF, SELECT CASE.
+  - Procedures: SUB sub (args) STATIC, FUNCTION fn (args), STATIC, SHARED.
+  - Records: TYPE udt ... END TYPE, REDIM [PRESERVE] arr(dims).
+  - Hardware: INP(port), OUT port, byte, WAIT port, AND_mask [, XOR_mask].
+
+6.3 Microsoft BASCOM (1.0-5.3) & MBASIC / BASIC-80 (CP/M):
+  - Compiler Directives: $INCLUDE, $DYNAMIC, $STATIC, $LINES, $DEBUG.
+
+-------------------------------------------------------------------------------
+7. Third-Party Compilers & Home Microcomputer Dialects
+-------------------------------------------------------------------------------
+
+7.1 CBASIC & CB-80 (Compiler Systems / DRI):
+  - DEF FN... / FEND multi-line functions, 14-digit BCD decimal math, EXTERNAL.
+
+7.2 Borland Turbo BASIC & PowerBASIC (Bob Zale):
+  - Inline Assembly: INLINE &H90, &HCC... or ASM ... END ASM.
+  - Bitwise: BIT, SETBIT, RESETBIT, TOGGLEBIT, SHL, SHR, ROL, ROR.
+  - Pointers: PTR types and @ptr dereferencing.
+
+7.3 True BASIC (Kemeny & Kurtz):
+  - Modules, DO WHILE...LOOP, EXTYPE, MAT matrix suite.
+
+7.4 GFA BASIC (Atari ST, Amiga, DOS):
+  - RC_COPY, BITBLT, PUT, GET, WIND_OPEN, MENU, ON MENU GOSUB.
+
+7.5 Acorn BBC BASIC (BBC Micro, Master 128, Archimedes, RISC OS):
+  - Inline ARM/6502 Assembler: [ OPT opt: MOV R0, #1: ... ].
+  - Memory Indirection: ?addr (byte), !addr (word), $addr (string), |addr (float).
+  - Graphics & Sound: VDU char, byte..., MODE n, PLOT mode, x, y, ENVELOPE, SOUND.
+
+7.6 Sinclair ZX81 & ZX Spectrum BASIC:
+  - PLOT, UNPLOT, DRAW x, y [, angle], CIRCLE x, y, r, INK, PAPER, FLASH,
+    BRIGHT, INVERSE, BORDER, BEEP dur, pitch.
+
+7.7 Commodore BASIC (V1, V2, V3.5, V4.0, V7.0, V10):
+  - C64/PET (V2/V4): PEEK(53280), POKE 53281, 0, SYS addr, WAIT addr, mask.
+  - C128/C65 (V7/V10): GRAPHIC, BOX, CIRCLE, PAINT, DRAW, CHAR, COLOR, SOUND,
+    ENVELOPE, SPRITE n, state..., FAST/SLOW, SLEEP.
+
+7.8 Apple Integer, AppleSoft & Apple /// Business BASIC:
+  - Integer BASIC: GR, COLOR=, PLOT, HLIN, VLIN, TEXT, CALL, PR#, IN#.
+  - AppleSoft: HGR, HGR2, HCOLOR=, HPLOT, DRAW, XDRAW, ROT=, SCALE=, SHLOAD.
+  - Apple ///: EXCHANGE, VIEWPORT, PREFIX$, TYP, WINDOW.
+
+7.9 Atari 8-Bit BASIC & Turbo-BASIC XL:
+  - Graphics: GRAPHICS mode [+16] [+32], COLOR, PLOT, DRAWTO, SETCOLOR, SOUND,
+    STICK, STRIG, PADDLE, PTRIG, LOCATE.
+  - Turbo-BASIC XL: REPEAT...UNTIL, WHILE...WEND, DO...LOOP, PROC...ENDPROC,
+    EXEC, BPUT, BGET, DPOKE, DPEEK.
+
+7.10 Texas Instruments TI-99/4A BASIC & Extended BASIC:
+  - Sprites & Sound: CALL CHAR, CALL COLOR, CALL CLEAR, CALL SCREEN, CALL HCHAR,
+    CALL VCHAR, CALL SPRITE, CALL MOTION, CALL PATTERN, CALL MAGNIFY, CALL SOUND,
+    CALL KEY, SUB...SUBEND.
+
+7.11 North Star BASIC (v6 / Advantage):
+  - Fixed precision BCD math (6..14 digits), string slicing A$(start, end), FREE(0).
+
+-------------------------------------------------------------------------------
+8. Missing Features & Dialect Conformance Classification Matrix
+-------------------------------------------------------------------------------
+
+Identifier / Subsystem  Dialect Lineage        Category        Complexity  Milestone
+----------------------  ---------------------  --------------  ----------  ---------
+bppc Compiler           Modern / BASIC++       Compiler        High        v7.0.0
+trans Transpiler        Modern / Cross-Dialect Tool            Medium      v7.0.0
+DEF SEG / vmem          QuickBASIC / Real Mode VM / Hardware   Medium      v6.6.0
+FujiNet N: SIO          Atari / FujiNet        Virtual H/W     Medium      v6.6.0
+EDLIN / VI / WS Editors Vintage DOS / Unix     Editors         Medium      v6.6.0
+Pick MultiValue Strings PICK / UniVerse        String Engine   Medium      v6.7.0
+TI-99 Sprite Suite      TI-99/4A Ext BASIC     Graphics/Sprite Medium      v6.7.0
+Commodore Sprites       C128 BASIC v7.0        Graphics/Sprite Medium      v6.7.0
+Acorn Indirection (?,!) BBC BASIC              Memory Ops      Low         v6.7.0
+AppleSoft Shapes (DRAW) AppleSoft BASIC        Graphics        Medium      v6.7.0
+HP Slicing A$(s, e)     HP 2000 / 3000         String Slicing  Low         v6.6.0
+ANSI Exception Handlers ANSI Full / ECMA-116   Control Flow    High        v7.0.0
+ANSI Graphics Module 1  ANSI Full BASIC        Vector Graphics Medium      v6.8.0
+DEC String Conversions  DEC BASIC-PLUS-2       String Math     Low         v6.6.0
+DEC Disk Virtual Arrays DEC BASIC-PLUS         Virtual Storage High        v6.8.0
+Turbo Inline ASM        Turbo / PowerBASIC     Compiler        High        v7.0.0
+
+===============================================================================
+This document is maintained with strict 100% parity across engine/PLANNED.md and
+engine/PLANNED.TXT.
+===============================================================================

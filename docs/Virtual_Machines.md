@@ -1,113 +1,55 @@
-# BASIC++ v6.5.2 Virtual Machines
+<!--
+Title:        Virtual Machines
+Tier:         2
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot, bppc, trans, detok)
+Authority:    engine/src/vm/, engine/include/vm/vm.h
+Generated:    no
+Status:       Active
+-->
 
-## 1. THE BASIC++ VM
+# BASIC++ Virtual Machine Architecture
 
-The BASIC++ Virtual Machine is the execution engine at the heart of the interpreter. It is a strictly non-recursive, stack-based VM that maintains all state on heap-managed structures. The VM is implemented across multiple source files in engine/src/vm/ and is defined by the VMContext interface in engine/include/vm/vm.h.
+The technical specification of the BASIC++ Virtual Machine, its non-recursive execution looper, state container (`VMContext`), and dedicated control-flow stacks.
 
-## 2. VM ARCHITECTURE
+## 1. Non-Recursive Stack Architecture
 
-The VM does not execute machine code. It executes BASIC++ source lines through an ephemeral tokenize-parse-execute cycle. For each statement:
+The BASIC++ VM is a non-recursive, stack-managed execution engine. Rather than utilizing the host C runtime call stack for program recursion, all control states, loop boundaries, subroutine calls, and exception handlers are stored in dynamically managed heap frames.
 
-1. The lexer tokenizes the source line on demand.
-2. The parser identifies the statement type from the first keyword.
-3. The statement handler function executes the statement's semantics.
-4. The handler returns a BppError indicating success or failure.
-5. The VM advances to the next statement or handles the error.
+### 1.1 The Ephemeral Token-Parse-Execute Cycle
+For each program statement:
+1. **On-Demand Lexing**: The lexer tokenizes source text line-by-line. Tokens are transient and discarded immediately after statement dispatch.
+2. **Statement Identification**: The parser inspects the leading token to select the statement handler.
+3. **Handler Execution**: The registered statement function executes and returns a `BppError` status.
+4. **Program Counter Advancement**: The VM advances the line index or jumps to a target line.
 
-This cycle repeats until the program reaches END, STOP, or an unhandled error.
+---
 
-## 3. VM CONTEXT
+## 2. The `VMContext` State Container
 
-The VMContext is the central state container. It holds references to all subsystem contexts:
+The `VMContext` struct (`engine/include/vm/vm.h`) encapsulates the complete virtual machine environment:
+- `MemoryContext`: Program text storage and bytecode caches.
+- `StringContext`: Reference-counted dynamic string heap (`str_create`, `str_release`).
+- `VariableContext`: Scalar variables and structured UDT instances.
+- `ArrayContext`: Multi-dimensional array descriptors and data buffers.
+- `VDevContext`: Virtual device bus (`CON:`, `SCRN:`, `PRN:`, `CAS1:`).
+- `VConContext`: Virtual console cell attribute grid and cursor state.
+- `SecurityContext`: Active security restrictions and capability bitmasks.
+- `StmtRegistry` / `FuncRegistry`: Function pointer dispatch tables.
 
-- MemoryContext — Program line storage.
-- StringContext — Reference-counted string heap.
-- VariableContext — Named variable table.
-- ArrayContext — Array storage.
-- VDevContext — Virtual device bus.
-- FileContext — File channel management.
-- VConContext — Virtual console state.
-- SecurityContext — Active security level and restrictions.
-- StmtRegistry — Statement handler dispatch table.
-- MetadataRegistry — Runtime metadata for introspection.
+---
 
-## 4. CONTROL-FLOW STACKS
+## 3. Dedicated Control-Flow Stacks
 
-The VM maintains separate stacks for each control-flow construct:
+The VM maintains seven isolated stacks to manage nested control structures without mutual interference:
 
-**GosubStack** — GOSUB/RETURN. Each frame stores the return line and position.
+| Stack | Manages | Stored Frame Information | Depth Limits |
+| :--- | :--- | :--- | :--- |
+| `GosubStack` | `GOSUB` / `RETURN` | Return line number and character offset | 1023 (Desktop), 63 (DOS), 31 (IoT) |
+| `ForStack` | `FOR` / `NEXT` | Counter variable, limit, step, loop body line | 1023 (Desktop), 63 (DOS), 31 (IoT) |
+| `WhileStack` | `WHILE` / `WEND` | Expression AST offset, loop test line | 1023 (Desktop), 63 (DOS), 31 (IoT) |
+| `DoStack` | `DO` / `LOOP` | Condition type (`WHILE`/`UNTIL`), loop head line | 1023 (Desktop), 63 (DOS), 31 (IoT) |
+| `SelectStack` | `SELECT CASE` | Comparison value, match sentinel flag | 1023 (Desktop), 63 (DOS), 31 (IoT) |
+| `SubStack` | `SUB` / `FUNCTION` | Return point, local scope context, formal arguments | 1023 (Desktop), 63 (DOS), 31 (IoT) |
+| `TryStack` | `TRY` / `CATCH` | Catch line, stack depth snapshots for unwinding | 1023 (Desktop), 63 (DOS), 31 (IoT) |
 
-**ForStack** — FOR/NEXT. Each frame stores the loop variable, limit, step, and loop body line.
-
-**WhileStack** — WHILE/WEND. Each frame stores the WHILE line for looping back.
-
-**DoStack** — DO/LOOP. Each frame stores the DO line and the test condition type.
-
-**SelectStack** — SELECT CASE/END SELECT. Each frame stores the test expression and match state.
-
-**SubStack** — SUB/FUNCTION calls. Each frame stores the procedure name, return line, and parameter state.
-
-**TryStack** — TRY/CATCH. Each frame stores the CATCH line, END TRY line, and all other stack depths for unwinding.
-
-Each stack has a configurable depth limit: 1023 on modern builds, 63 on FreeDOS, 31 on embedded. Exceeding any stack produces the appropriate error (Error 1 for NEXT without FOR, Error 3 for RETURN without GOSUB, etc.).
-
-## 5. THE EXECUTION LOOP
-
-The main execution loop (engine/src/vm/exec.c) follows this algorithm:
-
-```text
-1. Get the current line from ProgramStore
-2. Initialize a LexerContext for the line
-3. Peek at the first token
-4. If TOK_NUMBER, this is a line-number reference — skip it
-5. If TOK_KEYWORD, look up the handler in StmtRegistry
-6. Call the handler function
-7. If err.code != 0, enter error propagation
-8. If no more tokens on the line, advance to the next line
-9. If there is a colon separator, continue with the next statement
-10. Poll the event queue (KEY, TIMER, COM, etc.)
-11. If an event is pending, invoke the event handler
-12. Repeat from step 1
-```
-
-The execution loop never recurses. Statement handlers that need to evaluate expressions use the iterative Pratt parser evaluator, which maintains its own stack on the heap.
-
-## 6. ERROR PROPAGATION
-
-When a statement handler returns a non-zero error code:
-
-1. The VM checks the TryStack. If a TRY frame is active, it restores all stack depths to the TRY entry point and transfers execution to the CATCH line.
-
-2. If no TRY frame is active, the VM checks the error trap (ON ERROR GOTO). If a trap is set, it saves the error state (ERR, ERL) and transfers execution to the trap handler line.
-
-3. If neither TRY nor ON ERROR GOTO is active, the VM prints the error message and line number, then returns to the REPL prompt (or exits for the batch runner).
-
-## 7. BYTECODE COMPILATION
-
-The bppc compiler translates BASIC++ source into bytecode opcodes defined by the BppOpcode enum in engine/include/types/types.h. The bytecode is a compact binary representation of the program's operations. The bppc target can either:
-
-- Emit bytecode as a standalone file that the VM stub loads and executes.
-- Transpile the program to C17 source code that compiles to a native executable.
-
-The bytecode execution loop (separate from the interpreter loop) reads opcodes from a byte array and dispatches through a switch statement. Bytecode execution is faster than source interpretation because it skips the tokenization and parsing stages.
-
-## 8. THE DIALECT SYSTEM
-
-The dialect system allows the parser to accept different keyword sets and syntax rules without changing the VM execution semantics. Each dialect defines:
-
-- Which keywords are recognized.
-- How certain syntax constructs are parsed (e.g., ECMA-116 WHEN EXCEPTION vs. TRY/CATCH).
-- What default behaviors apply (e.g., OPTION BASE defaults).
-
-The VM executes dialect-agnostic operations. A FOR loop parsed from GW-BASIC syntax and a FOR loop parsed from Tymshare Super BASIC syntax both produce the same BppForFrame on the ForStack and execute identically.
-
-## 9. HOST CALLBACKS
-
-The host callback interface (engine/include/vm/host.h) allows the host application to intercept VM operations. Callbacks can be registered for:
-
-- Line execution (called before each line executes).
-- Error reporting (called when an error occurs).
-- Output capture (called for each character output).
-- Input interception (called for each input request).
-
-Host callbacks enable embedding the BASIC++ VM in larger applications that need to monitor or control program execution.
+Stack underflow or overflow triggers deterministic error codes (Error 1: `NEXT without FOR`, Error 3: `RETURN without GOSUB`).

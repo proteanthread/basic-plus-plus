@@ -1,25 +1,74 @@
-# `NAME` Rename File Statement
+<!--
+Title:        NAME
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/statements/filesystem/dir_ops/name.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Keyword Definition
+# `NAME` Keyword Reference
 
-Renames an existing file or directory on disk or in the virtual filesystem.
+## Source Header
 
-### Syntax Signatures:
-```basic
-NAME old_filename$ AS new_filename$
+```c
+// FILENAME: name.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore (language_descriptor.h, string.h)
+// NEEDS: libcore (strings.h, strings.c)
+// NEEDS: libengine (eval.h, eval.c, lexer.h, lexer.c, name.h, string.c, vm.h)
+// NEEDS: libplatform (platform.h)
+// Provides runtime implementation for the NAME statement in BASIC++.
+//
+// ---- Includes ----
 ```
 
-### Error Handling & Boundary Conditions:
-- **Error 53 (ERR_FILE_NOT_FOUND)**: Source file does not exist.
-- **Error 58 (ERR_FILE_ALREADY_EXISTS)**: Target file name already exists.
+## 1. Description & Usage
 
-### Operational Notes:
-- Cannot move files across distinct physical drives.
+Renames an existing disk file or directory.
+
+## 2. Syntax
+
+```basic
+NAME oldspec AS newspec
+```
+
+## 3. Code Example
+
+```basic
+10 REM NAME Demonstration
+20 PRINT "NAME executed successfully."
+```
+
+## 4. Error Conditions
+
+Error 2: Syntax Error, Error 53: File Not Found, Error 58: File Already Exists
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Filesystem I/O
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_IO
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 NAME "TEMP.DAT" AS "FINAL.DAT"
-```
+| Field | Value |
+|---|---|
+| Name | NAME |
+| Category | Filesystem I/O |
+| Syntax | NAME oldspec AS newspec |
+| Description | Renames an existing disk file or directory. |
+| Error Summary | Error 2: Syntax Error, Error 53: File Not Found, Error 58: File Already Exists |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_IO |
+| Feature Type | FEATURE_STATEMENT |
+| Delimiter Mask | none |
+| Compatibility | none |
+| Since Version | none |
+| Source File | engine/src/statements/filesystem/dir_ops/name.c |

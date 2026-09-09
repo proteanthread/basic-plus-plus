@@ -1,25 +1,75 @@
-# `RENUM` Program Line Renumbering Command
+<!--
+Title:        RENUM
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/statements/program/renum.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Keyword Definition
+# `RENUM` Keyword Reference
 
-Renumbers program lines and automatically updates all GOTO, GOSUB, and ON...GOTO/GOSUB line references.
+## Source Header
 
-### Syntax Signatures:
-```basic
-RENUM [new_start%] [, [old_start%] [, [increment%]]]
+```c
+// FILENAME: renum.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore (ctype.h, ctype.c, memory.h, memory.c)
+// NEEDS: libcore (language_descriptor.h)
+// NEEDS: libcore (runtime_snprintf.h, runtime_snprintf.c, string.h)
+// NEEDS: libengine (lexer.h, lexer.c, renum.h, string.c, vm.h)
+// NEEDS: libkernel (errors.h, vdev.h, vdev.c)
+// Provides runtime implementation for the RENUM statement in BASIC++.
+//
+// ---- Includes ----
 ```
 
-### Error Handling & Boundary Conditions:
-- **Error 8 (ERR_UNDEFINED_LINE_NUMBER)**: Unresolved target line reference.
+## 1. Description & Usage
 
-### Operational Notes:
-- Essential program maintenance utility.
+Renumbers program lines in memory or on disk, updating branch targets.
+
+## 2. Syntax
+
+```basic
+RENUM ["file.bas" [,start [,step]] [TO "out.bas"]] | [new_start] [,[old_start] [,step]]
+```
+
+## 3. Code Example
+
+```basic
+10 REM RENUM Demonstration
+20 PRINT "RENUM executed successfully."
+```
+
+## 4. Error Conditions
+
+Error 2: Syntax Error, Error 5: Illegal Function Call
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Program Mgmt & Editing
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_SAFE
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-RENUM         : REM Renumbers all lines to 10, 20, 30...
-RENUM 100, 10 : REM Starts at 100 with step of 10
-```
+| Field | Value |
+|---|---|
+| Name | RENUM |
+| Category | Program Mgmt & Editing |
+| Syntax | RENUM ["file.bas" [,start [,step]] [TO "out.bas"]] \| [new_start] [,[old_start] [,step]] |
+| Description | Renumbers program lines in memory or on disk, updating branch targets. |
+| Error Summary | Error 2: Syntax Error, Error 5: Illegal Function Call |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_SAFE |
+| Feature Type | FEATURE_STATEMENT |
+| Delimiter Mask | none |
+| Compatibility | none |
+| Since Version | none |
+| Source File | engine/src/statements/program/renum.c |

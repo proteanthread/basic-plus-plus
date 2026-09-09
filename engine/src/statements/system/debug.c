@@ -12,13 +12,26 @@
 #include "debug/logger.h"
 #include "device/vdev.h"
 #include "runtime/variables.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "lexer/lexer.h"
 #include "vm/vm.h"
 #include "types/version.h"
-#include <string.h>
-#include <stdlib.h>
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "runtime/memory/alloc.h"
 #include "runtime/format/snprintf.h"
+#include "runtime/math/math.h"
+
+static const LangDesc g_debug_desc = {
+    .name = "DEBUG",
+    .category = "Debug & Testing",
+    .syntax = "DEBUG [ON|OFF|DUMP|STACK|MEMORY|VARS] | TRACE | TRON | TROFF | BREAK | CONT | BACKTRACE | INFO | DUMP",
+    .description = "Master interactive debugger control, execution tracing, breakpoint handling, and system introspection suite.",
+    .error_summary = "Error 2: Syntax Error, Error 99: Assertion Failed",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SAFE,
+    .type = FEATURE_STATEMENT
+};
 
 
 extern void vm_trigger_breakpoint(VMContext *vm, const char *reason);
@@ -26,7 +39,7 @@ extern void vm_trigger_breakpoint(VMContext *vm, const char *reason);
 // ASSERT statement handler
 BppError stmt_assert_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     // Evaluate assertion condition
     BValue cond_val = eval_expression(vm, lex, &err);
@@ -83,9 +96,9 @@ BppError stmt_assert_handler(VMContext *vm, LexerContext *lex) {
         } else {
             err.code = 99; // Custom assertion failure code
             if (custom_msg) {
-                char *sc = (char *)mem_scratch_alloc(vm_get_mem(vm), strlen(reason) + 1);
+                char *sc = (char *)mem_scratch_alloc(vm_get_mem(vm), runtime_strlen(reason) + 1);
                 if (sc) {
-                    strcpy(sc, reason);
+                    runtime_strcpy(sc, reason);
                     err.message = sc;
                 } else {
                     err.message = "Assertion failed";
@@ -102,7 +115,7 @@ BppError stmt_assert_handler(VMContext *vm, LexerContext *lex) {
 // TRON statement handler
 BppError stmt_tron_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     (void)vm; (void)lex;
     logger_set_trace(true);
     log_info("Trace turned ON (TRON)");
@@ -112,7 +125,7 @@ BppError stmt_tron_handler(VMContext *vm, LexerContext *lex) {
 // TROFF statement handler
 BppError stmt_troff_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     (void)vm; (void)lex;
     logger_set_trace(false);
     log_info("Trace turned OFF (TROFF)");
@@ -122,7 +135,7 @@ BppError stmt_troff_handler(VMContext *vm, LexerContext *lex) {
 // BREAK statement handler
 BppError stmt_break_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BppToken tok = lex_peek(lex);
     if (tok.type == TOK_KEYWORD) {
@@ -138,11 +151,11 @@ BppError stmt_break_handler(VMContext *vm, LexerContext *lex) {
             return err;
         }
     } else if (tok.type == TOK_IDENT) {
-        if (tok.length == 2 && strncasecmp(tok.start, "ON", 2) == 0) {
+        if (tok.length == 2 && runtime_strncasecmp(tok.start, "ON", 2) == 0) {
             lex_next(lex);
             vm_set_break_enabled(vm, true);
             return err;
-        } else if (tok.length == 3 && strncasecmp(tok.start, "OFF", 3) == 0) {
+        } else if (tok.length == 3 && runtime_strncasecmp(tok.start, "OFF", 3) == 0) {
             lex_next(lex);
             vm_set_break_enabled(vm, false);
             return err;
@@ -153,7 +166,7 @@ BppError stmt_break_handler(VMContext *vm, LexerContext *lex) {
     if (logger_is_debug()) {
         vm_trigger_breakpoint(vm, "Manual breakpoint (BREAK statement)");
     } else {
-        // In non-debug mode, BREAK is treated as a log info trace (no-op)
+        // In non-debug mode, BREAK is treated as a runtime_log info trace (no-op)
         VDevContext *vdev = vm_get_vdev(vm);
         if (vdev) {
             vdev_printf(vdev, "[BREAKPOINT at line %lld]\n", (long long)vm_get_current_line(vm));
@@ -165,7 +178,7 @@ BppError stmt_break_handler(VMContext *vm, LexerContext *lex) {
 // VARS statement handler
 BppError stmt_vars_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     (void)lex;
 
     VDevContext *vdev = vm_get_vdev(vm);
@@ -176,7 +189,7 @@ BppError stmt_vars_handler(VMContext *vm, LexerContext *lex) {
 // BACKTRACE statement handler
 BppError stmt_backtrace_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     (void)lex;
 
     VDevContext *vdev = vm_get_vdev(vm);
@@ -188,7 +201,7 @@ BppError stmt_backtrace_handler(VMContext *vm, LexerContext *lex) {
 // INFO statement handler
 BppError stmt_info_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     (void)lex;
 
     VDevContext *vdev = vm_get_vdev(vm);
@@ -211,7 +224,7 @@ BppError stmt_info_handler(VMContext *vm, LexerContext *lex) {
 // DUMP statement handler
 BppError stmt_dump_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BppToken tok = lex_next(lex);
     VDevContext *vdev = vm_get_vdev(vm);
@@ -234,7 +247,7 @@ BppError stmt_dump_handler(VMContext *vm, LexerContext *lex) {
 // TRACE statement handler
 BppError stmt_trace_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BppToken tok = lex_next(lex);
     if (tok.type == TOK_KEYWORD && tok.as.keyword == KW_OFF) {
@@ -250,7 +263,7 @@ BppError stmt_trace_handler(VMContext *vm, LexerContext *lex) {
 // DEBUG statement handler
 BppError stmt_debug_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BppToken tok = lex_next(lex);
     char subcmd[32] = "ON";
@@ -260,15 +273,15 @@ BppError stmt_debug_handler(VMContext *vm, LexerContext *lex) {
     }
 
 
-    if (strcasecmp(subcmd, "OFF") == 0) {
+    if (runtime_strcasecmp(subcmd, "OFF") == 0) {
         vm_set_debug_active(vm, false);
-    } else if (strcasecmp(subcmd, "DUMP") == 0) {
+    } else if (runtime_strcasecmp(subcmd, "DUMP") == 0) {
         return stmt_dump_handler(vm, lex);
-    } else if (strcasecmp(subcmd, "STACK") == 0) {
+    } else if (runtime_strcasecmp(subcmd, "STACK") == 0) {
         return stmt_backtrace_handler(vm, lex);
-    } else if (strcasecmp(subcmd, "MEMORY") == 0) {
+    } else if (runtime_strcasecmp(subcmd, "MEMORY") == 0) {
         return stmt_info_handler(vm, lex);
-    } else if (strcasecmp(subcmd, "VARS") == 0) {
+    } else if (runtime_strcasecmp(subcmd, "VARS") == 0) {
         return stmt_vars_handler(vm, lex);
     } else {
         vm_set_debug_active(vm, true);
@@ -278,13 +291,6 @@ BppError stmt_debug_handler(VMContext *vm, LexerContext *lex) {
 }
 
 void stmt_debug_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "DEBUG",
-        .category = "Debug & Testing",
-        .syntax = "DEBUG [ON|OFF|DUMP|STACK|MEMORY|VARS] | TRACE | TRON | TROFF | BREAK | CONT | BACKTRACE | INFO | DUMP",
-        .help_text = "Master interactive debugger control, execution tracing, breakpoint handling, and system introspection suite.",
-        .error_codes = "Error 2: Syntax Error, Error 99: Assertion Failed"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_debug_desc);
 }
 

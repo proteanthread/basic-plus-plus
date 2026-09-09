@@ -8,6 +8,8 @@
 // ---- Includes ----
 
 #include "runtime/arrays_internal.h"
+#include "runtime/string/strops.h"
+#include "runtime/string/memops.h"
 
 //
 // ---- Serialization and Deserialization ----

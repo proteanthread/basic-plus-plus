@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
 // NEEDS: libcore (gopher.h, gopher.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libcore (strops.h, strops.c)
 // NEEDS: libengine (eval.h, eval.c, lexer.h, lexer.c, stmt_gopher.h, string.c)
 // NEEDS: libengine (vm.h)
@@ -15,14 +15,25 @@
 #include "vm/vm.h"
 #include "lexer/lexer.h"
 #include "eval/eval.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/string/strops.h"
 #include "runtime/gopher.h"
-#include <string.h>
+#include "runtime/string/memops.h"
+
+static const LangDesc g_gopher_desc = {
+    .name = "GOPHER",
+    .category = "Network & Cloud",
+    .syntax = "GOPHER.SERVE [port] [, root_dir$] | GOPHER.GET$(url$)",
+    .description = "Hosts RFC 1436 Gopher directory menus or fetches Gopher items.",
+    .error_summary = "Error 2: Syntax Error, Error 13: Type Mismatch",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SAFE,
+    .type = FEATURE_STATEMENT
+};
 
 BppError stmt_gopher_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BppToken tok = lex_peek(lex);
     if (tok.type == TOK_PERIOD) {
@@ -61,12 +72,5 @@ BppError stmt_gopher_handler(VMContext *vm, LexerContext *lex) {
 }
 
 void stmt_gopher_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "GOPHER",
-        .category = "Network & Cloud",
-        .syntax = "GOPHER.SERVE [port] [, root_dir$] | GOPHER.GET$(url$)",
-        .help_text = "Hosts RFC 1436 Gopher directory menus or fetches Gopher items.",
-        .error_codes = "Error 2: Syntax Error, Error 13: Type Mismatch"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_gopher_desc);
 }

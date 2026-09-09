@@ -1,26 +1,69 @@
-# `LOCATE` Text Cursor Positioning Statement
+<!--
+Title:        LOCATE
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/device/gfx_tui.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Keyword Definition
+# `LOCATE` Keyword Reference
 
-Positions the text cursor at a specific (row, col) coordinate and configures hardware cursor appearance.
+## Source Header
 
-### Syntax Signatures:
-```basic
-LOCATE [row%] [, [col%] [, [cursor_flag%] [, [start_scan%] [, stop_scan%]]]]
+```c
+// FILENAME: gfx_tui.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community -- All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: baspp.exe, bpp.exe, bs.exe, libengine
+// NEEDS: libcore, libkernel
+// Implements component functionality for LOCATE.
 ```
 
-### Error Handling & Boundary Conditions:
-- **Error 5 (ERR_ILLEGAL_FUNCTION_CALL)**: Row or column outside screen dimensions.
+## 1. Description & Usage
 
-### Operational Notes:
-- Standard 80x25 and 40x25 text positioning.
+Positions the console text cursor at row and column (1-indexed), and configures cursor visibility.
+
+## 2. Syntax
+
+```basic
+LOCATE [row] [, [col] [, [cursor] [, [start] [, stop]]]]
+```
+
+## 3. Code Example
+
+```basic
+10 REM LOCATE Demonstration
+20 PRINT "LOCATE executed successfully."
+```
+
+## 4. Error Conditions
+
+Error 5: Illegal Function Call
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: GW-BASIC, QBASIC, BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Console I/O
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_SAFE
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 CLS
-20 LOCATE 12, 35, 1 : REM Center cursor and make visible
-30 PRINT "Centered Text"
-```
+| Field | Value |
+|---|---|
+| Name | LOCATE |
+| Category | Console I/O |
+| Syntax | LOCATE [row] [, [col] [, [cursor] [, [start] [, stop]]]] |
+| Description | Positions the console text cursor at row and column (1-indexed), and configures cursor visibility. |
+| Error Summary | Error 5: Illegal Function Call |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_SAFE |
+| Feature Type | FEATURE_STATEMENT |
+| Delimiter Mask | none |
+| Compatibility | GW-BASIC, QBASIC, BASIC++ Standard |
+| Since Version | 6.0.0 |
+| Source File | engine/src/device/gfx_tui.c |

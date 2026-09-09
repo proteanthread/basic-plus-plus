@@ -16,6 +16,7 @@
 
 #include <stddef.h>
 #include <stdbool.h>
+#include "runtime/math/math.h"
 
 // Display precision: 15 significant digits.
 // Hides IEEE 754 double rounding artifacts while preserving
@@ -23,7 +24,7 @@
 #define NUM_FORMAT_DISPLAY_DIGITS  15
 
 // Serialization precision: 16 significant digits.
-// Preserves full IEEE 754 double round-trip fidelity for
+// Preserves full IEEE 754 double runtime_round-trip fidelity for
 // file I/O and data serialization.
 #define NUM_FORMAT_SERIALIZE_DIGITS 16
 
@@ -51,7 +52,7 @@ void num_format_display(char *buf, size_t buf_size, double val,
 
 // @brief Format a double for serialization / data output.
 //
-// Uses 16 significant digits for full IEEE 754 round-trip fidelity.
+// Uses 16 significant digits for full IEEE 754 runtime_round-trip fidelity.
 // Intended for: PRINT #, DISPLAY, map_serialize, state files.
 //
 // Same three-tier approach as num_format_display but with 16-digit precision

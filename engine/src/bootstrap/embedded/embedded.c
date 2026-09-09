@@ -32,7 +32,7 @@ int main(int argc, char **argv) {
     (void)argc; (void)argv;
     platform_init();
 
-    size_t mem_size = 16L * 1024L * 1024L; // 16 MB Embedded allocation
+    size_t mem_size = 2L * 1024L * 1024L; // 2 MB Embedded allocation
     VMContext *vm = boot_system(mem_size);
     if (!vm) {
         return 1;

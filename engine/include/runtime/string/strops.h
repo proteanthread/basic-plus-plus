@@ -12,6 +12,8 @@
 
 #include <stddef.h>
 #include <stdbool.h>
+#include "runtime/memory/alloc.h"
+#include "runtime/string/strops.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -76,6 +78,9 @@ size_t runtime_strlcpy(char *dst, const char *src, size_t siz);
 
 // @brief Safe bounded string cat that always guarantees null-termination.
 size_t runtime_strlcat(char *dst, const char *src, size_t siz);
+
+// @brief Duplicates string s using runtime_malloc.
+char *runtime_strdup(const char *s);
 
 // @brief Duplicates string s using allocator fn (or runtime_malloc).
 char *runtime_strdup_custom(const char *s, void *(*alloc_fn)(size_t));

@@ -1,19 +1,70 @@
-BASIC++ FUNCTION REFERENCE: LBOUND
-======================================================================
+TITLE: LBOUND
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/functions/math/linear_algebra/lbound.c
+GENERATED: no, hand-written
+STATUS: current
 
-1. SYNTAX & DESCRIPTION
-  result = LBOUND(arrayname [, dimension])
+==============================================================================
+LBOUND KEYWORD REFERENCE
+==============================================================================
 
-Returns the lowest valid subscript index for the specified dimension of an array.
+SOURCE HEADER:
+    // FILENAME: lbound.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (sys_fn.c)
+    // NEEDS: libcore (arrays.h, arrays.c, math.h)
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libengine (lbound.h, math.c, string.c, vm.h)
+    // Provides runtime implementation for the LBOUND built-in function in BASIC++
+    //
+    // ---- Includes ----
 
-2. PARAMETERS & RETURN VALUES
-- arrayname: The name of the declared array.
-- dimension: Optional 1-based dimension index (default: 1).
-- Returns: Integer representing the lower bound.
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Returns the lowest subscript for the indicated dimension of an array.
 
-3. ERROR CODES
-- Error 9 (ERR_SUBSCRIPT_OUT_OF_RANGE): Array does not exist or dimension out of range.
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    low% = LBOUND(array [, dimension%])
 
-4. EXAMPLES
-  10 DIM A(-5 TO 10)
-  20 PRINT LBOUND(A)    : REM Outputs: -5
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = low% = LBOUND(array [, dimension%])
+    20 PRINT "Result: "; Val
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 9: Subscript out of range, Error 13: Type Mismatch
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Array Functions
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_IO
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  LBOUND
+Category              Array Functions
+Syntax                low% = LBOUND(array [, dimension%])
+Description           Returns the lowest subscript for the indicated dime...
+Error Summary         Error 9: Subscript out of range, Error 13: Type Mis...
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_IO
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/eval/functions/math/linear_algebra/lbound.c

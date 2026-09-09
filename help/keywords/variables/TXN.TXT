@@ -1,0 +1,72 @@
+TITLE: TXN
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/system/txn.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+TXN KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: txn.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (file.h, file.c, language_descriptor.h)
+    // NEEDS: libcore (string.h)
+    // NEEDS: libengine (eval.h, eval.c, stmt.h, string.c)
+    // NEEDS: libplatform (platform.h)
+    // Provides runtime implementation for the TXN statement in BASIC++.
+    //
+    // ---- Includes ----
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Provides ACID file transaction management and atomic block rollback
+capability.
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    TXN BEGIN [FILE] | TXN COMMIT | TXN ROLLBACK | TXN STATUS | ATOMIC
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM TXN Demonstration
+    20 PRINT "TXN executed successfully."
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error, Error 54: Bad File Mode, Error 57: Device I/O Error
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      File I/O
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_IO
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  TXN
+Category              File I/O
+Syntax                TXN BEGIN [FILE] | TXN COMMIT | TXN ROLLBACK | TXN ...
+Description           Provides ACID file transaction management and atomi...
+Error Summary         Error 2: Syntax Error, Error 54: Bad File Mode, Err...
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_IO
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/system/txn.c

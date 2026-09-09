@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
 // NEEDS: libcore (ctype.h, ctype.c, file.h, file.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libengine (eval.h, eval.c, lexer.h, lexer.c, map.h, map.c, open.h)
 // NEEDS: libengine (string.c, vm.h)
 // NEEDS: libplatform (platform.h)
@@ -17,26 +17,31 @@
 #include "lexer/lexer.h"
 #include "eval/eval.h"
 #include "runtime/file.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "platform/platform.h"
-#include <string.h>
-#include <ctype.h>
-#include <stdio.h>
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "runtime/ctype/ctype.h"
+#include "runtime/format/snprintf.h"
+
+static const LangDesc g_open_desc = {
+    .name = "OPEN",
+    .category = "Filesystem I/O",
+    .syntax = "OPEN filespec [FOR mode] AS [#]file_num [LEN=reclen]",
+    .description = "Opens a file channel for INPUT, OUTPUT, APPEND, BINARY, or RANDOM I/O operations.",
+    .error_summary = "Error 2: Syntax Error, Error 52: Bad File Number, Error 53: File Not Found, Error 55: File Already Open",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_STATEMENT
+};
 
 void stmt_open_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "OPEN",
-        .category = "Filesystem I/O",
-        .syntax = "OPEN filespec [FOR mode] AS [#]file_num [LEN=reclen]",
-        .help_text = "Opens a file channel for INPUT, OUTPUT, APPEND, BINARY, or RANDOM I/O operations.",
-        .error_codes = "Error 2: Syntax Error, Error 52: Bad File Number, Error 53: File Not Found, Error 55: File Already Open"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_open_desc);
 }
 
 BppError stmt_open_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BValue arg1 = eval_expression(vm, lex, &err);
     if (err.code != 0) return err;
@@ -52,7 +57,7 @@ BppError stmt_open_handler(VMContext *vm, LexerContext *lex) {
         size_t len = str_len(arg1.as.string);
         if (len < sizeof(mode_str) && (platform_strcasecmp(data, "I") == 0 || platform_strcasecmp(data, "O") == 0 || platform_strcasecmp(data, "A") == 0 || platform_strcasecmp(data, "R") == 0 || platform_strcasecmp(data, "B") == 0)) {
             // Classic GWBASIC syntax: OPEN "mode", [#]file_num, "filename" [, reclen]
-            snprintf(mode_str, sizeof(mode_str), "%s", data);
+            runtime_snprintf(mode_str, sizeof(mode_str), "%s", data);
             str_release(vm_get_str(vm), arg1.as.string);
 
             BppToken comma1 = lex_peek(lex);
@@ -72,14 +77,24 @@ BppError stmt_open_handler(VMContext *vm, LexerContext *lex) {
                     BValue fn_val = eval_expression(vm, lex, &err);
                     if (err.code != 0) return err;
                     if (fn_val.type == VAL_STRING && fn_val.as.string) {
-                        snprintf(filename, sizeof(filename), "%s", str_data(fn_val.as.string));
+                        runtime_snprintf(filename, sizeof(filename), "%s", str_data(fn_val.as.string));
                         str_release(vm_get_str(vm), fn_val.as.string);
+                    }
+
+                    BppToken comma3 = lex_peek(lex);
+                    if (comma3.type == TOK_COMMA) {
+                        lex_next(lex);
+                        BValue rl_val = eval_expression(vm, lex, &err);
+                        if (err.code != 0) return err;
+                        if (rl_val.type == VAL_NUMBER || rl_val.type == VAL_INTEGER) {
+                            reclen = (int)rl_val.as.number;
+                        }
                     }
                 }
             }
         } else {
             // Modern QBASIC syntax: OPEN "filename" [FOR mode] AS [#]file_num [LEN=reclen]
-            snprintf(filename, sizeof(filename), "%s", data);
+            runtime_snprintf(filename, sizeof(filename), "%s", data);
             str_release(vm_get_str(vm), arg1.as.string);
 
             BppToken tok = lex_peek(lex);
@@ -89,12 +104,12 @@ BppError stmt_open_handler(VMContext *vm, LexerContext *lex) {
                 lex_next(lex); // Consume FOR
                 tok = lex_next(lex);
                 if (tok.type == TOK_KEYWORD && tok.as.keyword == KW_INPUT) {
-                    strcpy(mode_str, "INPUT");
+                    runtime_strcpy(mode_str, "INPUT");
                 } else if (tok.type == TOK_KEYWORD && tok.as.keyword == KW_APPEND) {
-                    strcpy(mode_str, "APPEND");
+                    runtime_strcpy(mode_str, "APPEND");
                 } else if (tok.type == TOK_IDENT || tok.type == TOK_KEYWORD) {
                     size_t mlen = (tok.length < sizeof(mode_str) - 1) ? tok.length : sizeof(mode_str) - 1;
-                    memcpy(mode_str, tok.start, mlen);
+                    runtime_memcpy(mode_str, tok.start, mlen);
                     mode_str[mlen] = '\0';
                 }
                 tok = lex_peek(lex);
@@ -149,7 +164,7 @@ BppError stmt_open_handler(VMContext *vm, LexerContext *lex) {
                             if (mtok.type == TOK_IDENT || mtok.type == TOK_KEYWORD) {
                                 char map_name[64];
                                 size_t mlen = (mtok.length < sizeof(map_name) - 1) ? mtok.length : sizeof(map_name) - 1;
-                                memcpy(map_name, mtok.start, mlen);
+                                runtime_memcpy(map_name, mtok.start, mlen);
                                 map_name[mlen] = '\0';
                                 map_bind_channel(vm, channel, map_name);
                                 MapBuffer *mb = map_get_buffer(vm, map_name);

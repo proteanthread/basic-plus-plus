@@ -1,22 +1,67 @@
-SCRATCH Clear Scratch Pad Buffer Statement
-==========================================
+TITLE: SCRATCH
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/vm/control/vm_control.c
+GENERATED: no, hand-written
+STATUS: current
 
-Clears the VFS scratch storage partition and temporary memory buffers.
+==============================================================================
+SCRATCH KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: vm_control.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community -- All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: baspp.exe, bpp.exe, bs.exe, libengine
+    // NEEDS: libcore, libkernel
+    // Implements component functionality for SCRATCH.
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Erases all program lines, resets symbol tables, and frees allocated variable
+heap memory.
 
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
     SCRATCH
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM SCRATCH Demonstration
+    20 PRINT "SCRATCH executed successfully."
 
-OPERATIONAL NOTES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+None
 
-  System maintenance statement.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       Dartmouth BASIC, HP BASIC, BASIC++ Standard
+Since Version: 6.0.0
+Category:      Program Management
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SAFE
 
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 SCRATCH : REM Cleans temporary storage
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  SCRATCH
+Category              Program Management
+Syntax                SCRATCH
+Description           Erases all program lines, resets symbol tables, and...
+Error Summary         None
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         Dartmouth BASIC, HP BASIC, BASIC++ Standard
+Since Version         6.0.0
+Source File           engine/src/vm/control/vm_control.c

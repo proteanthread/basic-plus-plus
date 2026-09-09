@@ -10,9 +10,10 @@
 
 #include "runtime/mux.h"
 #include "core/feature_reg.h"
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
+#include "runtime/memory/alloc.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "runtime/format/snprintf.h"
 
 void mux_subsystem_init(void) {
     feature_register_keyword("MUX", 901, "Extended");
@@ -31,7 +32,7 @@ bool mux_arrays(DimArray *dst, DimArray **srcs, size_t count, MuxMode mode, size
 
     if (!dst || !srcs || count == 0 || !dst->data) return false;
 
-    memset(dst->data, 0, (size_t)dst->total_size * sizeof(BValue));
+    runtime_memset(dst->data, 0, (size_t)dst->total_size * sizeof(BValue));
 
     // Interleave element-by-element
     j = 0;
@@ -142,22 +143,22 @@ char* pack_fields(const BValue *values, size_t count, size_t *out_len) {
         }
     }
 
-    buf = (char*)calloc(total_bytes + 1, sizeof(char));
+    buf = (char*)runtime_calloc(total_bytes + 1, sizeof(char));
     if (!buf) return NULL;
 
     // Second pass: encode type tags and data
     for (i = 0; i < count; i++) {
         buf[offset++] = (char)values[i].type;
         if (values[i].type == VAL_NUMBER) {
-            memcpy(buf + offset, &values[i].as.number, sizeof(double));
+            runtime_memcpy(buf + offset, &values[i].as.number, sizeof(double));
             offset += sizeof(double);
         } else if (values[i].type == VAL_STRING) {
             const char *cstr = values[i].as.string ? str_data(values[i].as.string) : "";
             uint32_t slen = (uint32_t)(values[i].as.string ? str_len(values[i].as.string) : 0);
-            memcpy(buf + offset, &slen, sizeof(uint32_t));
+            runtime_memcpy(buf + offset, &slen, sizeof(uint32_t));
             offset += sizeof(uint32_t);
             if (slen > 0) {
-                memcpy(buf + offset, cstr, slen);
+                runtime_memcpy(buf + offset, cstr, slen);
                 offset += slen;
             }
         }
@@ -178,7 +179,7 @@ bool unpack_fields(struct StringContext *str_ctx, const char *buf, size_t buf_le
         out_values[i].type = (ValueType)type_tag;
         if (type_tag == VAL_NUMBER) {
             if (offset + sizeof(double) <= buf_len) {
-                memcpy(&out_values[i].as.number, buf + offset, sizeof(double));
+                runtime_memcpy(&out_values[i].as.number, buf + offset, sizeof(double));
                 offset += sizeof(double);
             } else {
                 return false;
@@ -186,7 +187,7 @@ bool unpack_fields(struct StringContext *str_ctx, const char *buf, size_t buf_le
         } else if (type_tag == VAL_STRING) {
             uint32_t slen = 0;
             if (offset + sizeof(uint32_t) <= buf_len) {
-                memcpy(&slen, buf + offset, sizeof(uint32_t));
+                runtime_memcpy(&slen, buf + offset, sizeof(uint32_t));
                 offset += sizeof(uint32_t);
                 if (offset + slen <= buf_len) {
                     out_values[i].as.string = str_create(str_ctx, buf + offset, slen);

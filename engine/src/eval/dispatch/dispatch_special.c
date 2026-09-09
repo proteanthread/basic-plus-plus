@@ -8,12 +8,18 @@
 // ---- Includes ----
 
 #include "eval/dispatch_internal.h"
+#include "runtime/string/strops.h"
+#include "runtime/string/memops.h"
 
 //
 // ---- Special Function Dispatcher ----
 
 bool dispatch_handle_special(VMContext *vm, const char *uname, LexerContext *lex, bool has_parens, BValue *out_res, BppError *err) {
     if (!vm || !uname || !lex || !out_res || !err) return false;
+
+    if (has_parens && lex_peek(lex).type == TOK_LPAREN) {
+        lex_next(lex); // Consume '('
+    }
 
     // 1. Array Bounds: UBOUND / LBOUND
     if (runtime_strcmp(uname, "UBOUND") == 0 || runtime_strcmp(uname, "LBOUND") == 0) {
@@ -70,6 +76,84 @@ bool dispatch_handle_special(VMContext *vm, const char *uname, LexerContext *lex
             out_res->as.number = (double)arr_get_option_base(vm_get_arr(vm));
         }
         return true;
+    }
+
+    // 1b. String Maximum Length: MAXLEN(var$)
+    if (runtime_strcmp(uname, "MAXLEN") == 0) {
+        BppToken name_tok = lex_next(lex);
+        if (name_tok.type != TOK_IDENT && name_tok.type != TOK_KEYWORD) {
+            err->code = 2;
+            err->message = "Expected variable name in MAXLEN";
+            return true;
+        }
+        char var_name[256];
+        size_t clen = (name_tok.length < sizeof(var_name) - 1) ? name_tok.length : sizeof(var_name) - 1;
+        runtime_memcpy(var_name, name_tok.start, clen);
+        var_name[clen] = '\0';
+
+        if (has_parens) {
+            BppToken rtok = lex_peek(lex);
+            if (rtok.type == TOK_RPAREN) lex_next(lex);
+        }
+
+        size_t mlen = var_get_max_len(vm_get_var(vm), var_name);
+        out_res->type = VAL_INTEGER;
+        out_res->as.number = (double)mlen;
+        return true;
+    }
+
+    // Array Reductions: SUM(arr), AVG(arr), MEAN(arr), MIN(arr), MAX(arr)
+    if (has_parens && (runtime_strcmp(uname, "SUM") == 0 || runtime_strcmp(uname, "AVG") == 0 ||
+        runtime_strcmp(uname, "MEAN") == 0 || runtime_strcmp(uname, "MIN") == 0 ||
+        runtime_strcmp(uname, "MAX") == 0)) {
+        const char *save_pos = lex_get_pos(lex);
+        BppToken name_tok = lex_peek(lex);
+        if (name_tok.type == TOK_IDENT) {
+            char arr_name[256];
+            size_t clen = (name_tok.length < sizeof(arr_name) - 1) ? name_tok.length : sizeof(arr_name) - 1;
+            runtime_memcpy(arr_name, name_tok.start, clen);
+            arr_name[clen] = '\0';
+            if (arr_exists(vm_get_arr(vm), arr_name)) {
+                lex_next(lex); // consume name_tok
+                if (lex_peek(lex).type == TOK_RPAREN) {
+                    lex_next(lex); // consume ')'
+                    int total_size = 0;
+                    BValue *elems = arr_get_flat_elements(vm_get_arr(vm), arr_name, &total_size);
+                    out_res->type = VAL_NUMBER;
+                    if (runtime_strcmp(uname, "SUM") == 0) {
+                        double s = 0.0;
+                        for (int i = 0; i < total_size; i++) {
+                            if (elems && (elems[i].type == VAL_NUMBER || elems[i].type == VAL_INTEGER)) s += elems[i].as.number;
+                        }
+                        out_res->as.number = s;
+                    } else if (runtime_strcmp(uname, "AVG") == 0 || runtime_strcmp(uname, "MEAN") == 0) {
+                        double s = 0.0; int cnt = 0;
+                        for (int i = 0; i < total_size; i++) {
+                            if (elems && (elems[i].type == VAL_NUMBER || elems[i].type == VAL_INTEGER)) { s += elems[i].as.number; cnt++; }
+                        }
+                        out_res->as.number = (cnt > 0) ? (s / (double)cnt) : 0.0;
+                    } else if (runtime_strcmp(uname, "MIN") == 0) {
+                        double mv = 0.0; bool first = true;
+                        for (int i = 0; i < total_size; i++) {
+                            if (elems && (elems[i].type == VAL_NUMBER || elems[i].type == VAL_INTEGER)) {
+                                if (first || elems[i].as.number < mv) { mv = elems[i].as.number; first = false; }
+                            }
+                        }
+                        out_res->as.number = mv;
+                    } else if (runtime_strcmp(uname, "MAX") == 0) {
+                        double mv = 0.0; bool first = true;
+                        for (int i = 0; i < total_size; i++) {
+                            if (elems && (elems[i].type == VAL_NUMBER || elems[i].type == VAL_INTEGER)) {
+                                if (first || elems[i].as.number > mv) { mv = elems[i].as.number; first = false; }
+                            }
+                        }
+                        out_res->as.number = mv;
+                    }
+                    return true;
+                }
+            }
+        }
+        lex_set_pos(lex, save_pos);
     }
 
     // 2. Matrix Determinant: DET
@@ -231,6 +315,10 @@ bool dispatch_handle_special(VMContext *vm, const char *uname, LexerContext *lex
         }
 
         uint32_t handle = vmem_register_handle(vm_get_vmem(vm), target, is_sadd);
+        if (handle == 0 && target) {
+            handle = (uint32_t)((uintptr_t)target & 0xFFFFFFFF);
+            if (handle == 0) handle = 1;
+        }
 
         if (is_str) {
             char desc[4];
@@ -253,7 +341,12 @@ bool dispatch_handle_special(VMContext *vm, const char *uname, LexerContext *lex
             if (is_seg) {
                 out_res->as.number = (double)((handle >> 16) & 0xFFFF);
             } else {
-                out_res->as.number = (double)(handle & 0xFFFF);
+                uint32_t off = handle & 0xFFFF;
+                if (off == 0 && handle != 0) {
+                    off = (handle >> 4) & 0xFFFF;
+                    if (off == 0) off = 1;
+                }
+                out_res->as.number = (double)off;
             }
         }
         return true;

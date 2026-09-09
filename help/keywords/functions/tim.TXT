@@ -1,16 +1,70 @@
-TIM System Timer Minute Function
-======================================================================
+TITLE: TIM
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/functions/system/time/func_tim.c
+GENERATED: no, hand-written
+STATUS: current
 
-The TIM function returns the current minute of the hour (0..59).
+==============================================================================
+TIM KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: func_tim.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (sys_fn.c)
+    // NEEDS: libcore (hal.h, memory.h, memory.c)
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libengine (string.c, func_tim.h)
+    // NEEDS: libplatform (platform.h)
+    // Provides runtime implementation for the HP 2000/3000 TIM built-in function 
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Returns HP 2000/3000 time components: 0=sec, 1=min, 2=hour, 3=day, 4=month,
+5=year, 6=day-of-week (1-7), 7=day-of-year (1-366), 8=millisecond (0-999).
 
-    minute% = TIM(0)
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    TIM(n)
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = TIM(n)
+    20 PRINT "Result: "; Val
 
-CODE EXAMPLES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 5: Illegal Function Call, Error 13: Type Mismatch
 
-    10 PRINT TIM(0)   : REM Outputs current minute
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      System Functions
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_IO
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  TIM
+Category              System Functions
+Syntax                TIM(n)
+Description           Returns HP 2000/3000 time components: 0=sec, 1=min,...
+Error Summary         Error 5: Illegal Function Call, Error 13: Type Mism...
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_IO
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/eval/functions/system/time/func_tim.c

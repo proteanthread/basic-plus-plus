@@ -2,25 +2,30 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (math_fn.c)
-// NEEDS: libcore (math.h, micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (math.h, language_descriptor.h, string.h)
 // NEEDS: libengine (clamp.h, math.c, string.c)
 // Provides runtime implementation for the CLAMP built-in function in BASIC++.
 //
 // ---- Includes ----
 
 #include "eval/functions/math/algebra/clamp.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/math.h"
 #include "runtime/string.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_clamp_desc = {
+    .name = "CLAMP",
+    .category = "Math Functions",
+    .syntax = "CLAMP(val, min_val, max_val)",
+    .description = "Clamps a value to be within the range [min_val, max_val].",
+    .error_summary = "Error 13: Type Mismatch (CLAMP expects three numeric arguments)",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_PURE,
+    .type = FEATURE_FUNCTION
+};
 void func_clamp_register(void) {
-    MicroLibMetadata meta = {
-        .name = "CLAMP",
-        .category = "Math Functions",
-        .syntax = "CLAMP(val, min_val, max_val)",
-        .help_text = "Clamps a value to be within the range [min_val, max_val].",
-        .error_codes = "Error 13: Type Mismatch (CLAMP expects three numeric arguments)"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_clamp_desc);
 }
 
 BValue func_clamp_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err) {

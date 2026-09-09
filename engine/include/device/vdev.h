@@ -218,6 +218,14 @@ typedef enum {
     VDCLASS_CLIPBOARD,
     VDCLASS_PIPE,
     VDCLASS_TIMER,
+    VDCLASS_USER,
+    VDCLASS_TAPE,
+    VDCLASS_MODEM,
+    VDCLASS_BARCODE,
+    VDCLASS_WINDOW,
+    VDCLASS_FRAMEBUFFER,
+    VDCLASS_KEYMAP,
+    VDCLASS_LOOPBACK,
     VDCLASS_CUSTOM = 99
 } VDevClass;
 
@@ -372,4 +380,53 @@ int         vdev_count(VDevContext *ctx);
 VDev       *vdev_get_by_index(VDevContext *ctx, int index);
 void        vdev_list_all(VDevContext *ctx);
 
+#define MAX_VDEV_ALIASES 64
+#define MAX_VDEV_UDD     32
+#define MAX_VDEV_CHAINS  16
+#define MAX_VDEV_MUX     16
+
+typedef struct {
+    char alias[32];
+    char target[64];
+    bool active;
+} VDevAliasEntry;
+
+// User-Defined Device (UDD) structure
+typedef struct {
+    char name[32];
+    char class_name[32];
+    int  buffer_size;
+    int  open_gosub_line;
+    int  read_gosub_line;
+    int  write_gosub_line;
+    int  ioctl_gosub_line;
+    int  close_gosub_line;
+    VMContext *vm;
+    bool active;
+} UserDefinedDevice;
+
+// Alias and Routing APIs
+bool        vdev_alias_set(VDevContext *ctx, const char *alias_name, const char *target_name);
+bool        vdev_alias_remove(VDevContext *ctx, const char *alias_name);
+const char *vdev_alias_resolve(VDevContext *ctx, const char *name);
+void        vdev_alias_list(VDevContext *ctx);
+
+// Dynamic Mounting and Driver Management APIs
+bool        vdev_mount(VDevContext *ctx, const char *dev_name, const char *driver_type, const char *options);
+bool        vdev_unmount(VDevContext *ctx, const char *dev_name);
+void        vdev_reset_defaults(VDevContext *ctx);
+
+// User-Defined Device (UDD) APIs
+bool        vdev_udd_register(VDevContext *ctx, const UserDefinedDevice *udd);
+bool        vdev_udd_unregister(VDevContext *ctx, const char *name);
+UserDefinedDevice *vdev_udd_get(VDevContext *ctx, const char *name);
+
+// Pipeline Chaining and Multiplexing APIs
+bool        vdev_chain_create(VDevContext *ctx, const char *chain_name, const char * const *filters, int filter_count, const char *target_dev);
+bool        vdev_mux_create(VDevContext *ctx, const char *mux_name, const char * const *targets, int target_count);
+
+// Sub-Device Index Helper: returns 1..8 on valid sub-device, 0 or 9 on reserved, or -1 if unindexed
+int         vdev_parse_subdevice_index(const char *name, char *out_base, size_t base_size);
+
 #endif // DEVICE_VDEV_H
+

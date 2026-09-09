@@ -1,24 +1,77 @@
-# `FILEMOD` File Modification Numeric Timestamp Function
+<!--
+Title:        FILEMOD
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/runtime/vfs.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Keyword Definition
+# `FILEMOD` Keyword Reference
 
-Returns the last modification timestamp of a file as a 64-bit Unix epoch integer.
+## Source Header
 
-### Syntax Signatures:
-```basic
-t# = FILEMOD(filename$)
+```c
+// FILENAME: vfs.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: baspp.exe (desktop.c)
+// NEEDED BY: libcore (error.c, spec.c)
+// NEEDED BY: libengine (context.c, control.c, data.c, events_internal.h)
+// NEEDED BY: libengine (exec_internal.h, vm_internal.h)
+// NEEDS: libcore (hal.h, memops.h, memops.c, runtime_snprintf.h, runtime_snpr
+// NEEDS: libcore (strops.h, strops.c, vfs.h)
+// NEEDS: libkernel (vdev.h, vdev.c)
+// NEEDS: libplatform (platform.h)
+// Provides core logic and interface definitions for vfs within BASIC++.
+//
+// ---- Includes ----
 ```
 
-### Error Handling & Boundary Conditions:
-- **Error 53 (ERR_FILE_NOT_FOUND)**: File does not exist.
+## 1. Description & Usage
 
-### Operational Notes:
-- Facilitates fast modification date comparisons.
+Returns the file last-modified timestamp as a 64-bit Unix epoch integer timestamp.
+
+## 2. Syntax
+
+```basic
+FILEMOD(path$)
+```
+
+## 3. Code Example
+
+```basic
+10 Val = FILEMOD(path$)
+20 PRINT "Result: "; Val
+```
+
+## 4. Error Conditions
+
+Error 53: File Not Found
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Filesystem I/O
+- **Subsystem**: SUBSYSTEM_PLATFORM
+- **Safety Level**: SAFETY_IO
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 PRINT "Epoch timestamp: "; FILEMOD("DATA.DAT")
-```
+| Field | Value |
+|---|---|
+| Name | FILEMOD |
+| Category | Filesystem I/O |
+| Syntax | FILEMOD(path$) |
+| Description | Returns the file last-modified timestamp as a 64-bit Unix epoch integer timestamp. |
+| Error Summary | Error 53: File Not Found |
+| Subsystem | SUBSYSTEM_PLATFORM |
+| Safety Level | SAFETY_IO |
+| Feature Type | FEATURE_STATEMENT |
+| Delimiter Mask | none |
+| Compatibility | BASIC++ Standard |
+| Since Version | 6.0.0 |
+| Source File | engine/src/runtime/vfs.c |

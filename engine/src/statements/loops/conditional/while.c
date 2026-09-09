@@ -11,28 +11,33 @@
 #include "vm/vm.h"
 #include "lexer/lexer.h"
 #include "eval/eval.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/strings.h"
 #include "memory/memory.h"
 #include "device/vdev.h"
 #include "security/security.h"
 #include "platform/platform.h"
-#include <string.h>
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_while_desc = {
+    .name = "WHILE",
+    .category = "Looping / Control Flow",
+    .syntax = "WHILE condition",
+    .description = "Executes a series of statements in a loop as long as condition evaluates to non-zero (true).",
+    .error_summary = "Error 2: Syntax Error, Error 30: WHILE Without WEND",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SAFE,
+    .type = FEATURE_STATEMENT
+};
 
 void stmt_while_register(void) {
-    MicroLibMetadata meta = {
-        .name = "WHILE",
-        .category = "Looping / Control Flow",
-        .syntax = "WHILE condition",
-        .help_text = "Executes a series of statements in a loop as long as condition evaluates to non-zero (true).",
-        .error_codes = "Error 2: Syntax Error, Error 30: WHILE Without WEND"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_while_desc);
 }
 
 static BppError skip_to_matching_wend(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     int nesting = 0;
 
@@ -126,7 +131,7 @@ static BppError skip_to_matching_wend(VMContext *vm, LexerContext *lex) {
 
 BppError stmt_while_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     if (!vm || !lex) {
         err.code = 5; err.message = "Null VM or lexer context";

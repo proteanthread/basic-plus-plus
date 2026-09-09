@@ -1,17 +1,68 @@
-AVG Arithmetic Mean / Average Function
-======================================================================
+TITLE: AVG
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/functions/math/algebra/avg.c
+GENERATED: no, hand-written
+STATUS: current
 
-The AVG function calculates the arithmetic mean of its arguments.
+==============================================================================
+AVG KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: avg.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (math_fn.c)
+    // NEEDS: libcore (language_descriptor.h)
+    // NEEDS: libengine (avg.h)
+    // Provides runtime implementation for the AVG / MEAN built-in function in BAS
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Returns the arithmetic mean of numeric arguments, set elements, or an array
+(aliases: MEAN).
 
-    mean = AVG(val1, val2 [, val3, ...])
-    mean = AVG(array())
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    AVG(val1, val2 [, ...]) or AVG(arr) or AVG{...} or AVG[arr]
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = AVG(val1, val2 [, ...]) or AVG(arr) or AVG{...} or AVG[arr]
+    20 PRINT "Result: "; Val
 
-CODE EXAMPLES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 13: Type Mismatch
 
-    10 PRINT AVG(4, 8, 12)   : REM Outputs 8
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Math & Statistics Functions
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_PURE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  AVG
+Category              Math & Statistics Functions
+Syntax                AVG(val1, val2 [, ...]) or AVG(arr) or AVG{...} or ...
+Description           Returns the arithmetic mean of numeric arguments, s...
+Error Summary         Error 13: Type Mismatch
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_PURE
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/eval/functions/math/algebra/avg.c

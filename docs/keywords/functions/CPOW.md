@@ -1,26 +1,72 @@
-# `CPOW` Complex Power / Exponentiation Function
+<!--
+Title:        CPOW
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/module/mathext.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Function Definition
+# `CPOW` Keyword Reference
 
-The `CPOW` function computes the complex power $z^w$ where base $z$ and exponent $w$ are complex numbers:
+## Source Header
 
-$$z^w = e^{w \ln z}$$
-
-### Syntax Signatures:
-```basic
-res_complex = CPOW(complex_base, complex_exp)
+```c
+// FILENAME: mathext.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore (funcreg.h, funcreg.c, math.h)
+// NEEDS: libengine (math.c)
+// Provides core logic and interface definitions for mathext within BASIC++.
+//
+// ---- Includes ----
 ```
 
-### Operational Rules:
-- Returns complex power evaluated using principal logarithm branch.
+## 1. Description & Usage
+
+Raises complex number base to complex or scalar power exponent.
+
+## 2. Syntax
+
+```basic
+CPOW(base, exponent)
+```
+
+## 3. Code Example
+
+```basic
+10 Val = CPOW(base, e10ponent)
+20 PRINT "Result: "; Val
+```
+
+## 4. Error Conditions
+
+Error 13: Type Mismatch
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Math & Complex Numbers
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_PURE
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 Z = COMPLEX(0, 1) : REM i
-20 W = COMPLEX(0, 1) : REM i
-30 RES = CPOW(Z, W)   : REM i^i = e^(-PI/2) approx 0.20788
-40 PRINT "i^i = "; REAL(RES)
-```
+| Field | Value |
+|---|---|
+| Name | CPOW |
+| Category | Math & Complex Numbers |
+| Syntax | CPOW(base, exponent) |
+| Description | Raises complex number base to complex or scalar power exponent. |
+| Error Summary | Error 13: Type Mismatch |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_PURE |
+| Feature Type | FEATURE_FUNCTION |
+| Delimiter Mask | none |
+| Compatibility | BASIC++ Standard |
+| Since Version | 6.0.0 |
+| Source File | engine/src/module/mathext.c |

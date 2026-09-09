@@ -46,6 +46,7 @@
 // ---- Internal Function Prototypes ----
 
 bool eval_is_clause_delimiter(BppToken tok);
+bool eval_try_resolve_builtin_constant_or_system_var(VMContext *vm, const char *name_buf, BValue *out_val);
 
 bool eval_parse_new_expression(VMContext *vm, LexerContext *lex, BValue *out_val, BppError *out_err);
 
@@ -54,5 +55,11 @@ bool eval_parse_identifier_expression(VMContext *vm, LexerContext *lex, BppToken
 bool eval_parse_array_access(VMContext *vm, LexerContext *lex, const char *name_buf, BValue *out_val, BppError *out_err);
 
 bool eval_process_operator(VMContext *vm, LexerContext *lex, BppToken tok, bool expect_operand, int open_parens, BValue *val_stack, size_t *val_ptr, BppTokenType *op_stack, size_t *op_ptr, bool *out_expect_operand, bool *out_break, BppError *out_err);
+BValue eval_expression_pn(VMContext *vm, LexerContext *lex, BppError *out_err);
+BValue eval_expression_rpn(VMContext *vm, LexerContext *lex, BppError *out_err);
+BValue eval_builtin_function_delim(VMContext *vm, const char *name, LexerContext *lex, BppTokenType open_delim, BppError *err);
+BValue eval_builtin_function(VMContext *vm, const char *name, LexerContext *lex, bool has_parens, BppError *err);
+BValue eval_parse_braced_literal(VMContext *vm, const char *raw_str, BppError *out_err);
+bool   eval_parse_brace_access(VMContext *vm, LexerContext *lex, const char *name_buf, BValue *out_val, BppError *out_err);
 
 #endif // EVAL_EXPR_INTERNAL_H

@@ -2,7 +2,7 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libboot (common_internal.h)
-// NEEDED BY: libcore (snprintf.c, sscanf.c, string.h)
+// NEEDED BY: libcore (runtime_snprintf.c, sscanf.c, string.h)
 // NEEDED BY: libengine (ast_internal.h, eval_internal.h, scan_number.c)
 // NEEDED BY: libengine (vm_internal.h)
 // NEEDED BY: libstandard (editor.c)
@@ -20,6 +20,8 @@
 #include "runtime/string/strops.h"
 #include "runtime/string/memops.h"
 #include <stdint.h>
+#include "runtime/format/snprintf.h"
+#include "runtime/math/math.h"
 
 
 // Exact power of 10 lookup tables for double precision
@@ -37,14 +39,14 @@ static const double pow10_neg[] = {
     1e-31, 1e-32, 1e-64, 1e-128, 1e-256
 };
 
-static double calc_pow10(int exp) {
-    if (exp == 0) return 1.0;
-    if (exp > 308) return RUNTIME_INFINITY;
-    if (exp < -324) return 0.0;
+static double calc_pow10(int runtime_exp) {
+    if (runtime_exp == 0) return 1.0;
+    if (runtime_exp > 308) return RUNTIME_INFINITY;
+    if (runtime_exp < -324) return 0.0;
 
     double result = 1.0;
-    int abs_exp = (exp < 0) ? -exp : exp;
-    bool is_neg = (exp < 0);
+    int abs_exp = (runtime_exp < 0) ? -runtime_exp : runtime_exp;
+    bool is_neg = (runtime_exp < 0);
 
     // Fast table multiply
     if (abs_exp <= 32) {
@@ -221,7 +223,7 @@ size_t runtime_dtoa_format(double value, RuntimeFloatFmtMode mode, int precision
         value = 0.0;
     }
 
-    if (precision <= 0) {
+    if (precision < 0) {
         precision = RUNTIME_FLOAT_PRECISION_DIGITS;
     }
 
@@ -287,6 +289,12 @@ size_t runtime_dtoa_format(double value, RuntimeFloatFmtMode mode, int precision
         return (size_t)(out - buf);
     } else {
         // Fixed-point notation
+        if (precision == 0) {
+            uint64_t int_part = (uint64_t)(value + 0.5);
+            out += runtime_uint_to_str(int_part, out, (size_t)(end - out), 10, false);
+            *out = '\0';
+            return (size_t)(out - buf);
+        }
         uint64_t int_part = (uint64_t)value;
         double frac_part = value - (double)int_part;
 

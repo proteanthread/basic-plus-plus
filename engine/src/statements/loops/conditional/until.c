@@ -2,7 +2,7 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libcore (strings.h, strings.c)
 // NEEDS: libengine (eval.h, eval.c, string.c, until.h)
 // Provides runtime implementation for the UNTIL statement in BASIC++.
@@ -12,18 +12,23 @@
 #include "statements/loops/conditional/until.h"
 #include "eval/eval.h"
 #include "runtime/strings.h"
-#include "runtime/micro_lib_metadata.h"
-#include <string.h>
+#include "runtime/language_descriptor.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_until_desc = {
+    .name = "UNTIL",
+    .category = "Looping / Control Flow",
+    .syntax = "UNTIL condition",
+    .description = "Terminates a BASIC09 REPEAT...UNTIL loop block when condition becomes true.",
+    .error_summary = "Error 2: Syntax Error, Error 32: UNTIL Without REPEAT",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SAFE,
+    .type = FEATURE_STATEMENT
+};
 
 void stmt_until_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "UNTIL",
-        .category = "Looping / Control Flow",
-        .syntax = "UNTIL condition",
-        .help_text = "Terminates a BASIC09 REPEAT...UNTIL loop block when condition becomes true.",
-        .error_codes = "Error 2: Syntax Error, Error 32: UNTIL Without REPEAT"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_until_desc);
 }
 
 static bool until_val_is_truthy(BValue val) {
@@ -35,7 +40,7 @@ static bool until_val_is_truthy(BValue val) {
 
 BppError stmt_until_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BppLineNumber loop_line = 0;
     const char *loop_pos = NULL;

@@ -16,5 +16,6 @@
 
 BValue func_remote_eval(VMContext *vm, int argc, BValue *argv, BppError *err);
 BValue func_iot_rpc(VMContext *vm, int argc, BValue *argv, BppError *err);
+void   func_remote_register(void);
 
 #endif // EVAL_FUNCTIONS_SYSTEM_HARDWARE_FUNC_REMOTE_H

@@ -1,0 +1,71 @@
+==============================================================================
+Title:        Builtin_And_Dynamic_Variables
+Tier:         1
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/eval/ops.c, engine/include/types/config.h
+Generated:    no, hand-written
+Status:       current
+==============================================================================
+
+BUILT-IN VARIABLES, SYSTEM IDENTIFICATION & DIAGNOSTICS ENGINE
+
+The comprehensive technical reference for built-in constants, relational
+truth values, system identification strings, precision astronomical clocks,
+and multi-pool memory queries in BASIC++.
+
+
+1. CONSTANTS & RELATIONAL TRUTH INVARIANT
+
+In strict conformance with vintage BASIC standards and the Relational Truth
+Value Invariant, relational comparisons in BASIC++ evaluate to -1 for True
+and 0 for False:
+
+Identifier     Type     Value / Description
+-------------  -------  ------------------------------------------------------
+TRUE           Integer  Standard boolean True (-1).
+FALSE          Integer  Standard boolean False (0).
+NOT TRUE       Integer  Logical NOT of True evaluates to 0.
+NOT FALSE      Integer  Logical NOT of False evaluates to -1.
+PI, _PI        Double   Archimedes constant (approx 3.141592653589793).
+INF, _INF      Double   Positive floating-point infinity.
+MAXNUM         Double   Maximum double-precision float (approx 1.797693e+308).
+EPS            Double   Machine epsilon (approx 2.220446e-16).
+
+
+2. SYSTEM IDENTIFICATION & HOST ENVIRONMENT
+
+Identifier     Type     Description
+-------------  -------  ------------------------------------------------------
+SYS.OS$        String   Operating system name ("Windows", "Linux", "macOS").
+SYS.ARCH$      String   CPU architecture ("x86_64", "arm64", "riscv").
+SYS.EDITION$   String   Active edition ("Standard", "Lite", "Batch", "IoT").
+SYS.COMPILER$  String   C17 host compiler identification (MSVC, GCC, Clang).
+SYS.VERSION$   String   Semantic version string ("6.5.2").
+SYS.PID        Integer  Current host process identifier.
+SYS.CORES      Integer  Number of active logical CPU processing cores.
+
+
+3. PRECISION CLOCKS, TIMERS & ASTRONOMICAL DATES
+
+Identifier  Type    Description
+----------  ------  ----------------------------------------------------------
+UTC$        String  ISO 8601 UTC date/time string ("YYYY-MM-DDTHH:MM:SS").
+CLOCK$      String  ISO 8601 Local date/time string ("YYYY-MM-DDTHH:MM:SS").
+TIME$       String  Formatted local time string ("HH:MM:SS").
+DATE$       String  Formatted local date string ("YYYY-MM-DD").
+TIMER       Double  Elapsed seconds since midnight with microsecond res.
+TICKS       Double  Monotonic millisecond uptime counter since boot.
+UNIXTIME    Double  Unix epoch timestamp in seconds since 1970-01-01.
+JD, JULIAN  Double  Astronomical Julian Day Number (e.g. 2461283.05).
+
+
+4. MULTI-POOL MEMORY QUERIES (MEM and FRE)
+
+Query          Description
+-------------  ---------------------------------------------------------------
+MEM            Total memory pool allocated to engine (640MB, 384MB, 64MB, 2MB)
+FRE(0) / FRE   Available general RAM heap in bytes.
+FRE(-1)        Variable symbol table pool capacity.
+FRE(-2)        String dynamic heap free capacity.
+FRE(-3)        Bytecode and program AST memory pool capacity.
+FRE(-4)        Execution stack and call-frame capacity.

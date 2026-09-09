@@ -1,28 +1,71 @@
-# `LET` Variable Assignment Statement
+<!--
+Title:        LET
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/statements/variables/assignment/let.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Keyword Definition
+# `LET` Keyword Reference
 
-The `LET` statement assigns the value of an expression to a scalar variable, an array element, or multiple variables in a chained assignment. In BASIC++, the `LET` keyword is optional for standard assignments (e.g., `LET A = 10` is identical to `A = 10`).
+## Source Header
 
-### Syntax Signatures:
-```basic
-[LET] variable = expression
-[LET] array(index1 [, index2, ...]) = expression
-[LET] var1, var2, var3 = expression   : REM Multi-target assignment
+```c
+// FILENAME: let.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore, libengine
+// Provides runtime implementation for the LET statement in BASIC++.
+//
+// ---- Includes ----
 ```
 
-### Operational Rules:
-- **Optional Keyword**: The `LET` keyword can be omitted in modern and classic programs.
-- **Type Compatibility**: Numeric expressions cannot be assigned to string variables, and string expressions cannot be assigned to numeric variables (triggers Error 13: `ERR_TYPE_MISMATCH`).
-- **String Memory**: When assigning strings, reference counts are updated cleanly in `VariableContext`.
+## 1. Description & Usage
+
+Assigns the value of an expression to a variable or array element.
+
+## 2. Syntax
+
+```basic
+[LET] variable = expression
+```
+
+## 3. Code Example
+
+```basic
+10 REM LET Demonstration
+20 PRINT "LET executed successfully."
+```
+
+## 4. Error Conditions
+
+Error 2: Syntax Error, Error 13: Type Mismatch
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Variables & Memory
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_SYSTEM
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 LET X = 100
-20 Y = 200 : REM Implicit LET
-30 LET TOTAL = X + Y
-40 PRINT "Total: "; TOTAL
-```
+| Field | Value |
+|---|---|
+| Name | LET |
+| Category | Variables & Memory |
+| Syntax | [LET] variable = expression |
+| Description | Assigns the value of an expression to a variable or array element. |
+| Error Summary | Error 2: Syntax Error, Error 13: Type Mismatch |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_SYSTEM |
+| Feature Type | FEATURE_STATEMENT |
+| Delimiter Mask | none |
+| Compatibility | none |
+| Since Version | none |
+| Source File | engine/src/statements/variables/assignment/let.c |

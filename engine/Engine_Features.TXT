@@ -77,38 +77,54 @@ Libraries and Subsystem Responsibilities:
 2. Executable Target Editions & Memory Allocations
 -------------------------------------------------------------------------------
 
-BASIC++ builds into five distinct executable binary targets optimized for different
-execution environments:
+BASIC++ builds into seven distinct executable binary targets optimized for
+different execution environments:
 
 1. baspp.exe / baspp (Flagship Desktop Edition)
    Default Memory Pool: 640 MB (671088640L bytes)
    Interactive Prompt: >
    Output Status: Ok\n>
-   Subsystems: Full SDL2 graphics, BGI software rasterizer, TUI multiplexer, DAP server.
+   Subsystems: Full SDL2 graphics, BGI software rasterizer, TUI multiplexer,
+   DAP server.
 
 2. bpp.exe / bpp (Lite REPL Edition)
    Default Memory Pool: 384 MB (402653184L bytes)
    Interactive Prompt: ]
    Output Status: Ready.\n]
-   Subsystems: Terminal console REPL. Weak symbol fallbacks in vdev.c for headless linking.
+   Subsystems: Terminal console REPL. Weak symbol fallbacks in vdev.c for
+   headless linking.
 
 3. bs.exe / bs (Batch Script Runner)
    Default Memory Pool: 64 MB (67108864L bytes)
    Interactive Prompt: None
    Output Status: None
-   Subsystems: Headless non-interactive execution for PowerShell, Bash, CGI pipelines.
+   Subsystems: Headless non-interactive execution for PowerShell, Bash, CGI
+   pipelines.
 
-4. bppc.exe / bppc (Compiler & Transpiler)
+4. iot.exe / iot (Microcontroller & IoT Edition)
+   Default Memory Pool: 2 MB (2097152L bytes)
+   Interactive Prompt: ]
+   Output Status: Ready.\n]
+   Subsystems: Headless micro-REPL optimized for microcontrollers, hardware
+   I/O, event loops.
+
+5. bppc.exe / bppc (Compiler & Transpiler)
    Default Memory Pool: Dynamic
    Interactive Prompt: Command-line
    Output Status: Diagnostics
    Subsystems: Standalone binary transpiler & bytecode emitter tool.
 
-5. detok.exe / detok (GW-BASIC Detokenizer)
+6. detok.exe / detok (GW-BASIC Detokenizer)
    Default Memory Pool: Dynamic
    Interactive Prompt: Command-line
    Output Status: Text Output
    Subsystems: Decodes legacy GW-BASIC binary file format to text.
+
+7. trans.exe / trans (Source-to-Source Transpiler)
+   Default Memory Pool: Dynamic
+   Interactive Prompt: Command-line
+   Output Status: Diagnostics
+   Subsystems: Transpiles BASIC source to clean ISO C17 code.
 
 -------------------------------------------------------------------------------
 3. Core Engine Subsystems & Architectural Features
@@ -419,3 +435,212 @@ engine/src/eval/functions/ (libengine) and is queryable via interactive HELP
 and CATALOG.
 ===============================================================================
 
+-------------------------------------------------------------------------------
+7. Systems Programming, Freestanding C17, Bare-Metal UEFI & Object Pascal Target
+-------------------------------------------------------------------------------
+
+The bppc compiler and trans transpiler support genuine systems-level native
+compilation with zero interpreter and zero hosted C runtime dependencies:
+
+  1. Freestanding C17 (--freestanding):
+     - Emits pure ISO C17 code with zero libc headers or runtime functions.
+     - Entry point: void _start(void).
+     - Sized ordinal types: U8..U64, USIZE, ISIZE.
+     - Direct hardware access: MEM[addr], MEMW[addr], MEML[addr], PORT[port].
+     - Volatile memory accessors: BPP_MEM8/16/32/64, BPP_PORT8/16.
+     - Direct inline assembly escape: ASM "...".
+
+  2. 64-bit Bare-Metal UEFI Target (--uefi):
+     - Emits 64-bit UEFI application source for direct machine cold boot.
+     - Entry point: EFI_STATUS EFIAPI efi_main(EFI_HANDLE, EFI_SYSTEM_TABLE *).
+     - Native text console: OutputString (UCS-2 / UTF-16LE) and ClearScreen.
+
+  3. Object Pascal Transpilation Target (--pascal):
+     - Transpiles BASIC++ source to clean Object Pascal for Free Pascal (FPC).
+     - Generates program GeneratedBppProgram with {$mode objfpc}{$H+}.
+     - Maps sized types and memory dereferencing (PByte(PtrUInt(addr))^ := val).
+===============================================================================
+
+-------------------------------------------------------------------------------
+8. Historical Dialect Feature Import: Vintage Ecosystems & Apple III Extensions (Waves 1–12)
+-------------------------------------------------------------------------------
+
+  1. Wave 1: Freestanding Linear Algebra & Bare DET
+     - DET / MATH.DET: Bare identifier returning determinant of the last
+       inverted matrix (MAT N = INV(M)) via Gaussian elimination.
+     - DOT(u, v): Vector dot product with support for VAL_NUMBER and
+       VAL_INTEGER array elements across 0-based and 1-based indexing.
+
+  2. Wave 2: Slicing, Codecs, and Low-Memory Storage
+     - Bracket Slicing (S$[start TO end], S$[start, end], S$[start]):
+       Atari and HP-style zero-copy string slicing.
+     - CHANGE (DEC PDP-10 / Tymshare Super BASIC):
+       CHANGE S$ TO A% and CHANGE A% TO S$, dynamically respecting OPTION BASE 0
+       (A%(0) is length) and OPTION BASE 1 (A%(1) is length) with stack/arena memory.
+     - PACK & UNPACK: Dedicated statement synonyms for string-array ASCII conversion.
+     - EXAM(addr) & FILL addr, val: North Star BASIC byte read function and write
+       statement with 64KB virtual low RAM emulation.
+
+  3. Wave 3: Fractional & Financial Rounding Intrinsics
+     - FRAC(x) / FP(x): Returns fractional part of a number (x - trunc(x)).
+     - BANKER_ROUND(x [, n]): IEEE 754 round half to even (banker's rounding).
+
+  4. Wave 4: Pick MultiValue Dynamic Arrays & Unified Functions
+     - Option A (Primary): Context-disambiguated LOCATE target IN arr SETTING pos
+       THEN ... ELSE ... (disambiguated from QuickBASIC screen LOCATE row, col).
+     - Option B (Synonym): FIND target IN arr SETTING pos THEN ... ELSE ...
+       (disambiguated from DEC file FIND).
+     - Option C (Compound): ARRAY FIND target IN arr SETTING pos THEN ... ELSE ...
+     - Sorted ordering: LOCATE target IN arr BY "AL"|"AR"|"DL"|"DR" SETTING pos.
+     - Unified Array & String Functions: INDEX(arr, target) / INDEX$(arr, target),
+       INSERT(arr, pos, val) / INSERT$(arr, pos, val$), REPLACE(arr, pos, val) /
+       REPLACE$(arr, pos, val$), DELETE(arr, pos) / DELETE$(arr, pos) / REMOVE$(arr, pos),
+       COUNT(arr [, delim$]) / COUNT$(arr [, delim$]), FIELD(dyn, delim$, idx),
+       EXTRACT(dyn, am [, vm [, svm]]). Legacy D-prefixed functions shelved in planned/.
+
+  5. Wave 5: Bitwise Registers & Bitfield Ops
+     - BIT(val, bit) (alias for READBIT), CLRBIT(val, bit) (alias for RESETBIT),
+       SETBIT, TOGGLEBIT.
+     - ROL(val, count [, width]): Rotate bits left with optional width (default 32).
+     - ROR(val, count [, width]): Rotate bits right with optional width (default 32).
+     - BITFIELD(val, start, len): Extract bitfield slice from integer value.
+     - Bracket modifiers supported across bitwise functions: ROL[...], ROR[...],
+       BITFIELD[...].
+
+  6. Wave 6: String Length Sizing & Dynamic Descriptors
+     - String length constraints on declaration: DIM S$ = len, DIM S$[len],
+       DIM S$ * len, DIM S AS STRING * len, DIM S AS STRING = len,
+       DIM S AS STRING[len].
+     - Automatic string clamping/truncation upon variable assignment when string
+       length exceeds declared max_len.
+     - MAXLEN(S$) / MAXLEN[S$]: Retrieves declared maximum length constraint of
+       sized string variable (0 if unbounded).
+
+  7. Wave 7: Mathematical Reductions & Statistics (Tri-Hybrid Delimiters (), [], {})
+     - SUM(...): Variadic summation of numeric arguments, array reduction
+       SUM(arr) / SUM[arr], and set collection SUM{...}.
+     - AVG(...) / MEAN(...): Arithmetic mean of numeric arguments, array reduction
+       AVG(arr) / AVG[arr], and set collection AVG{...}.
+     - MIN(...) / MAX(...): Minimum and maximum of numeric arguments, array reduction
+       MIN(arr) / MIN[arr], and set collection MIN{...}.
+
+  8. Wave 8: Auto-Renumbering Preprocessor
+     - File-to-file renumbering preprocessor: RENUM "input.bas", start, step TO "output.bas".
+     - In-place file renumbering: RENUM "input.bas", start, step.
+     - Automated line numbering on load: LOAD "input.bas", RENUM automatically assigns
+       deterministic line numbers (10, 20, 30...) to unnumbered source files.
+
+  9. Wave 9: Sharp Pocket Trigonometric Angle Modes & Polar/Rectangular Coordinates
+     - DEGREE, RADIAN, GRAD: Statements to switch global VM trigonometric angle mode.
+     - DEGREE(rad), RADIAN(deg), GRAD(deg): Explicit angle conversion functions.
+     - Angle-Aware Trig: SIN, COS, TAN, ASIN, ACOS, ATN dynamically convert angles
+       based on active VM angle mode across both interpreter and AST evaluators.
+     - POL(x, y [, coord]) / POL[x, y]: Polar coordinate conversion returning radius
+       (r = hypot(x, y)) or angle (theta = atan2(y, x) in active angle mode).
+     - REC(r, theta [, coord]) / REC[r, theta]: Rectangular coordinate conversion
+       returning x (r * cos(theta)) or y (r * sin(theta)) in active angle mode.
+
+ 10. Wave 10: Tektronix 4050 Terminal Control, GPIB Bus & Orthogonal Brackets
+     - PAGE: Clear screen statement via virtual console (vcon_clear_screen, vcon_locate, \f).
+     - WBYTE, RBYTE: GPIB / IEEE-488 instrument I/O statements and functions:
+       WBYTE data..., WBYTE @dev, sec: data..., WBYTE[dev, sec] data..., WBYTE(dev, data),
+       RBYTE var..., RBYTE @dev, sec: var..., RBYTE[dev, sec] var..., RBYTE(dev),
+       backed by a virtual GPIB bus controller and FIFO buffer ring.
+     - Orthogonal Bracket Coordinates: WINDOW [xmin..xmax, ymin..ymax] and
+       VIEWPORT [xmin..xmax, ymin..ymax] adhering strictly to square-bracket delimiter semantics.
+
+ 11. Wave 11: Wang 2200 Substring Search & Character Translation
+     - POS(s$, target$ [, start]): Substring position search with optional 1-based start offset,
+       coexisting with legacy console column check POS(0).
+     - TRANSLATE var$ USING table$, TRANSLATE var$, from$, to$, TRANSLATE[from$, to$] var$:
+       In-place character translation statement using lookup tables or character pairs.
+     - TRANSLATE$(src$, from$, to$), TRANSLATE$(src$, table$), TRANSLATE$[from$, to$](src$):
+       Character translation function returning mapped string.
+
+ 12. Wave 12: Business BASIC & Apple III Terminal Control & Formatting
+     - @(col, row) / @[col, row]: 2D screen cursor positioning within PRINT statements.
+     - @(-1): Clear screen (CLS) terminal control mnemonic.
+     - @(-2): Cursor home (HOME) terminal control mnemonic.
+     - @(-3): Erase to end of line (EOL) terminal control mnemonic.
+     - @(-4): Erase to end of screen (EOS) terminal control mnemonic.
+
+  13. Wave 13: Pick & Business BASIC Record Locking
+      - READU: Record reading with exclusive lock: READU [#]ch, id, var$,
+        READU[ch, id] var$, READU var$ FROM [#]ch, id, READU(ch, id, var$), READU$(ch, id).
+      - WRITEU: Record write statement retaining lock: WRITEU [#]ch, id, data$,
+        WRITEU[ch, id] data$, WRITEU data$ ON/TO [#]ch, id, WRITEU(ch, id, data$).
+      - RELEASE: Record lock release: RELEASE, RELEASE [#]ch, RELEASE [#]ch, id,
+        RELEASE[ch, id], RELEASE(ch, id), RELEASE(ch), RELEASE().
+      - LOCKED: Record lock check returning -1 or 0: LOCKED(ch, id), LOCKED[ch, id].
+      - Static pre-allocated lock table with zero bare malloc.
+
+  14. Wave 14: Structured ISAM & Keyed Storage Abstract HAL Core
+      - Keyed storage HAL operations: OPEN ... KEYED, SEEKEQ [#]ch, key$, SEEKEQ[ch] key$,
+        SEEKGE [#]ch, key$, SEEKGE[ch] key$, RETRIEVE [#]ch, key$, var$,
+        RETRIEVE[ch] key$, var$, UPDATE [#]ch, key$, data$, UPDATE[ch] key$, data$,
+        INSERT [#]ch, key$, data$, INSERT[ch] key$, data$.
+      - Keyed intrinsic functions: KEY$(ch), KEYCOUNT(ch) / KEYCOUNT[ch],
+        ISAM(ch) / KEYED(ch).
+
+  15. Wave 15: Non-BASIC Systems Types & Concurrency Extensions
+      - Sized ordinal system types: CBYTE(val), BYTE(val), CWORD(val), WORD(val),
+        CDWORD(val), DWORD(val).
+      - Bracket memory accessors: BYTE[addr], WORD[addr], DWORD[addr].
+      - Pointer & dereference: PTR(var), DEREF(addr).
+      - Bit manipulation: BITFIELD(val, start, len), BITFIELD[start, len](val),
+        SET_BITFIELD(val, start, len, new_bits), MASK(val, mask), MASK[mask](val).
+      - Concurrency & Mutex: MUTEX "INIT", id, MUTEX "LOCK", id, MUTEX "UNLOCK", id,
+        m = MUTEX(name$), MUTEX_LOCK(id), MUTEX_UNLOCK(id).
+
+  16. Wave 16: Master Dialect Regression & Closure
+      - Full backward compatibility across GW-BASIC, QBASIC, Super BASIC, Pick, ECMA-116.
+      - Orthogonal delimiters strictly enforced: () infix, [] prefix/memory/slices, {} postfix/sets/maps.
+      - Unified array & string intrinsics: INDEX, INDEX$, INSERT, INSERT$, REPLACE,
+        REPLACE$, REMOVE, REMOVE$, DELETE, DELETE$, COUNT, COUNT$.
+      - Purged redundant D-prefixed and P-prefixed variants with zero regression.
+
+  17. Stage 2: Python 3 Capability Import & Set-Based Object Model (Wave 1)
+      - Core Principle: "Everything is a Set, and what other languages call an
+        Object is a Group within a Set."
+      - First-class Set collection (VAL_SET, BppSet) and Group collection
+        (VAL_GROUP, BppGroup) integrated into unified BValue type system.
+      - Braced Set literals ({ 1, 2, 3 }, { "a", "b" }, {}) with auto-deduplication.
+      - Braced Group literals ({ name: "Alice", age: 30 }) for key-value records.
+      - Algebraic Set operators:
+        - Union (|): u = a | b
+        - Intersection (&): inter = a & b
+        - Difference (\): diff = a \ b (disambiguated from integer division and
+          PDP-11 statement separator)
+        - Symmetric Difference (^): sdiff = a ^ b (disambiguated from power)
+        - Subset and proper subset (<=, <): sub1 <= a, sub1 < a (truth values -1 / 0)
+        - Equality and inequality (=, <>): a = b, a <> b
+        - Set membership (IN): item IN S (truth values -1 / 0; disambiguated from Pick MV)
+      - Cardinality & Element Count: COUNT(S) and COUNT(S, item).
+      - Group key access and mutation: g{"key"} and g{"key"} = val.
+      - Set element index and mutation: S{idx} and S{idx} = val.
+      - Array brace addressing parity: arr{1} = 42.
+  18. Stage 2: Pick MultiValue Dynamic Array Group Mapping & Map Container Unification (Wave 2)
+      - Container Subsumption: VAL_GROUP natively subsumes VAL_MAP associative containers.
+      - Bidirectional Conversion: group_from_map and map_from_group for legacy map interop.
+      - Group and Map Algebraic Operators:
+        - Union (|): G1 | G2 merges key-value pairs; right-operand values take precedence.
+        - Intersection (&): G1 & G2 retains entries present in both groups with right-precedence.
+        - Difference (\): G1 \ G2 extracts entries present in G1 but absent in G2.
+        - Symmetric Difference (^): G1 ^ G2 yields entries present in either but not both.
+        - Subset and Proper Subset (<=, <): G1 <= G2, G1 < G2 (truth values -1 / 0).
+        - Structural Equality (=, <>): Deep structural key-value equality.
+      - Multi-Tier Hierarchical Path Addressing & Mutation:
+        - Nested brace retrieval: R{"dept", "mgr", "name"} across Groups, Maps, Sets.
+        - Nested in-place mutation: R{"emp", "salary"} = 100000 with lazy intermediate group creation.
+      - Pick MultiValue Dynamic Array Integration:
+        - Native 3-tier delimiters: @AM (CHR$(254)), @VM (CHR$(253)), @SVM (CHR$(252)).
+        - String path extraction: dyn${attr [, val [, subval]]}.
+        - Dynamic string in-place mutation: dyn${attr [, val [, subval]]} = "new_val".
+        - PARSE_DYNARRAY(dyn$) / GROUP_MAP(dyn$): Parses dynamic string to 3-tier Set of Groups.
+        - DYNARRAY$(G) / DYNARRAY(G): Serializes Set or Group back to Pick string (100% binary fidelity).
+        - Polymorphic Intrinsics: EXTRACT, REPLACE, INSERT, DELETE operate on strings, Sets, Groups.
+      - Relational Wildcard and Predicate Projections:
+        - Wildcard Projection: S{*, "field"} projects attribute across all set members.
+        - Predicate Filter Projection: S{*, "key" = val, "field"} filters matching records and projects.
+
+===============================================================================

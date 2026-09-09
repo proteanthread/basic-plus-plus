@@ -1,11 +1,11 @@
-// FILENAME: snprintf.c
+// FILENAME: runtime_snprintf.c
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libboot, libcore, libengine, libkernel, libserver, libstandard
 // NEEDS: libcore (ctype.h, ctype.c, float_parse.h, float_parse.c)
-// NEEDS: libcore (memops.h, memops.c, num_parse.h, num_parse.c, snprintf.h)
+// NEEDS: libcore (memops.h, memops.c, num_parse.h, num_parse.c, runtime_snprintf.h)
 // NEEDS: libcore (strops.h, strops.c)
-// Freestanding snprintf formatting implementation with 15-16 digit precision.
+// Freestanding runtime_snprintf formatting implementation with 15-16 digit precision.
 //
 // ---- Includes ----
 

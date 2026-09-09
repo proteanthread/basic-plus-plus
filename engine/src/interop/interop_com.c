@@ -9,9 +9,10 @@
 // ---- Includes ----
 
 #include "interop/interop_com.h"
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
+#include "runtime/memory/alloc.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "runtime/format/snprintf.h"
 
 #ifdef _WIN32
 
@@ -43,7 +44,7 @@ static ULONG STDMETHODCALLTYPE basicpp_Release(IBasicPPEngine *This) {
     BasicPPEngineImpl *impl = (BasicPPEngineImpl *)This;
     ULONG count = InterlockedDecrement(&impl->ref_count);
     if (count == 0) {
-        free(impl);
+        runtime_free(impl);
     }
     return count;
 }
@@ -153,7 +154,7 @@ static ULONG STDMETHODCALLTYPE cf_Release(IClassFactory *This) {
     ClassFactoryImpl *impl = (ClassFactoryImpl *)This;
     ULONG count = InterlockedDecrement(&impl->ref_count);
     if (count == 0) {
-        free(impl);
+        runtime_free(impl);
     }
     return count;
 }
@@ -162,7 +163,7 @@ static HRESULT STDMETHODCALLTYPE cf_CreateInstance(IClassFactory *This, IUnknown
     if (pUnkOuter) return CLASS_E_NOAGGREGATION;
     if (!ppvObject) return E_POINTER;
 
-    BasicPPEngineImpl *engine = (BasicPPEngineImpl *)calloc(1, sizeof(BasicPPEngineImpl));
+    BasicPPEngineImpl *engine = (BasicPPEngineImpl *)runtime_calloc(1, sizeof(BasicPPEngineImpl));
     if (!engine) return E_OUTOFMEMORY;
 
     engine->lpVtbl = &g_BasicPPEngineVtbl;
@@ -188,7 +189,7 @@ static IClassFactoryVtbl g_ClassFactoryVtbl = {
 STDAPI DllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOID *ppv) {
     if (!IsEqualCLSID(rclsid, &CLSID_BasicPPEngine)) return CLASS_E_CLASSNOTAVAILABLE;
     
-    ClassFactoryImpl *cf = (ClassFactoryImpl *)calloc(1, sizeof(ClassFactoryImpl));
+    ClassFactoryImpl *cf = (ClassFactoryImpl *)runtime_calloc(1, sizeof(ClassFactoryImpl));
     if (!cf) return E_OUTOFMEMORY;
     
     cf->lpVtbl = &g_ClassFactoryVtbl;

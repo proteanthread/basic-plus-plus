@@ -1,24 +1,70 @@
-END Program Termination Statement
-=================================
+TITLE: END
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/core/program/end.c
+GENERATED: no, hand-written
+STATUS: current
 
-Cleanly terminates program execution, closes all open files, and returns to the system prompt.
+==============================================================================
+END KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: end.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (file.h, file.c, language_descriptor.h)
+    // NEEDS: libcore (string.h)
+    // NEEDS: libengine (end.h, string.c, vm.h)
+    // Provides runtime implementation for the END statement in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Terminates program execution or closes structured block definitions.
 
-    END
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    END [IF | SUB | FUNCTION | SELECT | STRUCT]
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM END Demonstration
+    20 PRINT "END executed successfully."
 
-OPERATIONAL NOTES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax error (mismatched block terminator)
 
-  Resets VM execution state without clearing stored program lines.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Control Flow
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SAFE
 
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 PRINT "Starting process..."
-    20 END
-    30 PRINT "This line never executes"
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  END
+Category              Control Flow
+Syntax                END [IF | SUB | FUNCTION | SELECT | STRUCT]
+Description           Terminates program execution or closes structured b...
+Error Summary         Error 2: Syntax error (mismatched block terminator)
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/core/program/end.c

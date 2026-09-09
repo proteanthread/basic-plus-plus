@@ -2,7 +2,7 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (continue.c, retry.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libengine (eval.h, eval.c, lexer.h, lexer.c, resume.h, string.c)
 // NEEDS: libengine (task.h, task.c, vm.h)
 // NEEDS: libkernel (errors.h)
@@ -15,28 +15,33 @@
 #include "lexer/lexer.h"
 #include "eval/eval.h"
 #include "runtime/task.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "types/errors.h"
-#include <string.h>
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_resume_desc = {
+    .name = "RESUME",
+    .category = "Event Trapping",
+    .syntax = "RESUME [0 | NEXT | line_label | TASK id | EVENT name$]",
+    .description = "Resumes program execution after an error-handling routine finishes, or resumes a suspended task/event.",
+    .error_summary = "Error 20: RESUME Without Error, Error 2: Syntax Error",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SAFE,
+    .type = FEATURE_STATEMENT
+};
 
 #ifdef _WIN32
-#define strncasecmp _strnicmp
+#define runtime_strncasecmp runtime_strncasecmp
 #endif
 
 void stmt_resume_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "RESUME",
-        .category = "Event Trapping",
-        .syntax = "RESUME [0 | NEXT | line_label | TASK id | EVENT name$]",
-        .help_text = "Resumes program execution after an error-handling routine finishes, or resumes a suspended task/event.",
-        .error_codes = "Error 20: RESUME Without Error, Error 2: Syntax Error"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_resume_desc);
 }
 
 BppError stmt_resume_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BppToken tok = lex_peek(lex);
     if (tok.type == TOK_KEYWORD && tok.as.keyword == KW_RESUME) {
@@ -46,7 +51,7 @@ BppError stmt_resume_handler(VMContext *vm, LexerContext *lex) {
 
     // 1. Extended: RESUME TASK id
     if ((tok.type == TOK_KEYWORD && tok.as.keyword == KW_TASK) ||
-        (tok.type == TOK_IDENT && tok.length == 4 && strncasecmp(tok.start, "TASK", 4) == 0)) {
+        (tok.type == TOK_IDENT && tok.length == 4 && runtime_strncasecmp(tok.start, "TASK", 4) == 0)) {
         lex_next(lex);
         BValue pid_val = eval_expression(vm, lex, &err);
         if (err.code != 0) return err;
@@ -62,7 +67,7 @@ BppError stmt_resume_handler(VMContext *vm, LexerContext *lex) {
 
     // 2. Extended: RESUME EVENT name$
     if ((tok.type == TOK_KEYWORD && tok.as.keyword == KW_EVENT) ||
-        (tok.type == TOK_IDENT && tok.length == 5 && strncasecmp(tok.start, "EVENT", 5) == 0)) {
+        (tok.type == TOK_IDENT && tok.length == 5 && runtime_strncasecmp(tok.start, "EVENT", 5) == 0)) {
         lex_next(lex);
         BValue ev_val = eval_expression(vm, lex, &err);
         if (err.code != 0) return err;

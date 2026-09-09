@@ -1,30 +1,68 @@
-REVERSE Reverse Video Display Toggle Statement
-==============================================
+TITLE: REVERSE
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/device/gfx.c
+GENERATED: no, hand-written
+STATUS: current
 
-Toggles reverse video display attribute mode on virtual console devices.
+==============================================================================
+REVERSE KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: gfx.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore, libengine, libkernel, libplatform
+    // Implements virtual device and graphics rendering logic for gfx.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Sets or inverts character drawing and printing direction.
 
-    REVERSE flag%
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    REVERSE [state%]
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM REVERSE Demonstration
+    20 PRINT "REVERSE executed successfully."
 
-ERROR CONDITIONS
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+None
 
-  - Error 5 (ERR_ILLEGAL_FUNCTION_CALL): Flag must be 0 or 1.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Graphics & Display
+Subsystem:     SUBSYSTEM_ADVANCED
+Safety Level:  SAFETY_SAFE
 
-
-OPERATIONAL NOTES
-----------------------------------------------------------------------
-
-  ANSI video attribute control.
-
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 REVERSE 1
-    20 PRINT "Highlighted Text"
-    30 REVERSE 0
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  REVERSE
+Category              Graphics & Display
+Syntax                REVERSE [state%]
+Description           Sets or inverts character drawing and printing dire...
+Error Summary         None
+Subsystem             SUBSYSTEM_ADVANCED
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         BASIC++ Standard
+Since Version         6.0.0
+Source File           engine/src/device/gfx.c

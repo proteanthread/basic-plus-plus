@@ -36,6 +36,7 @@ static uint8_t bda_ram[256]; // Mock BIOS Data Area RAM
 static uint8_t cga_ram[4000]; // Mock CGA 80x25 Text screen (2000 chars + 2000 attribs)
 static uint8_t c64_regs[4];  // C64 registers at 780-783: A, X, Y, Status
 static uint8_t sid_regs[32];  // C64 SID registers at 54272-54296
+static uint8_t g_vmem_low_ram[65536]; // 64KB Virtual Low RAM for PEEK/POKE/EXAM/FILL
 
 static MockBiosModel active_model = BIOS_MODEL_NONE;
 static uint8_t *g_bios_ram = NULL;
@@ -63,6 +64,7 @@ void vdev_bus_reset(void) {
     runtime_memset(cga_ram, 0, sizeof(cga_ram));
     runtime_memset(c64_regs, 0, sizeof(c64_regs));
     runtime_memset(sid_regs, 0, sizeof(sid_regs));
+    runtime_memset(g_vmem_low_ram, 0, sizeof(g_vmem_low_ram));
 
 
     // Pre-fill BDA with default IBM PC base settings
@@ -201,6 +203,10 @@ uint8_t vdev_bus_peek(unsigned long addr, bool *intercepted) {
             if (intercepted) *intercepted = true;
             return sid_regs[addr - 54272];
         }
+        if (addr < 65536) {
+            if (intercepted) *intercepted = true;
+            return g_vmem_low_ram[addr];
+        }
     }
 
     return val;
@@ -225,6 +231,10 @@ void vdev_bus_poke(unsigned long addr, uint8_t value, bool *intercepted) {
         if (addr >= 780 && addr <= 783) {
             if (intercepted) *intercepted = true;
             c64_regs[addr - 780] = value;
+        }
+        if (addr < 65536) {
+            if (intercepted) *intercepted = true;
+            g_vmem_low_ram[addr] = value;
         }
     }
 

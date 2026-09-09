@@ -1,33 +1,71 @@
-# `SEG` / `DEF SEG` Memory Segment Statement
+<!--
+Title:        SEG
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/device/vdev.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Keyword Definition
+# `SEG` Keyword Reference
 
-The `DEF SEG` (and alias `SEG`) statement defines the active base segment address used by subsequent `PEEK`, `POKE`, `BLOAD`, `BSAVE`, and `CALL ABSOLUTE` statements.
+## Source Header
 
-### Syntax Signatures:
-```basic
-DEF SEG = segment_address&
-DEF SEG                         : REM Resets to default BASIC data segment
-SEG = segment_address&
+```c
+// FILENAME: vdev.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: baspp.exe, bpp.exe, bs.exe, libboot, libcore, libengine, libkern
+// NEEDS: libcore (alloc.h, ctype.h, hal.h, memops.h, runtime_snprintf.h, stro
+// Implements virtual device subsystem, registry, subdevice multiplexing, and 
+//
+// ---- Includes ----
 ```
 
-### Operational Rules:
-- **Segmented Addressing**: An absolute physical memory address is formed as:
-  $$\text{Address} = (\text{Segment} \times 16) + \text{Offset}$$
-- **Default Reset**: Invoking `DEF SEG` without arguments resets the segment register to the default BASIC data segment (`DS`).
-- **Standard PC Segments**:
-  - `&H0040`: BIOS Data Area (BDA)
-  - `&HA000`: EGA/VGA Graphics Framebuffer
-  - `&HB000`: MDA Monochrome Text Buffer
-  - `&HB800`: CGA/EGA/VGA Color Text Buffer
+## 1. Description & Usage
+
+Sets the base segment address for subsequent PEEK, POKE, BLOAD, and BSAVE operations.
+
+## 2. Syntax
+
+```basic
+SEG = segment_address% | DEF SEG = segment_address%
+```
+
+## 3. Code Example
+
+```basic
+10 REM SEG Demonstration
+20 PRINT "SEG executed successfully."
+```
+
+## 4. Error Conditions
+
+Error 5: Illegal Function Call
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: GW-BASIC, QBASIC, BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Hardware & Memory
+- **Subsystem**: SUBSYSTEM_PLATFORM
+- **Safety Level**: SAFETY_SAFE
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 DEF SEG = &H0040 : REM BIOS Data Area
-20 CURSOR_COL = PEEK(&H0050) : REM Cursor column of page 0
-30 PRINT "BIOS Cursor Column: "; CURSOR_COL
-40 DEF SEG : REM Always restore default segment
-```
+| Field | Value |
+|---|---|
+| Name | SEG |
+| Category | Hardware & Memory |
+| Syntax | SEG = segment_address% \| DEF SEG = segment_address% |
+| Description | Sets the base segment address for subsequent PEEK, POKE, BLOAD, and BSAVE operations. |
+| Error Summary | Error 5: Illegal Function Call |
+| Subsystem | SUBSYSTEM_PLATFORM |
+| Safety Level | SAFETY_SAFE |
+| Feature Type | FEATURE_STATEMENT |
+| Delimiter Mask | none |
+| Compatibility | GW-BASIC, QBASIC, BASIC++ Standard |
+| Since Version | 6.0.0 |
+| Source File | engine/src/device/vdev.c |

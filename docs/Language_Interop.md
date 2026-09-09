@@ -1,0 +1,248 @@
+<!--
+Title:        Language_Interop
+Tier:         1
+Applies to:   BASIC++ v6.5.2, hosted targets
+Authority:    engine/src/interop/, engine/lib/platform/plat_dl.c,
+              engine/src/statements/control/external/stmt_extern.c,
+              engine/src/eval/functions/system/func_python.c,
+              engine/include/basicpp.h, engine/include/bpp_api.h
+Generated:    no, hand-written
+Status:       current
+-->
+
+# Language Interop
+
+Calling other languages from BASIC++, and calling BASIC++ from them. What
+works, what does not, and which route to take for each language.
+
+This replaces `Universal_Language_Interop_C_Python_Pascal`, which described
+three languages as equally supported. They are not.
+
+---
+
+## 1. The summary table
+
+| Language | Out of BASIC++ | Into BASIC++ | Verdict |
+|---|---|---|---|
+| C | `EXTERN` binds a DLL or `.so` symbol | `basicpp.h` embedding API | **Real, both directions** |
+| C++ | Same, through `extern "C"` | Same | **Real, via the C ABI** |
+| Pascal | Same, through `cdecl` and `external` | Same, through the C ABI | **Real, via the C ABI.** There is no dedicated bridge |
+| Rust, Go, Zig, D, Ada | Same, through their C FFI | Same | **Real, via the C ABI** |
+| Python | `PYTHON$` exists and returns `"None"` | `ctypes` against `basicpp.dll` | **Out: stubbed. In: real via the C ABI** |
+| COM / OLE | `interop_com.c` | — | Windows only |
+| JSON-RPC | `interop_jsonrpc.c` | `interop_jsonrpc.c` | Process-boundary route |
+| Assembler | — | — | **Not supported inside BASIC++.** See section 6 |
+| JavaScript | — | `wap` WASM target exports eight functions | Browser only |
+
+The pattern that runs through the whole table: **the C ABI is the interop
+story.** Everything real goes through it. Anything that claims otherwise in
+this project is either a convenience wrapper over it or a stub.
+
+---
+
+## 2. Calling C from BASIC++
+
+`EXTERN` loads a shared library and resolves a symbol.
+
+```basic
+10 EXTERN "libm.so.6", "sqrt" ALIAS RootOf
+20 EXTERN "user32.dll", "MessageBoxA" ALIAS Box
+```
+
+Underneath, `stmt_extern.c` calls `platform_load_library` and
+`platform_get_proc_address`, which are `LoadLibraryA` and `GetProcAddress` on
+Windows and `dlopen(RTLD_LAZY)` and `dlsym` on POSIX
+(`engine/lib/platform/plat_dl.c`). Resolved symbols go into a 64-entry table
+(`MAX_EXTERN_SYMBOLS`) and are retrieved by alias through
+`interop_get_extern_func`. On Windows, a bare name that fails to load is
+retried with `.dll` appended.
+
+**Two things to know before relying on it.**
+
+First, **`EXTERN` does not report failure.** If the library does not load, or
+the symbol is not found, the entry is still recorded — with a null function
+pointer and `active = true` — and the statement returns success. A misspelled
+library name produces no error at the `EXTERN` line; the failure surfaces
+later, at the call, as something less obvious. Check your spelling, and
+consider a deliberate probe call immediately after binding.
+
+Second, **the registered syntax and the parsed syntax disagree.** The
+descriptor advertises `EXTERN {SUB | FUNCTION} name [ALIAS "aliasname"]
+[(params)]`, in the QuickBASIC style. The handler parses `EXTERN libpath$,
+symbol [ALIAS name]`. The handler is what runs. Both defects are recorded in
+`Implementation_Status` section 6.
+
+`DECLARE` is the separate, QuickBASIC and ECMA-116 statement for declaring a
+`SUB` or `FUNCTION` prototype within BASIC++; it is not the FFI.
+
+Marshalling between BASIC values and C types is `interop_marshal.c`, with
+handles in `interop_handle.c` and error translation in `interop_error.c`.
+
+---
+
+## 3. Calling BASIC++ from C
+
+This is the better-supported direction and the one the project is designed
+around. `engine/include/basicpp.h` is the single-header embedding API:
+lifecycle, execution, variable get and set, zero-copy array views, the message
+bus, IPC, and pluggable logging sinks.
+
+```c
+#include "basicpp.h"
+
+BppContext *ctx = bpp_create();
+bpp_run_file(ctx, "report.bas");
+double total = bpp_get_number(ctx, "Total");
+bpp_destroy(ctx);
+```
+
+Full treatment, including the array views and the log-sink pattern, is in
+`C_Programmers_Guide`.
+
+**A caution.** There are two public C headers with overlapping APIs and
+different names: `basicpp.h` declares `bpp_get_number` and `bpp_set_string`;
+`bpp_api.h` declares `bpp_get_var_num` and `bpp_set_var_str` with different
+signatures. The WASM target exports the `bpp_api.h` names; the documentation
+describes `basicpp.h`. Reconciling them is item 6.3 of the 7.0.0 plan. Until
+then, prefer `basicpp.h` and expect the other names to exist.
+
+---
+
+## 4. Pascal
+
+There is **no dedicated Pascal bridge**. `engine/src/interop/` contains core,
+com, com_register, error, handle, ipc, jsonrpc and marshal, and no
+`interop_pascal.c`. Documentation that implies otherwise is wrong.
+
+The C ABI is the answer, and for Free Pascal and Delphi it is a good one,
+because both speak it natively.
+
+**Calling BASIC++ from Pascal:**
+
+```pascal
+function bpp_create: Pointer; cdecl; external 'basicpp';
+function bpp_run_file(ctx: Pointer; path: PAnsiChar): Integer; cdecl;
+  external 'basicpp';
+function bpp_get_number(ctx: Pointer; name: PAnsiChar): Double; cdecl;
+  external 'basicpp';
+procedure bpp_destroy(ctx: Pointer); cdecl; external 'basicpp';
+```
+
+**Calling Pascal from BASIC++:** compile the unit into a shared library, export
+the routines with `cdecl` and the `export` directive, and bind them with
+`EXTERN`. Free Pascal's `{$mode objfpc}` and `library` project type both work.
+
+`Pascal_Programmers_Guide` covers the language mapping — records to sets,
+units to modules, and where the type systems disagree.
+
+---
+
+## 5. Python
+
+**Out of BASIC++: `PYTHON$` does not work.** `func_python_eval` in
+`engine/src/eval/functions/system/func_python.c` type-checks its argument and
+then returns the literal string `"None"`, for every input. The `PYTHON`
+statement is the same. Do not build anything on them.
+
+Whether to embed CPython properly or remove the keywords is decision 2 of the
+7.0.0 plan. The recommendation there is removal, because embedding CPython
+contradicts the freestanding doctrine in Rule #2 and cannot work on the small
+targets at all.
+
+**Into BASIC++: this works today**, through `ctypes` against the shared
+library, and it is the route to use.
+
+```python
+import ctypes
+lib = ctypes.CDLL("./basicpp.dll")      # or ./libbasicpp.so
+lib.bpp_create.restype = ctypes.c_void_p
+lib.bpp_get_number.restype = ctypes.c_double
+
+ctx = lib.bpp_create()
+lib.bpp_run_file(ctypes.c_void_p(ctx), b"report.bas")
+print(lib.bpp_get_number(ctypes.c_void_p(ctx), b"Total"))
+lib.bpp_destroy(ctypes.c_void_p(ctx))
+```
+
+For a process-boundary alternative that needs no shared library at all, see
+section 7.
+
+`Python_Programmers_Guide` covers the language mapping in both directions.
+
+---
+
+## 6. Assembler
+
+**BASIC++ has no inline assembler and no assembly source of its own.** A search
+of the tree for `.s`, `.S` and `.asm` files returns nothing, and the only
+assembly in the project is the inline `asm` in `basicpp_sys.h` that implements
+the x86 port instructions.
+
+That is a deliberate consequence of Rule #2: the engine is freestanding C17,
+and inline assembly is per-compiler and per-architecture, so it lives in one
+header behind macros rather than being sprinkled through the tree.
+
+Three routes reach machine code anyway:
+
+1. **`EXTERN` a library.** Assemble with NASM or GAS, link into a shared
+   library, bind the symbol. This is the supported route.
+2. **`DEF USR` and `CALL`.** The vintage GW-BASIC mechanism: `DEF SEG` sets a
+   segment, `DEF USR` records an offset, `CALL` transfers control. It is
+   present for compatibility, and it is x86 real-mode thinking on a modern
+   protected-mode host, so treat it as a compatibility feature rather than a
+   way to write new code.
+3. **`INTERRUPT`, `OUT`, `INP`, `PEEK`, `POKE`.** Direct hardware access
+   without leaving BASIC, on x86 only. See `Physical_Device_Access` section 3
+   for the limits, which include silently compiling to nothing on non-x86.
+
+---
+
+## 7. The process-boundary routes
+
+Not everything has to be linked into one address space, and for anything with
+a heavy runtime — CPython, a JVM, a .NET assembly — it should not be.
+
+**JSON-RPC.** `interop_jsonrpc.c` speaks JSON-RPC over a pipe or a socket.
+This is the cleanest way to reach a language BASIC++ has no binding for: run
+it as a subprocess, exchange JSON-RPC, and neither side needs to know anything
+about the other's memory model.
+
+**IPC and the message bus.** `interop_ipc.c`, `dev_ipc.c`, `msg_broker.c` and
+the `PIPE`, `MSGSEND`, `MSGRECV$`, `PUBLISH` and `SUBSCRIBE` statements give
+publish-subscribe and point-to-point messaging. A C host can attach to the
+same bus through `basicpp.h`.
+
+**`SHELL` and `EXEC$`.** The blunt instrument, and often the right one.
+`EXEC$` captures standard output as a string without shell interpretation,
+which makes it safe to use with untrusted arguments in a way `SHELL` is not.
+
+**COM and OLE.** `interop_com.c` and `interop_com_register.c`, Windows only.
+This is how BASIC++ reaches Office automation, WMI, and anything else that
+exposes an `IDispatch`.
+
+---
+
+## 8. Choosing a route
+
+| If you want to | Use |
+|---|---|
+| Call a C function from BASIC | `EXTERN` |
+| Call BASIC from C, C++, Rust, Go, Zig | `basicpp.h` |
+| Call BASIC from Pascal or Delphi | `cdecl` + `external`, section 4 |
+| Call BASIC from Python | `ctypes`, section 5 |
+| Call Python from BASIC | JSON-RPC subprocess, or `EXEC$`. **Not `PYTHON$`** |
+| Reach a language with no binding | JSON-RPC, section 7 |
+| Reach Windows applications | COM, section 7 |
+| Run BASIC in a browser | The `wap` WASM target; see `Web_And_Backend_Guide` |
+| Write machine code | `EXTERN` a library assembled separately, section 6 |
+
+---
+
+## See also
+
+- `C_Programmers_Guide` for the embedding API in full
+- `Python_Programmers_Guide` and `Pascal_Programmers_Guide` for language
+  mappings
+- `Extension_Guide` for adding keywords rather than calling out
+- `Module_Guide` for the module and capability system
+- `Implementation_Status` for the evidence behind the verdicts here

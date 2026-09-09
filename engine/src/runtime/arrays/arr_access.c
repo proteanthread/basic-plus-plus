@@ -8,6 +8,8 @@
 // ---- Includes ----
 
 #include "runtime/arrays_internal.h"
+#include "runtime/string/strops.h"
+#include "runtime/string/memops.h"
 
 //
 // ---- Index Calculation and Auto-Expansion ----
@@ -94,40 +96,48 @@ bool auto_expand_array(ArrayContext *ctx, ArrayEntry *entry, const int *indices)
     return true;
 }
 
+ArrayEntry *arr_find_entry(ArrayContext *ctx, const char *name) {
+    if (!ctx || !name) return NULL;
+    if (ctx->last_entry && runtime_strcasecmp(ctx->last_name, name) == 0) {
+        return ctx->last_entry;
+    }
+    for (int i = 0; i < MRU_ARRAY_CACHE_SIZE; ++i) {
+        if (ctx->mru_cache[i].entry && runtime_strcasecmp(ctx->mru_cache[i].name, name) == 0) {
+            return ctx->mru_cache[i].entry;
+        }
+    }
+    char norm[256];
+    normalize_name(norm, name, sizeof(norm));
+    unsigned int bucket = hash_name(norm);
+    ArrayEntry *curr = ctx->buckets[bucket];
+    while (curr) {
+        if (runtime_strcmp(curr->name, norm) == 0) {
+            int slot = ctx->mru_head;
+            ctx->mru_head = (ctx->mru_head + 1) % MRU_ARRAY_CACHE_SIZE;
+            runtime_strncpy(ctx->mru_cache[slot].name, name, sizeof(ctx->mru_cache[slot].name) - 1);
+            ctx->mru_cache[slot].name[sizeof(ctx->mru_cache[slot].name) - 1] = '\0';
+            ctx->mru_cache[slot].entry = curr;
+            return curr;
+        }
+        curr = curr->next;
+    }
+    return NULL;
+}
+
 //
 // ---- Element Access Entry Point ----
 
 BValue *arr_get_element(ArrayContext *ctx, const char *name, int num_dims, const int *indices, BppError *err) {
-    if (!ctx || !name || !indices || !err) return NULL;
+    if (!ctx || !name || !indices) return NULL;
+    BppError dummy_err = {0};
+    if (!err) err = &dummy_err;
 
-    ArrayEntry *curr = NULL;
-    for (int i = 0; i < MRU_ARRAY_CACHE_SIZE; ++i) {
-        if (ctx->mru_cache[i].entry && runtime_strcasecmp(ctx->mru_cache[i].name, name) == 0) {
-            curr = ctx->mru_cache[i].entry;
-            break;
-        }
-    }
-
-    char norm[256];
-    if (!curr) {
-        normalize_name(norm, name, sizeof(norm));
-        unsigned int bucket = hash_name(norm);
-        curr = ctx->buckets[bucket];
-
-        while (curr) {
-            if (runtime_strcmp(curr->name, norm) == 0) {
-                int slot = ctx->mru_head;
-                ctx->mru_head = (ctx->mru_head + 1) % MRU_ARRAY_CACHE_SIZE;
-                runtime_strncpy(ctx->mru_cache[slot].name, name, sizeof(ctx->mru_cache[slot].name) - 1);
-                ctx->mru_cache[slot].name[sizeof(ctx->mru_cache[slot].name) - 1] = '\0';
-                ctx->mru_cache[slot].entry = curr;
-                break;
-            }
-            curr = curr->next;
-        }
-    }
+    ArrayEntry *curr = arr_find_entry(ctx, name);
 
     if (curr) {
+        ctx->last_entry = curr;
+        runtime_strncpy(ctx->last_name, name, sizeof(ctx->last_name) - 1);
+        ctx->last_name[sizeof(ctx->last_name) - 1] = '\0';
         if (curr->num_dims != num_dims) {
             err->code = 9;
             err->message = "Array dimension count mismatch";
@@ -178,6 +188,7 @@ BValue *arr_get_element(ArrayContext *ctx, const char *name, int num_dims, const
         }
         def_bounds[i] = (indices[i] > 10) ? indices[i] : 10;
     }
+    char norm[256];
     normalize_name(norm, name, sizeof(norm));
     BppError dim_err = arr_dim(ctx, norm, num_dims, def_bounds);
     if (dim_err.code != 0) {

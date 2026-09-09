@@ -1,0 +1,65 @@
+TITLE: CPUSPEED
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/system/hardware/stmt_cpuspeed.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+CPUSPEED KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: stmt_cpuspeed.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine
+    // Statement implementation for CPUSPEED statement (e.g. CPUSPEED EMULATE).
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Configures authentic CPU and I/O speed emulation for vintage folklore systems.
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    CPUSPEED EMULATE <model> [, IO] | CPUSPEED EMULATE OFF | CPUSPEED{...}
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM CPUSPEED Demonstration
+    20 PRINT "CPUSPEED executed successfully."
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 5: Illegal Function Call
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Hardware & Peripherals
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_PURE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  CPUSPEED
+Category              Hardware & Peripherals
+Syntax                CPUSPEED EMULATE <model> [, IO] | CPUSPEED EMULATE ...
+Description           Configures authentic CPU and I/O speed emulation fo...
+Error Summary         Error 5: Illegal Function Call
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_PURE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/system/hardware/stmt_cpuspeed.c

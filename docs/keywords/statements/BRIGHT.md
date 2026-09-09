@@ -1,25 +1,71 @@
-# `BRIGHT` Retro Color Intensity Attribute Statement
+<!--
+Title:        BRIGHT
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/device/gfx.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Keyword Definition
+# `BRIGHT` Keyword Reference
 
-Toggles high-intensity color palette rendering in retro display modes.
+## Source Header
 
-### Syntax Signatures:
-```basic
-BRIGHT intensity_flag%
+```c
+// FILENAME: gfx.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore, libengine, libkernel, libplatform
+// Implements virtual device and graphics rendering logic for gfx.
+//
+// ---- Includes ----
 ```
 
-### Error Handling & Boundary Conditions:
-- **Error 5 (ERR_ILLEGAL_FUNCTION_CALL)**: Flag must be 0 or 1.
+## 1. Description & Usage
 
-### Operational Notes:
-- ZX Spectrum display attribute emulation.
+Controls ZX Spectrum text foreground and background highlight attribute (0=normal, 1=bright).
+
+## 2. Syntax
+
+```basic
+BRIGHT state%
+```
+
+## 3. Code Example
+
+```basic
+10 REM BRIGHT Demonstration
+20 PRINT "BRIGHT executed successfully."
+```
+
+## 4. Error Conditions
+
+Error 5: Illegal Function Call
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: Sinclair ZX Spectrum, BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Graphics & Display
+- **Subsystem**: SUBSYSTEM_ADVANCED
+- **Safety Level**: SAFETY_SAFE
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 BRIGHT 1 : REM Enable bright attributes
-20 PRINT "High intensity text"
-```
+| Field | Value |
+|---|---|
+| Name | BRIGHT |
+| Category | Graphics & Display |
+| Syntax | BRIGHT state% |
+| Description | Controls ZX Spectrum text foreground and background highlight attribute (0=normal, 1=bright). |
+| Error Summary | Error 5: Illegal Function Call |
+| Subsystem | SUBSYSTEM_ADVANCED |
+| Safety Level | SAFETY_SAFE |
+| Feature Type | FEATURE_STATEMENT |
+| Delimiter Mask | none |
+| Compatibility | Sinclair ZX Spectrum, BASIC++ Standard |
+| Since Version | 6.0.0 |
+| Source File | engine/src/device/gfx.c |

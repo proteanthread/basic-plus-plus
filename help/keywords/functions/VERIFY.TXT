@@ -1,0 +1,70 @@
+TITLE: VERIFY
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/debug/diagnostics/verify.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+VERIFY KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: verify.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (analyzer.h, analyzer.c, memory.h, memory.c)
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libengine (lexer.h, lexer.c, string.c, verify.h, vm.h)
+    // NEEDS: libkernel (vdev.h, vdev.c)
+    // Provides runtime implementation for the VERIFY statement in BASIC++.
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+7-stage AST structural integrity, ISO/IEC 25010 quality, and EU CRA
+safety/security compliance audit.
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    VERIFY [file$] [SUMMARY|DETAILED|JSON]
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM VERIFY Demonstration
+    20 PRINT "VERIFY executed successfully."
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error, Error 53: File Not Found
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Debug & Testing
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SAFE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  VERIFY
+Category              Debug & Testing
+Syntax                VERIFY [file$] [SUMMARY|DETAILED|JSON]
+Description           7-stage AST structural integrity, ISO/IEC 25010 qua...
+Error Summary         Error 2: Syntax Error, Error 53: File Not Found
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/debug/diagnostics/verify.c

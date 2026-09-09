@@ -1,7 +1,7 @@
-// FILENAME: asin.h
+// FILENAME: runtime_asin.h
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
-// NEEDED BY: libengine (asin.c, math_fn.c)
+// NEEDED BY: libengine (runtime_asin.c, math_fn.c)
 // NEEDS: libengine (eval_internal.h)
 // NEEDS: libkernel (types.h)
 // Provides runtime implementation for the ASIN built-in function in BASIC++.
@@ -13,6 +13,7 @@
 
 #include "types/types.h"
 #include "eval/eval_internal.h"
+#include "runtime/math/math.h"
 
 BValue func_asin_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err);
 void func_asin_register(void);

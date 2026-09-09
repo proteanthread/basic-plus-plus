@@ -1,17 +1,69 @@
-PDIF Positive Difference Function
-======================================================================
+TITLE: PDIF
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/functions/math/algebra/pdif.c
+GENERATED: no, hand-written
+STATUS: current
 
-The PDIF function calculates the positive difference max(0, x - y).
+==============================================================================
+PDIF KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: pdif.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (math_fn.c)
+    // NEEDS: libcore (math.h, language_descriptor.h, string.h)
+    // NEEDS: libengine (math.c, pdif.h, string.c)
+    // Provides runtime implementation for the PDIF built-in function in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Returns the positive difference of a and b (a - b if a > b, else 0).
 
-    res = PDIF(x, y)
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    PDIF(a, b)
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = PDIF(a, b)
+    20 PRINT "Result: "; Val
 
-CODE EXAMPLES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 13: Type Mismatch (PDIF expects two numeric arguments)
 
-    10 PRINT PDIF(8, 3)   : REM Outputs 5
-    20 PRINT PDIF(3, 8)   : REM Outputs 0
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Math Functions
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_PURE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  PDIF
+Category              Math Functions
+Syntax                PDIF(a, b)
+Description           Returns the positive difference of a and b (a - b i...
+Error Summary         Error 13: Type Mismatch (PDIF expects two numeric a...
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_PURE
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/eval/functions/math/algebra/pdif.c

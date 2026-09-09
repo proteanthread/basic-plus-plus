@@ -1,28 +1,69 @@
-SHL Bitwise Shift Left (Universal Dual-Format)
+TITLE: SHL
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/functions/bits/shift/shl.c
+GENERATED: no, hand-written
+STATUS: current
 
-1. BASIC Usage and Function/Operator Definition
+==============================================================================
+SHL KEYWORD REFERENCE
+==============================================================================
 
-The SHL keyword performs a bitwise left shift on a 64-bit integer value by a specified number of bit positions (0 to 63). It is fully supported in both infix notation and functional/prefix notation with identical semantics.
+SOURCE HEADER:
+    // FILENAME: shl.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (sys_fn.c)
+    // NEEDS: libcore (language_descriptor.h)
+    // NEEDS: libengine (shl.h)
+    // Provides runtime implementation for the SHL built-in function in BASIC++.
+    //
+    // ---- Includes ----
 
-Syntax Signatures:
-``basic
-result = value SHL shift_count
-result = SHL(value, shift_count)
-`
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Shifts an integer value left by the specified bit count.
 
-Operational Rules:
-- Performs a 64-bit bitwise left shift: (uint64t)value << (uint64t)shift_count.
-- Bits shifted past position 63 are discarded, and zeros are shifted into low-order positions.
-- In RPN stack evaluation blocks: { value shift_count SHL }.
-- shift_count must be in the range 0 to 63; values outside this range return Error 5: Illegal Function Call.
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    SHL(val, count) or val SHL count
 
-2. Code Examples
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = SHL(val, count) or val SHL count
+    20 PRINT "Result: "; Val
 
-`basic
-10 REM Infix notation
-20 PRINT "1 SHL 4 = "; 1 SHL 4 : REM Outputs 16
-30 REM Functional prefix notation
-40 PRINT "SHL(1, 35) = "; SHL(1, 35) : REM Outputs 34359738368
-50 REM RPN evaluation
-60 PRINT "RPN: "; { 1 10 SHL } : REM Outputs 1024
-``
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 13: Type Mismatch
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Bitwise & Logical Functions
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_PURE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  SHL
+Category              Bitwise & Logical Functions
+Syntax                SHL(val, count) or val SHL count
+Description           Shifts an integer value left by the specified bit c...
+Error Summary         Error 13: Type Mismatch
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_PURE
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/eval/functions/bits/shift/shl.c

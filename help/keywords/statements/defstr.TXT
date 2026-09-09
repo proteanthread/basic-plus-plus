@@ -1,34 +1,70 @@
-DEFSTR Define String Default Type
-======================================================================
+TITLE: DEFSTR
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/variables/declaration/defstr.c
+GENERATED: no, hand-written
+STATUS: current
 
-The DEFSTR statement declares that all variable identifiers beginning
-with the specified letter(s) or ranges default to string variables.
+==============================================================================
+DEFSTR KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: defstr.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (ctype.h, ctype.c, language_descriptor.h)
+    // NEEDS: libcore (string.h, variables.h, variables.c)
+    // NEEDS: libengine (defstr.h, string.c)
+    // Provides runtime implementation for the DEFSTR statement in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Sets default type of variables beginning with specified letters to string.
 
-    DEFSTR letter_range [, letter_range2, ...]
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    DEFSTR letter_range [, letter_range...]
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM DEFSTR Demonstration
+    20 PRINT "DEFSTR executed successfully."
 
-OPERATIONAL RULES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error
 
-  - Declares string type for un-suffixed matching variables.
-  - Overridden by explicit numeric suffixes (%, !, #).
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Variables & Types
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SAFE
 
-
-ERROR CODES
-----------------------------------------------------------------------
-
-  Error Code  Name                  Condition
-  ----------  --------------------  ----------------------------------
-  2           ERR_SYNTAX_ERROR      Invalid letter range syntax
-
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 DEFSTR S
-    20 MSG = "Hello World"
-    30 PRINT MSG
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  DEFSTR
+Category              Variables & Types
+Syntax                DEFSTR letter_range [, letter_range...]
+Description           Sets default type of variables beginning with speci...
+Error Summary         Error 2: Syntax Error
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/variables/declaration/defstr.c

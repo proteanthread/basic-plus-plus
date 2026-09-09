@@ -1,29 +1,70 @@
-EDIT Program Line Editor Command
-================================
+TITLE: EDIT
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/editor/editor_manager.c
+GENERATED: no, hand-written
+STATUS: current
 
-Loads the specified program line into the console input buffer for interactive in-place editing.
+==============================================================================
+EDIT KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: editor_manager.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (strops.h, strops.c)
+    // NEEDS: libstandard (editor.h, editor.c)
+    // Implements visual text editor subsystem components for editor_manager.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Launches the built-in full-screen TUI text editor or positions cursor at
+specified line.
 
-    EDIT line_number%
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    EDIT [filename$ | line_number]
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM EDIT Demonstration
+    20 PRINT "EDIT executed successfully."
 
-ERROR CONDITIONS
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 53: File Not Found
 
-  - Error 8 (ERR_UNDEFINED_LINE_NUMBER): Line does not exist.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       GW-BASIC, QBASIC, BASIC++ Standard
+Since Version: 6.0.0
+Category:      Program Management & Editing
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SAFE
 
-
-OPERATIONAL NOTES
-----------------------------------------------------------------------
-
-  Supported in interactive REPL environments.
-
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 PRINT "Misspelled line"
-    EDIT 10
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  EDIT
+Category              Program Management & Editing
+Syntax                EDIT [filename$ | line_number]
+Description           Launches the built-in full-screen TUI text editor o...
+Error Summary         Error 53: File Not Found
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         GW-BASIC, QBASIC, BASIC++ Standard
+Since Version         6.0.0
+Source File           engine/src/editor/editor_manager.c

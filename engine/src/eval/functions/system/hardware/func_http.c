@@ -3,19 +3,31 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
 // NEEDS: libcore (funcreg.h, funcreg.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libengine (string.c, vm.h)
 // NEEDS: libserver (iot_net.h, iot_net.c)
 // Implements the HTTP.GET$ built-in function for REST web client requests.
 //
 // ---- Includes ----
 
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/funcreg.h"
 #include "runtime/string.h"
 #include "vm/vm.h"
 #include "iot_net.h"
-#include <stdlib.h>
+#include "runtime/memory/alloc.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_http_get_desc = {
+    .name = "HTTP.GET$",
+    .category = "Wireless & IoT",
+    .syntax = "HTTP.GET$(url$)",
+    .description = "Performs an HTTP GET request to a remote web server and returns response body.",
+    .error_summary = "Error 13: Type Mismatch",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_FUNCTION
+};
 
 BValue func_http_get_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err) {
     (void)uname;
@@ -32,8 +44,8 @@ BValue func_http_get_eval(VMContext *vm, const char *uname, int arg_count, BValu
     const char *url = str_data(args[0].as.string);
     char *resp = iot_http_get(url);
     if (resp) {
-        res.as.string = str_create(vm_get_str(vm), resp, strlen(resp));
-        free(resp);
+        res.as.string = str_create(vm_get_str(vm), resp, runtime_strlen(resp));
+        runtime_free(resp);
     } else {
         res.as.string = str_create(vm_get_str(vm), "", 0);
     }
@@ -41,14 +53,7 @@ BValue func_http_get_eval(VMContext *vm, const char *uname, int arg_count, BValu
 }
 
 void func_http_register(void) {
-    MicroLibMetadata meta = {
-        .name = "HTTP.GET$",
-        .category = "Wireless & IoT",
-        .syntax = "HTTP.GET$(url$)",
-        .help_text = "Performs an HTTP GET request to a remote web server and returns response body.",
-        .error_codes = "Error 13: Type Mismatch"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_http_get_desc);
 
     FunctionEntry entry_get = {
         .name = "HTTP.GET$",

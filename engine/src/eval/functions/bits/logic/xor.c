@@ -2,24 +2,29 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (sys_fn.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c)
+// NEEDS: libcore (language_descriptor.h)
 // NEEDS: libengine (xor.h)
 // Provides runtime implementation for the XOR built-in function in BASIC++.
 //
 // ---- Includes ----
 
 #include "eval/functions/bits/logic/xor.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_xor_desc = {
+    .name = "XOR",
+    .category = "Bitwise & Logical Functions",
+    .syntax = "XOR(val1, val2 [, ...]) or val1 XOR val2",
+    .description = "Performs bitwise and logical exclusive OR disjunction on integers or boolean values.",
+    .error_summary = "Error 13: Type Mismatch",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_PURE,
+    .type = FEATURE_FUNCTION
+};
 
 void func_xor_register(void) {
-    MicroLibMetadata meta = {
-        .name = "XOR",
-        .category = "Bitwise & Logical Functions",
-        .syntax = "XOR(val1, val2 [, ...]) or val1 XOR val2",
-        .help_text = "Performs bitwise and logical exclusive OR disjunction on integers or boolean values.",
-        .error_codes = "Error 13: Type Mismatch"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_xor_desc);
 }
 
 BValue func_xor_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err) {

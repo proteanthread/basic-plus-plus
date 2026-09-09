@@ -11,11 +11,13 @@
 #include "eval/eval.h"
 #include "eval/functions/string/conversion/ascii_fn.h"
 #include "eval/functions/string/conversion/ath.h"
+#include "eval/functions/string/conversion/hta.h"
 #include "eval/functions/string/conversion/chr.h"
 #include "eval/functions/string/conversion/cvt.h"
 #include "eval/functions/string/format/ert.h"
 #include "eval/functions/string/search/index_fn.h"
 #include "eval/functions/string/search/instr.h"
+#include "eval/functions/string/search/rinstr.h"
 #include "eval/functions/string/manipulation/lcase.h"
 #include "eval/functions/string/manipulation/left.h"
 #include "eval/functions/string/format/len.h"
@@ -31,8 +33,13 @@
 #include "eval/functions/string/manipulation/shuffle.h"
 #include "eval/functions/string/manipulation/space.h"
 #include "eval/functions/string/conversion/str.h"
-#include "eval/functions/string/manipulation/str_math.h"
+#include "eval/functions/string/manipulation/sum.h"
+#include "eval/functions/string/manipulation/dif.h"
+#include "eval/functions/string/manipulation/prod.h"
+#include "eval/functions/string/manipulation/quo.h"
+#include "eval/functions/string/manipulation/place.h"
 #include "eval/functions/string/manipulation/string.h"
+#include "eval/functions/string/manipulation/translate.h"
 #include "eval/functions/string/format/tek.h"
 #include "eval/functions/string/manipulation/trim.h"
 #include "eval/functions/string/manipulation/ucase.h"
@@ -40,8 +47,20 @@
 #include "eval/functions/string/conversion/val.h"
 #include "eval/functions/string/search/verify_fn.h"
 #include "eval/functions/string/conversion/xlate.h"
+#include "eval/functions/string/manipulation/func_delete_str.h"
+#include "eval/functions/string/manipulation/func_remove.h"
+#include "eval/functions/string/manipulation/func_insert.h"
+#include "eval/functions/string/manipulation/func_overlay.h"
+#include "eval/functions/string/manipulation/func_replace.h"
+#include "eval/functions/string/conversion/func_format.h"
+#include "eval/functions/system/environment/func_shell.h"
+#include "eval/functions/system/environment/func_exec.h"
 #include "eval/microplex.h"
 
+#include "eval/functions/network/func_ip.h"
+#include "runtime/string/strops.h"
+BValue func_upnp_externalip_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err);
+BValue func_upnp_status_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err);
 
 //
 // ---- String Function Dispatcher ----
@@ -50,8 +69,26 @@
 bool eval_builtin_string(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err, BValue *out_res) {
     if (!uname || !out_res) return false;
 
+    if (runtime_strcmp(uname, "IP$") == 0 || runtime_strcmp(uname, "IP") == 0) {
+        *out_res = func_ip_eval(vm, uname, arg_count, args, err);
+        return true;
+    }
+    if (runtime_strcmp(uname, "UPNP.EXTERNALIP$") == 0 || runtime_strcmp(uname, "UPNP.EXTERNALIP") == 0 ||
+        runtime_strcmp(uname, "EXTERNALIP$") == 0 || runtime_strcmp(uname, "UPNP_EXTERNALIP$") == 0) {
+        *out_res = func_upnp_externalip_eval(vm, uname, arg_count, args, err);
+        return true;
+    }
+    if (runtime_strcmp(uname, "UPNP.STATUS$") == 0 || runtime_strcmp(uname, "UPNP_STATUS$") == 0) {
+        *out_res = func_upnp_status_eval(vm, uname, arg_count, args, err);
+        return true;
+    }
+
     if (runtime_strcmp(uname, "INSTR") == 0) {
         *out_res = func_instr_eval(vm, uname, arg_count, args, err);
+        return true;
+    }
+    if (runtime_strcmp(uname, "RINSTR") == 0 || runtime_strcmp(uname, "RINSTR$") == 0) {
+        *out_res = func_rinstr_eval(vm, uname, arg_count, args, err);
         return true;
     }
     if (runtime_strcmp(uname, "UCASE$") == 0 || runtime_strcmp(uname, "UCASE") == 0) {
@@ -102,6 +139,10 @@ bool eval_builtin_string(VMContext *vm, const char *uname, int arg_count, BValue
         *out_res = func_chr_eval(vm, uname, arg_count, args, err);
         return true;
     }
+    if (runtime_strcmp(uname, "TRANSLATE$") == 0 || runtime_strcmp(uname, "TRANSLATE") == 0) {
+        *out_res = func_translate_eval(vm, uname, arg_count, args, err);
+        return true;
+    }
     if (runtime_strcmp(uname, "ASC") == 0 || runtime_strcmp(uname, "ASCII") == 0) {
         *out_res = func_ascii_fn_eval(vm, uname, arg_count, args, err);
         return true;
@@ -118,12 +159,12 @@ bool eval_builtin_string(VMContext *vm, const char *uname, int arg_count, BValue
         *out_res = func_verify_eval(vm, uname, arg_count, args, err);
         return true;
     }
-    if (runtime_strcmp(uname, "DCOUNT") == 0) {
-        *out_res = func_dcount_eval(vm, uname, arg_count, args, err);
-        return true;
-    }
     if (runtime_strcmp(uname, "COUNT") == 0) {
         *out_res = func_count_eval(vm, uname, arg_count, args, err);
+        return true;
+    }
+    if (runtime_strcmp(uname, "COUNT$") == 0) {
+        *out_res = func_count_str_eval(vm, uname, arg_count, args, err);
         return true;
     }
     if (runtime_strcmp(uname, "FIELD") == 0) {
@@ -132,6 +173,14 @@ bool eval_builtin_string(VMContext *vm, const char *uname, int arg_count, BValue
     }
     if (runtime_strcmp(uname, "EXTRACT$") == 0 || runtime_strcmp(uname, "EXTRACT") == 0) {
         *out_res = func_extract_eval(vm, uname, arg_count, args, err);
+        return true;
+    }
+    if (runtime_strcmp(uname, "DYNARRAY$") == 0 || runtime_strcmp(uname, "DYNARRAY") == 0) {
+        *out_res = func_dynarray_str_eval(vm, uname, arg_count, args, err);
+        return true;
+    }
+    if (runtime_strcmp(uname, "PARSE_DYNARRAY") == 0 || runtime_strcmp(uname, "GROUP_MAP") == 0 || runtime_strcmp(uname, "GROUP.MAP") == 0) {
+        *out_res = func_parse_dynarray_eval(vm, uname, arg_count, args, err);
         return true;
     }
     if (runtime_strcmp(uname, "SHUFFLE$") == 0 || runtime_strcmp(uname, "SHUFFLE") == 0) {
@@ -162,7 +211,9 @@ bool eval_builtin_string(VMContext *vm, const char *uname, int arg_count, BValue
         *out_res = func_ert_eval(vm, uname, arg_count, args, err);
         return true;
     }
-    if (runtime_strcmp(uname, "NUM") == 0 || runtime_strcmp(uname, "NUM1$") == 0 || runtime_strcmp(uname, "NUM2$") == 0) {
+    if (runtime_strcmp(uname, "NUM") == 0 || runtime_strcmp(uname, "NUM$") == 0 || runtime_strcmp(uname, "_NUM$") == 0 ||
+        runtime_strcmp(uname, "NUM1$") == 0 || runtime_strcmp(uname, "NUM2$") == 0 ||
+        runtime_strcmp(uname, "VAL%") == 0 || runtime_strcmp(uname, "_VAL%") == 0) {
         *out_res = func_num_eval(vm, uname, arg_count, args, err);
         return true;
     }
@@ -170,11 +221,11 @@ bool eval_builtin_string(VMContext *vm, const char *uname, int arg_count, BValue
         *out_res = func_ups_eval(vm, uname, arg_count, args, err);
         return true;
     }
-    if (runtime_strcmp(uname, "INDEX") == 0) {
+    if (runtime_strcmp(uname, "INDEX") == 0 || runtime_strcmp(uname, "INDEX$") == 0) {
         *out_res = func_index_fn_eval(vm, uname, arg_count, args, err);
         return true;
     }
-    if (runtime_strcmp(uname, "SUM$") == 0 || runtime_strcmp(uname, "SUM") == 0) {
+    if (runtime_strcmp(uname, "SUM$") == 0) {
         *out_res = func_sum_eval(vm, uname, arg_count, args, err);
         return true;
     }
@@ -212,6 +263,38 @@ bool eval_builtin_string(VMContext *vm, const char *uname, int arg_count, BValue
     }
     if (runtime_strncmp(uname, "CVT", 3) == 0 || runtime_strncmp(uname, "SWAP", 4) == 0 || runtime_strncmp(uname, "EDIT", 4) == 0) {
         *out_res = func_cvt_eval(vm, uname, arg_count, args, err);
+        return true;
+    }
+    if (runtime_strcmp(uname, "DELETE$") == 0 || runtime_strcmp(uname, "DELETE") == 0) {
+        *out_res = func_delete_str_eval(vm, uname, arg_count, args, err);
+        return true;
+    }
+    if (runtime_strcmp(uname, "REMOVE$") == 0 || runtime_strcmp(uname, "REMOVE") == 0) {
+        *out_res = func_remove_eval(vm, uname, arg_count, args, err);
+        return true;
+    }
+    if (runtime_strcmp(uname, "INSERT$") == 0 || runtime_strcmp(uname, "INSERT") == 0) {
+        *out_res = func_insert_eval(vm, uname, arg_count, args, err);
+        return true;
+    }
+    if (runtime_strcmp(uname, "OVERLAY$") == 0 || runtime_strcmp(uname, "OVERLAY") == 0) {
+        *out_res = func_overlay_eval(vm, uname, arg_count, args, err);
+        return true;
+    }
+    if (runtime_strcmp(uname, "REPLACE$") == 0 || runtime_strcmp(uname, "REPLACE") == 0) {
+        *out_res = func_replace_eval(vm, uname, arg_count, args, err);
+        return true;
+    }
+    if (runtime_strcmp(uname, "FORMAT$") == 0 || runtime_strcmp(uname, "FORMAT") == 0) {
+        *out_res = func_format_eval(vm, uname, arg_count, args, err);
+        return true;
+    }
+    if (runtime_strcmp(uname, "SHELL$") == 0) {
+        *out_res = func_shell_eval(vm, uname, arg_count, args, err);
+        return true;
+    }
+    if (runtime_strcmp(uname, "EXEC$") == 0 || runtime_strcmp(uname, "EXEC") == 0) {
+        *out_res = func_exec_eval(vm, uname, arg_count, args, err);
         return true;
     }
 

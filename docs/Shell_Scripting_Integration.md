@@ -1,150 +1,69 @@
-# BASIC++ v6.5.2 Shell Scripting Integration
+<!--
+Title:        Shell_Scripting_Integration
+Tier:         2
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/bootstrap/bs/bs.c, engine/src/statements/system/stmt_shell.c, engine/src/eval/functions/system/environment/func_exec.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. THE BATCH SCRIPT RUNNER (bs)
+# BASIC++ v6.5.2 Shell Scripting Integration Architecture
 
-The bs executable is designed specifically for shell scripting integration. It runs a BASIC++ source file non-interactively, produces no banner or prompt, and exits with a numeric exit code:
+The authoritative specification for headless batch execution, Unix pipelines, operating system command dispatch, and environment integration in BASIC++ v6.5.2.
 
-```bash
-bs script.bas
-echo $?           # 0 = success, non-zero = error
-```
+---
 
-Exit codes: 0 = success, 1 = runtime error, 2 = file not found, 3 = syntax error.
+## 1. The Batch Script Runner (`bs` / `bs.exe`)
 
-## 2. PIPELINE INTEGRATION
+The `bs` executable is specifically designed for non-interactive shell scripting, automated tasks, and CI/CD pipelines:
 
-The bs runner connects to standard I/O streams. INPUT reads from stdin, PRINT writes to stdout, and error messages go to stderr:
+- **Zero Banner & Zero Prompt**: Produces no startup banner or interactive prompt, ensuring clean stdout streams.
+- **Deterministic Exit Codes**:
+  - `0`: Successful execution.
+  - `1`: Runtime error.
+  - `2`: Script file not found.
+  - `3`: Syntax or compilation error.
+- **Pipeline Invocation**:
+  ```bash
+  bs script.bas
+  cat data.csv | bs filter.bas > output.csv
+  ```
 
-```bash
-# Filter: read numbers, output squares
-echo -e "3\n4\n5" | bs square.bas
+---
 
-# Transform: process CSV data
-cat data.csv | bs transform.bas > output.csv
+## 2. Standard I/O Pipelines
 
-# Chain: pipeline of BASIC++ scripts
-bs generate.bas | bs filter.bas | bs format.bas > report.txt
-```
-
-The BASIC++ script for a filter:
+The batch runner attaches directly to standard OS streams:
+- `INPUT` and `LINE INPUT` read from standard input (`stdin`).
+- `PRINT` and `WRITE` emit data to standard output (`stdout`).
+- Diagnostics, assertions, and error messages are directed to standard error (`stderr`).
 
 ```basic
-' square.bas - Read numbers from stdin, output their squares
-10 ON ERROR GOTO 100
-20 WHILE 1
-30   LINE INPUT X$
-40   PRINT VAL(X$) ^ 2
-50 WEND
+10 REM Filter stdin to stdout
+20 ON ERROR GOTO 100
+30 WHILE 1
+40   LINE INPUT LineData$
+50   PRINT UCASE$(LineData$)
+60 WEND
 100 END
 ```
 
-## 3. THE SHELL STATEMENT
+---
 
-SHELL executes an operating system command from within a BASIC++ program:
+## 3. Operating System Command Execution
 
-```basic
-10 SHELL "dir *.bas"          ' Windows
-20 SHELL "ls -la *.bas"       ' Linux
-```
+BASIC++ provides multiple complementary mechanisms for interacting with the host operating system:
 
-SHELL with no argument opens an interactive command shell. Type EXIT to return to BASIC++.
+- **`SHELL "command"`**: Executes a command string via the host command interpreter (`cmd.exe` or `/bin/sh`). Execution halts until the command completes.
+- **`SHELL$("command")`**: Executes an OS shell command and captures its standard output as a string.
+- **`EXEC$(binary$ [, arg1$ [, arg2$...]])`**: Spawns an external binary directly with argument vector passing, bypassing shell interpretation for safety and performance.
+- **`ERRORLEVEL`**: Built-in system variable containing the integer exit code of the most recently executed `SHELL` or `EXEC$` process.
 
-SHELL captures the exit code in the ERRORLEVEL variable: `SHELL "command" : PRINT ERRORLEVEL`.
+---
 
-The EXEC statement is similar to SHELL but replaces the BASIC++ process with the specified command (on Linux, this is equivalent to the exec system call).
+## 4. Environment Variables and Process Termination
 
-## 4. ENVIRONMENT VARIABLES
-
-ENVIRON$("NAME") reads an environment variable:
-
-```basic
-10 Home$ = ENVIRON$("HOME")
-20 Path$ = ENVIRON$("PATH")
-30 User$ = ENVIRON$("USERNAME")
-```
-
-ENVIRON sets an environment variable for the current process: `ENVIRON "MYVAR=VALUE"`.
-
-## 5. THE -c FLAG
-
-The baspp and bpp executables accept the -c flag for executing a single statement from the command line, making them usable as command-line tools:
-
-```bash
-# Quick calculation
-baspp -c "PRINT SQR(144)"
-
-# System info
-baspp -c "INFO"
-
-# Date stamping
-baspp -c "PRINT DATE$; \" \"; TIME$"
-```
-
-The -c flag is useful in shell scripts that need to perform a single BASIC++ operation:
-
-```bash
-#!/bin/bash
-RESULT=$(baspp -c "PRINT 2^32")
-echo "2^32 = $RESULT"
-```
-
-## 6. FILE OPERATIONS FROM SCRIPTS
-
-BASIC++ scripts can perform file management operations that complement shell scripting:
-
-```basic
-' cleanup.bas - Delete temporary files older than 7 days
-10 FILES "*.tmp"
-20 ' Process each file...
-30 KILL "old.tmp"
-40 MKDIR "archive"
-50 NAME "data.txt" AS "archive\data.txt"
-```
-
-## 7. CGI SCRIPTING
-
-The bs runner can serve as a CGI script handler for web servers. The script reads the query string from ENVIRON$("QUERY_STRING") and writes HTTP headers and content to stdout:
-
-```basic
-' hello.bas - CGI script
-10 PRINT "Content-Type: text/html"
-20 PRINT
-30 PRINT "<html><body>"
-40 PRINT "<h1>Hello from BASIC++!</h1>"
-50 Query$ = ENVIRON$("QUERY_STRING")
-60 PRINT "<p>Query: "; Query$; "</p>"
-70 PRINT "</body></html>"
-```
-
-Configure the web server to execute bs as the CGI handler for .bas files.
-
-## 8. SECURITY IN SCRIPTING
-
-When running scripts from automated systems (cron, scheduled tasks, CI/CD), set the security level to RESTRICTED or PARANOID to prevent scripts from accessing resources beyond their intended scope:
-
-```bash
-bs --security=4 untrusted_script.bas
-```
-
-Security level 4 (RESTRICTED) disables SHELL, file creation, and network access. Level 5 (PARANOID) restricts the script to pure computation with no I/O of any kind.
-
-## 9. RETURN CODES AND ERROR REPORTING
-
-BASIC++ programs can set the process exit code using the ERRORLEVEL variable or the SYSTEM statement with a numeric argument:
-
-```basic
-10 IF ProcessingFailed THEN SYSTEM 1
-20 SYSTEM 0
-```
-
-SYSTEM 0 exits with success (exit code 0). SYSTEM n exits with code n. The default exit code after END is 0. The default after an unhandled error is 1.
-
-Shell scripts can check the exit code:
-
-```bash
-bs validate.bas
-if [ $? -ne 0 ]; then
-    echo "Validation failed"
-    exit 1
-fi
-```
+- **`ENVIRON$("VAR")`**: Reads the value of an environment variable.
+- **`ENVIRON "VAR=VALUE"`**: Sets or modifies an environment variable in the active process environment.
+- **`COMMAND$`**: Returns the raw command-line argument string passed to the script.
+- **`SYSTEM [exit_code]`**: Immediately terminates the interpreter process, returning `exit_code` to the parent shell.

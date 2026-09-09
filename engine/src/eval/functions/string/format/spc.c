@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (sys_fn.c)
 // NEEDS: libcore (hal.h, memory.h, memory.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libcore (strings.h, strings.c)
 // NEEDS: libengine (spc.h, string.c, vm.h)
 // Provides runtime implementation for the SPC built-in function in BASIC++.
@@ -11,21 +11,26 @@
 // ---- Includes ----
 
 #include "eval/functions/string/format/spc.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/strings.h"
 #include "vm/vm.h"
 #include "runtime/string.h"
 #include "runtime/memory.h"
 #include "hal/hal.h"
+#include "runtime/string/memops.h"
+
+static const LangDesc g_spc_desc = {
+    .name = "SPC",
+    .category = "Print / Formatting Functions",
+    .syntax = "SPC(n%)",
+    .description = "Outputs or generates n space characters in a PRINT statement or expression.",
+    .error_summary = "Error 5: Illegal Function Call (n < 0), Error 13: Type Mismatch (SPC expects one numeric argument)",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_FUNCTION
+};
 void func_spc_register(void) {
-    MicroLibMetadata meta = {
-        .name = "SPC",
-        .category = "Print / Formatting Functions",
-        .syntax = "SPC(n%)",
-        .help_text = "Outputs or generates n space characters in a PRINT statement or expression.",
-        .error_codes = "Error 5: Illegal Function Call (n < 0), Error 13: Type Mismatch (SPC expects one numeric argument)"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_spc_desc);
 }
 
 BValue func_spc_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err) {

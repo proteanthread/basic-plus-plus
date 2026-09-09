@@ -1,0 +1,216 @@
+Title:        Program_Modernization_Tutorial
+Tier:         1
+Applies to:   BASIC++ v6.5.2, all targets
+Authority:    engine/src/statements/program/renum.c,
+              engine/src/statements/program/reformat.c,
+              engine/src/statements/program/stmt_rename.c
+Generated:    no, hand-written
+Status:       current
+
+==============================================================================
+PROGRAM MODERNIZATION TUTORIAL
+==============================================================================
+
+RENUM, RENAME and REFORMAT are three statements that together turn a forty-
+year-old listing into something maintainable. This is a tutorial: work through
+it with a real vintage program open.
+
+Take them in this order. Each assumes the previous one has run.
+
+1. THE THREE, IN ONE SENTENCE EACH
+------------------------------------------------------------------------------
+
+  Statement  Fixes
+  ---------  ---------------------------------------------------------
+  RENUM      Line numbers, and every branch that targets them
+  RENAME     Variable names, including collisions with modern keywords
+  REFORMAT   Layout: indentation, packing, case
+
+RENAME is the surprise. In most BASICs RENAME renames a file. Here it renames
+variables and symbols inside your program. If you were expecting the file
+operation, that is NAME.
+
+2. RENUM: LINE NUMBERS
+------------------------------------------------------------------------------
+
+    RENUM ["file.bas" [,start [,step]] [TO "out.bas"]]
+    RENUM [new_start] [,[old_start] [,step]]
+
+Two forms. The first works on a file and can write the result elsewhere; the
+second works on the program in memory.
+
+    RENUM
+
+Renumbers everything in memory from the default start, updating every GOTO,
+GOSUB, ON n GOTO, ON n GOSUB, THEN target, RESUME and RESTORE as it goes. That
+branch-target updating is the whole value: renumbering by hand is where
+vintage programs get broken.
+
+    RENUM 1000, 500, 10
+
+Renumber from old line 500 onward, starting at 1000, in steps of 10. Use this
+to open a gap in the middle of a program without touching the rest.
+
+    RENUM "legacy.bas", 100, 10 TO "clean.bas"
+
+File in, file out, original untouched. This is the safe form and the one to
+prefer while you are still experimenting.
+
+Why renumber at all? Line numbers are an interpreter constraint. The compiler
+and the transpiler do not need them. If you intend to compile, renumber into a
+tidy sequence first so the listing is readable; the compiler will not care
+either way, but you will.
+
+Errors: 2 (syntax), 5 (illegal function call  --  usually a step of zero or a
+range that would collide).
+
+3. RENAME: VARIABLES AND SYMBOLS
+------------------------------------------------------------------------------
+
+    RENAME
+    RENAME old_var TO new_var
+    RENAME CONFLICTS [PREFIX "v_"]
+    RENAME SMART [CASE "mixed" | "snake"]
+    RENAME UNDO
+
+This is the statement that makes a 1980 program readable.
+
+One variable at a time
+------------------------------------------------------------------------------
+
+    RENAME A1 TO Balance
+    RENAME S$ TO CustomerName$
+
+Every reference is updated, including in DATA statements' variable targets and
+COMMON declarations.
+
+Resolving keyword collisions
+------------------------------------------------------------------------------
+
+    RENAME CONFLICTS PREFIX "v_"
+
+A vintage program may use SET, MAP, KEY, TASK, DEVICE or SCOPE as variable
+names. Those are all BASIC++ statements now. RENAME CONFLICTS finds every
+variable whose name collides with a current keyword and prefixes it, so SET
+becomes v_SET and the program parses.
+
+Run this first on any program that will not load. A parse error on a line that
+looks fine is usually a variable that has become a keyword.
+
+Bulk modernisation
+------------------------------------------------------------------------------
+
+    RENAME SMART CASE "mixed"
+    RENAME SMART CASE "snake"
+
+SMART applies a naming convention across the whole program. "mixed" gives you
+CustomerName; "snake" gives you customer_name. Vintage programs written in all
+capitals become legible in one statement.
+
+Undo
+------------------------------------------------------------------------------
+
+    RENAME UNDO
+
+Reverses the last rename. Use it freely  --  this is what makes SMART
+experimentation safe.
+
+Errors: 2 (syntax), 5 (illegal function call  --  a target name that is itself
+a keyword, or a collision with an existing variable).
+
+4. REFORMAT: LAYOUT
+------------------------------------------------------------------------------
+
+    REFORMAT [spaces_per_indent] [target]
+             [CHECK | STRICT | SPLIT | UPPER | LOWER | PRESERVE | SPACES | UNP
+
+    REFORMAT 4
+
+Re-indent with four spaces per level.
+
+The modifiers do the interesting work:
+
+  Modifier  Effect
+  --------  -------------------------------------------------------------
+  CHECK     Static structural analysis. Reports problems, changes nothing
+  STRICT    Enforce the full house style
+  SPLIT     Break multi-statement lines into one statement per line
+  UNPACK    Expand packed vintage lines
+  UPPER     Keywords to upper case
+  LOWER     Keywords to lower case
+  PRESERVE  Keep existing case
+  SPACES    Normalise spacing around operators and separators
+
+Start with CHECK. It runs the structural analysis and tells you what it found
+without touching the program:
+
+    REFORMAT CHECK
+
+Unclosed FOR loops, IF blocks without END IF, GOSUB without RETURN and
+unreachable lines all surface here. On a vintage program this is often more
+valuable than the reformatting.
+
+SPLIT and UNPACK are the ones that transform vintage listings. A line like
+
+    100 FOR I=1TO10:A(I)=I*2:PRINT A(I);:NEXT I
+
+becomes several lines, one statement each, correctly indented.
+
+Errors: 2 (syntax).
+
+5. A COMPLETE WORKED PASS
+------------------------------------------------------------------------------
+
+Given legacy.bas, a packed, all-caps, single-letter-variable program:
+
+    LOAD "legacy.bas"
+    REFORMAT CHECK
+
+Read the report. Fix any structural problems by hand  --  those are real bugs
+and no tool should guess at them.
+
+    RENAME CONFLICTS PREFIX "v_"
+
+Now it parses cleanly.
+
+    REFORMAT UNPACK SPLIT
+    REFORMAT 4 SPACES
+
+One statement per line, indented, spaced.
+
+    RENAME SMART CASE "mixed"
+
+Readable variable names.
+
+    RENUM 100, , 10
+
+Tidy line numbers, branches intact.
+
+    SAVE "modern.bas"
+
+Check the result runs identically to the original before you discard the
+original. REFORMAT CHECK again at the end is cheap and catches anything the
+transformations disturbed.
+
+6. WHAT THESE DO NOT DO
+------------------------------------------------------------------------------
+
+  They do not translate dialect-specific constructs. A Commodore SYS call or
+  an Atari XIO needs the Dialect_Migration_Reference.
+  They do not fix logic. REFORMAT CHECK reports structure, not correctness.
+  RENAME SMART cannot know what a variable means. A1 becomes A1, not Balance.
+  Name the important ones by hand first, then run SMART for the rest.
+
+SEE ALSO
+------------------------------------------------------------------------------
+
+  Dialect_Migration_Reference for constructs from other machines
+  Legacy_BASIC_Modernization_Guide for the wider modernisation story
+  Program_Management for LOAD, SAVE, MERGE, CHAIN
+  Debugging_And_Testing for verifying the result
+  The generated pages for RENUM, RENAME and REFORMAT under
+  docs/keywords/statements/
+
+==============================================================================
+END OF DOCUMENT
+==============================================================================

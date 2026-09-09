@@ -19,5 +19,6 @@ BValue func_sock_accept(VMContext *vm, int argc, BValue *argv, BppError *err);
 BValue func_sock_recv(VMContext *vm, int argc, BValue *argv, BppError *err);
 BValue func_sock_poll(VMContext *vm, int argc, BValue *argv, BppError *err);
 BValue func_sock_status(VMContext *vm, int argc, BValue *argv, BppError *err);
+void   func_sock_register(void);
 
 #endif // EVAL_FUNCTIONS_SYSTEM_HARDWARE_FUNC_SOCK_H

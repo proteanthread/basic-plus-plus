@@ -1,25 +1,73 @@
-BASIC++ STATEMENT REFERENCE: TYPE
-======================================================================
+TITLE: TYPE
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/oop/structure/type.c
+GENERATED: no, hand-written
+STATUS: current
 
-1. SYNTAX & DESCRIPTION
-  TYPE TypeName
-    field1 AS PrimitiveType
-    field2 AS PrimitiveType
-  END TYPE
+==============================================================================
+TYPE KEYWORD REFERENCE
+==============================================================================
 
-Defines a custom user record type consisting of named typed fields.
+SOURCE HEADER:
+    // FILENAME: type.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore, libengine, libkernel, libplatform
+    // Provides runtime implementation for the TYPE statement in BASIC++.
+    //
+    // ---- Includes ----
 
-2. PARAMETERS
-- TypeName: Name of the new record structure.
-- field: Field identifier followed by AS Type.
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Defines a user-defined data structure (UDT/record) containing element fields.
 
-3. ERROR CODES
-- Error 10 (ERR_DUPLICATE_DEFINITION): Structure name or field name already defined.
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    TYPE type_name 
+ member_name AS type | member: type 
+ ... 
+ END TYPE | ENDTYPE
 
-4. EXAMPLES
-  10 TYPE UserRecord
-  20   UID AS INTEGER
-  30   Name AS STRING * 32
-  40 END TYPE
-  50 DIM U AS UserRecord
-  60 U.UID = 101
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM TYPE Demonstration
+    20 PRINT "TYPE executed successfully."
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error, Error 38: TYPE Without END TYPE, Error 10: Duplicate
+Definition
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Variables & Memory
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SYSTEM
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  TYPE
+Category              Variables & Memory
+Syntax                TYPE type_name 
+ member_name AS type | member: type...
+Description           Defines a user-defined data structure (UDT/record) ...
+Error Summary         Error 2: Syntax Error, Error 38: TYPE Without END T...
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SYSTEM
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/oop/structure/type.c

@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libcore (arr_access.c, arr_core.c, arr_persist.c, arrays.c)
 // NEEDS: libcore (alloc.h, alloc.c, arrays.h, arrays.c, ctype.h, ctype.c)
-// NEEDS: libcore (hal.h, memops.h, memops.c, snprintf.h, snprintf.c)
+// NEEDS: libcore (hal.h, memops.h, memops.c, runtime_snprintf.h, runtime_snprintf.c)
 // NEEDS: libcore (strops.h, strops.c, variables.h, variables.c)
 // NEEDS: libengine (map.h, map.c)
 // Provides core logic and interface definitions for arrays_internal within BASIC++.
@@ -31,20 +31,13 @@
 //
 // ---- Constants and Struct Definitions ----
 
-#define HASH_BUCKETS 512
+#ifndef ARR_HASH_BUCKETS
+#define ARR_HASH_BUCKETS 512
+#endif
+#ifndef HASH_BUCKETS
+#define HASH_BUCKETS ARR_HASH_BUCKETS
+#endif
 #define MRU_ARRAY_CACHE_SIZE 16
-
-typedef struct ArrayEntry {
-    char              *name;
-    ValueType          type;
-    int                num_dims;
-    int                bounds[4];
-    BValue            *elements;
-    int                total_size;
-    int                channel;
-    bool               is_alias;
-    struct ArrayEntry *next;
-} ArrayEntry;
 
 typedef struct {
     char        name[64];
@@ -59,6 +52,8 @@ struct ArrayContext {
     int                 mru_head;
     int                 option_base;
     double              last_det;
+    ArrayEntry         *last_entry;
+    char                last_name[64];
 };
 
 //

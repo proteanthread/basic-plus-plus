@@ -2,7 +2,7 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libcore (strings.h, strings.c, variables.h, variables.c)
 // NEEDS: libengine (const.h, eval.h, eval.c, lexer.h, lexer.c, string.c, vm.h)
 // Provides runtime implementation for the CONST statement in BASIC++.
@@ -15,23 +15,28 @@
 #include "eval/eval.h"
 #include "runtime/variables.h"
 #include "runtime/strings.h"
-#include "runtime/micro_lib_metadata.h"
-#include <string.h>
+#include "runtime/language_descriptor.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_const_desc = {
+    .name = "CONST",
+    .category = "Variables & Memory",
+    .syntax = "CONST constantname = expression [, constantname = expression...]",
+    .description = "Declares one or more symbolic constants assigned to literal or constant expressions.",
+    .error_summary = "Error 2: Syntax Error, Error 13: Type Mismatch",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SYSTEM,
+    .type = FEATURE_STATEMENT
+};
 
 void stmt_const_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "CONST",
-        .category = "Variables & Memory",
-        .syntax = "CONST constantname = expression [, constantname = expression...]",
-        .help_text = "Declares one or more symbolic constants assigned to literal or constant expressions.",
-        .error_codes = "Error 2: Syntax Error, Error 13: Type Mismatch"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_const_desc);
 }
 
 BppError stmt_const_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     while (true) {
         BppToken tok = lex_next(lex);
@@ -43,7 +48,7 @@ BppError stmt_const_handler(VMContext *vm, LexerContext *lex) {
 
         char const_name[64];
         size_t len = (tok.length < sizeof(const_name) - 1) ? tok.length : (sizeof(const_name) - 1);
-        memcpy(const_name, tok.start, len);
+        runtime_memcpy(const_name, tok.start, len);
         const_name[len] = '\0';
 
         BppToken eq_tok = lex_next(lex);

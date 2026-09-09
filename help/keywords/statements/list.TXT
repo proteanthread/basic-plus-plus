@@ -1,23 +1,73 @@
-LIST Program Source Listing Command
-===================================
+TITLE: LIST
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/program/list.c
+GENERATED: no, hand-written
+STATUS: current
 
-Lists program source lines from memory to the active console screen.
+==============================================================================
+LIST KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: list.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (memory.h, memory.c)
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libcore (strings.h, strings.c)
+    // NEEDS: libengine (eval.h, eval.c, lexer.h, lexer.c, list.h, string.c, vm.h)
+    // NEEDS: libkernel (errors.h, security.h, security.c, vdev.h, vdev.c)
+    // Provides runtime implementation for the LIST statement in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Displays specified program lines or entire source in memory, optionally
+writing to destination file.
 
-    LIST [start_line%] - [end_line%]
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    LIST [start_line] [- [end_line]] [, filename_expr]
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM LIST Demonstration
+    20 PRINT "LIST executed successfully."
 
-OPERATIONAL NOTES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error, Error 5: Illegal Function Call
 
-  Supports single line, range, and open-ended range specifiers.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Program Mgmt & Editing
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SAFE
 
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    LIST        : REM List all lines
-    LIST 100-200 : REM List lines 100 through 200
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  LIST
+Category              Program Mgmt & Editing
+Syntax                LIST [start_line] [- [end_line]] [, filename_expr]
+Description           Displays specified program lines or entire source i...
+Error Summary         Error 2: Syntax Error, Error 5: Illegal Function Call
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/program/list.c

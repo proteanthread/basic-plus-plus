@@ -2,7 +2,7 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libcore (strings.h, strings.c)
 // NEEDS: libengine (eval.h, eval.c, lexer.h, lexer.c, name.h, string.c, vm.h)
 // NEEDS: libplatform (platform.h)
@@ -16,29 +16,34 @@
 #include "eval/eval.h"
 #include "runtime/strings.h"
 #include "platform/platform.h"
-#include "runtime/micro_lib_metadata.h"
-#include <string.h>
-#include <stdio.h>
+#include "runtime/language_descriptor.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "runtime/format/snprintf.h"
+
+static const LangDesc g_name_desc = {
+    .name = "NAME",
+    .category = "Filesystem I/O",
+    .syntax = "NAME oldspec AS newspec",
+    .description = "Renames an existing disk file or directory.",
+    .error_summary = "Error 2: Syntax Error, Error 53: File Not Found, Error 58: File Already Exists",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_STATEMENT
+};
 
 #if defined(_WIN32)
-#define strcasecmp _stricmp
-#define strncasecmp _strnicmp
+#define runtime_strcasecmp runtime_strcasecmp
+#define runtime_strncasecmp runtime_strncasecmp
 #endif
 
 void stmt_name_register(void) {
-    MicroLibMetadata meta = {
-        .name = "NAME",
-        .category = "Filesystem I/O",
-        .syntax = "NAME oldspec AS newspec",
-        .help_text = "Renames an existing disk file or directory.",
-        .error_codes = "Error 2: Syntax Error, Error 53: File Not Found, Error 58: File Already Exists"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_name_desc);
 }
 
 BppError stmt_name_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BValue old_val = eval_expression(vm, lex, &err);
     if (err.code != 0) return err;
@@ -51,7 +56,7 @@ BppError stmt_name_handler(VMContext *vm, LexerContext *lex) {
 
     BppToken tok = lex_peek(lex);
     if ((tok.type == TOK_KEYWORD && tok.as.keyword == KW_AS) ||
-        (tok.type == TOK_IDENT && tok.length == 2 && strncasecmp(tok.start, "AS", 2) == 0)) {
+        (tok.type == TOK_IDENT && tok.length == 2 && runtime_strncasecmp(tok.start, "AS", 2) == 0)) {
         lex_next(lex);
     } else {
         str_release(vm_get_str(vm), old_val.as.string);
@@ -76,7 +81,7 @@ BppError stmt_name_handler(VMContext *vm, LexerContext *lex) {
     const char *new_path = str_data(new_val.as.string);
 
     if (old_path && new_path) {
-        if (rename(old_path, new_path) != 0) {
+        if (platform_rename(old_path, new_path) != 0) {
             err.code = 53; err.message = "File not found or rename failed";
         }
     }
@@ -88,7 +93,7 @@ BppError stmt_name_handler(VMContext *vm, LexerContext *lex) {
 
 BppError stmt_setattr_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BValue path_val = eval_expression(vm, lex, &err);
     if (err.code != 0) return err;
@@ -116,7 +121,7 @@ BppError stmt_setattr_handler(VMContext *vm, LexerContext *lex) {
 
 BppError stmt_environ_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BValue val = eval_expression(vm, lex, &err);
     if (err.code != 0) return err;
@@ -129,12 +134,12 @@ BppError stmt_environ_handler(VMContext *vm, LexerContext *lex) {
 
     const char *s = str_data(val.as.string);
     if (s) {
-        const char *eq = strchr(s, '=');
+        const char *eq = runtime_strchr(s, '=');
         if (eq) {
             char var_name[128];
             size_t nlen = (size_t)(eq - s);
             if (nlen >= sizeof(var_name)) nlen = sizeof(var_name) - 1;
-            memcpy(var_name, s, nlen);
+            runtime_memcpy(var_name, s, nlen);
             var_name[nlen] = '\0';
             platform_setenv(var_name, eq + 1);
         }

@@ -1,32 +1,70 @@
-RETURN Return from GOSUB Subroutine Statement
-=============================================
+TITLE: RETURN
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/core/program/return.c
+GENERATED: no, hand-written
+STATUS: current
 
-Pops the return address from the call stack and transfers execution back to the statement following GOSUB.
+==============================================================================
+RETURN KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: return.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libengine (return.h, string.c, vm.h)
+    // Provides runtime implementation for the RETURN statement in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Returns control from a GOSUB subroutine to the statement following GOSUB, or
+specified line.
 
-    RETURN [{line_number% | @label}]
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    RETURN [line_num]
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM RETURN Demonstration
+    20 PRINT "RETURN executed successfully."
 
-ERROR CONDITIONS
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 3: RETURN without GOSUB (call stack empty)
 
-  - Error 3 (ERR_RETURN_WITHOUT_GOSUB): No GOSUB active on call stack.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Control Flow
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SAFE
 
-
-OPERATIONAL NOTES
-----------------------------------------------------------------------
-
-  Optional target line performs non-local subroutine exit.
-
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 GOSUB 100
-    20 PRINT "Returned to line 20"
-    30 END
-    100 PRINT "Inside sub"
-    110 RETURN
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  RETURN
+Category              Control Flow
+Syntax                RETURN [line_num]
+Description           Returns control from a GOSUB subroutine to the stat...
+Error Summary         Error 3: RETURN without GOSUB (call stack empty)
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/core/program/return.c

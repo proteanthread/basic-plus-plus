@@ -1,24 +1,70 @@
-TROFF Turn Off Line Tracing Statement
-=====================================
+TITLE: TROFF
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/debug/logger.c
+GENERATED: no, hand-written
+STATUS: current
 
-Disables line number execution tracing (GW-BASIC compatibility command).
+==============================================================================
+TROFF KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: logger.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: baspp.exe, bpp.exe, bs.exe, libboot, libcore, libengine, libkern
+    // NEEDS: libcore (alloc.h, alloc.c, hal.h, logger.h, memops.h, memops.c)
+    // NEEDS: libcore (runtime_snprintf.h, runtime_snprintf.c, strops.h, strops.c)
+    // NEEDS: libplatform (platform.h)
+    // Provides multi-level logging, circular ring buffer, and pluggable sink inte
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Turns trace mode off, stopping execution line number printing to console.
 
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
     TROFF
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM TROFF Demonstration
+    20 PRINT "TROFF executed successfully."
 
-OPERATIONAL NOTES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+None
 
-  Equivalent to TRACE OFF.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       GW-BASIC, QBASIC, BASIC++ Standard
+Since Version: 6.0.0
+Category:      Debugging
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SAFE
 
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 TRON : REM Enable tracing
-    20 X = 10
-    30 TROFF : REM Disable tracing
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  TROFF
+Category              Debugging
+Syntax                TROFF
+Description           Turns trace mode off, stopping execution line numbe...
+Error Summary         None
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         GW-BASIC, QBASIC, BASIC++ Standard
+Since Version         6.0.0
+Source File           engine/src/debug/logger.c

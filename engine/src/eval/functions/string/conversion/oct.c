@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (conversion_fn.c)
 // NEEDS: libcore (memory.h, memory.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libcore (strings.h, strings.c)
 // NEEDS: libengine (oct.h, string.c)
 // Provides runtime implementation for the OCT built-in function in BASIC++.
@@ -11,19 +11,25 @@
 // ---- Includes ----
 
 #include "eval/functions/string/conversion/oct.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/strings.h"
 #include "runtime/string.h"
 #include "runtime/memory.h"
+#include "runtime/format/snprintf.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_oct_desc = {
+    .name = "OCT$",
+    .category = "String Functions",
+    .syntax = "OCT$(x)",
+    .description = "Returns the octal string representation of integer x.",
+    .error_summary = "Error 13: Type Mismatch (OCT$ expects one numeric argument)",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_FUNCTION
+};
 void func_oct_register(void) {
-    MicroLibMetadata meta = {
-        .name = "OCT$",
-        .category = "String Functions",
-        .syntax = "OCT$(x)",
-        .help_text = "Returns the octal string representation of integer x.",
-        .error_codes = "Error 13: Type Mismatch (OCT$ expects one numeric argument)"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_oct_desc);
 }
 BValue func_oct_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err) {
     (void)uname;

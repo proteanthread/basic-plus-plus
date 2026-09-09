@@ -2,7 +2,7 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libengine (eval.h, eval.c, lexer.h, lexer.c, string.c, vm.h)
 // Implements the EVERY statement for periodic timer event scheduling.
 //
@@ -11,12 +11,24 @@
 #include "vm/vm.h"
 #include "lexer/lexer.h"
 #include "eval/eval.h"
-#include "runtime/micro_lib_metadata.h"
-#include <string.h>
+#include "runtime/language_descriptor.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_every_desc = {
+    .name = "EVERY",
+    .category = "Timing & Real-Time",
+    .syntax = "EVERY ms GOSUB line_num",
+    .description = "Schedules a recurring subroutine execution on hardware timer intervals.",
+    .error_summary = "Error 2: Syntax Error, Error 13: Type Mismatch",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SAFE,
+    .type = FEATURE_STATEMENT
+};
 
 BppError stmt_every_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BValue intv_val = eval_expression(vm, lex, &err);
     if (err.code != 0) return err;
@@ -32,12 +44,5 @@ BppError stmt_every_handler(VMContext *vm, LexerContext *lex) {
 }
 
 void stmt_every_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "EVERY",
-        .category = "Timing & Real-Time",
-        .syntax = "EVERY ms GOSUB line_num",
-        .help_text = "Schedules a recurring subroutine execution on hardware timer intervals.",
-        .error_codes = "Error 2: Syntax Error, Error 13: Type Mismatch"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_every_desc);
 }

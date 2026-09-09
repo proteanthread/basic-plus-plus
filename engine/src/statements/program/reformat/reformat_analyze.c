@@ -8,6 +8,10 @@
 // ---- Includes ----
 
 #include "statements/program/reformat_internal.h"
+#include "runtime/format/snprintf.h"
+#include "runtime/string/strops.h"
+#include "runtime/string/memops.h"
+#include "runtime/conv/float_parse.h"
 
 //
 // ---- Fast Tokenizer and Block Checkers ----
@@ -26,7 +30,7 @@ int tokenize_line_fast(const char *text, FastToken *tokens, int max_tokens) {
         tokens[count].type = tok.type;
         size_t len = tok.length < 63 ? tok.length : 63;
         if (tok.start && len > 0) {
-            memcpy(tokens[count].text, tok.start, len);
+            runtime_memcpy(tokens[count].text, tok.start, len);
         }
         tokens[count].text[len] = '\0';
         count++;
@@ -38,7 +42,7 @@ int tokenize_line_fast(const char *text, FastToken *tokens, int max_tokens) {
 bool is_label_line(const FastToken *tokens, int count) {
     if (count <= 0) return false;
     if (tokens[0].type == TOK_IDENT) {
-        size_t len = strlen(tokens[0].text);
+        size_t len = runtime_strlen(tokens[0].text);
         if (len > 1 && tokens[0].text[len - 1] == ':') {
             return true;
         }
@@ -89,16 +93,16 @@ void reformat_pass1_analyze(VMContext *vm, ReformatPlan *plan) {
     plan->total_lines = (int)line_count;
 
     const char *curr_fn = vm_get_current_filename(vm);
-    if (curr_fn && strlen(curr_fn) > 0 && strcmp(curr_fn, "untitled") != 0) {
+    if (curr_fn && runtime_strlen(curr_fn) > 0 && runtime_strcmp(curr_fn, "untitled") != 0) {
         plan->has_filename = true;
-        snprintf(plan->filename, sizeof(plan->filename), "%s", curr_fn);
+        runtime_snprintf(plan->filename, sizeof(plan->filename), "%s", curr_fn);
     } else {
         plan->has_filename = false;
         plan->filename[0] = '\0';
     }
 
     ReformatBlockStack stack;
-    memset(&stack, 0, sizeof(stack));
+    runtime_memset(&stack, 0, sizeof(stack));
 
     BlockRange closed_blocks[MAX_BLOCK_RANGES];
     int closed_block_count = 0;
@@ -125,9 +129,9 @@ void reformat_pass1_analyze(VMContext *vm, ReformatPlan *plan) {
 
         if (is_label_line(tokens, tok_cnt) && label_count < 128) {
             char lbl[64];
-            snprintf(lbl, sizeof(lbl), "%s", tokens[0].text);
-            lbl[strlen(lbl) - 1] = '\0';
-            snprintf(labels[label_count].name, sizeof(labels[label_count].name), "%s", lbl);
+            runtime_snprintf(lbl, sizeof(lbl), "%s", tokens[0].text);
+            lbl[runtime_strlen(lbl) - 1] = '\0';
+            runtime_snprintf(labels[label_count].name, sizeof(labels[label_count].name), "%s", lbl);
             labels[label_count].line = line_num;
             labels[label_count].referenced = false;
             label_count++;
@@ -136,7 +140,7 @@ void reformat_pass1_analyze(VMContext *vm, ReformatPlan *plan) {
         for (int k = 0; k < tok_cnt; k++) {
             if ((tokens[k].kw == KW_GOTO || tokens[k].kw == KW_GOSUB) && k + 1 < tok_cnt) {
                 if (goto_count < 128) {
-                    snprintf(gotos[goto_count].target, sizeof(gotos[goto_count].target), "%s", tokens[k + 1].text);
+                    runtime_snprintf(gotos[goto_count].target, sizeof(gotos[goto_count].target), "%s", tokens[k + 1].text);
                     gotos[goto_count].line = line_num;
                     goto_count++;
                 }
@@ -170,11 +174,11 @@ void reformat_pass1_analyze(VMContext *vm, ReformatPlan *plan) {
         if (pop_type != BLOCK_NONE && last_opener_line > 0 && last_opener_type == pop_type) {
             if (i > 0 && lines[i - 1].line_number == last_opener_line) {
                 char what[256], why[256], how[256];
-                snprintf(what, sizeof(what), "Empty block body between %s (line %lld) and %s (line %lld)",
+                runtime_snprintf(what, sizeof(what), "Empty block body between %s (line %lld) and %s (line %lld)",
                          get_block_name(pop_type), (long long)last_opener_line,
                          get_expected_closer(pop_type), (long long)line_num);
-                snprintf(why, sizeof(why), "%s", "An empty block body usually indicates dead code or incomplete logic.");
-                snprintf(how, sizeof(how), "%s", "Add statements inside the block or remove the empty block pair.");
+                runtime_snprintf(why, sizeof(why), "%s", "An empty block body usually indicates dead code or incomplete logic.");
+                runtime_snprintf(how, sizeof(how), "%s", "Add statements inside the block or remove the empty block pair.");
                 add_diagnostic(plan, DIAG_WARNING, line_num, what, why, how);
             }
         }
@@ -183,6 +187,12 @@ void reformat_pass1_analyze(VMContext *vm, ReformatPlan *plan) {
             if (stack.depth < REFORMAT_MAX_NESTING) {
                 stack.entries[stack.depth].type = push_type;
                 stack.entries[stack.depth].line_opened = line_num;
+                stack.entries[stack.depth].loop_var[0] = '\0';
+                if (push_type == BLOCK_FOR && tok_cnt > 1) {
+                    int v_idx = 1;
+                    if (tokens[1].kw == KW_LET && tok_cnt > 2) v_idx = 2;
+                    runtime_strncpy(stack.entries[stack.depth].loop_var, tokens[v_idx].text, sizeof(stack.entries[0].loop_var) - 1);
+                }
                 stack.depth++;
             }
             last_opener_line = line_num;
@@ -192,10 +202,10 @@ void reformat_pass1_analyze(VMContext *vm, ReformatPlan *plan) {
         if (pop_type != BLOCK_NONE) {
             if (stack.depth == 0) {
                 char what[256], why[256], how[256];
-                snprintf(what, sizeof(what), "Block closer '%s' at line %lld has no matching opener",
+                runtime_snprintf(what, sizeof(what), "Block closer '%s' at line %lld has no matching opener",
                          get_expected_closer(pop_type), (long long)line_num);
-                snprintf(why, sizeof(why), "%s", "Unexpected block closer without a corresponding opener breaks program structure.");
-                snprintf(how, sizeof(how), "%s", "Remove the orphaned closer statement or add the missing block opener.");
+                runtime_snprintf(why, sizeof(why), "%s", "Unexpected block closer without a corresponding opener breaks program structure.");
+                runtime_snprintf(how, sizeof(how), "%s", "Remove the orphaned closer statement or add the missing block opener.");
                 add_diagnostic(plan, DIAG_ERROR, line_num, what, why, how);
             } else {
                 ReformatBlockType top_type = stack.entries[stack.depth - 1].type;
@@ -204,11 +214,11 @@ void reformat_pass1_analyze(VMContext *vm, ReformatPlan *plan) {
 
                 if (top_type != pop_type) {
                     char what[256], why[256], how[256];
-                    snprintf(what, sizeof(what), "Block type mismatch — '%s' at line %lld expected '%s', found '%s' at line %lld",
+                    runtime_snprintf(what, sizeof(what), "Block type mismatch — '%s' at line %lld expected '%s', found '%s' at line %lld",
                              get_block_name(top_type), (long long)open_line,
                              get_expected_closer(top_type), get_expected_closer(pop_type), (long long)line_num);
-                    snprintf(why, sizeof(why), "%s", "Mismatched block closers indicate crossed nesting or invalid structure.");
-                    snprintf(how, sizeof(how), "%s", "Ensure nested blocks are properly terminated in reverse order of opening.");
+                    runtime_snprintf(why, sizeof(why), "%s", "Mismatched block closers indicate crossed nesting or invalid structure.");
+                    runtime_snprintf(how, sizeof(how), "%s", "Ensure nested blocks are properly terminated in reverse order of opening.");
                     add_diagnostic(plan, DIAG_ERROR, line_num, what, why, how);
                 } else if (closed_block_count < MAX_BLOCK_RANGES) {
                     closed_blocks[closed_block_count].type = top_type;
@@ -229,16 +239,16 @@ void reformat_pass1_analyze(VMContext *vm, ReformatPlan *plan) {
 
         char what[256], why[256], how[256];
         if (open_type == BLOCK_SUB || open_type == BLOCK_FUNCTION) {
-            snprintf(what, sizeof(what), "%s at line %lld has no matching END %s",
+            runtime_snprintf(what, sizeof(what), "%s at line %lld has no matching END %s",
                      get_block_name(open_type), (long long)open_line, get_block_name(open_type));
-            snprintf(why, sizeof(why), "%s", "Procedure definitions must be terminated with END SUB or END FUNCTION.");
-            snprintf(how, sizeof(how), "Add 'END %s' at the end of the procedure definition.", get_block_name(open_type));
+            runtime_snprintf(why, sizeof(why), "%s", "Procedure definitions must be terminated with END SUB or END FUNCTION.");
+            runtime_snprintf(how, sizeof(how), "Add 'END %s' at the end of the procedure definition.", get_block_name(open_type));
             add_diagnostic(plan, DIAG_ERROR, open_line, what, why, how);
         } else {
-            snprintf(what, sizeof(what), "%s at line %lld has no matching %s",
+            runtime_snprintf(what, sizeof(what), "%s at line %lld has no matching %s",
                      get_block_name(open_type), (long long)open_line, get_expected_closer(open_type));
-            snprintf(why, sizeof(why), "%s", "Every structured control block must be closed before end of file.");
-            snprintf(how, sizeof(how), "Add '%s' before end of procedure/file.", get_expected_closer(open_type));
+            runtime_snprintf(why, sizeof(why), "%s", "Every structured control block must be closed before end of file.");
+            runtime_snprintf(how, sizeof(how), "Add '%s' before end of procedure/file.", get_expected_closer(open_type));
             add_diagnostic(plan, DIAG_ERROR, open_line, what, why, how);
         }
     }
@@ -246,35 +256,35 @@ void reformat_pass1_analyze(VMContext *vm, ReformatPlan *plan) {
     for (int l = 0; l < label_count; l++) {
         bool ref = false;
         for (int g = 0; g < goto_count; g++) {
-            if (strcasecmp(labels[l].name, gotos[g].target) == 0) {
+            if (runtime_strcasecmp(labels[l].name, gotos[g].target) == 0) {
                 ref = true;
                 break;
             }
         }
         if (!ref) {
             char what[256], why[256], how[256];
-            snprintf(what, sizeof(what), "Unreferenced label '%.128s' at line %lld",
+            runtime_snprintf(what, sizeof(what), "Unreferenced label '%.128s' at line %lld",
                      labels[l].name, (long long)labels[l].line);
-            snprintf(why, sizeof(why), "%s", "Unreferenced labels represent unused target points or dead code.");
-            snprintf(how, sizeof(how), "%s", "Remove the label or update GOTO/GOSUB statements to reference it.");
+            runtime_snprintf(why, sizeof(why), "%s", "Unreferenced labels represent unused target points or dead code.");
+            runtime_snprintf(how, sizeof(how), "%s", "Remove the label or update GOTO/GOSUB statements to reference it.");
             add_diagnostic(plan, DIAG_WARNING, labels[l].line, what, why, how);
         }
     }
 
     for (int g = 0; g < goto_count; g++) {
         char *endptr;
-        double target_line = strtod(gotos[g].target, &endptr);
+        double target_line = runtime_strtod(gotos[g].target, &endptr);
         if (*endptr == '\0' && target_line > 0) {
             for (int r = 0; r < closed_block_count; r++) {
                 if (target_line > closed_blocks[r].start_line && target_line < closed_blocks[r].end_line) {
                     if (gotos[g].line < closed_blocks[r].start_line || gotos[g].line > closed_blocks[r].end_line) {
                         char what[256], why[256], how[256];
-                        snprintf(what, sizeof(what), "GOTO %lld at line %lld jumps into the middle of a %s block (lines %lld-%lld)",
+                        runtime_snprintf(what, sizeof(what), "GOTO %lld at line %lld jumps into the middle of a %s block (lines %lld-%lld)",
                                  (long long)target_line, (long long)gotos[g].line,
                                  get_block_name(closed_blocks[r].type),
                                  (long long)closed_blocks[r].start_line, (long long)closed_blocks[r].end_line);
-                        snprintf(why, sizeof(why), "%s", "Jumping directly into a structured block bypasses initialization and breaks control flow.");
-                        snprintf(how, sizeof(how), "%s", "Restructure the GOTO target to enter the block at its opener statement.");
+                        runtime_snprintf(why, sizeof(why), "%s", "Jumping directly into a structured block bypasses initialization and breaks control flow.");
+                        runtime_snprintf(how, sizeof(how), "%s", "Restructure the GOTO target to enter the block at its opener statement.");
                         add_diagnostic(plan, DIAG_WARNING, gotos[g].line, what, why, how);
                     }
                 }

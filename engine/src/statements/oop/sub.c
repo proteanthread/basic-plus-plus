@@ -10,13 +10,48 @@
 // ---- Includes ----
 
 #include "statements/oop/sub_internal.h"
+#include "runtime/language_descriptor.h"
+#include "runtime/string/memops.h"
+
+static const LangDesc g_sub_desc = {
+    .name = "SUB",
+    .category = "Procedures & OOP",
+    .syntax = "SUB name [(param1, param2...)] [STATIC]",
+    .description = "Declares a named subroutine block with formal parameters.",
+    .error_summary = "Error 2: Syntax Error, Error 35: Undefined SUB",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SAFE,
+    .type = FEATURE_STATEMENT
+};
+
+static const LangDesc g_end_sub_desc = {
+    .name = "END SUB",
+    .category = "Procedures & OOP",
+    .syntax = "END SUB",
+    .description = "Terminates a SUB procedure block.",
+    .error_summary = "Error 2: Syntax Error",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SAFE,
+    .type = FEATURE_STATEMENT
+};
+
+static const LangDesc g_procedure_desc = {
+    .name = "PROCEDURE",
+    .category = "Procedures & OOP",
+    .syntax = "PROCEDURE name [(param_list)]",
+    .description = "Declares a named procedure block.",
+    .error_summary = "Error 2: Syntax Error",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SAFE,
+    .type = FEATURE_STATEMENT
+};
 
 //
 // ---- Statement Handlers ----
 
 BppError stmt_sub_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     if (vm_is_running(vm)) {
         BppLineNumber target_line = 0;
@@ -62,20 +97,20 @@ BppError stmt_sub_handler(VMContext *vm, LexerContext *lex) {
 
 BppError stmt_end_sub_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     return err;
 }
 
 BppError stmt_subend_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     return err;
 }
 
 BppError stmt_subexit_handler(VMContext *vm, LexerContext *lex) {
     (void)lex;
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     BppSubFrame frame;
     if (!vm_sub_pop(vm, &frame)) {
         err.code = 33;
@@ -94,34 +129,13 @@ BppError stmt_procedure_handler(VMContext *vm, LexerContext *lex) {
 // ---- Metadata Registration ----
 
 void stmt_sub_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "SUB",
-        .category = "Procedures & OOP",
-        .syntax = "SUB name [(param1, param2...)] [STATIC]",
-        .help_text = "Declares a named subroutine block with formal parameters.",
-        .error_codes = "Error 2: Syntax Error, Error 35: Undefined SUB"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_sub_desc);
 }
 
 void stmt_end_sub_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "END SUB",
-        .category = "Procedures & OOP",
-        .syntax = "END SUB",
-        .help_text = "Terminates a SUB procedure block.",
-        .error_codes = "Error 2: Syntax Error"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_sub_desc);
 }
 
 void stmt_procedure_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "PROCEDURE",
-        .category = "Procedures & OOP",
-        .syntax = "PROCEDURE name [(param_list)]",
-        .help_text = "Declares a named procedure block.",
-        .error_codes = "Error 2: Syntax Error"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_sub_desc);
 }

@@ -1,31 +1,72 @@
-INPUT Interactive Console & File Input Statement
-================================================
+TITLE: INPUT
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/core/io/input.c
+GENERATED: no, hand-written
+STATUS: current
 
-Reads interactive user input from the console, or comma-delimited data fields from an open file.
+==============================================================================
+INPUT KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: input.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (arrays.h, arrays.c, ctype.h, ctype.c)
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libcore (strings.h, strings.c, using.h, variables.h, variables.c)
+    // NEEDS: libengine (eval.h, eval.c, stmt.h, string.c)
+    // NEEDS: libkernel (vdev.h, vdev.c)
+    // Provides runtime implementation for the INPUT statement in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Prompts the user or reads values from console input into target variables.
 
-    INPUT [;] ["prompt" {; | ,}] variable [, variable...]
-    INPUT #filenum%, variable [, variable...]
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    INPUT [;] ["prompt";] variable[, ...]
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM INPUT Demonstration
+    20 PRINT "INPUT executed successfully."
 
-ERROR CONDITIONS
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error, Error 13: Type Mismatch, Error 52: Bad File Number
 
-  - Error 52 (ERR_BAD_FILE_NUMBER): File channel is not open for input.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Console I/O
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SAFE
 
-
-OPERATIONAL NOTES
-----------------------------------------------------------------------
-
-  Supports trailing semicolons to suppress carriage returns.
-
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 INPUT "Enter your name: ", Name$
-    20 INPUT "Enter age: "; Age%
-    30 PRINT "Hello, "; Name$; " Age: "; Age%
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  INPUT
+Category              Console I/O
+Syntax                INPUT [;] ["prompt";] variable[, ...]
+Description           Prompts the user or reads values from console input...
+Error Summary         Error 2: Syntax Error, Error 13: Type Mismatch, Err...
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/core/io/input.c

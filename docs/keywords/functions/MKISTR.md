@@ -1,37 +1,71 @@
-# `MKI$` / `MKISTR` Make Integer String Function
+<!--
+Title:        MKISTR
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/eval/builtins/string_fn.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Function Definition
+# `MKISTR` Keyword Reference
 
-The `MKI$` (Make Integer String) function converts a signed integer value into a 2-byte binary string representation for storage in random access file records or binary communication buffers.
+## Source Header
 
-### Syntax Signatures:
-```basic
-result$ = MKI$(integer_expr%)
+```c
+// FILENAME: string_fn.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore, libengine
+// Provides core logic and interface definitions for string_fn within BASIC++.
+//
+// ---- Includes ----
 ```
 
-### Operational Rules:
-- **Output Length**: Exactly 2 bytes.
-- **Range Check**: Clamped or wrapped within signed 16-bit bounds ($-32768 \dots 32767$).
-- **Inverse Operation**: Inverse of `CVI(str$)`.
+## 1. Description & Usage
+
+Encodes a 16-bit signed integer into a 2-byte fielded binary string.
+
+## 2. Syntax
+
+```basic
+MKISTR(int_val%) | MKI$(int_val%)
+```
+
+## 3. Code Example
+
+```basic
+10 Val = MKISTR(int_val%) | MKI$(int_val%)
+20 PRINT "Result: "; Val
+```
+
+## 4. Error Conditions
+
+Error 14: Out of String Space
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: GW-BASIC, QBASIC, BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Binary & Byte Conversion
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_PURE
 
 ---
 
-## 2. Language Dialect & Compatibility
+## LanguageDescriptor (LangDesc) Quick Reference
 
-| Dialect | Syntax | Return Length | Format |
-|---|---|---|---|
-| **GW-BASIC / BASICA** | `MKI$(X%)` | 2 bytes | 16-bit signed |
-| **QuickBASIC / QBASIC** | `MKI$(X%)` | 2 bytes | 16-bit signed |
-| **BASIC++ (Master)** | `MKI$(X%)` / `MKISTR(X%)` | 2 bytes | 16-bit signed |
-
----
-
-## 3. Examples
-
-```basic
-10 OPEN "R", #1, "indices.dat", 2
-20 FIELD #1, 2 AS IDX_RAW$
-30 LSET IDX_RAW$ = MKI$(1024)
-40 PUT #1, 1
-50 CLOSE #1
-```
+| Field | Value |
+|---|---|
+| Name | MKISTR |
+| Category | Binary & Byte Conversion |
+| Syntax | MKISTR(int_val%) \| MKI$(int_val%) |
+| Description | Encodes a 16-bit signed integer into a 2-byte fielded binary string. |
+| Error Summary | Error 14: Out of String Space |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_PURE |
+| Feature Type | FEATURE_FUNCTION |
+| Delimiter Mask | none |
+| Compatibility | GW-BASIC, QBASIC, BASIC++ Standard |
+| Since Version | 6.0.0 |
+| Source File | engine/src/eval/builtins/string_fn.c |

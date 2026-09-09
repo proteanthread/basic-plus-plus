@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
 // NEEDS: libcore (memops.h, memops.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c)
+// NEEDS: libcore (language_descriptor.h)
 // NEEDS: libcore (packet_sniff.h, packet_sniff.c, strops.h, strops.c)
 // NEEDS: libengine (eval.h, eval.c, stmt_sniff.h)
 // Implements SNIFF statement handler for promiscuous packet capture.
@@ -13,7 +13,7 @@
 #include "statements/network/stmt_sniff.h"
 #include "runtime/packet_sniff.h"
 #include "eval/eval.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/string/strops.h"
 #include "runtime/string/memops.h"
 
@@ -76,6 +76,17 @@ BppError stmt_sniff_handler(VMContext *vm, LexerContext *lex) {
     return packet_sniff_start(ch, filter);
 }
 
+static const LangDesc g_sniff_desc = {
+    .name = "SNIFF",
+    .category = "Hardware & Network",
+    .syntax = "SNIFF [ch] [, filter$] | SNIFF ON|OFF|STOP",
+    .description = "Controls promiscuous network packet capture and filtering.",
+    .error_summary = "None",
+    .subsystem = SUBSYSTEM_HARDWARE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_STATEMENT
+};
+
 void stmt_sniff_register(void) {
-    // Registered in VM dispatch
+    lang_desc_register(&g_sniff_desc);
 }

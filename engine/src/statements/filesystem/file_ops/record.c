@@ -2,7 +2,7 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
-// NEEDS: libcore (file.h, file.c, micro_lib_metadata.h, micro_lib_metadata.c)
+// NEEDS: libcore (file.h, file.c, language_descriptor.h)
 // NEEDS: libcore (string.h)
 // NEEDS: libengine (class.h, class.c, eval.h, eval.c, record.h, string.c)
 // NEEDS: libkernel (errors.h)
@@ -14,24 +14,29 @@
 #include "statements/oop/structure/class.h"
 #include "eval/eval.h"
 #include "runtime/file.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "types/errors.h"
-#include <string.h>
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_record_desc = {
+    .name = "RECORD",
+    .category = "Filesystem I/O",
+    .syntax = "RECORD [#]channel, record_number | RECORD record_name ... END RECORD",
+    .description = "Sets the next record pointer for direct file I/O (DEC PDP-10), or defines a structured record type (VAX BASIC).",
+    .error_summary = "Error 2: Syntax Error, Error 52: Bad File Number, Error 63: Bad Record Number",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_STATEMENT
+};
 
 void stmt_record_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "RECORD",
-        .category = "Filesystem I/O",
-        .syntax = "RECORD [#]channel, record_number | RECORD record_name ... END RECORD",
-        .help_text = "Sets the next record pointer for direct file I/O (DEC PDP-10), or defines a structured record type (VAX BASIC).",
-        .error_codes = "Error 2: Syntax Error, Error 52: Bad File Number, Error 63: Bad Record Number"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_record_desc);
 }
 
 BppError stmt_record_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BppToken peek = lex_peek(lex);
     if (peek.type == TOK_IDENT) {

@@ -1,16 +1,69 @@
-CPOW Complex Power / Exponentiation Function
-======================================================================
+TITLE: CPOW
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/module/mathext.c
+GENERATED: no, hand-written
+STATUS: current
 
-The CPOW function raises a complex base to a complex exponent (z^w).
+==============================================================================
+CPOW KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: mathext.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (funcreg.h, funcreg.c, math.h)
+    // NEEDS: libengine (math.c)
+    // Provides core logic and interface definitions for mathext within BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Raises complex number base to complex or scalar power exponent.
 
-    res = CPOW(complex_base, complex_exp)
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    CPOW(base, exponent)
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = CPOW(base, e10ponent)
+    20 PRINT "Result: "; Val
 
-CODE EXAMPLES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 13: Type Mismatch
 
-    10 PRINT REAL(CPOW(COMPLEX(2, 0), COMPLEX(3, 0)))   : REM Outputs 8
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Math & Complex Numbers
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_PURE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  CPOW
+Category              Math & Complex Numbers
+Syntax                CPOW(base, exponent)
+Description           Raises complex number base to complex or scalar pow...
+Error Summary         Error 13: Type Mismatch
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_PURE
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         BASIC++ Standard
+Since Version         6.0.0
+Source File           engine/src/module/mathext.c

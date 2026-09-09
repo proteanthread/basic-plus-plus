@@ -9,7 +9,8 @@
 // ---- Includes ----
 
 #include "interop/interop_error.h"
-#include <string.h>
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
 
 #if defined(_MSC_VER)
     #define INTEROP_THREAD_LOCAL __declspec(thread)

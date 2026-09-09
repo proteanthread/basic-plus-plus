@@ -2,36 +2,137 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
-// NEEDS: libcore (strings.h, strings.c)
-// NEEDS: libengine (bsave.h, eval.h, eval.c, string.c)
+// NEEDS: libcore, libengine, libplatform
 // Provides runtime implementation for the BSAVE statement in BASIC++.
-//
-// ---- Includes ----
 
 #include "statements/filesystem/binary_ops/bsave.h"
-#include "runtime/micro_lib_metadata.h"
+#include "statements/filesystem/binary_ops/qheader.h"
+#include "runtime/language_descriptor.h"
 #include "eval/eval.h"
 #include "runtime/strings.h"
-#include <string.h>
+#include "runtime/string.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "platform/platform.h"
+#include "memory/segmented_mem.h"
+#include "bios/bios.h"
+#include "statements/system/hardware/def_seg.h"
+#include "types/errors.h"
+
+static const LangDesc g_bsave_desc = {
+    .name = "BSAVE",
+    .category = "File I/O & Memory",
+    .syntax = "BSAVE filename$, offset%, length%",
+    .description = "Saves a block of memory with authentic 7-byte vintage binary header to disk.",
+    .error_summary = "Error 2: Syntax Error, Error 5: Illegal Function Call, Error 70: Permission Denied",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_STATEMENT
+};
 
 void stmt_bsave_register(void) {
-    MicroLibMetadata meta = {
-        .name = "BSAVE",
-        .category = "File I/O & Memory",
-        .syntax = "BSAVE filename$, offset%, length%",
-        .help_text = "Saves a block of memory as a binary file on disk.",
-        .error_codes = "Error 2: Syntax Error, Error 5: Illegal Function Call"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_bsave_desc);
 }
 
 BppError stmt_bsave_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
-    (void)vm; (void)lex;
-    while (lex_peek(lex).type != TOK_EOL && lex_peek(lex).type != TOK_EOF) {
-        lex_next(lex);
+    runtime_memset(&err, 0, sizeof(err));
+    if (!vm || !lex) {
+        err.code = ERR_ILLEGAL_FUNCTION_CALL;
+        return err;
     }
+
+    BValue fn_val = eval_expression(vm, lex, &err);
+    if (err.code != 0) return err;
+    if (fn_val.type != VAL_STRING || !fn_val.as.string) {
+        if (fn_val.type == VAL_STRING && fn_val.as.string) {
+            str_release(vm_get_str(vm), fn_val.as.string);
+        }
+        err.code = ERR_TYPE_MISMATCH;
+        return err;
+    }
+
+    if (lex_peek(lex).type == TOK_COMMA) {
+        lex_next(lex);
+    } else {
+        str_release(vm_get_str(vm), fn_val.as.string);
+        err.code = ERR_SYNTAX;
+        err.message = "Expected comma after filename";
+        return err;
+    }
+
+    BValue off_val = eval_expression(vm, lex, &err);
+    if (err.code != 0) {
+        str_release(vm_get_str(vm), fn_val.as.string);
+        return err;
+    }
+
+    if (lex_peek(lex).type == TOK_COMMA) {
+        lex_next(lex);
+    } else {
+        str_release(vm_get_str(vm), fn_val.as.string);
+        err.code = ERR_SYNTAX;
+        err.message = "Expected comma after offset";
+        return err;
+    }
+
+    BValue len_val = eval_expression(vm, lex, &err);
+    if (err.code != 0) {
+        str_release(vm_get_str(vm), fn_val.as.string);
+        return err;
+    }
+
+    uint16_t offset = (uint16_t)off_val.as.number;
+    uint16_t length = (uint16_t)len_val.as.number;
+    uint16_t seg = 0;
+#ifndef BASIC_LITE_BUILD
+    VMemContext *vmem = vm_get_vmem(vm);
+    if (vmem) seg = vmem_get_def_seg(vmem);
+#endif
+    if (seg == 0) {
+        seg = runtime_get_def_seg();
+    }
+
+    const char *path = str_data(fn_val.as.string);
+    void *fp = platform_file_open(path, "wb");
+    if (!fp) {
+        str_release(vm_get_str(vm), fn_val.as.string);
+        err.code = ERR_PERMISSION_DENIED;
+        return err;
+    }
+
+    uint8_t hdr[7];
+    hdr[0] = QHEADER_MAGIC_PRIMARY;
+    hdr[1] = (uint8_t)(seg & 0xFF);
+    hdr[2] = (uint8_t)((seg >> 8) & 0xFF);
+    hdr[3] = (uint8_t)(offset & 0xFF);
+    hdr[4] = (uint8_t)((offset >> 8) & 0xFF);
+    hdr[5] = (uint8_t)(length & 0xFF);
+    hdr[6] = (uint8_t)((length >> 8) & 0xFF);
+    platform_file_write(fp, hdr, 7);
+
+    for (uint32_t i = 0; i < length; i++) {
+        uint8_t b = 0;
+        uint32_t phys_addr = ((uint32_t)seg << 4) + (uint32_t)(offset + i);
+        if (vm_get_bios(vm)) {
+            b = bios_peek(vm_get_bios(vm), phys_addr);
+        }
+#ifndef BASIC_LITE_BUILD
+        else if (vmem) {
+            vmem_peek(vmem, (uint16_t)(offset + i), &b);
+        }
+#endif
+        platform_file_write(fp, &b, 1);
+    }
+
+    platform_file_close(fp);
+    str_release(vm_get_str(vm), fn_val.as.string);
     return err;
 }
+
+// ---- Header Layout Table ----
+// 7-Byte Vintage Header (BSaveHeader):
+// [00]     Magic Byte (0xFD)
+// [01..02] Segment Address (16-bit little-endian)
+// [03..04] Offset Address (16-bit little-endian)
+// [05..06] Byte Length (16-bit little-endian, up to 65535 bytes)

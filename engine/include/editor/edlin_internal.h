@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libstandard (edlin.c, edlin_buf.c, edlin_cmd.c, edlin_exec.c)
 // NEEDS: libcore (ctype.h, ctype.c, hal.h, memops.h, memops.c)
-// NEEDS: libcore (num_parse.h, num_parse.c, snprintf.h, snprintf.c)
+// NEEDS: libcore (num_parse.h, num_parse.c, runtime_snprintf.h, runtime_snprintf.c)
 // NEEDS: libcore (strops.h, strops.c)
 // NEEDS: libengine (vm.h)
 // NEEDS: libstandard (editor.h, editor.c, standalone_runner.h)
@@ -35,13 +35,6 @@
 #include "standalone_runner.h"
 #endif
 
-#if defined(_WIN32) || defined(WIN32)
-#include <windows.h>
-#else
-#include <sys/ioctl.h>
-#include <termios.h>
-#include <unistd.h>
-#endif
 
 static inline bool hal_file_read_line(HalContext *hal, IoHandle h, char *buf, size_t max_len) {
     if (!hal || !hal->io.file_read || h == IO_HANDLE_INVALID || !buf || max_len == 0) return false;

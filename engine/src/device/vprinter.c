@@ -6,7 +6,7 @@
 // NEEDED BY: libengine (context.c, exec_control_internal.h, exec_dispatch.c)
 // NEEDED BY: libengine (exec_internal.h, exec_interrupt.c, llist.c, lprint.c)
 // NEEDS: libcore (alloc.h, alloc.c, ctype.h, ctype.c, hal.h)
-// NEEDS: libcore (memops.h, memops.c, snprintf.h, snprintf.c)
+// NEEDS: libcore (memops.h, memops.c, runtime_snprintf.h, runtime_snprintf.c)
 // NEEDS: libcore (strops.h, strops.c)
 // NEEDS: libkernel (pdf_writer.h, pdf_writer.c, vprinter.h)
 // Implements virtual device and graphics rendering logic for vprinter.

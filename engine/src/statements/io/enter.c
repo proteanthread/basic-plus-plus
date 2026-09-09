@@ -2,7 +2,7 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
-// NEEDS: libcore (file.h, file.c, micro_lib_metadata.h, micro_lib_metadata.c)
+// NEEDS: libcore (file.h, file.c, language_descriptor.h)
 // NEEDS: libcore (string.h, strings.h, strings.c, variables.h, variables.c)
 // NEEDS: libengine (enter.h, eval.h, eval.c, string.c)
 // NEEDS: libkernel (errors.h)
@@ -16,25 +16,30 @@
 #include "runtime/file.h"
 #include "runtime/variables.h"
 #include "runtime/strings.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "platform/platform.h"
 #include "types/errors.h"
-#include <string.h>
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_enter_desc = {
+    .name = "ENTER",
+    .category = "Input / Output",
+    .syntax = "ENTER [#channel,] timeout_sec, status_var, string_var",
+    .description = "Performs timed input from terminal or channel with status return (HP 2000 TSB).",
+    .error_summary = "Error 2: Syntax Error, Error 13: Type Mismatch, Error 52: Bad File Number",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_STATEMENT
+};
 
 void stmt_enter_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "ENTER",
-        .category = "Input / Output",
-        .syntax = "ENTER [#channel,] timeout_sec, status_var, string_var",
-        .help_text = "Performs timed input from terminal or channel with status return (HP 2000 TSB).",
-        .error_codes = "Error 2: Syntax Error, Error 13: Type Mismatch, Error 52: Bad File Number"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_enter_desc);
 }
 
 BppError stmt_enter_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BppToken tok = lex_peek(lex);
     if (tok.type == TOK_KEYWORD && tok.as.keyword == KW_ENTER) {
@@ -100,7 +105,7 @@ BppError stmt_enter_handler(VMContext *vm, LexerContext *lex) {
     }
     char status_var_name[64];
     size_t slen = (tok.length < sizeof(status_var_name) - 1) ? tok.length : sizeof(status_var_name) - 1;
-    memcpy(status_var_name, tok.start, slen);
+    runtime_memcpy(status_var_name, tok.start, slen);
     status_var_name[slen] = '\0';
 
     tok = lex_next(lex);
@@ -119,7 +124,7 @@ BppError stmt_enter_handler(VMContext *vm, LexerContext *lex) {
     }
     char str_var_name[64];
     size_t vlen = (tok.length < sizeof(str_var_name) - 1) ? tok.length : sizeof(str_var_name) - 1;
-    memcpy(str_var_name, tok.start, vlen);
+    runtime_memcpy(str_var_name, tok.start, vlen);
     str_var_name[vlen] = '\0';
 
     char line_buf[1024] = "";
@@ -169,21 +174,21 @@ BppError stmt_enter_handler(VMContext *vm, LexerContext *lex) {
     }
 
     // Remove trailing newlines
-    size_t llen = strlen(line_buf);
+    size_t llen = runtime_strlen(line_buf);
     while (llen > 0 && (line_buf[llen - 1] == '\r' || line_buf[llen - 1] == '\n')) {
         line_buf[--llen] = '\0';
     }
 
     // Assign status code
     BValue s_val;
-    memset(&s_val, 0, sizeof(s_val));
+    runtime_memset(&s_val, 0, sizeof(s_val));
     s_val.type = VAL_NUMBER;
     s_val.as.number = (double)status_code;
     var_assign(vm_get_var(vm), status_var_name, s_val);
 
     // Assign input string
     BValue out_str;
-    memset(&out_str, 0, sizeof(out_str));
+    runtime_memset(&out_str, 0, sizeof(out_str));
     out_str.type = VAL_STRING;
     out_str.as.string = str_create(vm_get_str(vm), line_buf, llen);
     var_assign(vm_get_var(vm), str_var_name, out_str);

@@ -10,13 +10,14 @@
 #ifndef SUB_INTERNAL_H
 #define SUB_INTERNAL_H
 
-#include <ctype.h>
+#include "runtime/ctype/ctype.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include "runtime/format/snprintf.h"
+#include "runtime/memory/alloc.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
 
 #include "core/struct.h"
 #include "device/vdev.h"
@@ -26,7 +27,7 @@
 #include "platform/platform.h"
 #include "runtime/arrays.h"
 #include "runtime/map.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/strings.h"
 #include "runtime/variables.h"
 #include "scope/scope.h"

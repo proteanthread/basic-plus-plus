@@ -1,22 +1,66 @@
-LGT Common (Base-10) Logarithm Function
-======================================================================
+TITLE: LGT
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/runtime/math/math.c
+GENERATED: no, hand-written
+STATUS: current
 
-The LGT function computes the base-10 logarithm log10(x).
+==============================================================================
+LGT KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: math.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community -- All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: baspp.exe, bpp.exe, bs.exe, libengine
+    // NEEDS: libcore, libkernel
+    // Implements component functionality for LGT.
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Computes the common logarithm (base-10 logarithm) of positive number x.
 
-    result# = LGT(numeric_expression)
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    LGT(x)
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = LGT(10)
+    20 PRINT "Result: "; Val
 
-DOMAIN
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 5: Illegal Function Call (x <= 0)
 
-  - x > 0 (Error 5 if <= 0).
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Math Functions
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_PURE
 
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 PRINT LGT(10)   : REM Outputs 1
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  LGT
+Category              Math Functions
+Syntax                LGT(x)
+Description           Computes the common logarithm (base-10 logarithm) o...
+Error Summary         Error 5: Illegal Function Call (x <= 0)
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_PURE
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         BASIC++ Standard
+Since Version         6.0.0
+Source File           engine/src/runtime/math/math.c

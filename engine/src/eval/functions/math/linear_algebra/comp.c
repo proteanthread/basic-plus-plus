@@ -2,25 +2,30 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (math_fn.c)
-// NEEDS: libcore (math.h, micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (math.h, language_descriptor.h, string.h)
 // NEEDS: libengine (comp.h, math.c, string.c)
 // Provides runtime implementation for the COMP built-in function in BASIC++.
 //
 // ---- Includes ----
 
 #include "eval/functions/math/linear_algebra/comp.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/math.h"
 #include "runtime/string.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_comp_desc = {
+    .name = "COMP",
+    .category = "Math Functions",
+    .syntax = "COMP(a, b)",
+    .description = "Compares two numeric expressions a and b; returns -1 if a < b, 0 if a == b, and 1 if a > b.",
+    .error_summary = "Error 13: Type Mismatch (COMP expects two numeric arguments)",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_PURE,
+    .type = FEATURE_FUNCTION
+};
 void func_comp_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "COMP",
-        .category = "Math Functions",
-        .syntax = "COMP(a, b)",
-        .help_text = "Compares two numeric expressions a and b; returns -1 if a < b, 0 if a == b, and 1 if a > b.",
-        .error_codes = "Error 13: Type Mismatch (COMP expects two numeric arguments)"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_comp_desc);
 }
 
 BValue func_comp_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err) {

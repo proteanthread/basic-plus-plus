@@ -1,156 +1,256 @@
-# BASIC++ v6.5.2 Debugging and Testing Guide
+<!--
+Title:        Debugging_And_Testing
+Tier:         1
+Applies to:   BASIC++ v6.5.2, all targets
+Authority:    engine/src/statements/system/debug.c,
+              engine/src/statements/debug/diagnostics/test.c,
+              engine/src/debug/logger.c,
+              engine/src/statements/introspection/selftest.c,
+              engine/src/eval/ast/eval_ast.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. INTERACTIVE DEBUGGING
+# Debugging and Testing
 
-BASIC++ provides a built-in interactive debugger accessible from the REPL. The debugger operates at the BASIC line level and provides inspection of variables, call stacks, and execution state without external tools.
+BASIC++ ships an interactive debugger, a declarative unit-test framework, a
+six-level logger and a built-in diagnostic suite. This is a tutorial for all
+four.
 
-### Trace Mode
+---
 
-TRON enables line-number trace mode. When active, the interpreter prints the line number in brackets before executing each line:
+## 1. The debugger
+
+`DEBUG` is the master control:
+
+```
+DEBUG [ON | OFF | DUMP | STACK | MEMORY | VARS]
+      | TRACE | TRON | TROFF | BREAK | CONT | BACKTRACE | INFO | DUMP
+```
+
+| Sub-command | Shows or does |
+|---|---|
+| `DEBUG ON` / `OFF` | Enable or disable the debugger |
+| `DEBUG VARS` | Every variable and its current value |
+| `DEBUG STACK` | The call stack |
+| `DEBUG MEMORY` | Memory usage |
+| `DEBUG DUMP` | Full state dump |
+| `DEBUG BACKTRACE` | How execution reached here |
+| `DEBUG BREAK` | Set a breakpoint |
+| `DEBUG CONT` | Continue from a breakpoint |
+| `DEBUG INFO` | Debugger status |
+
+A first session:
 
 ```basic
-> TRON
-> RUN
-[10][20][30][40]
-Ok
-> TROFF
+10 DEBUG ON
+20 X = 5
+30 DEBUG BREAK
+40 Y = X * 2
+50 PRINT Y
 ```
 
-TROFF disables trace mode. The TRACE statement provides finer control: TRACE ON enables tracing, TRACE OFF disables it, and TRACE STEP enables single-step mode where the interpreter pauses after each line and waits for input.
+At the breakpoint, `DEBUG VARS` shows `X`, `DEBUG STACK` shows where you are,
+and `DEBUG CONT` resumes.
 
-### Breakpoints
+Errors: 2 (syntax), 99 (assertion failed).
 
-BREAK n sets a breakpoint at line n. When the interpreter reaches that line during RUN, it pauses execution and enters the debugger prompt. From the debugger prompt you can:
+---
 
-- PRINT expr — Evaluate and display an expression.
-- VARS — Display all variable values.
-- CONT — Continue execution until the next breakpoint or end of program.
-- BACKTRACE — Display the call stack (GOSUB and SUB/FUNCTION frames).
-- DUMP — Display internal VM state including stack depths and error state.
+## 2. Tracing
 
-BREAK LIST shows all active breakpoints. BREAK CLEAR n removes a breakpoint. BREAK CLEAR removes all breakpoints. The maximum breakpoint count is 64 on modern builds, 8 on FreeDOS, and 4 on embedded.
-
-### The DEBUG Command
-
-DEBUG ON enables verbose debug output, which includes lexer token trace, parser decisions, and expression evaluation steps. This produces substantial output and is primarily useful for diagnosing interpreter bugs rather than BASIC program bugs. DEBUG OFF disables it.
-
-### The STOP Statement
-
-STOP pauses program execution and enters the debugger at the current line. Variables are preserved and CONT resumes execution. STOP is equivalent to a breakpoint that is embedded in the source code rather than set interactively.
-
-## 2. THE SELFTEST COMMAND
-
-SELFTEST runs the interpreter's built-in validation suite. It exercises the lexer, parser, expression evaluator, control flow structures, string operations, array operations, error handling, and virtual device layer. SELFTEST is the primary verification mechanism for build correctness.
+Three ways in, all doing the same thing at different granularities.
 
 ```basic
-> SELFTEST
+TRON
 ```
 
-Run from the command line:
-
-```bash
-baspp -c "SELFTEST"
-bpp -c "SELFTEST"
-```
-
-Both baspp and bpp must pass SELFTEST with zero failures. A failure indicates a regression in the interpreter and must be investigated before any other work proceeds.
-
-## 3. THE ASSERT STATEMENT
-
-ASSERT tests a condition and reports an error if it evaluates to false:
+Trace on. Every statement prints its line number in brackets, `[100]`, as it
+executes. `TROFF` turns it off. These are the vintage Microsoft spellings and
+they behave the way a GW-BASIC programmer expects.
 
 ```basic
-10 X = 42
-20 ASSERT X = 42
-30 ASSERT X > 0
-40 ASSERT X < 100
+TRACE ON
+TRACE OFF
+TRACE 500
 ```
 
-When an ASSERT fails, it reports the line number, the condition text, and the actual values of the operands. ASSERT does not stop program execution by default; it increments the fail counter and continues. Use ASSERT in combination with TEST/ENDTEST blocks for structured testing.
+`TRACE` takes a line number, which starts tracing only when execution reaches
+that line. On a long program this is the difference between a readable trace
+and ten thousand lines of noise.
 
-## 4. TEST BLOCKS
+Both are implemented in `engine/src/debug/logger.c`.
 
-TEST and ENDTEST bracket a named test block. The interpreter tracks pass, fail, and total assertion counts within each block:
+---
+
+## 3. Assertions
+
+```
+ASSERT condition [, message$]
+```
+
+Evaluates the condition; if false, raises **error 255, Assertion Failure**,
+and halts.
 
 ```basic
-10 TEST "Arithmetic Operations"
-20   ASSERT 2 + 2 = 4
-30   ASSERT 10 / 3 > 3.33
-40   ASSERT 10 MOD 3 = 1
-50   ASSERT INT(3.7) = 3
-60   ASSERT FIX(-3.7) = -3
-70 ENDTEST
-80 TEST "String Operations"
-90   ASSERT LEN("HELLO") = 5
-100  ASSERT LEFT$("HELLO", 3) = "HEL"
-110  ASSERT MID$("HELLO", 2, 3) = "ELL"
-120  ASSERT INSTR("HELLO WORLD", "WORLD") = 7
-130 ENDTEST
+100 ASSERT Balance >= 0, "Balance went negative"
+110 ASSERT LEN(Name$) > 0
 ```
 
-After a TEST block completes, the interpreter prints the test name, the pass count, the fail count, and the total. At program end, a summary of all test blocks is displayed.
+Two notes. The error code is 255, distinct from the 99 the debugger raises,
+so you can tell an assertion from a debugger stop in an error handler. And
+because assertions halt, they belong at the boundaries of a routine — checking
+what came in and what is going out — rather than sprinkled through the middle.
 
-## 5. THE VERIFY STATEMENT
+---
 
-VERIFY tests a condition similar to ASSERT but unconditionally stops program execution if the condition is false. Use VERIFY for critical invariants that indicate a fundamental problem if violated:
+## 4. Unit tests
+
+```
+TEST "suite_name" [SUBCASE "case_name"]
+```
+
+A declarative test framework. `TEST` opens a suite, a second `TEST` closes it
+and reports assertion metrics.
 
 ```basic
-10 VERIFY A$ <> ""   ' Stop if input is empty
+100 TEST "String functions"
+110   TEST SUBCASE "LEFT$"
+120     ASSERT LEFT$("HELLO", 2) = "HE"
+130     ASSERT LEFT$("HELLO", 0) = ""
+140   TEST SUBCASE "MID$"
+150     ASSERT MID$("HELLO", 2, 3) = "ELL"
+160 TEST
+170 END
 ```
 
-## 6. THE CHECK STATEMENT
+Subcases group related assertions so a failure report tells you which group
+broke rather than only which line.
 
-CHECK performs a type or state check and reports the result without stopping execution:
+Put your tests in a separate `.bas` file and run it with the script target:
+
+```
+bs tests.bas
+```
+
+That gives you a test run with an exit status, which is what a build needs.
+
+---
+
+## 5. The built-in diagnostic suite
 
 ```basic
-10 CHECK X > 0       ' Reports pass/fail to debug output
+SELFTEST
 ```
 
-## 7. REGRESSION TEST ORGANIZATION
+Runs the engine's own internal diagnostics across the lexer, memory manager,
+string heap, variable table and array subsystem. Errors 1001 through 5003
+indicate which subsystem failed.
 
-Regression tests are BASIC++ programs stored under the tests/ directory. They are organized by category:
+Run it first when behaviour is inexplicable. If `SELFTEST` fails, the problem
+is beneath your program and nothing in your code will fix it.
 
-```text
-tests/
-  gwbasic/              — GW-BASIC compatibility tests
-    test_print.bas      — PRINT statement variants
-    test_for.bas        — FOR/NEXT loops
-    test_if.bas         — IF/THEN/ELSE branching
-    test_while.bas      — WHILE/WEND loops
-    test_select.bas     — SELECT CASE
-    test_string.bas     — String functions
-    test_array.bas      — Array operations
-    test_file.bas       — File I/O
-    test_error.bas      — Error handling
-    test_sub.bas        — SUB/FUNCTION procedures
-    ...
-  categories.json       — Maps categories to test files
-  keywords.json         — Maps keywords to test files
+---
+
+## 6. Logging
+
+Six levels, from `engine/include/basicpp.h`:
+
+```
+BPP_LOG_TRACE  BPP_LOG_DEBUG  BPP_LOG_INFO
+BPP_LOG_WARN   BPP_LOG_ERROR  BPP_LOG_FATAL
 ```
 
-Execute regression tests using baspp directly:
+From BASIC, one statement per level plus a general form:
 
-```bash
-baspp tests/gwbasic/test_print.bas
-baspp tests/gwbasic/test_for.bas
+```basic
+LOGTRACE "entering loop"
+LOGDEBUG "i = " + STR$(I)
+LOGINFO  "file opened"
+LOGWARN  "retrying"
+LOGERROR "open failed"
+LOGGER   "timestamped event", 3
 ```
 
-Never use Python, Bash, or other external script wrappers to run tests. All automation must be written in BASIC++ itself and executed by the interpreter.
+`LOGGER message$, level` writes a timestamped entry to the `USER0:` device or
+the system log sink.
 
-## 8. THE DAP DEBUG SERVER
+**From a C host**, install a sink and engine diagnostics flow into your own
+logging:
 
-The baspp standard edition includes a Debug Adapter Protocol (DAP) server that allows external IDEs to connect and debug BASIC++ programs with a graphical interface. The DAP server is implemented in engine/src/debug/dap_server.c and is part of the libstandard library.
+```c
+void my_sink(BppLogLevel level, const char *tag, const char *message,
+             const char *timestamp, void *userdata) {
+    fprintf(stderr, "[%s] %s: %s\n", timestamp, tag, message);
+}
 
-## 9. STATE SAVE AND RESTORE
+bpp_log_add_sink(ctx, my_sink, BPP_LOG_WARN, NULL);
+```
 
-STATESAVE writes the complete VM state (program, variables, arrays, call stacks, execution position) to a file. STATELOAD restores a saved state. This allows suspending and resuming long-running programs across sessions.
+The `min_level` argument filters at the source, so a `TRACE` sink costs
+nothing when you install it at `WARN`.
 
-## 10. DEBUGGING TIPS
+---
 
-1. Use TRON to trace the execution path when a program produces unexpected results.
-2. Use STOP at a suspected problem line and PRINT to inspect variables.
-3. Use ASSERT liberally within TEST blocks to create reproducible test cases.
-4. Use the ERR variable in an ON ERROR GOTO handler to log which errors occur and where.
-5. Use FRE(0) to check available string heap space if you suspect a memory issue.
-6. Use VARS to dump all active variables when the program state seems wrong.
-7. Use BACKTRACE to inspect the call stack when RETURN produces unexpected jumps.
+## 7. Is BASIC++ an IDE without the GUI?
+
+A fair question, and the honest answer is: **most of one, and the gap is
+specific.**
+
+What is there, and it is more than most languages ship in the box:
+
+| Facility | Provided by |
+|---|---|
+| Editor | `EDIT`, and the editor subsystem with Edit, Vi, Edlin and WordStar personalities |
+| Listing | `LIST`, `LLIST` |
+| Interactive execution | The REPL |
+| Debugger | `DEBUG` with breakpoints, stack, variables, backtrace |
+| Tracing | `TRON`, `TROFF`, `TRACE` |
+| Unit tests | `TEST`, `ASSERT` |
+| Self-diagnosis | `SELFTEST` |
+| Refactoring | `RENAME`, `RENUM`, `REFORMAT` |
+| Static analysis | `REFORMAT CHECK` |
+| Logging | Six levels, host sinks |
+| Introspection | `KEYWORD`, `VARS`, `CATEGORY`, `SPEC%` |
+| Help | `HELP`, the generated keyword database |
+
+Refactoring and static analysis in the language itself is genuinely unusual —
+most languages need a separate tool for what `RENAME SMART` and
+`REFORMAT CHECK` do.
+
+What is missing, stated plainly: there is no watch-window, no step-into or
+step-over as distinct operations, no project or workspace concept, no
+integrated build-and-run cycle across multiple files, and no visual debugger.
+The pieces are present; the integration that would make them one environment
+is not. Calling it a complete IDE would be overclaiming.
+
+See `TUI_Programming` for building an interface over these facilities.
+
+---
+
+## 8. A debugging order that works
+
+1. `SELFTEST` — rule out the engine.
+2. `REFORMAT CHECK` — rule out structure.
+3. `TRON` or `TRACE line` — find where control actually goes.
+4. `DEBUG ON`, `DEBUG BREAK` at the suspect line.
+5. `DEBUG VARS` and `DEBUG STACK` at the break.
+6. `ASSERT` at the boundaries once you know what should be true.
+7. `TEST` around the fixed behaviour so it stays fixed.
+
+## Where the code is
+
+| Concern | Path |
+|---|---|
+| Debugger | `engine/src/statements/system/debug.c` |
+| Tracing and logger | `engine/src/debug/logger.c` |
+| Test framework | `engine/src/statements/debug/diagnostics/test.c` |
+| Self-test | `engine/src/statements/introspection/selftest.c` |
+| Assertions | `engine/src/eval/ast/eval_ast.c` |
+
+## See also
+
+- `Program_Modernization_Tutorial` for `RENAME`, `RENUM`, `REFORMAT`
+- `Error_Handling` for `ON ERROR`, `TRY`, `RAISE`, `HANDLER`
+- `C_Programmers_Guide` for host log sinks
+- `TUI_Programming` for the editor subsystem

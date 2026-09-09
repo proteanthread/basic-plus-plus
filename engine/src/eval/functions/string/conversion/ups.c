@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (string_fn.c)
 // NEEDS: libcore (hal.h, memory.h, memory.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libcore (strings.h, strings.c)
 // NEEDS: libengine (string.c, ups.h)
 // Provides runtime implementation for the UPS built-in function in BASIC++.
@@ -11,20 +11,25 @@
 // ---- Includes ----
 
 #include "eval/functions/string/conversion/ups.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/strings.h"
 #include "runtime/string.h"
 #include "runtime/memory.h"
 #include "hal/hal.h"
+#include "runtime/ctype/ctype.h"
+
+static const LangDesc g_ups_desc = {
+    .name = "UPS$",
+    .category = "String Functions",
+    .syntax = "UPS$(str_expr) | UPS(str_expr)",
+    .description = "Converts all alphabetic characters in a string to uppercase (HP 3000 TSB).",
+    .error_summary = "Error 13: Type Mismatch",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_FUNCTION
+};
 void func_ups_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "UPS$",
-        .category = "String Functions",
-        .syntax = "UPS$(str_expr) | UPS(str_expr)",
-        .help_text = "Converts all alphabetic characters in a string to uppercase (HP 3000 TSB).",
-        .error_codes = "Error 13: Type Mismatch"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_ups_desc);
 }
 
 BValue func_ups_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err) {

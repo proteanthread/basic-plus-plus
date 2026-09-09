@@ -9,7 +9,21 @@
 // ---- Includes ----
 
 #include "bios/bios_cpu8086.h"
+#include "reg/reg_hw.h"
 #include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+
+BiosCpu8086Context* bios_cpu8086_get_active(void) {
+    return (BiosCpu8086Context*)reg_hw_get_context();
+}
+
+double bios_cpu8086_reg_get(const char *reg_name, bool *found) {
+    return reg_hw_get(reg_name, found);
+}
+
+bool bios_cpu8086_reg_set(const char *reg_name, double val) {
+    return reg_hw_set(reg_name, val);
+}
 
 void bios_cpu8086_reset(BiosCpu8086Context* cpu) {
     if (!cpu) return;

@@ -14,12 +14,29 @@
 #include "eval/eval.h"
 #include "device/vdev.h"
 #include "runtime/strings.h"
-#include <stdio.h>
-#include <string.h>
+#include "runtime/language_descriptor.h"
+#include "runtime/format/snprintf.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_msgbox_desc = {
+    .name = "MSGBOX",
+    .category = "User Interface",
+    .syntax = "MSGBOX prompt$ [, [buttons%] [, title$]]",
+    .description = "Displays a modal message box dialog on the active console or terminal.",
+    .error_summary = "Error 5: Invalid context, Error 13: Type mismatch",
+    .subsystem = SUBSYSTEM_STANDARD,
+    .safety = SAFETY_IO,
+    .type = FEATURE_STATEMENT
+};
+
+void stmt_msgbox_register(void) {
+    lang_desc_register(&g_msgbox_desc);
+}
 
 BppError stmt_msgbox_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     if (!vm || !lex) {
         err.code = 5;
@@ -37,11 +54,11 @@ BppError stmt_msgbox_handler(VMContext *vm, LexerContext *lex) {
     if (val_prompt.type == VAL_STRING) {
         const char *ps = str_data(val_prompt.as.string);
         if (ps) {
-            strncpy(prompt_buf, ps, sizeof(prompt_buf) - 1);
+            runtime_strncpy(prompt_buf, ps, sizeof(prompt_buf) - 1);
         }
         str_release(vm_get_str(vm), val_prompt.as.string);
     } else if (val_prompt.type == VAL_NUMBER) {
-        snprintf(prompt_buf, sizeof(prompt_buf), "%g", val_prompt.as.number);
+        runtime_snprintf(prompt_buf, sizeof(prompt_buf), "%g", val_prompt.as.number);
     } else {
         err.code = 13;
         err.message = "Type mismatch in MSGBOX: prompt must be string or number";
@@ -79,11 +96,11 @@ BppError stmt_msgbox_handler(VMContext *vm, LexerContext *lex) {
                     if (val_title.type == VAL_STRING) {
                         const char *ts = str_data(val_title.as.string);
                         if (ts) {
-                            strncpy(title_buf, ts, sizeof(title_buf) - 1);
+                            runtime_strncpy(title_buf, ts, sizeof(title_buf) - 1);
                         }
                         str_release(vm_get_str(vm), val_title.as.string);
                     } else if (val_title.type == VAL_NUMBER) {
-                        snprintf(title_buf, sizeof(title_buf), "%g", val_title.as.number);
+                        runtime_snprintf(title_buf, sizeof(title_buf), "%g", val_title.as.number);
                     }
                 } else {
                     return err;
@@ -97,7 +114,7 @@ BppError stmt_msgbox_handler(VMContext *vm, LexerContext *lex) {
     VDevContext *vdev_ctx = vm_get_vdev(vm);
     if (vdev_ctx) {
         char out[1536];
-        snprintf(out, sizeof(out), "[ %s ]\n%s\n", title_buf, prompt_buf);
+        runtime_snprintf(out, sizeof(out), "[ %s ]\n%s\n", title_buf, prompt_buf);
         vdev_puts(vdev_ctx, out);
     }
 

@@ -2,7 +2,7 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libcore (strings.h, strings.c)
 // NEEDS: libengine (eval.h, eval.c, invoke.h, string.c)
 // NEEDS: libkernel (security.h, security.c)
@@ -13,24 +13,29 @@
 #include "statements/system/environment/invoke.h"
 #include "eval/eval.h"
 #include "runtime/strings.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "security/security.h"
-#include <string.h>
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_invoke_desc = {
+    .name = "INVOKE",
+    .category = "System & Modules",
+    .syntax = "INVOKE driver_path$",
+    .description = "Apple /// Business BASIC dynamic driver and module loader.",
+    .error_summary = "Error 2: Syntax Error, Error 13: Type Mismatch, Error 53: File Not Found",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SYSTEM,
+    .type = FEATURE_STATEMENT
+};
 
 void stmt_invoke_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "INVOKE",
-        .category = "System & Modules",
-        .syntax = "INVOKE driver_path$",
-        .help_text = "Apple /// Business BASIC dynamic driver and module loader.",
-        .error_codes = "Error 2: Syntax Error, Error 13: Type Mismatch, Error 53: File Not Found"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_invoke_desc);
 }
 
 BppError stmt_invoke_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     if (security_check(SECOP_MODULE, 0) != 0) {
         err.code = 70;

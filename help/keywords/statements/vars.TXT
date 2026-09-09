@@ -1,23 +1,67 @@
-VARS Variable Table Inspection Statement
-========================================
+TITLE: VARS
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/variable/var.c
+GENERATED: no, hand-written
+STATUS: current
 
-Displays a formatted table of all active variables, types, and values in the current variable context.
+==============================================================================
+VARS KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: var.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community -- All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: baspp.exe, bpp.exe, bs.exe, libengine
+    // NEEDS: libcore, libkernel
+    // Implements component functionality for VARS.
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Lists all currently allocated variables, their scopes, data types, and values
+to the console.
 
-    VARS
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    VARS [prefix$]
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM VARS Demonstration
+    20 PRINT "VARS executed successfully."
 
-OPERATIONAL NOTES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+None
 
-  Diagnostic statement for interactive debugging.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Program Management & Introspection
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SAFE
 
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 LET A = 42 : S$ = "Test"
-    20 VARS : REM Displays variable inspection table
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  VARS
+Category              Program Management & Introspection
+Syntax                VARS [prefix$]
+Description           Lists all currently allocated variables, their scop...
+Error Summary         None
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         BASIC++ Standard
+Since Version         6.0.0
+Source File           engine/src/variable/var.c

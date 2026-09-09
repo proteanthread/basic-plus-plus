@@ -1,26 +1,69 @@
-SIZE Data Structure Size Function
-======================================================================
+TITLE: SIZE
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/eval.c
+GENERATED: no, hand-written
+STATUS: current
 
-The SIZE function returns the size in bytes occupied by a variable,
-TYPE structure, or array in memory.
+==============================================================================
+SIZE KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: eval.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libboot, libcore, libengine, libext, libkernel, libstandard
+    // NEEDS: libengine (eval_expr_internal.h)
+    // Implements component functionality for eval.c.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Returns the memory size in bytes occupied by the specified variable, array, or
+user-defined type.
 
-    bytes% = SIZE(variable_name)
-    bytes% = SIZE(type_name)
-    bytes% = SIZE(array_name())
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    SIZE(var_or_type)
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = SIZE(var_or_type)
+    20 PRINT "Result: "; Val
 
-OPERATIONAL RULES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+None
 
-  - Returns exact memory footprint in bytes.
-  - Useful for TYPE structures, random access record lengths, and buffers.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Introspection
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_PURE
 
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 PRINT "Double size: "; SIZE(X#)
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  SIZE
+Category              Introspection
+Syntax                SIZE(var_or_type)
+Description           Returns the memory size in bytes occupied by the sp...
+Error Summary         None
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_PURE
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         BASIC++ Standard
+Since Version         6.0.0
+Source File           engine/src/eval/eval.c

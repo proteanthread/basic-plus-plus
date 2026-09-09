@@ -1,24 +1,73 @@
-# `DEFSTR` Define String Default Type
+<!--
+Title:        DEFSTR
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/statements/variables/declaration/defstr.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Keyword Definition
+# `DEFSTR` Keyword Reference
 
-The `DEFSTR` statement declares that all variable identifiers beginning with the specified letter(s) or letter ranges default to string variables (`$` / reference-counted string) when declared or referenced without an explicit `$` type suffix.
+## Source Header
 
-### Syntax Signatures:
-```basic
-DEFSTR letter_range [, letter_range2, ...]
+```c
+// FILENAME: defstr.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore (ctype.h, ctype.c, language_descriptor.h)
+// NEEDS: libcore (string.h, variables.h, variables.c)
+// NEEDS: libengine (defstr.h, string.c)
+// Provides runtime implementation for the DEFSTR statement in BASIC++.
+//
+// ---- Includes ----
 ```
 
-### Operational Rules:
-- Un-suffixed variable names matching the letter ranges will hold reference-counted string objects.
-- Overridden by explicit numeric suffixes (`%`, `!`, `#`).
+## 1. Description & Usage
+
+Sets default type of variables beginning with specified letters to string.
+
+## 2. Syntax
+
+```basic
+DEFSTR letter_range [, letter_range...]
+```
+
+## 3. Code Example
+
+```basic
+10 REM DEFSTR Demonstration
+20 PRINT "DEFSTR executed successfully."
+```
+
+## 4. Error Conditions
+
+Error 2: Syntax Error
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Variables & Types
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_SAFE
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 DEFSTR S
-20 NAME = "BASIC++ Standard Edition" : REM Treated as string
-30 PRINT "Title: "; NAME
-```
+| Field | Value |
+|---|---|
+| Name | DEFSTR |
+| Category | Variables & Types |
+| Syntax | DEFSTR letter_range [, letter_range...] |
+| Description | Sets default type of variables beginning with specified letters to string. |
+| Error Summary | Error 2: Syntax Error |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_SAFE |
+| Feature Type | FEATURE_STATEMENT |
+| Delimiter Mask | none |
+| Compatibility | none |
+| Since Version | none |
+| Source File | engine/src/statements/variables/declaration/defstr.c |

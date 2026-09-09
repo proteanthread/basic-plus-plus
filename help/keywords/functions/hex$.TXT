@@ -1,16 +1,72 @@
-HEX$ Hexadecimal String Conversion Function
-======================================================================
+TITLE: HEX$
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/functions/string/conversion/hex.c
+GENERATED: no, hand-written
+STATUS: current
 
-The HEX$ function converts an integer value to a hexadecimal string.
+==============================================================================
+HEX$ KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: hex.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (conversion_fn.c)
+    // NEEDS: libcore (funcreg.h, funcreg.c, hal.h, memory.h, memory.c)
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libcore (strings.h, strings.c)
+    // NEEDS: libengine (hex.h, string.c)
+    // Provides runtime implementation for the HEX built-in function in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+HEX$(x) returns hexadecimal string of number x (GW-BASIC); HEX(s$) decodes hex
+string to raw binary byte string (Wang 3300).
 
-    hex_str$ = HEX$(numeric_expression)
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    HEX$(x) | HEX(hex_str$)
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = HEX$(10) | HEX(he10_str$)
+    20 PRINT "Result: "; Val
 
-CODE EXAMPLES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 13: Type Mismatch, Error 5: Illegal function call
 
-    10 PRINT HEX$(255)   : REM Outputs "FF"
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      String Functions
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_IO
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  HEX$
+Category              String Functions
+Syntax                HEX$(x) | HEX(hex_str$)
+Description           HEX$(x) returns hexadecimal string of number x (GW-...
+Error Summary         Error 13: Type Mismatch, Error 5: Illegal function ...
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_IO
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/eval/functions/string/conversion/hex.c

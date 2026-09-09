@@ -1,26 +1,69 @@
-EDIT$ String Editing & Transformation Function
-======================================================================
+TITLE: EDIT$
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/runtime/string/strops.c
+GENERATED: no, hand-written
+STATUS: current
 
-The EDIT$ function applies bitmask-driven string transformations (trim,
-case folding, whitespace collapsing).
+==============================================================================
+EDIT$ KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: strops.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libboot, libcore, libengine, libhardware, libkernel, libserver, 
+    // NEEDS: libcore (ctype.h, ctype.c, memops.h, memops.c, strops.h)
+    // Freestanding string search and manipulation implementation.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Transforms string str$ according to bitmask actions (trim, compress spaces,
+lowercase, etc.).
 
-    res$ = EDIT$(source_string$, control_mask%)
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    EDIT$(str$, action_mask%)
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = EDIT$(str$, action_mask%)
+    20 PRINT "Result: "; Val
 
-BITMASK FLAGS
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 5: Illegal Function Call
 
-  2: Trim all spaces.
-  8: Trim leading spaces.
-  32: Convert to uppercase.
-  128: Trim trailing spaces.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      String Functions
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_PURE
 
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 PRINT EDIT$("  test  ", 8 + 128)   : REM Outputs "test"
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  EDIT$
+Category              String Functions
+Syntax                EDIT$(str$, action_mask%)
+Description           Transforms string str$ according to bitmask actions...
+Error Summary         Error 5: Illegal Function Call
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_PURE
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         BASIC++ Standard
+Since Version         6.0.0
+Source File           engine/src/runtime/string/strops.c

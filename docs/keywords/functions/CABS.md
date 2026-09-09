@@ -1,25 +1,72 @@
-# `CABS` Complex Absolute Value / Magnitude Function
+<!--
+Title:        CABS
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/module/mathext.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Function Definition
+# `CABS` Keyword Reference
 
-The `CABS` function computes the absolute value (magnitude / modulus) of a complex number $z = x + iy$:
+## Source Header
 
-$$|z| = \sqrt{x^2 + y^2}$$
-
-### Syntax Signatures:
-```basic
-magnitude# = CABS(complex_val)
-magnitude# = CABS(real_val, imag_val)
+```c
+// FILENAME: mathext.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore (funcreg.h, funcreg.c, math.h)
+// NEEDS: libengine (math.c)
+// Provides core logic and interface definitions for mathext within BASIC++.
+//
+// ---- Includes ----
 ```
 
-### Operational Rules:
-- Returns non-negative Euclidean length of the complex vector.
+## 1. Description & Usage
+
+Returns the magnitude / absolute value of complex number z (sqrt(re^2 + im^2)).
+
+## 2. Syntax
+
+```basic
+CABS(z)
+```
+
+## 3. Code Example
+
+```basic
+10 X = -42.5
+20 PRINT "Original: "; X; " Absolute: "; ABS(X)
+```
+
+## 4. Error Conditions
+
+Error 13: Type Mismatch
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Math & Complex Numbers
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_PURE
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 Z = COMPLEX(3, 4)
-20 PRINT "Magnitude |3 + 4i| = "; CABS(Z) : REM Outputs 5
-```
+| Field | Value |
+|---|---|
+| Name | CABS |
+| Category | Math & Complex Numbers |
+| Syntax | CABS(z) |
+| Description | Returns the magnitude / absolute value of complex number z (sqrt(re^2 + im^2)). |
+| Error Summary | Error 13: Type Mismatch |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_PURE |
+| Feature Type | FEATURE_FUNCTION |
+| Delimiter Mask | none |
+| Compatibility | BASIC++ Standard |
+| Since Version | 6.0.0 |
+| Source File | engine/src/module/mathext.c |

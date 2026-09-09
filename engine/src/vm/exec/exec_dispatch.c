@@ -7,10 +7,11 @@
 //
 // ---- Includes ----
 
-#include <ctype.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include "runtime/ctype/ctype.h"
+#include "runtime/format/snprintf.h"
+#include "runtime/memory/alloc.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
 
 #include "../vm_internal.h"
 #include "device/vprinter.h"
@@ -22,17 +23,45 @@
 #include "runtime/strings.h"
 #include "security/security.h"
 #include "statements/oop/sub.h"
+#include "statements/io/device/stmt_device.h"
+#include "statements/io/device/stmt_xio.h"
+#include "statements/io/device/stmt_slot_io.h"
+#include "statements/io/device/stmt_devctl.h"
+#include "statements/system/stmt_user_ipc.h"
+#include "statements/system/stmt_log.h"
+#include "statements/system/stmt_send.h"
+#include "statements/system/stmt_publish.h"
+#include "statements/system/stmt_subscribe.h"
+#include "statements/system/stmt_unsubscribe.h"
+#include "statements/system/stmt_unpublish.h"
+#include "statements/system/stmt_signal.h"
+#include "statements/extended/collate.h"
+#include "statements/extended/stmt_angle.h"
+#include "statements/extended/stmt_translate.h"
+#include "statements/io/gpib.h"
+#include "statements/filesystem/file_ops/readu.h"
+#include "statements/filesystem/file_ops/writeu.h"
+#include "statements/filesystem/file_ops/release.h"
+#include "statements/system/stmt_mutex.h"
+#include "eval/functions/system/ipc/func_receive.h"
+#include "eval/functions/func_devinfo.h"
+#include "statements/program/stmt_compile.h"
+#include "statements/program/stmt_jit.h"
 #include "stmt/stmt.h"
 #include "stmt/stmt_handlers.h"
+#include "statements/introspection/introspection.h"
+#include "statements/system/stmt_pragma.h"
+#include "statements/system/hardware/stmt_cpuspeed.h"
 #include "vm/exec_internal.h"
 #include "vm/vm.h"
 
-//
-// ---- Statement Registration Table ----
+BppError stmt_upnp_handler(VMContext *vm, LexerContext *lex);
 
 // registers all standard and extended statement keywords in the VM statement registry
 void register_core_statements(VMContext *vm) {
     stmt_register(vm->stmt_reg, KW_PRINT,  stmt_print_handler,  "PRINT",  STMT_FLAG_BOTH);
+    stmt_register(vm->stmt_reg, KW_COMPILE, stmt_compile_handler, "COMPILE", STMT_FLAG_BOTH);
+    stmt_register(vm->stmt_reg, KW_JIT,     stmt_jit_handler,     "JIT",     STMT_FLAG_BOTH);
     stmt_register(vm->stmt_reg, KW_DISPLAY,stmt_display_handler,"DISPLAY",STMT_FLAG_BOTH);
     stmt_register(vm->stmt_reg, KW_DISP,   stmt_print_handler,  "DISP",   STMT_FLAG_BOTH);
     stmt_register(vm->stmt_reg, KW_DOEVENTS, stmt_doevents_handler, "DOEVENTS", STMT_FLAG_BOTH);
@@ -83,7 +112,8 @@ void register_core_statements(VMContext *vm) {
     stmt_register(vm->stmt_reg, KW_PARAM,    stmt_param_handler,    "PARAM",    STMT_FLAG_PROGRAM);
     stmt_register(vm->stmt_reg, KW_INPUT,  stmt_input_handler,  "INPUT",  STMT_FLAG_BOTH);
     stmt_register(vm->stmt_reg, KW_RANDOMIZE, stmt_randomize_handler, "RANDOMIZE", STMT_FLAG_BOTH);
-    stmt_register(vm->stmt_reg, KW_DEMAND, stmt_input_handler,  "DEMAND", STMT_FLAG_BOTH);
+    stmt_register(vm->stmt_reg, KW_SHUFFLE, stmt_shuffle_handler, "SHUFFLE", STMT_FLAG_BOTH);
+    stmt_register(vm->stmt_reg, KW_DEMAND, stmt_demand_handler, "DEMAND", STMT_FLAG_BOTH);
     stmt_register(vm->stmt_reg, KW_GOTO,   stmt_goto_handler,   "GOTO",   STMT_FLAG_PROGRAM);
     stmt_register(vm->stmt_reg, KW_GOSUB,  stmt_gosub_handler,  "GOSUB",  STMT_FLAG_PROGRAM);
     stmt_register(vm->stmt_reg, KW_RETURN, stmt_return_handler, "RETURN", STMT_FLAG_PROGRAM);
@@ -125,7 +155,7 @@ void register_core_statements(VMContext *vm) {
     stmt_register(vm->stmt_reg, KW_DEFCPX, stmt_defcpx_handler, "DEFCPX", STMT_FLAG_BOTH);
     stmt_register(vm->stmt_reg, KW_COMPLEX,stmt_complex_handler,"COMPLEX",STMT_FLAG_BOTH);
     stmt_register(vm->stmt_reg, KW_USR,    stmt_defusr_handler, "USR",    STMT_FLAG_BOTH);
-    stmt_register(vm->stmt_reg, KW_ON,     stmt_on_handler,     "ON",     STMT_FLAG_PROGRAM);
+    stmt_register(vm->stmt_reg, KW_ON,     stmt_on_handler,     "ON",     STMT_FLAG_BOTH);
     stmt_register(vm->stmt_reg, KW_KEY,    stmt_key_handler,    "KEY",    STMT_FLAG_BOTH);
     stmt_register(vm->stmt_reg, KW_TIMER,  stmt_timer_handler,  "TIMER",  STMT_FLAG_BOTH);
     stmt_register(vm->stmt_reg, KW_ALARM,  stmt_alarm_handler,  "ALARM",  STMT_FLAG_BOTH);
@@ -159,7 +189,10 @@ void register_core_statements(VMContext *vm) {
     stmt_register(vm->stmt_reg, KW_SAVE,   stmt_save_handler,   "SAVE",   STMT_FLAG_BOTH);
     stmt_register(vm->stmt_reg, KW_BLOAD,  stmt_bload_handler,  "BLOAD",  STMT_FLAG_BOTH);
     stmt_register(vm->stmt_reg, KW_BSAVE,  stmt_bsave_handler,  "BSAVE",  STMT_FLAG_BOTH);
+    stmt_register(vm->stmt_reg, KW_QLOAD,  stmt_qload_handler,  "QLOAD",  STMT_FLAG_BOTH);
+    stmt_register(vm->stmt_reg, KW_QSAVE,  stmt_qsave_handler,  "QSAVE",  STMT_FLAG_BOTH);
     stmt_register(vm->stmt_reg, KW_BRUN,   stmt_brun_handler,   "BRUN",   STMT_FLAG_BOTH);
+    stmt_register(vm->stmt_reg, KW_QRUN,   stmt_qrun_handler,   "QRUN",   STMT_FLAG_BOTH);
     stmt_register(vm->stmt_reg, KW_MERGE,  stmt_merge_handler,  "MERGE",  STMT_FLAG_BOTH);
     stmt_register(vm->stmt_reg, KW_COMMON, stmt_common_handler, "COMMON", STMT_FLAG_PROGRAM);
     stmt_register(vm->stmt_reg, KW_CHAIN,  stmt_chain_handler,  "CHAIN",  STMT_FLAG_BOTH);
@@ -202,14 +235,25 @@ void register_core_statements(VMContext *vm) {
     stmt_register(vm->stmt_reg, KW_MKDIR,  stmt_mkdir_handler,  "MKDIR",  STMT_FLAG_BOTH);
     stmt_register(vm->stmt_reg, KW_RMDIR,  stmt_rmdir_handler,  "RMDIR",  STMT_FLAG_BOTH);
     stmt_register(vm->stmt_reg, KW_NAME,   stmt_name_handler,   "NAME",   STMT_FLAG_BOTH);
+    stmt_register(vm->stmt_reg, KW_DEVICE, stmt_device_handler, "DEVICE", STMT_FLAG_BOTH);
     stmt_register(vm->stmt_reg, KW_DEVICES,stmt_devices_handler,"DEVICES",STMT_FLAG_BOTH);
+    stmt_register(vm->stmt_reg, KW_XIO,    stmt_xio_handler,    "XIO",    STMT_FLAG_BOTH);
+    stmt_register(vm->stmt_reg, KW_DEVCTL, stmt_devctl_handler, "DEVCTL", STMT_FLAG_BOTH);
+    stmt_register(vm->stmt_reg, KW_WALL,   stmt_wall_handler,   "WALL",   STMT_FLAG_BOTH);
+    stmt_register(vm->stmt_reg, KW_MESG,   stmt_mesg_handler,   "MESG",   STMT_FLAG_BOTH);
+    stmt_register(vm->stmt_reg, KW_LOGGER, stmt_logger_handler, "LOGGER", STMT_FLAG_BOTH);
+    stmt_register(vm->stmt_reg, KW_TALK,   stmt_talk_handler,   "TALK",   STMT_FLAG_BOTH);
+    stmt_register(vm->stmt_reg, KW_LOG,    stmt_log_handler,    "LOG",    STMT_FLAG_BOTH);
+    stmt_register(vm->stmt_reg, KW_LOGINFO,stmt_loginfo_handler,"LOGINFO",STMT_FLAG_BOTH);
+    stmt_register(vm->stmt_reg, KW_LOGWARN,stmt_logwarn_handler,"LOGWARN",STMT_FLAG_BOTH);
+    stmt_register(vm->stmt_reg, KW_LOGERROR,stmt_logerror_handler,"LOGERROR",STMT_FLAG_BOTH);
+    stmt_register(vm->stmt_reg, KW_LOGDEBUG,stmt_logdebug_handler,"LOGDEBUG",STMT_FLAG_BOTH);
+    stmt_register(vm->stmt_reg, KW_LOGTRACE,stmt_logtrace_handler,"LOGTRACE",STMT_FLAG_BOTH);
+    stmt_register(vm->stmt_reg, KW_PR,     stmt_pr_handler,     "PR#",    STMT_FLAG_BOTH);
     stmt_register(vm->stmt_reg, KW_DIR,    stmt_dir_handler,    "DIR",    STMT_FLAG_BOTH);
     stmt_register(vm->stmt_reg, KW_SETATTR,stmt_setattr_handler,"SETATTR",STMT_FLAG_BOTH);
     stmt_register(vm->stmt_reg, KW_PWD,      stmt_pwd_handler,      "PWD",      STMT_FLAG_BOTH);
-#if SUPPORT_HELP
-    stmt_register(vm->stmt_reg, KW_HOSTNAME, stmt_hostname_handler, "HOSTNAME", STMT_FLAG_BOTH);
-    stmt_register(vm->stmt_reg, KW_USERNAME, stmt_username_handler, "USERNAME", STMT_FLAG_BOTH);
-#endif
+    stmt_introspection_register_all(vm);
     stmt_register(vm->stmt_reg, KW_PATH,     stmt_path_handler,     "PATH",     STMT_FLAG_BOTH);
     stmt_register(vm->stmt_reg, KW_LOCK,   stmt_lock_handler,   "LOCK",   STMT_FLAG_BOTH);
     stmt_register(vm->stmt_reg, KW_UNLOCK, stmt_unlock_handler, "UNLOCK", STMT_FLAG_BOTH);
@@ -252,6 +296,17 @@ void register_core_statements(VMContext *vm) {
     stmt_register(vm->stmt_reg, KW_WINDOW,   stmt_window_handler,   "WINDOW",   STMT_FLAG_BOTH);
     stmt_register(vm->stmt_reg, KW_PICTURE,  stmt_picture_handler,  "PICTURE",  STMT_FLAG_BOTH);
     stmt_register(vm->stmt_reg, KW_DRAW,     stmt_draw_handler,     "DRAW",     STMT_FLAG_BOTH);
+    stmt_register(vm->stmt_reg, KW_COLLATE,  stmt_collate_handler,  "COLLATE",  STMT_FLAG_BOTH);
+    stmt_register(vm->stmt_reg, KW_DEGREE,   stmt_degree_handler,   "DEGREE",   STMT_FLAG_BOTH);
+    stmt_register(vm->stmt_reg, KW_RADIAN,   stmt_radian_handler,   "RADIAN",   STMT_FLAG_BOTH);
+    stmt_register(vm->stmt_reg, KW_GRAD,     stmt_grad_handler,     "GRAD",     STMT_FLAG_BOTH);
+    stmt_register(vm->stmt_reg, KW_WBYTE,    stmt_wbyte_handler,    "WBYTE",    STMT_FLAG_BOTH);
+    stmt_register(vm->stmt_reg, KW_RBYTE,    stmt_rbyte_handler,    "RBYTE",    STMT_FLAG_BOTH);
+    stmt_register(vm->stmt_reg, KW_TRANSLATE, stmt_translate_handler, "TRANSLATE", STMT_FLAG_BOTH);
+    stmt_register(vm->stmt_reg, KW_READU,    stmt_readu_handler,    "READU",    STMT_FLAG_BOTH);
+    stmt_register(vm->stmt_reg, KW_WRITEU,   stmt_writeu_handler,   "WRITEU",   STMT_FLAG_BOTH);
+    stmt_register(vm->stmt_reg, KW_RELEASE,  stmt_release_handler,  "RELEASE",  STMT_FLAG_BOTH);
+    stmt_register(vm->stmt_reg, KW_MUTEX,    stmt_mutex_handler,    "MUTEX",    STMT_FLAG_BOTH);
     stmt_register(vm->stmt_reg, KW_SCREEN,  stmt_screen_handler,   "SCREEN",   STMT_FLAG_BOTH);
     stmt_register(vm->stmt_reg, KW_COLOR,   stmt_color_handler,    "COLOR",    STMT_FLAG_BOTH);
     stmt_register(vm->stmt_reg, KW_CLS,     stmt_cls_handler,      "CLS",      STMT_FLAG_BOTH);
@@ -279,7 +334,8 @@ void register_core_statements(VMContext *vm) {
 #endif
     stmt_register(vm->stmt_reg, KW_MUX,      stmt_mux_handler,      "MUX",      STMT_FLAG_BOTH);
     stmt_register(vm->stmt_reg, KW_DEMUX,    stmt_demux_handler,    "DEMUX",    STMT_FLAG_BOTH);
-    stmt_register(vm->stmt_reg, KW_UNPACK,   stmt_unpack_handler,   "UNPACK",   STMT_FLAG_BOTH);
+    stmt_register(vm->stmt_reg, KW_UNPACK,   stmt_change_handler,   "UNPACK",   STMT_FLAG_BOTH);
+    stmt_register(vm->stmt_reg, KW_PACK,     stmt_change_handler,   "PACK",     STMT_FLAG_BOTH);
     stmt_register(vm->stmt_reg, KW_BITMUX,   stmt_bitmux_handler,   "BITMUX",   STMT_FLAG_BOTH);
     stmt_register(vm->stmt_reg, KW_CHANGE,   stmt_change_handler,   "CHANGE",   STMT_FLAG_BOTH);
     stmt_register(vm->stmt_reg, KW_MARGIN,   stmt_margin_handler,   "MARGIN",   STMT_FLAG_BOTH);
@@ -290,9 +346,11 @@ void register_core_statements(VMContext *vm) {
     stmt_register(vm->stmt_reg, KW_LINPUT,   stmt_linput_handler,   "LINPUT",   STMT_FLAG_BOTH);
     stmt_register(vm->stmt_reg, KW_IMAGE,    stmt_image_handler,    "IMAGE",    STMT_FLAG_PROGRAM);
     stmt_register(vm->stmt_reg, KW_FORM,     stmt_form_handler,     "FORM",     STMT_FLAG_PROGRAM);
-    stmt_register(vm->stmt_reg, KW_RENUM,    stmt_renum_handler,    "RENUM",    STMT_FLAG_IMMEDIATE);
-    stmt_register(vm->stmt_reg, KW_REFORMAT, stmt_reformat_handler, "REFORMAT", STMT_FLAG_BOTH);
-    stmt_register(vm->stmt_reg, KW_DELETE,   stmt_delete_handler,   "DELETE",   STMT_FLAG_BOTH);
+    stmt_register(vm->stmt_reg, KW_RENUM,     stmt_renum_handler,     "RENUM",     STMT_FLAG_BOTH);
+    stmt_register(vm->stmt_reg, KW_REFORMAT,  stmt_reformat_handler,  "REFORMAT",  STMT_FLAG_BOTH);
+    stmt_register(vm->stmt_reg, KW_RENAME,    stmt_rename_handler,    "RENAME",    STMT_FLAG_BOTH);
+    stmt_register(vm->stmt_reg, KW_REVERT,    stmt_revert_handler,    "REVERT",    STMT_FLAG_BOTH);
+    stmt_register(vm->stmt_reg, KW_DELETE,    stmt_delete_handler,    "DELETE",    STMT_FLAG_BOTH);
 #if SUPPORT_HELP
     stmt_register(vm->stmt_reg, KW_HELP,       stmt_help_handler,       "HELP",       STMT_FLAG_BOTH);
     stmt_register(vm->stmt_reg, KW_CATALOG,    stmt_catalog_handler,    "CATALOG",    STMT_FLAG_BOTH);
@@ -302,7 +360,11 @@ void register_core_statements(VMContext *vm) {
     stmt_register(vm->stmt_reg, KW_REMOVE_STR, stmt_remove_str_handler, "REMOVE$",    STMT_FLAG_BOTH);
 #endif
     stmt_register(vm->stmt_reg, KW_POKE,     stmt_poke_handler,     "POKE",     STMT_FLAG_BOTH);
+    stmt_register(vm->stmt_reg, KW_FILL,     stmt_poke_handler,     "FILL",     STMT_FLAG_BOTH);
     stmt_register(vm->stmt_reg, KW_OUT,      stmt_out_handler,      "OUT",      STMT_FLAG_BOTH);
+    stmt_register(vm->stmt_reg, KW_BAUD,     stmt_baud_handler,     "BAUD",     STMT_FLAG_BOTH);
+    stmt_register(vm->stmt_reg, KW_SPEED,    stmt_speed_handler,    "SPEED",    STMT_FLAG_BOTH);
+    stmt_register(vm->stmt_reg, KW_CPUSPEED, stmt_cpuspeed_handler, "CPUSPEED", STMT_FLAG_BOTH);
 
     stmt_register(vm->stmt_reg, KW_NOISE,      stmt_noise_handler,      "NOISE",      STMT_FLAG_PROGRAM);
     stmt_register(vm->stmt_reg, KW_SNDPLAY,    stmt_sndplay_handler,    "_SNDPLAY",    STMT_FLAG_BOTH);
@@ -432,97 +494,33 @@ void register_core_statements(VMContext *vm) {
     stmt_register(vm->stmt_reg, KW_SOCK,      stmt_sock_handler,      "SOCK",      STMT_FLAG_BOTH);
     stmt_register(vm->stmt_reg, KW_PORT,      stmt_port_trigger_handler,"PORT",    STMT_FLAG_BOTH);
     stmt_register(vm->stmt_reg, KW_SNIFF,     stmt_sniff_handler,     "SNIFF",     STMT_FLAG_BOTH);
+    stmt_register(vm->stmt_reg, KW_UPNP,      stmt_upnp_handler,      "UPNP",      STMT_FLAG_BOTH);
+
+    // Communications, Signaling & PubSub statements
+    stmt_register(vm->stmt_reg, KW_SEND,        stmt_send_handler,        "SEND",        STMT_FLAG_BOTH);
+    stmt_register(vm->stmt_reg, KW_MSGSEND,     stmt_msgsend_handler,     "MSGSEND",     STMT_FLAG_BOTH);
+    stmt_register(vm->stmt_reg, KW_PUBLISH,     stmt_publish_handler,     "PUBLISH",     STMT_FLAG_BOTH);
+    stmt_register(vm->stmt_reg, KW_PUBSUB,      stmt_pubsub_handler,      "PUBSUB",      STMT_FLAG_BOTH);
+    stmt_register(vm->stmt_reg, KW_SUBSCRIBE,   stmt_subscribe_handler,   "SUBSCRIBE",   STMT_FLAG_BOTH);
+    stmt_register(vm->stmt_reg, KW_UNSUBSCRIBE, stmt_unsubscribe_handler, "UNSUBSCRIBE", STMT_FLAG_BOTH);
+    stmt_register(vm->stmt_reg, KW_UNPUBLISH,   stmt_unpublish_handler,   "UNPUBLISH",   STMT_FLAG_BOTH);
+    stmt_register(vm->stmt_reg, KW_RAISE,       stmt_raise_handler,       "RAISE",       STMT_FLAG_BOTH);
+    stmt_register(vm->stmt_reg, KW_RAISESIGNAL, stmt_raisesignal_handler, "RAISESIGNAL", STMT_FLAG_BOTH);
+    // Stream Pumping, FFI & Concurrency statements
+    stmt_register(vm->stmt_reg, KW_PIPE,        stmt_pipe_handler,        "PIPE",        STMT_FLAG_BOTH);
+    stmt_register(vm->stmt_reg, KW_STREAMPIPE,  stmt_pipe_handler,        "STREAMPIPE",  STMT_FLAG_BOTH);
+    stmt_register(vm->stmt_reg, KW_EXTERN,      stmt_extern_handler,      "EXTERN",      STMT_FLAG_BOTH);
+    stmt_register(vm->stmt_reg, KW_YIELD,       stmt_yield_handler,       "YIELD",       STMT_FLAG_BOTH);
+    // UDX, Hardware & Math Register statements
+    stmt_register(vm->stmt_reg, KW_UDX,         stmt_udx_handler,         "UDX",         STMT_FLAG_BOTH);
+    stmt_register(vm->stmt_reg, KW_XCHG,        stmt_udx_handler,         "XCHG",        STMT_FLAG_BOTH);
+    stmt_register(vm->stmt_reg, KW_PUSH,        stmt_push_handler,        "PUSH",        STMT_FLAG_BOTH);
+    stmt_register(vm->stmt_reg, KW_POP,         stmt_pop_handler,         "POP",         STMT_FLAG_BOTH);
+    stmt_register(vm->stmt_reg, KW_STACK,       stmt_stack_handler,       "STACK",       STMT_FLAG_BOTH);
+    stmt_register(vm->stmt_reg, KW_BIOS,        stmt_bios_handler,        "BIOS",        STMT_FLAG_BOTH);
 }
 
-// executes compiler-level pragmas and configuration directives
-BppError execute_directive(VMContext *vm, LexerContext *lex, BppToken dir_tok) {
-    BppError err;
-    memset(&err, 0, sizeof(err));
-
-    char dir_name[64];
-    int len = (int)(dir_tok.length < sizeof(dir_name) - 1 ? dir_tok.length : sizeof(dir_name) - 1);
-    memcpy(dir_name, dir_tok.as.string, len);
-    dir_name[len] = '\0';
-
-    if (strcasecmp(dir_name, "OPTION") == 0) {
-        BppToken opt_tok = lex_next(lex);
-        if (opt_tok.type != TOK_IDENT) {
-            err.code = 2; err.message = "Expected option name in ::OPTION";
-            return err;
-        }
-        char opt_name[64];
-        int opt_len = (int)(opt_tok.length < sizeof(opt_name) - 1 ? opt_tok.length : sizeof(opt_name) - 1);
-        memcpy(opt_name, opt_tok.start, opt_len);
-        opt_name[opt_len] = '\0';
-
-        BppMetadataRegistry *reg = vm_get_metadata(vm);
-        if (strcasecmp(opt_name, "STRICT") == 0 || strcasecmp(opt_name, "EXPLICIT") == 0) {
-            if (reg) reg->option_strict = true;
-        } else {
-            err.code = 2; err.message = "Unsupported option in ::OPTION";
-            return err;
-        }
-    } else if (strcasecmp(dir_name, "INCLUDE") == 0) {
-        BppToken val_tok = lex_next(lex);
-        if (val_tok.type != TOK_STRING) {
-            err.code = 2; err.message = "Expected string argument for ::INCLUDE";
-            return err;
-        }
-        char inc_path[512] = {0};
-        size_t in_len = (val_tok.length < sizeof(inc_path) - 1) ? val_tok.length : sizeof(inc_path) - 1;
-        if (val_tok.start && in_len > 0) {
-            memcpy(inc_path, val_tok.start, in_len);
-            inc_path[in_len] = '\0';
-        }
-        size_t plen = strlen(inc_path);
-        if (plen >= 2 && inc_path[0] == '"' && inc_path[plen - 1] == '"') {
-            memmove(inc_path, inc_path + 1, plen - 2);
-            inc_path[plen - 2] = '\0';
-            plen -= 2;
-        }
-        if (plen >= 2 && ((inc_path[0] == '\'' && inc_path[plen - 1] == '\'') ||
-                          (inc_path[0] == '<' && inc_path[plen - 1] == '>'))) {
-            memmove(inc_path, inc_path + 1, plen - 2);
-            inc_path[plen - 2] = '\0';
-        }
-
-        FILE *f = fopen(inc_path, "r");
-        if (!f) {
-            char alt_path[512];
-            snprintf(alt_path, sizeof(alt_path), "engine/include/%s", inc_path);
-            f = fopen(alt_path, "r");
-        }
-        if (!f) {
-            char alt_path[512];
-            snprintf(alt_path, sizeof(alt_path), "include/%s", inc_path);
-            f = fopen(alt_path, "r");
-        }
-        if (!f) {
-            err.code = 53;
-            err.message = "File not found in $INCLUDE directive";
-            return err;
-        }
-
-        char line_buf[1024];
-        while (fgets(line_buf, sizeof(line_buf), f)) {
-            size_t llen = strlen(line_buf);
-            while (llen > 0 && (line_buf[llen - 1] == '\r' || line_buf[llen - 1] == '\n')) {
-                line_buf[--llen] = '\0';
-            }
-            if (llen == 0) continue;
-            BppError line_err = vm_execute_line(vm, line_buf);
-            if (line_err.code != 0) {
-                fclose(f);
-                return line_err;
-            }
-        }
-        fclose(f);
-    } else {
-        err.code = 2; err.message = "Unsupported compiler directive";
-    }
-
-    return err;
-}
+// Note: execute_directive and execute_pragma are implemented in statements/system/stmt_pragma.c
 
 // checks if a given source line is a closing block marker for metadata
 static bool is_block_end_marker(const char *text, const char *block_type, const char *block_target, MemoryContext *mem) {
@@ -535,7 +533,7 @@ static bool is_block_end_marker(const char *text, const char *block_type, const 
         if (next_tok.type == TOK_IDENT || next_tok.type == TOK_KEYWORD) {
             char next_name[64];
             size_t nlen = (next_tok.length < 63) ? next_tok.length : 63;
-            memcpy(next_name, next_tok.start, nlen);
+            runtime_memcpy(next_name, next_tok.start, nlen);
             next_name[nlen] = '\0';
             if (platform_strcasecmp(next_name, block_type) == 0) {
                 lex_shutdown(check_lex);
@@ -547,25 +545,25 @@ static bool is_block_end_marker(const char *text, const char *block_type, const 
     if (tok.type == TOK_IDENT || tok.type == TOK_KEYWORD || tok.type == TOK_STRING) {
         char target_buf[64];
         size_t tlen = (tok.length < 63) ? tok.length : 63;
-        memcpy(target_buf, tok.start, tlen);
+        runtime_memcpy(target_buf, tok.start, tlen);
         target_buf[tlen] = '\0';
 
-        if (tok.start + tok.length < text + strlen(text) && *(tok.start + tok.length) == ':') {
+        if (tok.start + tok.length < text + runtime_strlen(text) && *(tok.start + tok.length) == ':') {
             if (tlen + 1 < 63) {
                 target_buf[tlen] = ':';
                 target_buf[tlen + 1] = '\0';
             }
         }
 
-        if (strcasecmp(target_buf, block_target) == 0) {
+        if (runtime_strcasecmp(target_buf, block_target) == 0) {
             BppToken next_tok = lex_next(check_lex);
             if (next_tok.type == TOK_IDENT || next_tok.type == TOK_KEYWORD) {
                 char next_name[64];
                 size_t nlen = (next_tok.length < 63) ? next_tok.length : 63;
-                memcpy(next_name, next_tok.start, nlen);
+                runtime_memcpy(next_name, next_tok.start, nlen);
                 next_name[nlen] = '\0';
 
-                if (strcasecmp(next_name, block_type) == 0 && lex_peek(check_lex).type == TOK_DOUBLE_COLON) {
+                if (runtime_strcasecmp(next_name, block_type) == 0 && lex_peek(check_lex).type == TOK_DOUBLE_COLON) {
                     lex_shutdown(check_lex);
                     return true;
                 }
@@ -576,10 +574,10 @@ static bool is_block_end_marker(const char *text, const char *block_type, const 
     if (tok.type == TOK_IDENT || tok.type == TOK_KEYWORD) {
         char name_buf[64];
         size_t len = (tok.length < 63) ? tok.length : 63;
-        memcpy(name_buf, tok.start, len);
+        runtime_memcpy(name_buf, tok.start, len);
         name_buf[len] = '\0';
 
-        if (strcasecmp(name_buf, block_type) == 0 && lex_peek(check_lex).type == TOK_DOUBLE_COLON) {
+        if (runtime_strcasecmp(name_buf, block_type) == 0 && lex_peek(check_lex).type == TOK_DOUBLE_COLON) {
             lex_shutdown(check_lex);
             return true;
         }
@@ -592,13 +590,13 @@ static bool is_block_end_marker(const char *text, const char *block_type, const 
 // skips over multi-line declarative metadata blocks at runtime
 BppError skip_metadata_block(VMContext *vm, LexerContext *lex, const char *block_type) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     char block_target[64] = "";
     BppToken target_tok = lex_peek(lex);
     if (target_tok.type == TOK_IDENT || target_tok.type == TOK_KEYWORD || target_tok.type == TOK_STRING) {
         size_t tlen = (target_tok.length < 63) ? target_tok.length : 63;
-        memcpy(block_target, target_tok.start, tlen);
+        runtime_memcpy(block_target, target_tok.start, tlen);
         block_target[tlen] = '\0';
 
         if (target_tok.start + target_tok.length < target_tok.start + 100 && *(target_tok.start + target_tok.length) == ':') {
@@ -654,7 +652,7 @@ BppError skip_metadata_block(VMContext *vm, LexerContext *lex, const char *block
 // executes dynamically declared keywords and dialect extensions
 BppError execute_custom_keyword_statement(VMContext *vm, LexerContext *lex, BppKeywordId kw) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     SpecObject *spec = spec_find_by_kw_id(kw);
     if (!spec) {
@@ -677,21 +675,21 @@ BppError execute_custom_keyword_statement(VMContext *vm, LexerContext *lex, BppK
     if (next_tok.type == TOK_IDENT) {
         char subcmd[128];
         size_t slen = (next_tok.length < sizeof(subcmd) - 1) ? next_tok.length : sizeof(subcmd) - 1;
-        memcpy(subcmd, next_tok.start, slen);
+        runtime_memcpy(subcmd, next_tok.start, slen);
         subcmd[slen] = '\0';
 
         char target1[256];
-        snprintf(target1, sizeof(target1), "%s.%s", spec->name, subcmd);
+        runtime_snprintf(target1, sizeof(target1), "%s.%s", spec->name, subcmd);
 
         BppLineNumber def_line = 0.0;
         const char *def_text = NULL;
         if (find_procedure(vm, target1, KW_SUB, &def_line, &def_text)) {
-            strncpy(sub_name, target1, sizeof(sub_name) - 1);
+            runtime_strncpy(sub_name, target1, sizeof(sub_name) - 1);
             sub_name[sizeof(sub_name) - 1] = '\0';
             has_subcommand = true;
             lex_next(lex);
         } else if (find_procedure(vm, subcmd, KW_SUB, &def_line, &def_text)) {
-            strncpy(sub_name, subcmd, sizeof(sub_name) - 1);
+            runtime_strncpy(sub_name, subcmd, sizeof(sub_name) - 1);
             sub_name[sizeof(sub_name) - 1] = '\0';
             has_subcommand = true;
             lex_next(lex);
@@ -702,7 +700,7 @@ BppError execute_custom_keyword_statement(VMContext *vm, LexerContext *lex, BppK
         BppLineNumber def_line = 0.0;
         const char *def_text = NULL;
         if (find_procedure(vm, spec->name, KW_SUB, &def_line, &def_text)) {
-            strncpy(sub_name, spec->name, sizeof(sub_name) - 1);
+            runtime_strncpy(sub_name, spec->name, sizeof(sub_name) - 1);
             sub_name[sizeof(sub_name) - 1] = '\0';
         } else {
             err.code = 35;
@@ -710,16 +708,11 @@ BppError execute_custom_keyword_statement(VMContext *vm, LexerContext *lex, BppK
             return err;
         }
     }
-
     BValue args[MAX_PARAMS];
     int arg_count = 0;
-
     while (true) {
         BppToken tok = lex_peek(lex);
-        if (tok.type == TOK_EOL || tok.type == TOK_EOF) {
-            break;
-        }
-
+        if (tok.type == TOK_EOL || tok.type == TOK_EOF) break;
         if (arg_count >= MAX_PARAMS) {
             err.code = 2; err.message = "Too many arguments in custom statement call";
             for (int i = 0; i < arg_count; i++) {
@@ -727,7 +720,6 @@ BppError execute_custom_keyword_statement(VMContext *vm, LexerContext *lex, BppK
             }
             return err;
         }
-
         args[arg_count++] = eval_expression(vm, lex, &err);
         if (err.code != 0) {
             for (int i = 0; i < arg_count - 1; i++) {
@@ -735,11 +727,7 @@ BppError execute_custom_keyword_statement(VMContext *vm, LexerContext *lex, BppK
             }
             return err;
         }
-
-        tok = lex_peek(lex);
-        if (tok.type == TOK_COMMA) {
-            lex_next(lex);
-        }
+        if (lex_peek(lex).type == TOK_COMMA) lex_next(lex);
     }
 
     BValue res = invoke_user_function(vm, sub_name, args, arg_count, &err);

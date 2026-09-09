@@ -1,0 +1,72 @@
+TITLE: WIFI
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/system/hardware/stmt_wifi.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+WIFI KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: stmt_wifi.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libcore (strops.h, strops.c)
+    // NEEDS: libengine (eval.h, eval.c, lexer.h, lexer.c, string.c, vm.h)
+    // NEEDS: libserver (iot_net.h, iot_net.c)
+    // Implements WIFI.CONNECT and WIFI.DISCONNECT statements for wireless network
+    //
+    // ---- Includes ----
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Controls wireless 802.11 b/g/n station client, SoftAP hosting, scanning, and
+promiscuous packet sniffing.
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    WIFI.CONNECT ssid$, pass$ | WIFI.DISCONNECT | WIFI.AP ssid$, pass$ [, ch, max] | WIFI.SCAN | WIFI.SNIFF ON|OFF [, ch]
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM WIFI Demonstration
+    20 PRINT "WIFI executed successfully."
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error, Error 13: Type Mismatch
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Wireless & IoT
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_IO
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  WIFI
+Category              Wireless & IoT
+Syntax                WIFI.CONNECT ssid$, pass$ | WIFI.DISCONNECT | WIFI....
+Description           Controls wireless 802.11 b/g/n station client, Soft...
+Error Summary         Error 2: Syntax Error, Error 13: Type Mismatch
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_IO
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/system/hardware/stmt_wifi.c

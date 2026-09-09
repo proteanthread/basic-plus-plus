@@ -2,25 +2,30 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (math_fn.c)
-// NEEDS: libcore (math.h, micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (math.h, language_descriptor.h, string.h)
 // NEEDS: libengine (math.c, min.h, string.c)
 // Provides runtime implementation for the MIN built-in function in BASIC++.
 //
 // ---- Includes ----
 
 #include "eval/functions/math/algebra/min.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/math.h"
 #include "runtime/string.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_min_desc = {
+    .name = "MIN",
+    .category = "Math Functions",
+    .syntax = "MIN(val1, val2 [, ...]) or val1 MIN val2",
+    .description = "Returns the minimum of two or more numeric values (supports dual prefix & infix notation).",
+    .error_summary = "Error 13: Type Mismatch (MIN expects numeric arguments)",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_PURE,
+    .type = FEATURE_FUNCTION
+};
 void func_min_register(void) {
-    MicroLibMetadata meta = {
-        .name = "MIN",
-        .category = "Math Functions",
-        .syntax = "MIN(val1, val2 [, ...]) or val1 MIN val2",
-        .help_text = "Returns the minimum of two or more numeric values (supports dual prefix & infix notation).",
-        .error_codes = "Error 13: Type Mismatch (MIN expects numeric arguments)"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_min_desc);
 }
 
 BValue func_min_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err) {

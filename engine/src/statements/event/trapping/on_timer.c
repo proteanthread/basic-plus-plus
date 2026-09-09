@@ -13,60 +13,74 @@
 #include "eval/eval.h"
 #include "device/vdev.h"
 #include "security/security.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 
-void stmt_on_timer_register(void) {
-    MicroLibMetadata meta = {
-        .name = "ON TIMER",
-        .category = "Event Trapping",
-        .syntax = "ON TIMER(seconds) GOSUB line_label | TIMER {ON|OFF|STOP}",
-        .help_text = "Establishes a periodic timer interrupt subroutine trigger.",
-        .error_codes = "Error 2: Syntax Error, Error 5: Illegal Function Call"
-    };
-    microlib_register(&meta);
-}
-#include <string.h>
 
-BppError stmt_on_timer_handler(VMContext *vm, LexerContext *lex) {
-    BppError err;
-    memset(&err, 0, sizeof(err));
-    (void)vm; (void)lex;
-    return err;
-}
-
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
 #include "statements/event/trapping/on_error.h"
 #include "statements/event/trapping/on_key.h"
 #include "statements/event/trapping/on_com.h"
+#include "device/msg_broker.h"
 #include "vm/events_net.h"
 #include "memory/memory.h"
 #include "runtime/metadata.h"
 #include "runtime/strings.h"
-#include <string.h>
-#include <math.h>
+#include "runtime/format/snprintf.h"
+#include "runtime/math/math.h"
+
+static const LangDesc g_on_timer_desc = {
+    .name = "ON TIMER",
+    .category = "Event Trapping",
+    .syntax = "ON TIMER(seconds) GOSUB line_label | TIMER {ON|OFF|STOP}",
+    .description = "Establishes a periodic timer interrupt subroutine trigger.",
+    .error_summary = "Error 2: Syntax Error, Error 5: Illegal Function Call",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SAFE,
+    .type = FEATURE_STATEMENT
+};
+
+void stmt_on_timer_register(void) {
+    lang_desc_register(&g_on_timer_desc);
+}
+BppError stmt_on_timer_handler(VMContext *vm, LexerContext *lex) {
+    BppError err;
+    runtime_memset(&err, 0, sizeof(err));
+    (void)vm; (void)lex;
+    return err;
+}
 
 BppError stmt_on_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BppToken tok = lex_peek(lex);
     if (tok.type == TOK_KEYWORD || tok.type == TOK_IDENT) {
-        if (tok.type == TOK_KEYWORD && tok.as.keyword == KW_ERROR) {
+        if (tok_is_keyword(tok, KW_ERROR, "ERROR")) {
             lex_next(lex); // Consume ERROR
             return stmt_on_error_handler(vm, lex);
-        } else if (tok.type == TOK_KEYWORD && tok.as.keyword == KW_TIMER) {
+        } else if (tok_is_keyword(tok, KW_TIMER, "TIMER")) {
             lex_next(lex); // Consume TIMER
             return stmt_on_timer_handler(vm, lex);
-        } else if (tok.type == TOK_KEYWORD && tok.as.keyword == KW_KEY) {
+        } else if (tok_is_keyword(tok, KW_KEY, "KEY")) {
             lex_next(lex); // Consume KEY
             return stmt_on_key_handler(vm, lex);
-        } else if (tok.type == TOK_KEYWORD && tok.as.keyword == KW_COM) {
+        } else if (tok_is_keyword(tok, KW_COM, "COM")) {
             lex_next(lex); // Consume COM
             return stmt_on_com_handler(vm, lex);
-        } else if (tok.type == TOK_KEYWORD && (tok.as.keyword == KW_NET || tok.as.keyword == KW_PEER || tok.as.keyword == KW_SNIFF || tok.as.keyword == KW_PACKET || tok.as.keyword == KW_PORT)) {
-            BppKeywordId kw = tok.as.keyword;
+        } else if (tok_is_keyword(tok, KW_NET, "NET") || tok_is_keyword(tok, KW_PEER, "PEER") ||
+                   tok_is_keyword(tok, KW_SNIFF, "SNIFF") || tok_is_keyword(tok, KW_PACKET, "PACKET") ||
+                   tok_is_keyword(tok, KW_PORT, "PORT") ||
+                   (tok.length == 4 && tok.start && tok_str_equals_ci(tok.start, "PORT", 4))) {
+            bool is_port = tok_is_keyword(tok, KW_PORT, "PORT") || (tok.length == 4 && tok.start && tok_str_equals_ci(tok.start, "PORT", 4));
+            bool is_net = tok_is_keyword(tok, KW_NET, "NET") || (tok.length == 3 && tok.start && tok_str_equals_ci(tok.start, "NET", 3));
+            bool is_peer = tok_is_keyword(tok, KW_PEER, "PEER") || (tok.length == 4 && tok.start && tok_str_equals_ci(tok.start, "PEER", 4));
+            bool is_sniff = tok_is_keyword(tok, KW_SNIFF, "SNIFF") || tok_is_keyword(tok, KW_PACKET, "PACKET") ||
+                            (tok.length == 5 && tok.start && tok_str_equals_ci(tok.start, "SNIFF", 5)) ||
+                            (tok.length == 6 && tok.start && tok_str_equals_ci(tok.start, "PACKET", 6));
             lex_next(lex); // Consume keyword
             int port = 0;
-            if (kw == KW_PORT && lex_peek(lex).type == TOK_LPAREN) {
+            if (is_port && lex_peek(lex).type == TOK_LPAREN) {
                 lex_next(lex);
                 BValue p_val = eval_expression(vm, lex, &err);
                 if (err.code != 0) return err;
@@ -74,25 +88,68 @@ BppError stmt_on_handler(VMContext *vm, LexerContext *lex) {
                 if (lex_peek(lex).type == TOK_RPAREN) lex_next(lex);
             }
             BppToken branch_tok = lex_next(lex);
-            if (branch_tok.type == TOK_KEYWORD && (branch_tok.as.keyword == KW_GOTO || branch_tok.as.keyword == KW_GOSUB)) {
+            if (tok_is_keyword(branch_tok, KW_GOTO, "GOTO") || tok_is_keyword(branch_tok, KW_GOSUB, "GOSUB") ||
+                (branch_tok.length == 4 && branch_tok.start && tok_str_equals_ci(branch_tok.start, "GOTO", 4)) ||
+                (branch_tok.length == 5 && branch_tok.start && tok_str_equals_ci(branch_tok.start, "GOSUB", 5))) {
                 BValue val = eval_expression(vm, lex, &err);
                 if (err.code != 0) return err;
                 if (val.type != VAL_NUMBER) {
                     if (val.type == VAL_STRING && val.as.string) str_release(vm_get_str(vm), val.as.string);
                     err.code = 13; err.message = "Type mismatch in ON line number"; return err;
                 }
-                if (kw == KW_NET) vm_set_net_trap(vm, val.as.number, 1);
-                else if (kw == KW_PEER) vm_set_peer_trap(vm, val.as.number, 1);
-                else if (kw == KW_SNIFF || kw == KW_PACKET) vm_set_sniff_trap(vm, val.as.number, 1);
-                else if (kw == KW_PORT) vm_set_port_trap(vm, port, val.as.number, 1);
+                if (is_net) vm_set_net_trap(vm, val.as.number, 1);
+                else if (is_peer) vm_set_peer_trap(vm, val.as.number, 1);
+                else if (is_sniff) vm_set_sniff_trap(vm, val.as.number, 1);
+                else if (is_port) vm_set_port_trap(vm, port, val.as.number, 1);
                 return err;
             } else {
                 err.code = 2; err.message = "Expected GOTO or GOSUB in ON handler"; return err;
             }
-        } else if (tok.type == TOK_KEYWORD && tok.as.keyword == KW_BREAK) {
+        } else if (tok_is_keyword(tok, KW_SIGNAL, "SIGNAL")) {
+            lex_next(lex); // Consume SIGNAL
+            char topic[64];
+            topic[0] = '\0';
+            if (lex_peek(lex).type == TOK_LPAREN) {
+                lex_next(lex);
+                BValue t_val = eval_expression(vm, lex, &err);
+                if (err.code != 0) return err;
+                if (t_val.type == VAL_STRING && t_val.as.string) {
+                    runtime_snprintf(topic, sizeof(topic), "%s", str_data(t_val.as.string));
+                    str_release(vm_get_str(vm), t_val.as.string);
+                }
+                if (lex_peek(lex).type == TOK_RPAREN) lex_next(lex);
+            } else {
+                BValue t_val = eval_expression(vm, lex, &err);
+                if (err.code != 0) return err;
+                if (t_val.type == VAL_STRING && t_val.as.string) {
+                    runtime_snprintf(topic, sizeof(topic), "%s", str_data(t_val.as.string));
+                    str_release(vm_get_str(vm), t_val.as.string);
+                }
+            }
+            BppToken branch_tok = lex_next(lex);
+            bool is_gosub = true;
+            if (tok_is_keyword(branch_tok, KW_GOTO, "GOTO")) {
+                is_gosub = false;
+            } else if (tok_is_keyword(branch_tok, KW_GOSUB, "GOSUB") || branch_tok.type == TOK_COMMA) {
+                is_gosub = true;
+            } else {
+                err.code = 2; err.message = "Expected GOTO or GOSUB in ON SIGNAL";
+                return err;
+            }
+            BValue val = eval_expression(vm, lex, &err);
+            if (err.code != 0) return err;
+            if (val.type != VAL_NUMBER && val.type != VAL_INTEGER) {
+                if (val.type == VAL_STRING && val.as.string) str_release(vm_get_str(vm), val.as.string);
+                err.code = 13; err.message = "Type mismatch in ON SIGNAL line number";
+                return err;
+            }
+            int line_num = (int)val.as.number;
+            msg_broker_set_signal_trap(topic, line_num, is_gosub);
+            return err;
+        } else if (tok_is_keyword(tok, KW_BREAK, "BREAK")) {
             lex_next(lex); // Consume BREAK
             BppToken branch_tok = lex_next(lex);
-            if (branch_tok.type == TOK_KEYWORD && (branch_tok.as.keyword == KW_GOTO || branch_tok.as.keyword == KW_GOSUB)) {
+            if (tok_is_keyword(branch_tok, KW_GOTO, "GOTO") || tok_is_keyword(branch_tok, KW_GOSUB, "GOSUB")) {
                 BValue val = eval_expression(vm, lex, &err);
                 if (err.code != 0) return err;
                 if (val.type != VAL_NUMBER) {
@@ -150,7 +207,7 @@ BppError stmt_on_handler(VMContext *vm, LexerContext *lex) {
             if (target_idx == index) {
                 char label_name[64];
                 int l_len = (int)(line_tok.length < sizeof(label_name) - 1 ? line_tok.length : sizeof(label_name) - 1);
-                memcpy(label_name, line_tok.as.string, l_len);
+                runtime_memcpy(label_name, line_tok.as.string, l_len);
                 label_name[l_len] = '\0';
                 char filename[256];
                 if (!metadata_resolve_label(vm_get_metadata(vm), label_name, filename, sizeof(filename), &target_line)) {
@@ -200,32 +257,32 @@ BppError stmt_on_handler(VMContext *vm, LexerContext *lex) {
 
 BppError stmt_timer_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     (void)vm; (void)lex;
     return err;
 }
 
 BppError stmt_alarm_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     (void)vm; (void)lex;
     return err;
 }
 
 BppError stmt_alarm_str_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     (void)vm; (void)lex;
     return err;
 }
 
 extern BppError stmt_screen_handler(VMContext *vm, LexerContext *lex);
 extern BppError stmt_graphics_handler(VMContext *vm, LexerContext *lex);
-extern BppError stmt_let_handler(VMContext *vm, LexerContext *lex);
+extern BppError stmt_let_handler_ex(VMContext *vm, LexerContext *lex, bool is_explicit_let, bool is_set_object_only);
 
 BppError stmt_set_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BppToken tok = lex_peek(lex);
     if (tok.type == TOK_KEYWORD) {
@@ -241,5 +298,5 @@ BppError stmt_set_handler(VMContext *vm, LexerContext *lex) {
         }
     }
 
-    return stmt_let_handler(vm, lex);
+    return stmt_let_handler_ex(vm, lex, false, true);
 }

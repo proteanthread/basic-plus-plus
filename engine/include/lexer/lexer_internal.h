@@ -46,6 +46,8 @@ struct LexerContext {
 bool        scan_is_kw_bound(char c);
 bool        scan_match_directive(const char *start, int len, const char *target);
 bool        scan_is_followed_by_assignment(const char *pos);
+bool        scan_has_keyword_on_line(const char *pos, const char *target_kw);
+bool        scan_is_preceded_by_let(const char *pos, const char *source_start);
 void        scan_skip_whitespace(LexerContext *ctx);
 
 bool        scan_try_radix_number(LexerContext *ctx, BppToken *tok);
@@ -54,5 +56,7 @@ bool        scan_try_docstring(LexerContext *ctx, BppToken *tok);
 bool        scan_try_directive_or_label(LexerContext *ctx, BppToken *tok);
 bool        scan_try_string_literal(LexerContext *ctx, BppToken *tok);
 bool        scan_try_rpn_literal(LexerContext *ctx, BppToken *tok);
+bool        scan_try_pn_literal(LexerContext *ctx, BppToken *tok);
+bool        scan_try_pragma(LexerContext *ctx, BppToken *tok);
 
 #endif // LEXER_INTERNAL_H

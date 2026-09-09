@@ -1,18 +1,67 @@
-MONTH Month Number Function
-======================================================================
+TITLE: MONTH
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/functions/datetime/month.c
+GENERATED: no, hand-written
+STATUS: current
 
-The MONTH function returns the current calendar month as an integer
-from 1 (January) to 12 (December).
+==============================================================================
+MONTH KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: month.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (common_reg_funcs.c, sys_fn.c)
+    // NEEDS: libcore (language_descriptor.h)
+    // NEEDS: libengine (datetime_common.h, month.h)
+    // Provides runtime implementation for the MONTH function in BASIC++.
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Returns month of the year (1-12) for specified Microsoft Serial Date.
 
-    mon% = MONTH
-    mon% = MONTH()
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    MONTH(serial#)
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = MONTH(serial#)
+    20 PRINT "Result: "; Val
 
-CODE EXAMPLES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 13: Type Mismatch
 
-    10 PRINT "Month: "; MONTH
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Date and Time
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_PURE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  MONTH
+Category              Date and Time
+Syntax                MONTH(serial#)
+Description           Returns month of the year (1-12) for specified Micr...
+Error Summary         Error 13: Type Mismatch
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_PURE
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/eval/functions/datetime/month.c

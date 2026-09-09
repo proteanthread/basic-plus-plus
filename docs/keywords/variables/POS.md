@@ -1,0 +1,69 @@
+<!--
+Title:        POS
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/runtime/descriptors/system_var_descriptors.c
+Generated:    no, hand-written
+Status:       current
+-->
+
+# `POS` Keyword Reference
+
+## Source Header
+
+```c
+// FILENAME: system_var_descriptors.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libcore, libengine, libflex
+// NEEDS: libcore (language_descriptor.h, system_var_descriptors.h)
+// Implements authoritative descriptor definitions for built-in system variabl
+```
+
+## 1. Description & Usage
+
+Current text cursor screen column (1-indexed).
+
+## 2. Syntax
+
+```basic
+POS or POS(0)
+```
+
+## 3. Code Example
+
+```basic
+10 Val = POS or POS(0)
+20 PRINT "Result: "; Val
+```
+
+## 4. Error Conditions
+
+None
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Console & Screen
+- **Subsystem**: SUBSYSTEM_KERNEL
+- **Safety Level**: SAFETY_SAFE
+
+---
+
+## LanguageDescriptor (LangDesc) Quick Reference
+
+| Field | Value |
+|---|---|
+| Name | POS |
+| Category | Console & Screen |
+| Syntax | POS or POS(0) |
+| Description | Current text cursor screen column (1-indexed). |
+| Error Summary | None |
+| Subsystem | SUBSYSTEM_KERNEL |
+| Safety Level | SAFETY_SAFE |
+| Feature Type | FEATURE_VARIABLE |
+| Delimiter Mask | none |
+| Compatibility | none |
+| Since Version | none |
+| Source File | engine/src/runtime/descriptors/system_var_descriptors.c |

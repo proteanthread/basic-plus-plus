@@ -1,0 +1,76 @@
+TITLE: CLASS
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/oop/structure/class.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+CLASS KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: class.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (record.c)
+    // NEEDS: libcore (memory.h, memory.c)
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libcore (struct.h, struct.c)
+    // NEEDS: libengine (class.h, eval.h, eval.c, lexer.h, lexer.c, string.c, vm.h
+    // Provides runtime implementation for the CLASS statement in BASIC++.
+    //
+    // ---- Includes ----
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Defines an Object-Oriented class with inheritance and encapsulation support.
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    CLASS class_name [EXTENDS parent] 
+ member_name AS type 
+ ... 
+ END CLASS
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM CLASS Demonstration
+    20 PRINT "CLASS executed successfully."
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error, Error 38: CLASS Without END CLASS, Error 10: Duplicate
+Definition
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Object-Oriented Programming
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SAFE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  CLASS
+Category              Object-Oriented Programming
+Syntax                CLASS class_name [EXTENDS parent] 
+ member_name AS ...
+Description           Defines an Object-Oriented class with inheritance a...
+Error Summary         Error 2: Syntax Error, Error 38: CLASS Without END ...
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/oop/structure/class.c

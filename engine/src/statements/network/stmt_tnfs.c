@@ -12,14 +12,14 @@
 #include "runtime/tnfs.h"
 #include "eval/eval.h"
 #include "runtime/strings.h"
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include "runtime/language_descriptor.h"
+#include "runtime/format/snprintf.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
 
 BppError stmt_tnfs_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     bool is_mount = false;
     bool is_unmount = false;
@@ -31,10 +31,10 @@ BppError stmt_tnfs_handler(VMContext *vm, LexerContext *lex) {
     }
 
     if (tok.type == TOK_IDENT || tok.type == TOK_KEYWORD) {
-        if (tok.length == 7 && strncasecmp(tok.start, "UNMOUNT", 7) == 0) {
+        if (tok.length == 7 && runtime_strncasecmp(tok.start, "UNMOUNT", 7) == 0) {
             is_unmount = true;
             lex_next(lex);
-        } else if (tok.length == 5 && strncasecmp(tok.start, "MOUNT", 5) == 0) {
+        } else if (tok.length == 5 && runtime_strncasecmp(tok.start, "MOUNT", 5) == 0) {
             is_mount = true;
             lex_next(lex);
         } else {
@@ -88,6 +88,17 @@ BppError stmt_tnfs_handler(VMContext *vm, LexerContext *lex) {
     return err;
 }
 
+static const LangDesc g_tnfs_desc = {
+    .name = "TNFS",
+    .category = "Hardware & Network",
+    .syntax = "TNFS.MOUNT host$ [, path$ [, port]] | TNFS.UNMOUNT",
+    .description = "Mounts or unmounts a remote Trusted Network File System (TNFS) server repository.",
+    .error_summary = "None",
+    .subsystem = SUBSYSTEM_HARDWARE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_STATEMENT
+};
+
 void stmt_tnfs_register(void) {
-    // Registered in VM dispatch
+    lang_desc_register(&g_tnfs_desc);
 }

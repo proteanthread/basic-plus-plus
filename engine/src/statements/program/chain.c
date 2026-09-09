@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
 // NEEDS: libcore (ctype.h, ctype.c, memory.h, memory.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libcore (strings.h, strings.c, variables.h, variables.c)
 // NEEDS: libengine (chain.h, eval.h, eval.c, lexer.h, lexer.c, string.c, vm.h)
 // NEEDS: libkernel (errors.h, security.h, security.c, vdev.h, vdev.c)
@@ -21,20 +21,32 @@
 #include "runtime/strings.h"
 #include "device/vdev.h"
 #include "security/security.h"
-#include "runtime/micro_lib_metadata.h"
-#include <string.h>
-#include <ctype.h>
+#include "runtime/language_descriptor.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "runtime/ctype/ctype.h"
+
+static const LangDesc g_chain_desc = {
+    .name = "CHAIN",
+    .category = "Program Mgmt & Editing",
+    .syntax = "CHAIN [MERGE] filename_expr [, [line_number] [, ALL] [, MERGE]]",
+    .description = "Passes control to another program file with optional variable preservation and line merging.",
+    .error_summary = "Error 2: Syntax Error, Error 53: File Not Found, Error 8: Undefined Line Number",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SAFE,
+    .type = FEATURE_STATEMENT
+};
 
 #if defined(_MSC_VER)
-#define strcasecmp _stricmp
-#define strncasecmp _strnicmp
+#define runtime_strcasecmp runtime_strcasecmp
+#define runtime_strncasecmp runtime_strncasecmp
 #endif
 
 extern BppError vm_load_program_file(VMContext *vm, const char *filename);
 
 BppError stmt_chain_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     if (!vm || !lex) {
         err.code = ERR_ILLEGAL_FUNCTION_CALL;
         return err;
@@ -47,7 +59,7 @@ BppError stmt_chain_handler(VMContext *vm, LexerContext *lex) {
     // Check for leading MERGE option e.g. CHAIN MERGE "filename"
     BppToken peek = lex_peek(lex);
     if ((peek.type == TOK_KEYWORD && peek.as.keyword == KW_MERGE) ||
-        (peek.type == TOK_IDENT && peek.length == 5 && strncasecmp(peek.start, "MERGE", 5) == 0)) {
+        (peek.type == TOK_IDENT && peek.length == 5 && runtime_strncasecmp(peek.start, "MERGE", 5) == 0)) {
         merge_flag = true;
         lex_next(lex);
     }
@@ -77,7 +89,7 @@ BppError stmt_chain_handler(VMContext *vm, LexerContext *lex) {
             target_line = peek.as.number;
         } else if (peek.type != TOK_COMMA && peek.type != TOK_EOL && peek.type != TOK_EOF) {
             BppError line_err;
-            memset(&line_err, 0, sizeof(line_err));
+            runtime_memset(&line_err, 0, sizeof(line_err));
             BValue line_val = eval_expression(vm, lex, &line_err);
             if (line_err.code == 0) {
                 if (line_val.type == VAL_NUMBER) {
@@ -93,11 +105,11 @@ BppError stmt_chain_handler(VMContext *vm, LexerContext *lex) {
         if (peek.type == TOK_COMMA) {
             lex_next(lex); // Consume ','
             peek = lex_peek(lex);
-            if (peek.type == TOK_IDENT && peek.length == 3 && strncasecmp(peek.start, "ALL", 3) == 0) {
+            if (peek.type == TOK_IDENT && peek.length == 3 && runtime_strncasecmp(peek.start, "ALL", 3) == 0) {
                 all_flag = true;
                 lex_next(lex);
             } else if ((peek.type == TOK_KEYWORD && peek.as.keyword == KW_MERGE) ||
-                       (peek.type == TOK_IDENT && peek.length == 5 && strncasecmp(peek.start, "MERGE", 5) == 0)) {
+                       (peek.type == TOK_IDENT && peek.length == 5 && runtime_strncasecmp(peek.start, "MERGE", 5) == 0)) {
                 merge_flag = true;
                 lex_next(lex);
             }
@@ -107,11 +119,11 @@ BppError stmt_chain_handler(VMContext *vm, LexerContext *lex) {
             if (peek.type == TOK_COMMA) {
                 lex_next(lex); // Consume ','
                 peek = lex_peek(lex);
-                if (peek.type == TOK_IDENT && peek.length == 3 && strncasecmp(peek.start, "ALL", 3) == 0) {
+                if (peek.type == TOK_IDENT && peek.length == 3 && runtime_strncasecmp(peek.start, "ALL", 3) == 0) {
                     all_flag = true;
                     lex_next(lex);
                 } else if ((peek.type == TOK_KEYWORD && peek.as.keyword == KW_MERGE) ||
-                           (peek.type == TOK_IDENT && peek.length == 5 && strncasecmp(peek.start, "MERGE", 5) == 0)) {
+                           (peek.type == TOK_IDENT && peek.length == 5 && runtime_strncasecmp(peek.start, "MERGE", 5) == 0)) {
                     merge_flag = true;
                     lex_next(lex);
                 }
@@ -152,14 +164,7 @@ BppError stmt_chain_handler(VMContext *vm, LexerContext *lex) {
 }
 
 void stmt_chain_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "CHAIN",
-        .category = "Program Mgmt & Editing",
-        .syntax = "CHAIN [MERGE] filename_expr [, [line_number] [, ALL] [, MERGE]]",
-        .help_text = "Passes control to another program file with optional variable preservation and line merging.",
-        .error_codes = "Error 2: Syntax Error, Error 53: File Not Found, Error 8: Undefined Line Number"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_chain_desc);
 }
 
 

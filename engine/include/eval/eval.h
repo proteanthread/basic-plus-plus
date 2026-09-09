@@ -242,6 +242,7 @@
 
 BValue eval_expression(VMContext *vm, LexerContext *lex, BppError *err);
 BValue invoke_user_function(VMContext *vm, const char *name, BValue *args, int argc, BppError *err);
+bool eval_try_resolve_builtin_constant_or_system_var(VMContext *vm, const char *name_buf, BValue *out_val);
 
 //
 // ---- C17 Ergonomic Helpers ----

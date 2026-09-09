@@ -1,17 +1,67 @@
-MINUTES Current Minute Function
-======================================================================
+TITLE: MINUTES
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/functions/datetime/minute.c
+GENERATED: no, hand-written
+STATUS: current
 
-The MINUTES function returns the current minute of the hour (0 to 59).
+==============================================================================
+MINUTES KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: minute.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (common_reg_funcs.c, sys_fn.c)
+    // NEEDS: libcore (language_descriptor.h)
+    // NEEDS: libengine (datetime_common.h, minute.h)
+    // Provides runtime implementation for the MINUTE function in BASIC++.
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Returns the minute component (0 to 59) of the current or specified time.
 
-    min% = MINUTES
-    min% = MINUTES()
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    MINUTES [(time_expr)]
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = MINUTES [(time_e10pr)]
+    20 PRINT "Result: "; Val
 
-CODE EXAMPLES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 5: Illegal Function Call
 
-    10 PRINT "Minute: "; MINUTES
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Date & Time
+Subsystem:     SUBSYSTEM_PLATFORM
+Safety Level:  SAFETY_SAFE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  MINUTES
+Category              Date & Time
+Syntax                MINUTES [(time_expr)]
+Description           Returns the minute component (0 to 59) of the curre...
+Error Summary         Error 5: Illegal Function Call
+Subsystem             SUBSYSTEM_PLATFORM
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         BASIC++ Standard
+Since Version         6.0.0
+Source File           engine/src/eval/functions/datetime/minute.c

@@ -1,0 +1,73 @@
+TITLE: ENTER
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/io/enter.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+ENTER KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: enter.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (file.h, file.c, language_descriptor.h)
+    // NEEDS: libcore (string.h, strings.h, strings.c, variables.h, variables.c)
+    // NEEDS: libengine (enter.h, eval.h, eval.c, string.c)
+    // NEEDS: libkernel (errors.h)
+    // NEEDS: libplatform (platform.h)
+    // Provides runtime implementation for the ENTER statement in BASIC++.
+    //
+    // ---- Includes ----
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Performs timed input from terminal or channel with status return (HP 2000
+TSB).
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    ENTER [#channel,] timeout_sec, status_var, string_var
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM ENTER Demonstration
+    20 PRINT "ENTER executed successfully."
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error, Error 13: Type Mismatch, Error 52: Bad File Number
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Input / Output
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_IO
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  ENTER
+Category              Input / Output
+Syntax                ENTER [#channel,] timeout_sec, status_var, string_var
+Description           Performs timed input from terminal or channel with ...
+Error Summary         Error 2: Syntax Error, Error 13: Type Mismatch, Err...
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_IO
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/io/enter.c

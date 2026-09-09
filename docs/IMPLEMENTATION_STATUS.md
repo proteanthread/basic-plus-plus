@@ -1,74 +1,182 @@
-# BASIC++ v6.5.2 Implementation Status
+<!--
+Title:        Implementation_Status
+Tier:         4
+Applies to:   BASIC++ v6.5.2
+Authority:    direct reading of engine/ sources, named per row
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. CURRENT VERSION
+# Implementation Status
 
-Version 6.5.2, codename "Phoenix". Build date: 2026-08-06. This is the current production version.
+What is real, what is stubbed, and what is documented but absent. Every row
+was established by reading the named source file, not by reading another
+document.
 
-## 2. BUILD TARGETS
+This is the register the 7.0.0 release is planned against. It replaces
+whatever this document said before, which was not measured.
 
-| Target | Status | Description |
-|--------|--------|-------------|
-| baspp (Standard Edition) | Shipping | Full desktop with graphics, TUI editor, all subsystems |
-| bpp (Lite Edition) | Shipping | Headless REPL for terminal/IoT/server |
-| bs (Batch Runner) | Shipping | Non-interactive script executor |
-| bppc (Compiler) | Active Development | C17 transpiler and bytecode compiler |
-| detok (Detokenizer) | Shipping | GW-BASIC binary decoder |
+---
 
-## 3. DIALECT SUPPORT
+## Legend
 
-| Dialect | Code | Status |
-|---------|------|--------|
-| GW-BASIC | GWBS | Complete — default dialect |
-| QBASIC | QBAS | Complete |
-| ECMA-116 Full BASIC | E116 | Complete — exception handling, enhanced files |
-| ECMA-55 Minimal BASIC | E055 | Complete |
-| Tymshare Super BASIC | SBAS | Complete — BY, UNLESS, extended math |
-| Palo Alto Tiny BASIC | PATB | Complete — minimal keyword set |
-| Sinclair ZX Spectrum BASIC | SINC | Complete — INK, PAPER, BORDER |
-| SuperBASIC (Sinclair QL) | SQLB | Complete — REPeat, DEFine PROCedure |
-| Applesoft BASIC | APPL | Complete — GR, HGR, HPLOT, ONERR |
+| Mark | Meaning |
+|---|---|
+| **REAL** | Implemented and does what its name says |
+| **STUB** | Present, callable, and returns a fixed or fabricated result |
+| **PARTIAL** | Genuinely implemented, but materially incomplete |
+| **ABSENT** | Does not exist, though something documents or implies it |
 
-## 4. PLATFORM SUPPORT
+---
 
-| Platform | Architecture | Status |
-|----------|-------------|--------|
-| Windows 10/11 | x64 | Fully supported, primary development platform |
-| Windows 10/11 | x86 | Supported |
-| Linux (Ubuntu, Debian, Fedora) | x64 | Fully supported |
-| Linux (Raspberry Pi OS) | ARM64 | Supported |
-| macOS | ARM64 (Apple Silicon) | Supported |
-| FreeDOS | 16-bit x86 | Supported via Open Watcom cross-compilation |
-| ESP32 | Xtensa | Experimental (embedded profile) |
-| Arduino | AVR/ARM | Experimental (embedded profile) |
-| Raspberry Pi Pico | ARM Cortex-M0+ | Experimental (embedded profile) |
+## 1. The headline finding: two socket layers
 
-## 5. LIBRARY CHAIN STATUS
+Read this before anything else, because it changes what the network work is.
 
-| Library | Layer | Status | Source Count |
-|---------|-------|--------|-------------|
-| libboot | 1 | Complete | 1 file |
-| libplatform | 2 | Complete | 9 files |
-| libkernel | 3 | Complete | ~25 files |
-| libengine | 4 | Complete | ~30 files |
-| libhardware | 5 | Complete | ~10 files |
-| libserver | 6 | Complete | 6 files |
-| libscript | 7 | Complete | 1 file |
-| libcore | 8 | Complete | 4 files |
-| libflex | 9 | Complete | 5 files |
-| libstandard | 10 | Complete | 8 files |
-| libadvanced | 11 | Complete | 7 files |
-| libext | 12 | Template | 1 file |
+**BASIC++ contains a complete, working socket implementation, and the `SOCK.*`
+keywords do not use it.**
 
-## 6. KEYWORD COUNT
+`engine/lib/platform/plat_net.c` is genuine. It calls `WSAStartup`,
+`getaddrinfo`, `socket`, `connect`, `bind`, `listen`, `accept`, `send`,
+`recv`, `select`, and `ioctlsocket` or `fcntl` for non-blocking mode. It
+includes `<winsock2.h>` and `<ws2tcpip.h>` on Windows and `<sys/socket.h>`,
+`<netdb.h>` and `<arpa/inet.h>` on POSIX. `ws2_32` is linked at
+`engine/CMakeLists.txt` line 555. Nothing about it is simulated.
 
-The BppKeywordId enum in engine/include/lexer/lexer.h defines 367 keywords. This includes core language statements, built-in functions, operators, file I/O keywords, graphics keywords, metaprogramming keywords, debugging keywords, dialect-specific keywords, ECMA-116 keywords, and virtual subsystem introspection keywords.
+`engine/src/runtime/vnet.c` is a real channel layer on top of it: sixteen
+channels, TCP and UDP, client and server, non-blocking accept that reports the
+connecting client's IP address, and a `VDev` wrapper so a network channel can
+be used as a device.
 
-## 7. ERROR CODE COVERAGE
+`engine/src/runtime/sock_engine.c` is a different thing entirely. It scans a
+static array, claims a free slot, and returns the index plus one. It includes
+`sock_engine.h`, `strops.h` and `memops.h` and no socket header of any kind.
 
-The BppErrorCode enum in engine/include/types/errors.h defines 43 error codes ranging from ERR_OK (0) to ERR_PATH_NOT_FOUND (76). All codes are actively used by statement handlers with proper range validation and Error 5 (Illegal function call) trapping for out-of-bounds arguments.
+`engine/src/statements/network/stmt_sock.c` includes `runtime/sock_engine.h`.
+So `SOCK.BIND`, `SOCK.LISTEN`, `SOCK.SEND`, `SOCK.CLOSE` and
+`SOCK.SETSOCKOPT` drive the handle table while the working implementation sits
+one directory away, unused by them.
 
-## 8. RECENT MILESTONES
+The consequence for planning: making `SOCK.*` real is a redirect, not an
+implementation. The interface `sock_engine.h` declares maps almost one to one
+onto what `plat_net.c` already provides.
 
-- v6.5.2: Current release. TRY/CATCH structured exceptions. Alarm system (countdown + daily). MAP data structure. PACK$/UNPACK. Extended bit functions. MUX/DEMUX/BITMUX multiplexing. FILTER/REDUCE array operations. Transaction support (TXN/ATOMIC/COMMIT/ROLLBACK). Mouse input trapping. Sound playback (SNDPLAY/SNDLOOP/SNDSTOP). State save/restore (STATESAVE/STATELOAD).
-- v6.5.0: Engine restructure. Moved source to engine/ directory. 12-library modular architecture. Opaque context pattern. Separated stacks for each control-flow construct.
-- v6.0.0: Major version. Non-recursive VM. Iterative expression evaluator. Reference-counted strings. Structured error system. Security levels.
+---
+
+## 2. Stubs: present, callable, and not doing the job
+
+These are the most damaging category, because a program calling them appears
+to work.
+
+| Subsystem | Evidence | Mark |
+|---|---|---|
+| `SOCK.*` keywords | `sock_engine.c` — `sock_open` returns an index into a static array; no socket header is included. See section 1: the real layer exists and is not wired to these | **STUB** |
+| Packet capture | `packet_sniff.c` — `packet_sniff_start` writes one fixed packet (MAC `AA:BB:CC:DD:EE:01`, IP `192.168.1.1`, payload `SSID:BASIC_NODE_AP`) and sets count to 1. Source comment: "Populate simulated last packet" | **STUB** |
+| Gemini | `gemini.c` — `net_gemini_fetch` never reads its `url` argument; returns a fixed capsule. `net_gemini_serve` casts both arguments to void and returns true | **STUB** |
+| Gopher | `gopher.c` — `net_gopher_fetch` returns a fixed menu with `(void)url`. `net_gopher_serve` returns true without acting | **STUB** |
+| TNFS | `tnfs.c` — `tnfs_mount` sets `session_id = 0x1982` and opens no socket; `tnfs_list_directory` returns a fixed listing of `AUTORUN.BAS`, `DEMO.ATR`, `GAMES.DSK` | **STUB** |
+| `HTTP.GET$` | `func_http.c` calls `iot_http_get`, which is `iot_net.c` line 178: casts `url` to void and returns the literal `{"status":"ok","code":200}` | **STUB** |
+| WiFi, MQTT, ESP-NOW, Bluetooth, BLE, WebREPL | `engine/iot/src/iot_net.c` in its entirety. `iot_wifi_connect` ignores SSID and password and sets a flag. `iot_wifi_get_ip` returns the string `192.168.1.100`. `iot_wifi_scan` returns three invented networks. `iot_mqtt_publish` returns true without acting. `iot_ble_scan` returns two invented devices | **STUB** |
+| Pointing and game input | Every human-input device other than the keyboard. `mouse.c` — all six handlers (`MOUSE`, `MOUSE INPUT`, `MOUSE SHOW`, `MOUSE HIDE`, `HMOUSE`, `VMOUSE`) are `(void)vm; (void)lex; return err;`. `pen.c` — `PEN` handler empty. `joystick.c` — `STICK`/`STRIG` handler empty. `stick.c` — `STICK(port%)` casts `port` to void and returns 0, while its own description claims it "autodetects USB controller or falls back to cursor keys". Also `paddle.c`, `ptrig.c`, `strig.c` | **STUB** |
+| Python interop | `func_python.c` — `func_python_eval` type-checks its argument then returns the literal string `"None"` | **STUB** |
+| Encryption | `crypto_engine.c` — `crypto_encrypt_sim` and `crypto_decrypt_sim` are a byte-wise XOR against a repeating key | **STUB** |
+| Key generation | `crypto_engine.c` — `crypto_keygen` computes each byte as `(i * 37 + 101) ^ (bytes * 13)`. No entropy source. Deterministic across every machine and every call | **STUB** |
+| IoT hardware | `engine/iot/src/esp32_hal.c` — every call reads or writes `s_sim_pin_*` static arrays. Delays call `Sleep()` or `nanosleep()`. I2C is a 256x256 byte array; SPI is a loopback | **STUB** |
+| IoT sensors | `iot_sensors.c` — DHT returns 24.5 C and 45%, touch returns 32, Hall returns 128, `iot_neopixel_show` is empty | **STUB** |
+| 8086 instruction decoder | `bios_cpu8086.c` — `bios_cpu8086_step` implements three opcodes: `0x90` NOP, `0xF4` HLT, `0xCF` IRET. Everything else falls to `default`. No ModR/M decoding. Note that the machine around it is real: correct reset vector (`CS=0xF000`, `IP=0xFFF0`, `FLAGS=0x0002`), correct segment:offset addressing with a 1 MB bound, and a correct IVT-based interrupt dispatch that pushes FLAGS, CS and IP in the right order | **STUB** |
+
+A note on evidence, because an earlier version of this document got it wrong:
+`.handler = NULL` in a `FunctionEntry` is **not** evidence that a function is
+unwired. `func_exec.c`, which is entirely real, does not call
+`funcreg_register` at all. Dispatch does not run through that field.
+
+## 3. Absent: documented or implied, not present
+
+| Capability | Evidence | Mark |
+|---|---|---|
+| TLS | Zero references to mbedTLS, BearSSL, wolfSSL or OpenSSL in either `CMakeLists.txt`. Gemini is TLS-mandatory, so its client cannot be honest without this | **ABSENT** |
+| Filesystem drivers | `vfs.c` is a path-prefix mount and redirect layer. No superblock, no inode, no FAT, exFAT or ISO9660 driver | **ABSENT** |
+| Block device layer | Nothing beneath the VFS to drive a real filesystem | **ABSENT** |
+| UEFI boot | `bootstrap/uefi/uefi_main.c` is a 64-line toy interpreter with ten commands, does not link the engine, and has no CMake target. Zero hits for `uefi_main`, `BOOTX64` or `EFIAPI` in either build file | **ABSENT** |
+| MBR boot | No boot sector, no VBR, no stage-two loader, no A20 code, no 16-bit target. A search for `0x7C00`, `0xAA55` and assembly sources returns only `basicpp_sys.h` | **ABSENT** |
+| ESP32 firmware | No `app_main()`, no FreeRTOS, no linker script, no Xtensa toolchain, no flashing step. `iot_main.c` has `int main(int argc, char **argv)` | **ABSENT** |
+| Pascal FFI | No `interop_pascal.c`. `engine/src/interop/` holds core, handle, error, marshal, com, com_register, ipc and jsonrpc only | **ABSENT** |
+| USB, CD-ROM, CD audio, DVD | No source anywhere. Serial ports and GPIB are the physical buses that do exist; see section 5 | **ABSENT** |
+
+## 4. Partial: real, and materially incomplete
+
+| Subsystem | State | Mark |
+|---|---|---|
+| Port I/O in `basicpp_sys.h` | 8- and 16-bit only. No `sys_in32`/`sys_out32`. x86 and x86_64 only; **silently compiles to a no-op returning 0** on every other architecture | **PARTIAL** |
+| Memory barriers | `sys_memory_barrier()` is a compiler barrier, not a CPU fence. Does not order MMIO against DMA on ARM or RISC-V | **PARTIAL** |
+| BIOS interrupt services | `bios.c` and the four model files are real: four machines with authentic ROM revisions and clock speeds, a BIOS Data Area, port I/O, POST codes, a VRAM write observer, and interrupt registration. The service coverage is thin. INT 10h: 00h, 02h, 03h, 0Eh. INT 13h: 00h, 01h, 08h — **02h read sectors and 42h extended read, which a bootloader needs, are absent**. INT 16h: 00h, 01h, 02h. INT 1Ah: 00h, 01h, 02h, 04h. INT 11h, 12h, 14h, 15h and 17h are not present | **PARTIAL** |
+| Hash functions | SHA-256 and HMAC-SHA256 are genuine. Unrecognised algorithm names fall back to FNV-64, which is not cryptographic | **PARTIAL** |
+| ISAM | `isam.c` — `CREATEINDEX`, `DELETEINDEX`, `SETINDEX` over `g_isam_tables[]`. Indexes are held in memory; there is no B-tree on disk and no persistence of the index across a run | **PARTIAL** |
+| UI widgets | Sixteen widgets in `src/statements/ui/widgets/`. Each is real and each writes a text rendering through the virtual device — `BUTTON` emits `[ < caption > ]`. There is no event loop, no focus model and no hit testing, so they draw a form rather than run one | **PARTIAL** |
+| Transpiler | Engine targets C17 only. The legacy tree `source/codegen/` holds fifteen backends | **PARTIAL** |
+| Bootstrap profiles | Eight exist: common, desktop, embedded, headless, iot, mobile, server, uefi. Four build. Root `CMakeLists.txt` line 204 excludes three by directive; uefi is unaccounted for | **PARTIAL** |
+| Documentation generation | `docgen.c` walks the registry and writes one monolithic `PUBLIC_API_REFERENCE.md`. It does not fan out per item, does not mirror into `help/`, and emits five of the descriptor's fifteen fields | **PARTIAL** |
+
+## 5. Real: verified working
+
+Listed because a register of only problems misrepresents the project, and
+because the first version of this document understated it badly.
+
+| Subsystem | Evidence |
+|---|---|
+| Platform sockets | `engine/lib/platform/plat_net.c` — Berkeley sockets and Winsock, `getaddrinfo`, non-blocking, `select`. See section 1 |
+| Network channels | `vnet.c` — sixteen channels over the real socket layer, TCP and UDP, client and server, accept with client IP |
+| Serial ports | `plat_serial.c` — `CreateFileA` on `\\.\COMn` with `DCB`, `SetCommState` and `COMMTIMEOUTS` on Windows; `open` on the tty device with `termios`, `tcsetattr` and `ioctl(FIONREAD)` on POSIX. Genuine physical hardware access |
+| GPIB / IEEE-488 | `src/statements/io/gpib.c` — instrument bus statements |
+| The rest of the platform layer | `plat_console.c`, `plat_fs.c`, `plat_sys.c`, `plat_time.c`, `plat_thread.c`, `plat_dl.c`, `plat_regex.c`, `plat_clipboard.c`, `plat_hw_speed.c` — the real OS abstraction, eleven files |
+| Set and group model | `set.h`, `set_core.c`, `set_ops.c` — full set algebra, group algebra, reference counting, arbitrary-depth path addressing, relational projection |
+| Pick MultiValue | `set_pick.c` — attribute, value and subvalue addressing with EXTRACT, REPLACE, INSERT, DELETE |
+| C embedding API | `basicpp.h` — lifecycle, execution, variables, zero-copy array views, message bus, IPC, logging sinks |
+| WASM target | Root `CMakeLists.txt` — exports eight functions with `ccall` and `cwrap` |
+| SHA-256 and HMAC | `crypto_engine.c` — correct initial hash values, real HMAC construction |
+| Virtual device layer | `vdev.h`, `vdev.c` (33 KB) — 29 device classes, capability gating, aliases, chains, multiplexers, and user-defined devices driven from BASIC |
+| Module system | `module.h` — four classes including `MOD_DIALECT`, a fifteen-flag capability mask, security levels, dynamic loading |
+| Keyword registry | `language_descriptor.h` — 371 statements and 316 functions registered with metadata |
+| Introspection | `src/statements/introspection/` — nine files: `alias.c`, `category.c`, `help.c`, `introspection.c`, `keyword.c`, `override.c`, `remove.c`, `scope.c`, `selftest.c`. Fourteen environment statements from `HOSTNAME` to `STARDATE` |
+| Debugger and tests | `debug.c`, `test.c`, `logger.c`, `selftest.c`, plus `check.c` and `verify.c` static analysis |
+| Refactoring tools | `renum.c` (32 KB), `stmt_rename.c` (29 KB), `reformat.c` with a four-file analysis pipeline, `semantic_harvester.c` (32 KB) |
+| Editor | 24 files, four editing personalities |
+| Matrices | `src/statements/matrices/` — eight files: `mat_arith.c`, `mat_ops.c` (17 KB), `mat_special.c`, `mat_transform.c`, `mat_input.c`, `mat_print.c`, `mat_read.c`, `mat_write.c`, plus `DET`, `DOT`, `CROSS` in `math/linear_algebra/` |
+| Hardware access | `interrupt.c`, `out.c`, `poke.c`, `peek.c`, `inp.c`, `def_seg.c` — real port and memory access on x86; see section 4 for the portability caveat |
+
+---
+
+## 6. Source defects, separate from missing features
+
+| Defect | Location |
+|---|---|
+| **The socket split.** A working socket layer and a stub handle table both exist; the keywords are wired to the stub | `lib/platform/plat_net.c`, `runtime/vnet.c` versus `runtime/sock_engine.c`, `statements/network/stmt_sock.c` |
+| **`EXTERN` never reports failure.** If `platform_load_library` or `platform_get_proc_address` returns NULL, the entry is still stored with `func_ptr = NULL` and `active = true`, and the handler returns success. A misspelled library name or symbol is silent | `statements/control/external/stmt_extern.c` |
+| **`EXTERN`'s advertised syntax does not match what it parses.** The descriptor says `EXTERN {SUB \| FUNCTION} name [ALIAS "aliasname"] [(params)]`; the handler parses `EXTERN libpath$, symbol [ALIAS name]` | same file |
+| **`STICK(port%)`'s description is false.** It claims to autodetect a USB controller or fall back to cursor keys; the handler casts `port` to void and returns 0 | `eval/functions/system/hardware/stick.c` |
+| Two public C APIs with different names for the same operations: `bpp_get_number` versus `bpp_get_var_num`, `bpp_set_string` versus `bpp_set_var_str`, with different signatures | `basicpp.h` and `bpp_api.h` |
+| Doxygen `@brief`, `@param` and `@return` tags, which `PROJECT_RULES.md` section 6 prohibits | `engine/include/interop/*.h`, `engine/include/device/vdev.h` |
+| Two binaries both called iot: `bpp` from `bootstrap/iot/iot.c`, and `iot` from `engine/iot/src/iot_main.c` | Root `CMakeLists.txt` lines 113 and 193 |
+| Keyword filename case is inconsistent: `assert.md` and `break.md` are lowercase among uppercase siblings | `docs/keywords/statements/` |
+| Keyword filenames contain spaces, `#` and `$`: `ARRAY EXT.md`, `DIM #.md`, `MID$ STMT.md`, `FILEMOD$.md` | `docs/keywords/statements/` |
+| Duplicate keyword pages for the same statement: `ON KEY.md` and `ON_KEY.md`, `ON TIMER.md` and `ON_TIMER.md` | `docs/keywords/statements/` |
+| Generated keyword pages claim `Generated: no, hand-written` while 371 files share one timestamp | `docs/keywords/statements/` |
+| Keyword lineage is wrong: `CLS` is recorded as "BASIC++ Standard" and is a GW-BASIC and BASICA statement. The provenance block and the descriptor table also disagree with each other | `docs/keywords/statements/CLS.md` |
+
+---
+
+## 7. How to keep this register true
+
+Every row cites a file. When you change that file, change the row in the same
+commit. A status document that is maintained by memory becomes false within
+weeks, which is what happened to the one this replaces.
+
+Two lessons from writing it are worth keeping. First, absence of a call in one
+file is not absence from the project: `sock_engine.c` has no socket header, but
+the project does. Search the whole tree before recording an ABSENT. Second, a
+registration field being null is not evidence of anything until you have read
+the dispatcher.
+
+The permanent fix is section 4's last row: once `docgen` fans out per item and
+a build gate enforces the mapping, most of this register becomes generated
+rather than written.

@@ -2,25 +2,31 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (math_fn.c)
-// NEEDS: libcore (math.h, micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (math.h, language_descriptor.h, string.h)
 // NEEDS: libengine (eps.h, math.c, string.c)
 // Provides runtime implementation for the EPS built-in function in BASIC++.
 //
 // ---- Includes ----
 
 #include "eval/functions/math/algebra/eps.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/math.h"
 #include "runtime/string.h"
+#include "runtime/string/strops.h"
+#include "runtime/math/math.h"
+
+static const LangDesc g_eps_desc = {
+    .name = "EPS",
+    .category = "Math Functions",
+    .syntax = "EPS(x)",
+    .description = "Returns the machine epsilon relative to x (ANSI Full BASIC 1987).",
+    .error_summary = "Error 13: Type Mismatch (EPS expects one numeric argument)",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_PURE,
+    .type = FEATURE_FUNCTION
+};
 void func_eps_register(void) {
-    MicroLibMetadata meta = {
-        .name = "EPS",
-        .category = "Math Functions",
-        .syntax = "EPS(x)",
-        .help_text = "Returns the machine epsilon relative to x (ANSI Full BASIC 1987).",
-        .error_codes = "Error 13: Type Mismatch (EPS expects one numeric argument)"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_eps_desc);
 }
 
 BValue func_eps_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err) {

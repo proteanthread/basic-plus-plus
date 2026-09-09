@@ -1,25 +1,69 @@
-# `CONSOLE` Console Display Configuration Statement
+<!--
+Title:        CONSOLE
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/platform/console/plat_console.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Keyword Definition
+# `CONSOLE` Keyword Reference
 
-Configures virtual terminal console scrolling regions and display properties.
+## Source Header
 
-### Syntax Signatures:
-```basic
-CONSOLE [start_line%] [, [num_lines%] [, [flag%]]]
+```c
+// FILENAME: plat_console.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community -- All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: baspp.exe, bpp.exe, bs.exe, libengine
+// NEEDS: libcore, libkernel
+// Implements component functionality for CONSOLE.
 ```
 
-### Error Handling & Boundary Conditions:
-- **Error 5 (ERR_ILLEGAL_FUNCTION_CALL)**: Line count outside terminal bounds.
+## 1. Description & Usage
 
-### Operational Notes:
-- Controls ANSI scrolling regions and terminal multiplexer panes.
+Redirects standard console terminal input and output to an alternate virtual device or port.
+
+## 2. Syntax
+
+```basic
+CONSOLE [device$ | mode%]
+```
+
+## 3. Code Example
+
+```basic
+10 REM CONSOLE Demonstration
+20 PRINT "CONSOLE executed successfully."
+```
+
+## 4. Error Conditions
+
+Error 52: Bad File Number
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Console I/O
+- **Subsystem**: SUBSYSTEM_PLATFORM
+- **Safety Level**: SAFETY_SAFE
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 CONSOLE 1, 24, 1
-20 PRINT "Console window configured."
-```
+| Field | Value |
+|---|---|
+| Name | CONSOLE |
+| Category | Console I/O |
+| Syntax | CONSOLE [device$ \| mode%] |
+| Description | Redirects standard console terminal input and output to an alternate virtual device or port. |
+| Error Summary | Error 52: Bad File Number |
+| Subsystem | SUBSYSTEM_PLATFORM |
+| Safety Level | SAFETY_SAFE |
+| Feature Type | FEATURE_STATEMENT |
+| Delimiter Mask | none |
+| Compatibility | BASIC++ Standard |
+| Since Version | 6.0.0 |
+| Source File | engine/src/platform/console/plat_console.c |

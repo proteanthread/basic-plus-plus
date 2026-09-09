@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
 // NEEDS: libcore (memops.h, memops.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c)
+// NEEDS: libcore (language_descriptor.h)
 // NEEDS: libcore (sock_engine.h, sock_engine.c, strops.h, strops.c)
 // NEEDS: libengine (eval.h, eval.c, stmt_sock.h)
 // Implements BSD SOCK statement handlers.
@@ -13,7 +13,7 @@
 #include "statements/network/stmt_sock.h"
 #include "runtime/sock_engine.h"
 #include "eval/eval.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/string/strops.h"
 #include "runtime/string/memops.h"
 
@@ -101,6 +101,17 @@ BppError stmt_sock_handler(VMContext *vm, LexerContext *lex) {
     return err;
 }
 
+static const LangDesc g_sock_desc = {
+    .name = "SOCK",
+    .category = "Hardware & Network",
+    .syntax = "SOCK.BIND h, port | SOCK.LISTEN h | SOCK.SEND h, data$ | SOCK.CLOSE h | SOCK.SETSOCKOPT h, opt$, v",
+    .description = "Controls BSD-style network sockets for TCP/UDP listening, binding, transmission, and teardown.",
+    .error_summary = "Error 5: Unknown SOCK sub-command",
+    .subsystem = SUBSYSTEM_HARDWARE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_STATEMENT
+};
+
 void stmt_sock_register(void) {
-    // Registered in VM dispatch
+    lang_desc_register(&g_sock_desc);
 }

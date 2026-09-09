@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
 // NEEDS: libcore (memory.h, memory.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libcore (strings.h, strings.c)
 // NEEDS: libengine (string.c, sys_fn.h)
 // NEEDS: libplatform (platform.h)
@@ -12,21 +12,25 @@
 // ---- Includes ----
 
 #include "eval/functions/system/environment/sys_fn.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/strings.h"
 #include "platform/platform.h"
 
 #include "runtime/string.h"
 #include "runtime/memory.h"
+
+static const LangDesc g_sys_desc = {
+    .name = "SYS",
+    .category = "System Functions",
+    .syntax = "SYS(code) | SYS(cmd_str) | SYS()",
+    .description = "Returns DEC PDP-10 / RSTS/E timesharing system metadata, or executes a host shell command.",
+    .error_summary = "Error 13: Type Mismatch",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_FUNCTION
+};
 void func_sys_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "SYS",
-        .category = "System Functions",
-        .syntax = "SYS(code) | SYS(cmd_str) | SYS()",
-        .help_text = "Returns DEC PDP-10 / RSTS/E timesharing system metadata, or executes a host shell command.",
-        .error_codes = "Error 13: Type Mismatch"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_sys_desc);
 }
 
 BValue func_sys_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err) {

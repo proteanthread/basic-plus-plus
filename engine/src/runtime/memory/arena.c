@@ -29,11 +29,11 @@ RuntimeArena *runtime_arena_create(size_t capacity) {
     if (capacity == 0) {
         return NULL;
     }
-    RuntimeArena *arena = (RuntimeArena *)runtime_malloc(sizeof(RuntimeArena));
+    RuntimeArena *arena = (RuntimeArena *)runtime_calloc(1, sizeof(RuntimeArena));
     if (!arena) {
         return NULL;
     }
-    uint8_t *buf = (uint8_t *)runtime_malloc(capacity);
+    uint8_t *buf = (uint8_t *)runtime_calloc(1, capacity);
     if (!buf) {
         runtime_free(arena);
         return NULL;

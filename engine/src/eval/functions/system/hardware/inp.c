@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (sys_fn.c)
 // NEEDS: libcore (funcreg.h, funcreg.c, memory.h, memory.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libengine (inp.h, string.c)
 // NEEDS: libkernel (bus.h, bus.c, security.h, security.c)
 // Provides runtime implementation for the INP built-in function in BASIC++.
@@ -11,21 +11,25 @@
 // ---- Includes ----
 
 #include "eval/functions/system/hardware/inp.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "device/bus.h"
 #include "security/security.h"
 #include "runtime/funcreg.h"
 #include "runtime/string.h"
 #include "runtime/memory.h"
+
+static const LangDesc g_inp_desc = {
+    .name = "INP",
+    .category = "System Functions",
+    .syntax = "INP(port)",
+    .description = "Reads a byte (0-255) from hardware I/O port address.",
+    .error_summary = "Error 5: Illegal Function Call (port out of bounds), Error 13: Type Mismatch (expects numeric port)",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_FUNCTION
+};
 void func_inp_register(void) {
-    MicroLibMetadata meta = {
-        .name = "INP",
-        .category = "System Functions",
-        .syntax = "INP(port)",
-        .help_text = "Reads a byte (0-255) from hardware I/O port address.",
-        .error_codes = "Error 5: Illegal Function Call (port out of bounds), Error 13: Type Mismatch (expects numeric port)"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_inp_desc);
 
     FunctionEntry entry = {
         .name = "INP",

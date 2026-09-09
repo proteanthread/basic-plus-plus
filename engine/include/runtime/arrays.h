@@ -21,6 +21,21 @@
 struct VariableContext;
 typedef struct ArrayContext ArrayContext;
 
+typedef struct ArrayEntry {
+    char              *name;
+    ValueType          type;
+    int                num_dims;
+    int                bounds[4];
+    BValue            *elements;
+    int                total_size;
+    int                channel;
+    bool               is_alias;
+    struct ArrayEntry *next;
+} ArrayEntry;
+
+// @brief Find internal array entry for cached lookups.
+ArrayEntry   *arr_find_entry(ArrayContext *ctx, const char *name);
+
 // @brief Initialize and shut down array context.
 ArrayContext *arr_init(MemoryContext *mem, StringContext *str);
 void          arr_shutdown(ArrayContext *ctx);

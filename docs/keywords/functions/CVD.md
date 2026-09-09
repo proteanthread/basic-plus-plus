@@ -1,40 +1,71 @@
-# `CVD` Convert String to Double-Precision Number Function
+<!--
+Title:        CVD
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/eval/builtins/string_fn.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Function Definition
+# `CVD` Keyword Reference
 
-The `CVD` (Convert to Double) function unpacks an 8-byte binary string (typically read from a random access file buffer or network stream) and translates it into an IEEE 754 64-bit double-precision floating-point number.
+## Source Header
 
-### Syntax Signatures:
-```basic
-result# = CVD(string_8_bytes)
+```c
+// FILENAME: string_fn.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore, libengine
+// Provides core logic and interface definitions for string_fn within BASIC++.
+//
+// ---- Includes ----
 ```
 
-### Operational Rules:
-- **String Length Requirement**: Exactly 8 bytes in length. Passing a string shorter or longer than 8 bytes triggers Error 5 (`ERR_ILLEGAL_FUNCTION_CALL`).
-- **Binary Format**: Interprets bytes in native host byte order (little-endian on x86/ARM).
-- **Inverse Operation**: Inverse of `MKD$(number#)` (`MKDSTR`).
-- **Non-String Input**: Passing a non-string argument triggers Error 13 (`ERR_TYPE_MISMATCH`).
+## 1. Description & Usage
+
+Decodes an 8-byte fielded binary string into a double-precision floating-point number.
+
+## 2. Syntax
+
+```basic
+CVD(8byte_str$)
+```
+
+## 3. Code Example
+
+```basic
+10 Val = CVD(8byte_str$)
+20 PRINT "Result: "; Val
+```
+
+## 4. Error Conditions
+
+Error 5: Illegal Function Call (length != 8)
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: GW-BASIC, QBASIC, BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Binary & Byte Conversion
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_PURE
 
 ---
 
-## 2. Language Dialect & Compatibility
+## LanguageDescriptor (LangDesc) Quick Reference
 
-| Dialect | Syntax | Precision | Binary Format |
-|---|---|---|---|
-| **GW-BASIC / BASICA** | `CVD(A$)` | Microsoft Binary Format (MBF 64-bit) or IEEE | 8 bytes |
-| **QuickBASIC / QBASIC** | `CVD(A$)` | IEEE 754 64-bit Double | 8 bytes |
-| **BASIC++ (Master)** | `CVD(A$)` | IEEE 754 64-bit Double (`double`) | 8 bytes |
-
----
-
-## 3. Examples
-
-### Reading Double-Precision Values from Random Access Files
-```basic
-10 OPEN "R", #1, "physics.dat", 8
-20 FIELD #1, 8 AS ENERGY$
-30 GET #1, 1
-40 E# = CVD(ENERGY$)
-50 PRINT "Recovered double value: "; E#
-60 CLOSE #1
-```
+| Field | Value |
+|---|---|
+| Name | CVD |
+| Category | Binary & Byte Conversion |
+| Syntax | CVD(8byte_str$) |
+| Description | Decodes an 8-byte fielded binary string into a double-precision floating-point number. |
+| Error Summary | Error 5: Illegal Function Call (length != 8) |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_PURE |
+| Feature Type | FEATURE_FUNCTION |
+| Delimiter Mask | none |
+| Compatibility | GW-BASIC, QBASIC, BASIC++ Standard |
+| Since Version | 6.0.0 |
+| Source File | engine/src/eval/builtins/string_fn.c |

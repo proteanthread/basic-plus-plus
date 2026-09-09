@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
 // NEEDS: libcore (memory.h, memory.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libcore (strings.h, strings.c, variables.h, variables.c)
 // NEEDS: libengine (eval.h, eval.c, lexer.h, lexer.c, run.h, string.c, vm.h)
 // NEEDS: libkernel (errors.h, security.h, security.c, vdev.h, vdev.c)
@@ -19,16 +19,29 @@
 #include "memory/memory.h"
 #include "runtime/variables.h"
 #include "runtime/strings.h"
+#include "runtime/arrays.h"
 #include "device/vdev.h"
 #include "security/security.h"
-#include "runtime/micro_lib_metadata.h"
-#include <string.h>
+#include "runtime/language_descriptor.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_run_desc = {
+    .name = "RUN",
+    .category = "Program Mgmt & Editing",
+    .syntax = "RUN [line_number | filename [, R]]",
+    .description = "Starts execution of the program currently in memory or loads and runs a specified file.",
+    .error_summary = "Error 2: Syntax Error, Error 53: File Not Found, Error 8: Undefined Line Number",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SAFE,
+    .type = FEATURE_STATEMENT
+};
 
 extern BppError vm_load_program_file(VMContext *vm, const char *filename);
 
 BppError stmt_run_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     if (!vm || !lex) {
         err.code = ERR_ILLEGAL_FUNCTION_CALL;
         return err;
@@ -38,6 +51,7 @@ BppError stmt_run_handler(VMContext *vm, LexerContext *lex) {
     if (tok.type == TOK_NUMBER) {
         tok = lex_next(lex);
         var_clear_all(vm_get_var(vm));
+        arr_clear_all(vm_get_arr(vm));
         vm_reset_for_run(vm);
         vm_set_start_line(vm, tok.as.number);
         vm_run_program(vm);
@@ -59,7 +73,7 @@ BppError stmt_run_handler(VMContext *vm, LexerContext *lex) {
         }
         const char *filename = str_data(fn_val.as.string);
         char path_buf[512];
-        strncpy(path_buf, filename, sizeof(path_buf) - 1);
+        runtime_strncpy(path_buf, filename, sizeof(path_buf) - 1);
         path_buf[sizeof(path_buf) - 1] = '\0';
         str_release(vm_get_str(vm), fn_val.as.string);
 
@@ -77,8 +91,10 @@ BppError stmt_run_handler(VMContext *vm, LexerContext *lex) {
 
         if (!keep_open) {
             var_clear_all(vm_get_var(vm));
+            arr_clear_all(vm_get_arr(vm));
         } else {
             var_clear_for_chain(vm_get_var(vm));
+            arr_clear_for_chain(vm_get_arr(vm), vm_get_var(vm));
         }
 
         mem_program_clear(vm_get_mem(vm));
@@ -94,6 +110,7 @@ BppError stmt_run_handler(VMContext *vm, LexerContext *lex) {
         return err;
     } else {
         var_clear_all(vm_get_var(vm));
+        arr_clear_all(vm_get_arr(vm));
         vm_reset_for_run(vm);
         vm_set_start_line(vm, 0.0);
         vm_run_program(vm);
@@ -105,13 +122,6 @@ BppError stmt_run_handler(VMContext *vm, LexerContext *lex) {
 }
 
 void stmt_run_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "RUN",
-        .category = "Program Mgmt & Editing",
-        .syntax = "RUN [line_number | filename [, R]]",
-        .help_text = "Starts execution of the program currently in memory or loads and runs a specified file.",
-        .error_codes = "Error 2: Syntax Error, Error 53: File Not Found, Error 8: Undefined Line Number"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_run_desc);
 }
 

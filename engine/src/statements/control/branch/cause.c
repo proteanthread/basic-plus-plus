@@ -2,7 +2,7 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libengine (cause.h, eval.h, eval.c, lexer.h, lexer.c, string.c, vm.h)
 // Provides runtime implementation for the CAUSE statement in BASIC++.
 //
@@ -12,12 +12,24 @@
 #include "vm/vm.h"
 #include "lexer/lexer.h"
 #include "eval/eval.h"
-#include "runtime/micro_lib_metadata.h"
-#include <string.h>
+#include "runtime/language_descriptor.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_cause_desc = {
+    .name = "CAUSE",
+    .category = "Control Flow",
+    .syntax = "CAUSE ERROR error_code",
+    .description = "ECMA-116 standard statement to raise a runtime error.",
+    .error_summary = "Error 2: Syntax Error",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SAFE,
+    .type = FEATURE_STATEMENT
+};
 
 BppError stmt_cause_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     if (!vm || !lex) {
         err.code = 5; err.message = "Null VM or lexer context";
@@ -26,7 +38,7 @@ BppError stmt_cause_handler(VMContext *vm, LexerContext *lex) {
 
     BppToken tok = lex_peek(lex);
     if ((tok.type == TOK_KEYWORD && tok.as.keyword == KW_ERROR) ||
-        (tok.type == TOK_IDENT && tok.length == 5 && strncasecmp(tok.start, "ERROR", 5) == 0)) {
+        (tok.type == TOK_IDENT && tok.length == 5 && runtime_strncasecmp(tok.start, "ERROR", 5) == 0)) {
         lex_next(lex);
     }
 
@@ -45,12 +57,5 @@ BppError stmt_cause_handler(VMContext *vm, LexerContext *lex) {
 }
 
 void stmt_cause_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "CAUSE",
-        .category = "Control Flow",
-        .syntax = "CAUSE ERROR error_code",
-        .help_text = "ECMA-116 standard statement to raise a runtime error.",
-        .error_codes = "Error 2: Syntax Error"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_cause_desc);
 }

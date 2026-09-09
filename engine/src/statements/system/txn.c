@@ -2,7 +2,7 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
-// NEEDS: libcore (file.h, file.c, micro_lib_metadata.h, micro_lib_metadata.c)
+// NEEDS: libcore (file.h, file.c, language_descriptor.h)
 // NEEDS: libcore (string.h)
 // NEEDS: libengine (eval.h, eval.c, stmt.h, string.c)
 // NEEDS: libplatform (platform.h)
@@ -14,14 +14,26 @@
 #include "runtime/file.h"
 #include "eval/eval.h"
 #include "platform/platform.h"
-#include "runtime/micro_lib_metadata.h"
-#include <string.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include "runtime/language_descriptor.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "runtime/format/snprintf.h"
+#include "runtime/memory/alloc.h"
+
+static const LangDesc g_txn_desc = {
+    .name = "TXN",
+    .category = "File I/O",
+    .syntax = "TXN BEGIN [FILE] | TXN COMMIT | TXN ROLLBACK | TXN STATUS | ATOMIC",
+    .description = "Provides ACID file transaction management and atomic block rollback capability.",
+    .error_summary = "Error 2: Syntax Error, Error 54: Bad File Mode, Error 57: Device I/O Error",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_STATEMENT
+};
 
 BppError stmt_commit_handler(struct VMContext *vm, struct LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     (void)lex;
 
     err = file_txn_commit(vm_get_file(vm));
@@ -30,7 +42,7 @@ BppError stmt_commit_handler(struct VMContext *vm, struct LexerContext *lex) {
 
 BppError stmt_rollback_handler(struct VMContext *vm, struct LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     (void)lex;
 
     err = file_txn_rollback(vm_get_file(vm));
@@ -39,7 +51,7 @@ BppError stmt_rollback_handler(struct VMContext *vm, struct LexerContext *lex) {
 
 BppError stmt_atomic_handler(struct VMContext *vm, struct LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     (void)lex;
 
     file_txn_begin(vm_get_file(vm), 2, false);
@@ -48,7 +60,7 @@ BppError stmt_atomic_handler(struct VMContext *vm, struct LexerContext *lex) {
 
 BppError stmt_txn_handler(struct VMContext *vm, struct LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BppToken tok = lex_next(lex);
     if (tok.type == TOK_KEYWORD) {
@@ -62,7 +74,7 @@ BppError stmt_txn_handler(struct VMContext *vm, struct LexerContext *lex) {
 
     char word[64] = "";
     if (tok.length > 0 && tok.length < sizeof(word)) {
-        memcpy(word, tok.start, tok.length);
+        runtime_memcpy(word, tok.start, tok.length);
         word[tok.length] = '\0';
     }
 
@@ -71,7 +83,7 @@ BppError stmt_txn_handler(struct VMContext *vm, struct LexerContext *lex) {
         BppToken next = lex_peek(lex);
         char next_word[64] = "";
         if (next.length > 0 && next.length < sizeof(next_word)) {
-            memcpy(next_word, next.start, next.length);
+            runtime_memcpy(next_word, next.start, next.length);
             next_word[next.length] = '\0';
         }
         if (platform_strcasecmp(next_word, "FILE") == 0) {
@@ -102,13 +114,6 @@ BppError stmt_txn_handler(struct VMContext *vm, struct LexerContext *lex) {
 }
 
 void stmt_txn_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "TXN",
-        .category = "File I/O",
-        .syntax = "TXN BEGIN [FILE] | TXN COMMIT | TXN ROLLBACK | TXN STATUS | ATOMIC",
-        .help_text = "Provides ACID file transaction management and atomic block rollback capability.",
-        .error_codes = "Error 2: Syntax Error, Error 54: Bad File Mode, Error 57: Device I/O Error"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_txn_desc);
 }
 

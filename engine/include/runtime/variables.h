@@ -15,6 +15,7 @@
 #include "types/types.h"
 #include "memory/memory.h"
 #include "runtime/strings.h"
+#include "runtime/memory/alloc.h"
 
 // Opaque Variable Context
 typedef struct VariableContext VariableContext;
@@ -22,7 +23,7 @@ typedef struct VariableContext VariableContext;
 // @brief Initialize the variable context.
 VariableContext *var_init(MemoryContext *mem, StringContext *str);
 
-// @brief Shutdown the variable context and free all stored variables.
+// @brief Shutdown the variable context and runtime_free all stored variables.
 void var_shutdown(VariableContext *ctx);
 
 // @brief Look up a variable by name.
@@ -63,7 +64,18 @@ ValueType var_get_def_type(VariableContext *ctx, const char *scope, char letter)
 
 void var_print_all(VariableContext *ctx, void *vdev_ptr);
 
+// Dynamic / Virtual Variable Extensions (DEF VAR / C Hooks)
+typedef BValue (*BppVarGetter)(void *ctx, const char *name, void *user_data);
+typedef bool (*BppVarSetter)(void *ctx, const char *name, BValue val, void *user_data);
+
+bool var_register_dynamic(VariableContext *ctx, const char *name, BppVarGetter getter, BppVarSetter setter, void *user_data);
+bool var_register_basic_dynamic(VariableContext *ctx, const char *name, const char *read_fn, const char *write_fn);
+
 bool var_serialize(VariableContext *ctx, void *fp);
 bool var_deserialize(VariableContext *ctx, void *fp);
+
+// Sized / Fixed-Length String Descriptors
+void var_set_max_len(VariableContext *ctx, const char *name, size_t max_len);
+size_t var_get_max_len(VariableContext *ctx, const char *name);
 
 #endif // RUNTIME_VARIABLES_H

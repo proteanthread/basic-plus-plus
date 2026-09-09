@@ -3,27 +3,31 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (math_fn.c)
 // NEEDS: libcore (arrays.h, arrays.c, math.h)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libengine (det.h, math.c, string.c, vm.h)
 // Provides runtime implementation for the DET built-in function in BASIC++.
 //
 // ---- Includes ----
 
 #include "eval/functions/math/linear_algebra/det.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/arrays.h"
 #include "vm/vm.h"
 #include "runtime/math.h"
 #include "runtime/string.h"
+
+static const LangDesc g_det_desc = {
+    .name = "DET",
+    .category = "Math Functions",
+    .syntax = "DET(A)",
+    .description = "ECMA-116 standard function returning the determinant of matrix A.",
+    .error_summary = "Error 13: Type Mismatch",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_PURE,
+    .type = FEATURE_FUNCTION
+};
 void func_det_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "DET",
-        .category = "Math Functions",
-        .syntax = "DET(A)",
-        .help_text = "ECMA-116 standard function returning the determinant of matrix A.",
-        .error_codes = "Error 13: Type Mismatch"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_det_desc);
 }
 
 BValue func_det_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err) {

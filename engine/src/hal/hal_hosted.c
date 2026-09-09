@@ -14,7 +14,9 @@
 #include "hal/hal_sdl2.h"
 #include "platform/platform.h"
 #include "runtime/memory/alloc.h"
+#include "runtime/string/memops.h"
 #include "runtime/string/strops.h"
+#include "runtime/format/snprintf.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -39,7 +41,7 @@ static void hosted_mem_unlock(void) {
 
 // Memory HAL implementation
 static void *hosted_alloc(size_t size) {
-    return malloc(size);
+    return calloc(1, size);
 }
 
 static void *hosted_calloc(size_t count, size_t size) {
@@ -56,7 +58,7 @@ static void hosted_free(void *ptr) {
 
 // IO HAL implementation
 static int hosted_putchar(int c) {
-    return putchar(c);
+    return platform_console_putchar(c);
 }
 
 static int hosted_getchar(void) {
@@ -64,7 +66,7 @@ static int hosted_getchar(void) {
 }
 
 static int hosted_puts(const char *str) {
-    return fputs(str, stdout);
+    return platform_console_puts(str);
 }
 
 static bool hosted_kbhit(void) {
@@ -72,7 +74,7 @@ static bool hosted_kbhit(void) {
 }
 
 static void hosted_flush(void) {
-    fflush(stdout);
+    platform_console_flush();
 }
 
 static int hosted_get_width(void) {
@@ -83,70 +85,66 @@ static int hosted_get_height(void) {
     return platform_console_height();
 }
 
-static FILE *hosted_get_file_ptr(IoHandle handle) {
+static void *hosted_get_file_ptr(IoHandle handle) {
     if (handle == IO_HANDLE_INVALID) return NULL;
-    if (handle == IO_STDIN_HANDLE) return stdin;
-    if (handle == IO_STDOUT_HANDLE) return stdout;
-    if (handle == IO_STDERR_HANDLE) return stderr;
-    return (FILE *)handle;
+    if (handle == IO_STDIN_HANDLE) return (void *)stdin;
+    if (handle == IO_STDOUT_HANDLE) return (void *)stdout;
+    if (handle == IO_STDERR_HANDLE) return (void *)stderr;
+    return (void *)handle;
 }
 
 static IoHandle hosted_file_open(const char *path, const char *mode) {
     if (!path || !mode) return IO_HANDLE_INVALID;
-    FILE *fp = fopen(path, mode);
+    void *fp = platform_file_open(path, mode);
     return fp ? (IoHandle)fp : IO_HANDLE_INVALID;
 }
 
 static int hosted_file_close(IoHandle handle) {
     if (handle == IO_HANDLE_INVALID || handle == IO_STDIN_HANDLE || handle == IO_STDOUT_HANDLE || handle == IO_STDERR_HANDLE) return 0;
-    return fclose((FILE *)handle);
+    return platform_file_close((void *)handle);
 }
 
 static size_t hosted_file_read(IoHandle handle, void *buffer, size_t size, size_t count) {
-    FILE *fp = hosted_get_file_ptr(handle);
-    if (!fp || !buffer) return 0;
-    return fread(buffer, size, count, fp);
+    void *fp = hosted_get_file_ptr(handle);
+    if (!fp || !buffer || size == 0 || count == 0) return 0;
+    size_t total = size * count;
+    size_t bytes = platform_file_read(fp, buffer, total);
+    return bytes / size;
 }
 
 static size_t hosted_file_write(IoHandle handle, const void *buffer, size_t size, size_t count) {
-    FILE *fp = hosted_get_file_ptr(handle);
-    if (!fp || !buffer) return 0;
-    return fwrite(buffer, size, count, fp);
+    void *fp = hosted_get_file_ptr(handle);
+    if (!fp || !buffer || size == 0 || count == 0) return 0;
+    size_t total = size * count;
+    size_t bytes = platform_file_write(fp, buffer, total);
+    return bytes / size;
 }
 
 static int hosted_file_seek(IoHandle handle, int64_t offset, IoSeekOrigin origin) {
-    FILE *fp = hosted_get_file_ptr(handle);
+    void *fp = hosted_get_file_ptr(handle);
     if (!fp) return -1;
-    int c_origin = SEEK_SET;
-    if (origin == IO_SEEK_CUR) c_origin = SEEK_CUR;
-    else if (origin == IO_SEEK_END) c_origin = SEEK_END;
-#if defined(_WIN32)
-    return _fseeki64(fp, offset, c_origin);
-#else
-    return fseeko(fp, (off_t)offset, c_origin);
-#endif
+    int c_origin = 0; // SEEK_SET
+    if (origin == IO_SEEK_CUR) c_origin = 1; // SEEK_CUR
+    else if (origin == IO_SEEK_END) c_origin = 2; // SEEK_END
+    return platform_file_seek(fp, (long)offset, c_origin);
 }
 
 static int64_t hosted_file_tell(IoHandle handle) {
-    FILE *fp = hosted_get_file_ptr(handle);
+    void *fp = hosted_get_file_ptr(handle);
     if (!fp) return -1;
-#if defined(_WIN32)
-    return _ftelli64(fp);
-#else
-    return (int64_t)ftello(fp);
-#endif
+    return (int64_t)platform_file_tell(fp);
 }
 
 static int hosted_file_flush(IoHandle handle) {
-    FILE *fp = hosted_get_file_ptr(handle);
+    void *fp = hosted_get_file_ptr(handle);
     if (!fp) return -1;
-    return fflush(fp);
+    return platform_file_flush(fp);
 }
 
 static bool hosted_file_eof(IoHandle handle) {
-    FILE *fp = hosted_get_file_ptr(handle);
+    void *fp = hosted_get_file_ptr(handle);
     if (!fp) return true;
-    return feof(fp) != 0;
+    return platform_file_eof(fp) != 0;
 }
 
 static int64_t hosted_file_size(const char *path) {
@@ -276,10 +274,11 @@ void hal_init_hosted(void) {
 
     // Also configure memory subsystem hooks
     RuntimeMemHooks hooks;
+    runtime_memset(&hooks, 0, sizeof(hooks));
     hooks.malloc = hosted_alloc;
-    hooks.calloc = hosted_calloc;
-    hooks.realloc = hosted_realloc;
-    hooks.free = hosted_free;
+    hooks.calloc = calloc;
+    hooks.realloc = realloc;
+    hooks.free = free;
     hooks.lock = hosted_mem_lock;
     hooks.unlock = hosted_mem_unlock;
     runtime_mem_set_hooks(&hooks);

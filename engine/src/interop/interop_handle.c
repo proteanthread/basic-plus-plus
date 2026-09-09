@@ -9,8 +9,9 @@
 // ---- Includes ----
 
 #include "interop/interop_handle.h"
-#include <stdlib.h>
-#include <string.h>
+#include "runtime/memory/alloc.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
 
 typedef struct {
     void* ptr;
@@ -28,7 +29,7 @@ int interop_handle_table_init(void) {
         return 0;
     }
     g_handle_capacity = 4096;
-    g_handle_table = (InteropHandleSlot*)calloc(g_handle_capacity, sizeof(InteropHandleSlot));
+    g_handle_table = (InteropHandleSlot*)runtime_calloc(g_handle_capacity, sizeof(InteropHandleSlot));
     if (g_handle_table == NULL) {
         g_handle_capacity = 0;
         return -1;
@@ -42,7 +43,7 @@ int interop_handle_table_init(void) {
 
 void interop_handle_table_shutdown(void) {
     if (g_handle_table != NULL) {
-        free(g_handle_table);
+        runtime_free(g_handle_table);
         g_handle_table = NULL;
     }
     g_handle_capacity = 0;
@@ -77,18 +78,18 @@ InteropHandle interop_handle_create(void* ptr) {
     
     if (!found) {
         size_t new_capacity = g_handle_capacity * 2;
-        InteropHandleSlot* new_table = (InteropHandleSlot*)calloc(new_capacity, sizeof(InteropHandleSlot));
+        InteropHandleSlot* new_table = (InteropHandleSlot*)runtime_calloc(new_capacity, sizeof(InteropHandleSlot));
         if (new_table == NULL) {
             return INTEROP_INVALID_HANDLE;
         }
-        memcpy(new_table, g_handle_table, g_handle_capacity * sizeof(InteropHandleSlot));
+        runtime_memcpy(new_table, g_handle_table, g_handle_capacity * sizeof(InteropHandleSlot));
         for (size_t i = g_handle_capacity; i < new_capacity; ++i) {
             new_table[i].ptr = NULL;
             new_table[i].refcount = 0;
             new_table[i].generation = 1;
             new_table[i].active = false;
         }
-        free(g_handle_table);
+        runtime_free(g_handle_table);
         g_handle_table = new_table;
         slot_idx = g_handle_capacity;
         g_handle_capacity = new_capacity;

@@ -1,19 +1,71 @@
-BASIC++ STATEMENT REFERENCE: CONST
-======================================================================
+TITLE: CONST
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/variables/declaration/const.c
+GENERATED: no, hand-written
+STATUS: current
 
-1. SYNTAX & DESCRIPTION
-  CONST constname = expression [, constname2 = expression2 ...]
+==============================================================================
+CONST KEYWORD REFERENCE
+==============================================================================
 
-Declares named immutable constants whose values cannot be altered during
-program execution.
+SOURCE HEADER:
+    // FILENAME: const.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libcore (strings.h, strings.c, variables.h, variables.c)
+    // NEEDS: libengine (const.h, eval.h, eval.c, lexer.h, lexer.c, string.c, vm.h
+    // Provides runtime implementation for the CONST statement in BASIC++.
+    //
+    // ---- Includes ----
 
-2. PARAMETERS
-- constname: The constant identifier.
-- expression: Literal value or constant expression.
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Declares one or more symbolic constants assigned to literal or constant
+expressions.
 
-3. ERROR CODES
-- Error 17: Cannot assign to constant.
-- Error 10 (ERR_DUPLICATE_DEFINITION): Duplicate constant declaration.
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    CONST constantname = expression [, constantname = expression...]
 
-4. EXAMPLES
-  10 CONST MAX_SIZE = 1024, TITLE$ = "Network Server"
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM CONST Demonstration
+    20 PRINT "CONST executed successfully."
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error, Error 13: Type Mismatch
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Variables & Memory
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SYSTEM
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  CONST
+Category              Variables & Memory
+Syntax                CONST constantname = expression [, constantname = e...
+Description           Declares one or more symbolic constants assigned to...
+Error Summary         Error 2: Syntax Error, Error 13: Type Mismatch
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SYSTEM
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/variables/declaration/const.c

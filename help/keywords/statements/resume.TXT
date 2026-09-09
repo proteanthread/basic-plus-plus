@@ -1,33 +1,72 @@
-RESUME Resume Execution After Error Handler Statement
-=====================================================
+TITLE: RESUME
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/event/resume.c
+GENERATED: no, hand-written
+STATUS: current
 
-Exits an active ON ERROR GOTO handler, clearing the error state and resuming program execution.
+==============================================================================
+RESUME KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: resume.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (continue.c, retry.c)
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libengine (eval.h, eval.c, lexer.h, lexer.c, resume.h, string.c)
+    // NEEDS: libengine (task.h, task.c, vm.h)
+    // NEEDS: libkernel (errors.h)
+    // Provides runtime implementation for the RESUME statement in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Resumes program execution after an error-handling routine finishes, or resumes
+a suspended task/event.
 
-    RESUME [0 | NEXT | {line_number% | @label}]
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    RESUME [0 | NEXT | line_label | TASK id | EVENT name$]
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM RESUME Demonstration
+    20 PRINT "RESUME executed successfully."
 
-ERROR CONDITIONS
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 20: RESUME Without Error, Error 2: Syntax Error
 
-  - Error 20 (ERR_RESUME_WITHOUT_ERROR): RESUME executed outside active error handler.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Event Trapping
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SAFE
 
-
-OPERATIONAL NOTES
-----------------------------------------------------------------------
-
-  RESUME 0 retries failing statement; RESUME NEXT continues at next statement.
-
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 ON ERROR GOTO 100
-    20 ERROR 6 : REM Force overflow
-    30 PRINT "Execution resumed successfully."
-    40 END
-    100 PRINT "Handling error #"; ERR
-    110 RESUME NEXT
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  RESUME
+Category              Event Trapping
+Syntax                RESUME [0 | NEXT | line_label | TASK id | EVENT name$]
+Description           Resumes program execution after an error-handling r...
+Error Summary         Error 20: RESUME Without Error, Error 2: Syntax Error
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/event/resume.c

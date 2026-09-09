@@ -42,5 +42,6 @@
 
 void normalize_func_name(const char *in, char *out, size_t max_len);
 bool dispatch_handle_special(VMContext *vm, const char *uname, LexerContext *lex, bool has_parens, BValue *out_res, BppError *err);
+BValue eval_builtin_function_delim(VMContext *vm, const char *name, LexerContext *lex, BppTokenType open_delim, BppError *err);
 
 #endif // DISPATCH_INTERNAL_H

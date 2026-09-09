@@ -1,35 +1,71 @@
-VARPTR Variable Pointer Function
-======================================================================
+TITLE: VARPTR
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/functions/varptr.c
+GENERATED: no, hand-written
+STATUS: current
 
-The VARPTR function returns the virtual memory address offset of a
-variable, array element, or file control block.
+==============================================================================
+VARPTR KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: varptr.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (sys_fn.c)
+    // NEEDS: libcore (funcreg.h, funcreg.c, memory.h, memory.c)
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libcore (varptr.h)
+    // NEEDS: libengine (string.c, vm.h)
+    // Provides runtime implementation for the VARPTR built-in function in BASIC++
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Returns the 64-bit integer memory address or descriptor string for a variable.
 
-    addr% = VARPTR(variable_name)
-    addr% = VARPTR(array_element)
-    addr% = VARPTR(#file_number)
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    VARPTR(var) | VARPTR$(var)
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = VARPTR(var) | VARPTR$(var)
+    20 PRINT "Result: "; Val
 
-OPERATIONAL RULES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error
 
-  - Returns offset in current data segment.
-  - Used with PEEK, POKE, and C interop.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Variables & Memory
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SYSTEM
 
-
-ERROR CODES
-----------------------------------------------------------------------
-
-  Error Code  Name                  Condition
-  ----------  --------------------  ----------------------------------
-  2           ERR_SYNTAX_ERROR      Invalid variable name
-
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 X% = 500
-    20 PRINT "Address of X%: "; HEX$(VARPTR(X%))
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  VARPTR
+Category              Variables & Memory
+Syntax                VARPTR(var) | VARPTR$(var)
+Description           Returns the 64-bit integer memory address or descri...
+Error Summary         Error 2: Syntax Error
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SYSTEM
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/functions/varptr.c

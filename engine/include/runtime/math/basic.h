@@ -13,6 +13,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "runtime/math/math.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -73,10 +74,10 @@ bool runtime_isfinite(double x);
 double runtime_modf(double x, double *iptr);
 
 // @brief Freestanding frexp (breaks x into normalized fraction and power of 2).
-double runtime_frexp(double x, int *exp);
+double runtime_frexp(double x, int *runtime_exp);
 
-// @brief Freestanding ldexp (computes x * 2^exp).
-double runtime_ldexp(double x, int exp);
+// @brief Freestanding ldexp (computes x * 2^runtime_exp).
+double runtime_ldexp(double x, int runtime_exp);
 
 
 #ifdef __cplusplus

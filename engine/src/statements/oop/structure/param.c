@@ -2,7 +2,7 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libcore (variables.h, variables.c)
 // NEEDS: libengine (lexer.h, lexer.c, param.h, string.c, vm.h)
 // NEEDS: libkernel (errors.h)
@@ -11,32 +11,37 @@
 // ---- Includes ----
 
 #include "statements/oop/structure/param.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "vm/vm.h"
 #include "lexer/lexer.h"
 #include "runtime/variables.h"
 #include "types/errors.h"
-#include <string.h>
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_param_desc = {
+    .name = "PARAM",
+    .category = "Procedures / OOP",
+    .syntax = "PARAM var1 [: type] [, var2 [: type] ...]",
+    .description = "Declares and binds formal parameter variables inside a BASIC09 PROCEDURE block.",
+    .error_summary = "Error 2: Syntax Error, Error 13: Type Mismatch",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SAFE,
+    .type = FEATURE_STATEMENT
+};
 
 #if defined(_WIN32)
-#define strncasecmp _strnicmp
+#define runtime_strncasecmp runtime_strncasecmp
 #endif
 
 void stmt_param_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "PARAM",
-        .category = "Procedures / OOP",
-        .syntax = "PARAM var1 [: type] [, var2 [: type] ...]",
-        .help_text = "Declares and binds formal parameter variables inside a BASIC09 PROCEDURE block.",
-        .error_codes = "Error 2: Syntax Error, Error 13: Type Mismatch"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_param_desc);
 }
 
 BppError stmt_param_handler(VMContext *vm, LexerContext *lex) {
     (void)vm;
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     while (1) {
         BppToken tok = lex_next(lex);
@@ -54,7 +59,7 @@ BppError stmt_param_handler(VMContext *vm, LexerContext *lex) {
         BppToken next_tok = lex_peek(lex);
         if ((next_tok.start && next_tok.start[0] == ':') ||
             (next_tok.type == TOK_KEYWORD && next_tok.as.keyword == KW_AS) ||
-            (next_tok.type == TOK_IDENT && next_tok.length == 2 && strncasecmp(next_tok.start, "AS", 2) == 0)) {
+            (next_tok.type == TOK_IDENT && next_tok.length == 2 && runtime_strncasecmp(next_tok.start, "AS", 2) == 0)) {
             lex_next(lex); // Consume ':' or 'AS'
             BppToken type_tok = lex_peek(lex);
             if (type_tok.type == TOK_IDENT || type_tok.type == TOK_KEYWORD) {

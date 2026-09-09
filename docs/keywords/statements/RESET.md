@@ -1,23 +1,77 @@
-# `RESET` Close All Files and Flush Buffers Statement
+<!--
+Title:        RESET
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/runtime/vfs.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Keyword Definition
+# `RESET` Keyword Reference
 
-Closes all open file channels and flushes all pending file system disk buffers.
+## Source Header
 
-### Syntax Signatures:
+```c
+// FILENAME: vfs.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: baspp.exe (desktop.c)
+// NEEDED BY: libcore (error.c, spec.c)
+// NEEDED BY: libengine (context.c, control.c, data.c, events_internal.h)
+// NEEDED BY: libengine (exec_internal.h, vm_internal.h)
+// NEEDS: libcore (hal.h, memops.h, memops.c, runtime_snprintf.h, runtime_snpr
+// NEEDS: libcore (strops.h, strops.c, vfs.h)
+// NEEDS: libkernel (vdev.h, vdev.c)
+// NEEDS: libplatform (platform.h)
+// Provides core logic and interface definitions for vfs within BASIC++.
+//
+// ---- Includes ----
+```
+
+## 1. Description & Usage
+
+Flushes and closes all open file streams, returning file handles to the operating system pool.
+
+## 2. Syntax
+
 ```basic
 RESET
 ```
 
-### Operational Notes:
-- Safe bulk file channel closer.
+## 3. Code Example
+
+```basic
+10 REM RESET Demonstration
+20 PRINT "RESET executed successfully."
+```
+
+## 4. Error Conditions
+
+None
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: GW-BASIC, QBASIC, BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Filesystem I/O
+- **Subsystem**: SUBSYSTEM_PLATFORM
+- **Safety Level**: SAFETY_IO
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 OPEN "O", #1, "FILE1.DAT"
-20 OPEN "O", #2, "FILE2.DAT"
-30 RESET : REM Closes channels 1 and 2
-```
+| Field | Value |
+|---|---|
+| Name | RESET |
+| Category | Filesystem I/O |
+| Syntax | RESET |
+| Description | Flushes and closes all open file streams, returning file handles to the operating system pool. |
+| Error Summary | None |
+| Subsystem | SUBSYSTEM_PLATFORM |
+| Safety Level | SAFETY_IO |
+| Feature Type | FEATURE_STATEMENT |
+| Delimiter Mask | none |
+| Compatibility | GW-BASIC, QBASIC, BASIC++ Standard |
+| Since Version | 6.0.0 |
+| Source File | engine/src/runtime/vfs.c |

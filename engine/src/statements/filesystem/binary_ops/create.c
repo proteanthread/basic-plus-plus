@@ -2,7 +2,7 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
-// NEEDS: libcore (file.h, file.c, micro_lib_metadata.h, micro_lib_metadata.c)
+// NEEDS: libcore (file.h, file.c, language_descriptor.h)
 // NEEDS: libcore (string.h, strings.h, strings.c)
 // NEEDS: libengine (create.h, eval.h, eval.c, lexer.h, lexer.c, string.c, vm.h)
 // NEEDS: libkernel (errors.h, vdev.h, vdev.c)
@@ -11,7 +11,7 @@
 // ---- Includes ----
 
 #include "statements/filesystem/binary_ops/create.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "vm/vm.h"
 #include "lexer/lexer.h"
 #include "eval/eval.h"
@@ -19,23 +19,29 @@
 #include "runtime/strings.h"
 #include "runtime/file.h"
 #include "types/errors.h"
-#include <stdio.h>
-#include <string.h>
+#include "runtime/format/snprintf.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "platform/platform.h"
+
+static const LangDesc g_create_desc = {
+    .name = "CREATE",
+    .category = "Filesystem",
+    .syntax = "CREATE filename$ [, type] | CREATE #ch, filename$ [: mode]",
+    .description = "Creates a new file on disk (Apple /// Business BASIC & BASIC09).",
+    .error_summary = "Error 2: Syntax Error, Error 52: Bad File Number, Error 70: Permission Denied",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_STATEMENT
+};
 
 void stmt_create_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "CREATE",
-        .category = "Filesystem",
-        .syntax = "CREATE filename$ [, type] | CREATE #ch, filename$ [: mode]",
-        .help_text = "Creates a new file on disk (Apple /// Business BASIC & BASIC09).",
-        .error_codes = "Error 2: Syntax Error, Error 52: Bad File Number, Error 70: Permission Denied"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_create_desc);
 }
 
 BppError stmt_create_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BppToken tok = lex_peek(lex);
     if (tok.type == TOK_HASH) {
@@ -83,13 +89,13 @@ BppError stmt_create_handler(VMContext *vm, LexerContext *lex) {
     }
 
     const char *path = str_data(path_val.as.string);
-    FILE *fp = fopen(path, "wb");
+    void *fp = platform_file_open(path, "wb");
     if (!fp) {
         str_release(vm_get_str(vm), path_val.as.string);
         err.code = ERR_PERMISSION_DENIED;
         return err;
     }
-    fclose(fp);
+    platform_file_close(fp);
 
     str_release(vm_get_str(vm), path_val.as.string);
 

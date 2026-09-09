@@ -1,92 +1,79 @@
-# BASIC++ v6.5.2 IBM BIOS Porting Guide
+<!--
+Title:        IBM BIOS Porting
+Tier:         2
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/bios/, engine/include/bios/
+Generated:    no
+Status:       Active
+-->
 
-## 1. OVERVIEW
+# BASIC++ IBM BIOS Emulation Architecture
 
-The BIOS emulation subsystem (engine/src/bios/) provides a virtual implementation of the IBM PC/XT/AT BIOS. This allows BASIC++ programs that use POKE, PEEK, INP, OUT, and BIOS interrupt-level operations to run on any platform. The BIOS emulation faithfully reproduces the IBM PC memory map, I/O port behavior, and interrupt services.
+The architectural reference detailing the IBM PC/XT/AT BIOS emulation subsystem (`engine/src/bios/`), BIOS Data Area mapping, interrupt vectors, and virtual Video RAM.
 
-## 2. EMULATED BIOS SERVICES
+## 1. Architectural Role & Overview
 
-**INT 10h — Video Services**: Mode setting (AH=00h), cursor shape (AH=01h), cursor position (AH=02h), read cursor (AH=03h), scroll up (AH=06h), scroll down (AH=07h), read character (AH=08h), write character (AH=09h, 0Ah), set palette (AH=0Bh), write pixel (AH=0Ch), read pixel (AH=0Dh), TTY output (AH=0Eh), get video mode (AH=0Fh), EGA/VGA functions (AH=10h-13h).
+The BIOS emulation subsystem reproduces the memory maps, I/O ports, and interrupt services of vintage IBM PC, XT, and AT computers. This enables vintage programs utilizing direct memory reads (`PEEK`), direct writes (`POKE`), hardware port communication (`INP`, `OUT`), and software interrupts (`CALL INTERRUPT`) to run unmodified across modern operating systems.
 
-**INT 13h — Disk Services**: Virtual disk read/write for programs that access disk through BIOS calls.
+### 1.1 Machine Personalities
+Emulation personalities are implemented in dedicated source modules:
+- `bios_pc.c`: IBM PC Model 5150 emulation (Intel 8088, cassette port, 64-256KB base RAM).
+- `bios_xt.c`: IBM PC/XT Model 5160 (fixed disk drive controller, 8 expansion slots).
+- `bios_at.c`: IBM PC/AT Model 5170 (Intel 80286, 16-bit AT bus, CMOS RTC).
+- `bios_jr.c`: IBM PCjr Model 4860 (extended sound generator, cartridge slots).
 
-**INT 16h — Keyboard Services**: Read key (AH=00h), check buffer (AH=01h), shift state (AH=02h), extended functions (AH=10h-12h).
+---
 
-**INT 1Ah — Time Services**: Read clock (AH=00h), set clock (AH=01h), read date (AH=04h), set date (AH=05h).
+## 2. Emulated BIOS Interrupt Services
 
-## 3. BIOS DATA AREA
+The subsystem virtualizes foundational PC interrupt vectors:
 
-The BIOS Data Area (BDA) at 0x0400-0x04FF is fully emulated. Key fields:
+1. **INT 10h — Video Services (`bios_int10.c`)**:
+   - `AH=00h`: Set video mode (Modes 0–13h).
+   - `AH=01h`: Set cursor shape and scanline range.
+   - `AH=02h`: Set cursor position (`row`, `col`).
+   - `AH=03h`: Read cursor position and configuration.
+   - `AH=06h` / `AH=07h`: Scroll window up / down.
+   - `AH=08h` / `AH=09h`: Read / write character and attribute at cursor.
+   - `AH=0Eh`: Teletype output (TTY character write with auto-wrap).
+   - `AH=10h`–`13h`: EGA/VGA palette registers and string writes.
 
-| Address | Size | Description |
-|---------|------|-------------|
-| 0x0449 | 1 | Current video mode |
-| 0x044A | 2 | Screen width in columns |
-| 0x044E | 2 | Current video page offset |
-| 0x0450 | 16 | Cursor positions (8 pages × 2 bytes) |
-| 0x0460 | 2 | Cursor shape (start/end scan lines) |
-| 0x0462 | 1 | Active display page |
-| 0x0463 | 2 | CRT controller base port (3B4h or 3D4h) |
-| 0x0465 | 1 | CGA mode register value |
-| 0x0466 | 1 | CGA color register value |
-| 0x046C | 4 | Timer tick count |
-| 0x0470 | 1 | Timer overflow flag |
-| 0x0471 | 1 | Ctrl+Break flag |
-| 0x0484 | 1 | EGA/VGA rows minus 1 |
+2. **INT 13h — Virtual Disk Services (`bios_int13.c`)**:
+   - Emulates diskette drive read/write sectors against virtual disk images.
 
-Programs can read these fields with PEEK and write them with POKE:
+3. **INT 16h — Keyboard Services (`bios_int16.c`)**:
+   - `AH=00h`: Blocking read character from keyboard buffer.
+   - `AH=01h`: Check buffer status (non-blocking query for `INKEY$`).
+   - `AH=02h`: Read shift key flags byte (`0x0417`).
 
-```basic
-10 Mode = PEEK(&H0449)          ' Read current video mode
-20 Cols = PEEK(&H044A)          ' Read screen width
-30 POKE &H0462, 1               ' Switch to video page 1
-```
+4. **INT 1Ah — Time-of-Day Services (`bios_int1a.c`)**:
+   - `AH=00h`: Read system timer tick count (`0x046C`).
+   - `AH=01h`: Set system timer tick count.
+   - `AH=02h` / `AH=04h`: Real-Time Clock read time and calendar date.
 
-## 4. VIDEO RAM
+---
 
-The BIOS emulation provides virtual video RAM:
+## 3. BIOS Data Area (BDA) Memory Mapping
 
-**0xB8000-0xBFFFF**: CGA/EGA/VGA text-mode framebuffer. Each character cell uses 2 bytes (character code + attribute). Writing to this region updates the virtual display through BiosVRAMObserver callbacks.
+The BIOS Data Area at physical memory `0x0400`–`0x04FF` is mapped into the VM memory space:
 
-**0xA0000-0xAFFFF**: EGA/VGA graphics framebuffer. Writing pixel data to this region is trapped and rendered through the BGI rasterizer.
+| Address | Size | Description | Vintage Usage |
+| :--- | :--- | :--- | :--- |
+| `0x0449` | 1 byte | Current video display mode | `mode = PEEK(&H0449)` |
+| `0x044A` | 2 bytes | Screen column width (40 or 80) | `cols = PEEK(&H044A)` |
+| `0x044E` | 2 bytes | Active video page offset | Memory offset to current page |
+| `0x0450` | 16 bytes | Cursor positions (8 video pages × 2 bytes) | Page row and column pairs |
+| `0x0460` | 2 bytes | Cursor scanline start and end lines | Cursor shape configuration |
+| `0x0462` | 1 byte | Active display page number | `page = PEEK(&H0462)` |
+| `0x0463` | 2 bytes | CRT controller base I/O port (`0x3B4` / `0x3D4`) | Monochrome vs Color adapter |
+| `0x046C` | 4 bytes | Daily timer tick counter (18.2065 Hz) | `ticks = PEEK(&H046C)` |
+| `0x0470` | 1 byte | 24-hour timer overflow rollover flag | Midnight transition sentinel |
+| `0x0484` | 1 byte | Character rows minus 1 (EGA/VGA) | 24 for 25-line, 42 for 43-line |
 
-```basic
-10 ' Write "A" in white on blue at position (0,0) in text mode
-20 POKE &HB8000, 65              ' Character "A"
-30 POKE &HB8001, &H1F            ' Attribute: white on blue
-```
+---
 
-## 5. I/O PORTS
+## 4. Virtual Video RAM Buffers
 
-The BIOS emulation virtualizes key I/O ports:
-
-| Port | Description |
-|------|-------------|
-| 3B4h-3B5h | MDA CRT controller |
-| 3D4h-3D5h | CGA/EGA/VGA CRT controller (6845 CRTC) |
-| 3C0h | VGA attribute controller |
-| 3C4h-3C5h | VGA sequencer |
-| 3C7h-3C9h | VGA DAC (palette) |
-| 3CEh-3CFh | VGA graphics controller |
-| 3DAh | CGA/VGA status register |
-| 60h | Keyboard data port |
-| 61h | System control port |
-| 40h-43h | PIT (timer) |
-
-## 6. TRI-MODE HAL DISPATCH
-
-The BIOS subsystem implements the Tri-Mode HAL Dispatch system:
-
-**STATIC_INLINE** — For IoT/embedded microcontrollers where BIOS functions are compiled as inline code for minimum overhead.
-
-**PLUGGABLE_STRUCT** — For host emulators and BASIC++ desktop builds where BIOS functions are called through function pointers, allowing runtime replacement.
-
-**MACRO_OVERRIDE** — For FreeDOS/UEFI builds where BIOS calls are redirected to real hardware through preprocessor macros.
-
-## 7. CPU EMULATION
-
-The BIOS subsystem includes a micro-8086 interpreter (libcpu8086) for executing x86 machine code in BIOS ROM routines. This enables programs that call real BIOS routines (through SYS or USR) to execute the actual x86 instructions in a sandboxed environment.
-
-## 8. PORTING TO NEW PLATFORMS
-
-When porting BASIC++ to a new platform, the BIOS emulation layer requires no changes — it is a pure software emulation. The platform layer (plat_console.c, plat_fs.c, etc.) provides the actual hardware interface. The BIOS emulation sits between BASIC++ statements and the platform layer, translating POKE/PEEK/INP/OUT operations into platform-appropriate calls.
+The subsystem allocates virtual Video RAM windows monitored by observer callbacks:
+- **`0xB8000`–`0xBFFFF` (CGA/EGA/VGA Text Mode)**: 32 KB character cell buffer (alternating character byte and attribute byte). Writes to `0xB8000` automatically trigger visual refresh on the active console or terminal.
+- **`0xA0000`–`0xAFFFF` (EGA/VGA Graphics Mode)**: 64 KB planar graphics framebuffer trapped and rendered via the BGI software rasterizer.

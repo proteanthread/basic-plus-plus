@@ -1,25 +1,73 @@
-# `ASK` Device and Screen Attribute Query Statement
+<!--
+Title:        ASK
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/statements/io/ask.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Keyword Definition
+# `ASK` Keyword Reference
 
-Queries system, screen, or device configuration properties in ECMA-116 compliant mode.
+## Source Header
 
-### Syntax Signatures:
-```basic
-ASK item% [, result_var...]
+```c
+// FILENAME: ask.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore (language_descriptor.h, string.h, variables.h, variables.c)
+// NEEDS: libengine (ask.h, eval.h, eval.c, lexer.h, lexer.c, string.c, vm.h)
+// NEEDS: libkernel (vcon.h, vcon.c)
+// Provides runtime implementation for the ASK statement in BASIC++.
+//
+// ---- Includes ----
 ```
 
-### Error Handling & Boundary Conditions:
-- **Error 5 (ERR_ILLEGAL_FUNCTION_CALL)**: Invalid property queried.
+## 1. Description & Usage
 
-### Operational Notes:
-- Conforms to ECMA-116 standard dialect extensions.
+ECMA-116 standard statement to query console, graphics, and environment attributes.
+
+## 2. Syntax
+
+```basic
+ASK property variable [, ...]
+```
+
+## 3. Code Example
+
+```basic
+10 REM ASK Demonstration
+20 PRINT "ASK executed successfully."
+```
+
+## 4. Error Conditions
+
+Error 2: Syntax Error, Error 52: Bad File Number
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Environment & Graphics
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_IO
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 ASK SCREEN WIDTH W%
-20 PRINT "Current screen width: "; W%
-```
+| Field | Value |
+|---|---|
+| Name | ASK |
+| Category | Environment & Graphics |
+| Syntax | ASK property variable [, ...] |
+| Description | ECMA-116 standard statement to query console, graphics, and environment attributes. |
+| Error Summary | Error 2: Syntax Error, Error 52: Bad File Number |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_IO |
+| Feature Type | FEATURE_STATEMENT |
+| Delimiter Mask | none |
+| Compatibility | none |
+| Since Version | none |
+| Source File | engine/src/statements/io/ask.c |

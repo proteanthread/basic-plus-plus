@@ -164,4 +164,67 @@ double platform_get_highres_time(void) {
 #endif
 }
 
+double platform_get_system_uptime(void) {
+#if defined(_WIN32)
+    return (double)GetTickCount64() / 1000.0;
+#elif defined(__linux__)
+    struct timespec ts;
+    if (clock_gettime(CLOCK_BOOTTIME, &ts) == 0) {
+        return (double)ts.tv_sec + (double)ts.tv_nsec / 1e9;
+    }
+    return platform_get_uptime();
+#elif defined(__APPLE__) || defined(__FreeBSD__)
+    struct timeval boottime;
+    size_t len = sizeof(boottime);
+    int mib[2] = { CTL_KERN, KERN_BOOTTIME };
+    if (sysctl(mib, 2, &boottime, &len, NULL, 0) == 0) {
+        time_t now = time(NULL);
+        return (double)(now - boottime.tv_sec);
+    }
+    return platform_get_uptime();
+#else
+    return platform_get_uptime();
+#endif
+}
+
+uint64_t platform_get_total_system_memory(void) {
+#if defined(_WIN32)
+    MEMORYSTATUSEX memInfo;
+    memInfo.dwLength = sizeof(MEMORYSTATUSEX);
+    if (GlobalMemoryStatusEx(&memInfo)) {
+        return (uint64_t)memInfo.ullTotalPhys;
+    }
+    return 671088640ULL;
+#elif defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__)
+    long pages = sysconf(_SC_PHYS_PAGES);
+    long page_size = sysconf(_SC_PAGE_SIZE);
+    if (pages > 0 && page_size > 0) {
+        return (uint64_t)pages * (uint64_t)page_size;
+    }
+    return 671088640ULL;
+#else
+    return 671088640ULL;
+#endif
+}
+
+uint64_t platform_get_avail_system_memory(void) {
+#if defined(_WIN32)
+    MEMORYSTATUSEX memInfo;
+    memInfo.dwLength = sizeof(MEMORYSTATUSEX);
+    if (GlobalMemoryStatusEx(&memInfo)) {
+        return (uint64_t)memInfo.ullAvailPhys;
+    }
+    return 671088640ULL;
+#elif defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__)
+    long pages = sysconf(_SC_AVPHYS_PAGES);
+    long page_size = sysconf(_SC_PAGE_SIZE);
+    if (pages > 0 && page_size > 0) {
+        return (uint64_t)pages * (uint64_t)page_size;
+    }
+    return 671088640ULL;
+#else
+    return 671088640ULL;
+#endif
+}
+
 

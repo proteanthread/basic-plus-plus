@@ -1,0 +1,203 @@
+Title:        BASIC_Programmers_Guide
+Tier:         1
+Applies to:   BASIC++ v6.5.2, all targets
+Authority:    docs/keywords/statements/ (371), docs/keywords/functions/ (316),
+              engine/include/runtime/set.h, engine/include/module/module.h
+Generated:    no, hand-written
+Status:       current
+
+==============================================================================
+BASIC++ FOR BASIC PROGRAMMERS
+==============================================================================
+
+You already write BASIC. This tells you what is the same, what is new, and
+what to do with the programs you already have.
+
+1. YOUR PROGRAMS RUN
+------------------------------------------------------------------------------
+
+That is the first rule of the project and it is not a slogan. Full
+compatibility with GW-BASIC, BASICA, QuickBASIC and Visual Basic for DOS is
+the constraint every other decision is measured against.
+
+Concretely:
+
+  Line numbers work. GOTO, GOSUB, ON n GOTO, RESUME and RESTORE all behave as
+  they always did.
+  True is -1 and false is 0. A = -(B > C) still works.
+  FOR evaluates its limit and step once on entry and tests before the first
+  iteration, so a loop whose limit is already passed runs zero times.
+  PRINT zones, the comma and semicolon separators, and PRINT USING behave as
+  in Microsoft BASIC.
+  DEFINT, DEFSNG, DEFDBL, DEFSTR, DEFLNG and the type sigils %, !, #, &, $ all
+  apply.
+  PEEK, POKE, DEF SEG, VARPTR, INP, OUT, WAIT, USR and CALL are present.
+
+If a program does not load, the usual cause is a variable whose name has
+become a keyword. One statement fixes it:
+
+    RENAME CONFLICTS PREFIX "v_"
+
+See Program_Modernization_Tutorial.
+
+Coming from a non-Microsoft machine  --  TRS-80, Commodore, Atari, Apple II
+--  read Dialect_Migration_Reference, which maps construct by construct.
+
+2. LINE NUMBERS ARE OPTIONAL, BUT ONLY SOMETIMES
+------------------------------------------------------------------------------
+
+An important distinction, easy to get wrong.
+
+The interpreter expects line numbers. That is the vintage behaviour and it is
+preserved.
+
+The compiler and the transpiler do not. bppc and trans work from named
+procedures. So a modern BASIC++ program can be written without a single line
+number, and a vintage program can be compiled unchanged.
+
+RENUM bridges the two. Load a vintage program, renumber it into a tidy
+sequence, and compile it.
+
+3. STRUCTURED PROGRAMMING, IF YOU WANT IT
+------------------------------------------------------------------------------
+
+Everything QuickBASIC gave you, and more:
+
+    SUB ProcessRecord (Name$, Amount)
+      IF Amount < 0 THEN
+        RAISE 5, "Negative amount"
+      END IF
+      PRINT Name$; " "; Amount
+    END SUB
+
+    FUNCTION Total# (A() AS DOUBLE)
+      DIM I AS INTEGER
+      FOR I = LBOUND(A) TO UBOUND(A)
+        Total# = Total# + A(I)
+      NEXT I
+    END FUNCTION
+
+SUB, FUNCTION, DECLARE, TYPE, CONST, SHARED, STATIC, SELECT CASE, DO/LOOP,
+EXIT, WHILE/WEND, REDIM, ERASE.
+
+Beyond QuickBASIC: REPEAT/UNTIL, CONTINUE, WITH, ENUM, CLASS, MODULE, IMPORT,
+PUBLIC, GLOBAL, SCOPE, LABEL, UNLESS.
+
+Error handling has both generations:
+
+    100 ON ERROR GOTO 900        ' vintage
+    ...
+    200 TRY                       ' structured
+    210   OPEN "data.txt" FOR INPUT AS #1
+    220 HANDLER
+    230   PRINT "Could not open: "; ERR$
+    240 END TRY
+
+Plus RAISE, RETRY, WHEN, WHENEVER.
+
+4. WHAT IS GENUINELY NEW
+------------------------------------------------------------------------------
+
+Matrices
+------------------------------------------------------------------------------
+
+The Dartmouth and HP matrix statements, which most microcomputer BASICs
+dropped:
+
+    10 DIM A(3,3), B(3,3), C(3,3)
+    20 MAT READ A
+    30 MAT B = IDN
+    40 MAT C = A * B
+    50 MAT PRINT C
+
+With MAT_IDN, MAT_INV, MAT_TRN, MAT_RND, DET, DOT and CROSS.
+
+Sets and groups
+------------------------------------------------------------------------------
+
+The object model. Everything is a set; a group is an addressable record within
+it; an object is a bundle of data. Full set algebra  --  union, intersection,
+difference, subset, cardinality  --  plus relational projection over a set of
+groups.
+
+This is the deepest new idea in the language and it has its own document:
+Set_Based_Object_Model.
+
+Complex numbers
+------------------------------------------------------------------------------
+
+COMPLEX, REAL, IMAG, CONJ, CABS, CARG, CEXP, CLOG, CPOW, CSQR, POL, MAG,
+ANGLE.
+
+Financial functions
+------------------------------------------------------------------------------
+
+PV, FV, PMT, IPMT, PPMT, NPER, RATE, IRR, NPV.
+
+Statistics
+------------------------------------------------------------------------------
+
+MEAN, MED, AVG, SUM, PROD$, MIN, MAX, CLAMP, LERP, SHUFFLE, COUNT.
+
+Bit manipulation
+------------------------------------------------------------------------------
+
+SETBIT, CLRBIT, TOGGLEBIT, READBIT, RESETBIT, BITCOUNT, BITFIELD,
+SET_BITFIELD, SHL, SHR, ROL, ROR, MASK, HI, LO.
+
+Cryptography
+------------------------------------------------------------------------------
+
+CRYPTO.HASH$, CRYPTO.HMAC$, CRYPTO.ENCRYPT$, CRYPTO.DECRYPT$, CRYPTO.KEY$,
+GUID$.
+
+Development tooling
+------------------------------------------------------------------------------
+
+RENAME for variables, REFORMAT for layout and static analysis, DEBUG for
+interactive debugging, TEST and ASSERT for unit tests, SELFTEST for engine
+diagnostics. See Debugging_And_Testing.
+
+Introspection
+------------------------------------------------------------------------------
+
+KEYWORD, VARS, CATEGORY, SPEC%, VERSION, DEVICES, MOUNTS, MEMMAP, CPU,
+DEVCAPS, DEVINFO$, PROGRAM$. A program can ask the engine what it can do.
+
+5. THREE WAYS TO RUN A PROGRAM
+------------------------------------------------------------------------------
+
+  Tool   What it does
+  -----  -------------------------------------------
+  baspp  Full desktop interpreter
+  bpp    Lightweight REPL
+  bs     Script runner, for batch and pipelines
+  bppc   Compiles to a native binary
+  trans  Transpiles to other source languages
+  detok  Detokenises vintage binary BASIC files
+  iot    The IoT edition; see IoT_And_Embedded_Guide
+
+detok deserves a mention: it reads tokenised vintage .BAS files, the binary
+format Microsoft BASIC saved by default, so a program you only have in
+tokenised form can be recovered.
+
+6. WHERE THINGS LIVE
+------------------------------------------------------------------------------
+
+  You want                       Read
+  -----------------------------  ---------------------------------------
+  A specific keyword             docs/keywords/statements/ or functions/
+  Porting from another dialect   Dialect_Migration_Reference
+  Cleaning up a vintage listing  Program_Modernization_Tutorial
+  Debugging                      Debugging_And_Testing
+  The object model               Set_Based_Object_Model
+  Graphics                       Graphics_Modes, Graphics_Sound
+  Files                          File_IO, Stream_Block_IO
+  Extending the language         Extension_Guide
+  Hardware access                Systems_Programming
+  Microcontrollers               IoT_And_Embedded_Guide
+  Networking, and its limits     Networking_Reference
+
+==============================================================================
+END OF DOCUMENT
+==============================================================================

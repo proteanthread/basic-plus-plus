@@ -1,29 +1,71 @@
-NAME Rename File Statement
-==========================
+TITLE: NAME
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/filesystem/dir_ops/name.c
+GENERATED: no, hand-written
+STATUS: current
 
-Renames an existing file or directory on disk or in the virtual filesystem.
+==============================================================================
+NAME KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: name.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libcore (strings.h, strings.c)
+    // NEEDS: libengine (eval.h, eval.c, lexer.h, lexer.c, name.h, string.c, vm.h)
+    // NEEDS: libplatform (platform.h)
+    // Provides runtime implementation for the NAME statement in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Renames an existing disk file or directory.
 
-    NAME old_filename$ AS new_filename$
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    NAME oldspec AS newspec
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM NAME Demonstration
+    20 PRINT "NAME executed successfully."
 
-ERROR CONDITIONS
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error, Error 53: File Not Found, Error 58: File Already Exists
 
-  - Error 53 (ERR_FILE_NOT_FOUND): Source file does not exist.
-  - Error 58 (ERR_FILE_ALREADY_EXISTS): Target file name already exists.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Filesystem I/O
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_IO
 
-
-OPERATIONAL NOTES
-----------------------------------------------------------------------
-
-  Cannot move files across distinct physical drives.
-
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 NAME "TEMP.DAT" AS "FINAL.DAT"
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  NAME
+Category              Filesystem I/O
+Syntax                NAME oldspec AS newspec
+Description           Renames an existing disk file or directory.
+Error Summary         Error 2: Syntax Error, Error 53: File Not Found, Er...
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_IO
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/filesystem/dir_ops/name.c

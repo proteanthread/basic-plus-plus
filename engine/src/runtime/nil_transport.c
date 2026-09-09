@@ -14,42 +14,43 @@
 #include "runtime/peer.h"
 #include "esp32_serial.h"
 
-#include <string.h>
-#include <stdio.h>
-#include <ctype.h>
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "runtime/format/snprintf.h"
+#include "runtime/ctype/ctype.h"
 
 NilTransportType nil_transport_detect(const char *uri) {
     if (!uri || !*uri) return NIL_TRANS_UNKNOWN;
 
-    if (strncasecmp(uri, "COM", 3) == 0 || strncasecmp(uri, "/dev/tty", 8) == 0) {
+    if (runtime_strncasecmp(uri, "COM", 3) == 0 || runtime_strncasecmp(uri, "/dev/tty", 8) == 0) {
         return NIL_TRANS_SERIAL;
     }
-    if (strncasecmp(uri, "TCP://", 6) == 0 || strncasecmp(uri, "TCP:", 4) == 0) {
+    if (runtime_strncasecmp(uri, "TCP://", 6) == 0 || runtime_strncasecmp(uri, "TCP:", 4) == 0) {
         return NIL_TRANS_TCP;
     }
-    if (strncasecmp(uri, "UDP://", 6) == 0 || strncasecmp(uri, "UDP:", 4) == 0) {
+    if (runtime_strncasecmp(uri, "UDP://", 6) == 0 || runtime_strncasecmp(uri, "UDP:", 4) == 0) {
         return NIL_TRANS_UDP;
     }
-    if (strncasecmp(uri, "PEER://", 7) == 0 || strncasecmp(uri, "PEER:", 5) == 0 ||
-        strncasecmp(uri, "ESPNOW://", 9) == 0 || strncasecmp(uri, "ESPNOW:", 7) == 0) {
+    if (runtime_strncasecmp(uri, "PEER://", 7) == 0 || runtime_strncasecmp(uri, "PEER:", 5) == 0 ||
+        runtime_strncasecmp(uri, "ESPNOW://", 9) == 0 || runtime_strncasecmp(uri, "ESPNOW:", 7) == 0) {
         return NIL_TRANS_PEER;
     }
-    if (strncasecmp(uri, "BT://", 5) == 0 || strncasecmp(uri, "BT:", 3) == 0) {
+    if (runtime_strncasecmp(uri, "BT://", 5) == 0 || runtime_strncasecmp(uri, "BT:", 3) == 0) {
         return NIL_TRANS_BLUETOOTH;
     }
-    if (strncasecmp(uri, "BLE://", 6) == 0 || strncasecmp(uri, "BLE:", 4) == 0) {
+    if (runtime_strncasecmp(uri, "BLE://", 6) == 0 || runtime_strncasecmp(uri, "BLE:", 4) == 0) {
         return NIL_TRANS_BLE;
     }
-    if (strncasecmp(uri, "NFC://", 6) == 0 || strncasecmp(uri, "NFC:", 4) == 0) {
+    if (runtime_strncasecmp(uri, "NFC://", 6) == 0 || runtime_strncasecmp(uri, "NFC:", 4) == 0) {
         return NIL_TRANS_NFC;
     }
-    if (strncasecmp(uri, "MQTT://", 7) == 0 || strncasecmp(uri, "MQTT:", 5) == 0) {
+    if (runtime_strncasecmp(uri, "MQTT://", 7) == 0 || runtime_strncasecmp(uri, "MQTT:", 5) == 0) {
         return NIL_TRANS_MQTT;
     }
-    if (strncasecmp(uri, "N:", 2) == 0) {
+    if (runtime_strncasecmp(uri, "N:", 2) == 0) {
         return NIL_TRANS_FUJINET;
     }
-    if (strncasecmp(uri, "IPC://", 6) == 0 || strncasecmp(uri, "UNIX://", 7) == 0) {
+    if (runtime_strncasecmp(uri, "IPC://", 6) == 0 || runtime_strncasecmp(uri, "UNIX://", 7) == 0) {
         return NIL_TRANS_IPC;
     }
 
@@ -70,8 +71,8 @@ bool nil_transport_send(VMContext *vm, const char *target_uri, const uint8_t *da
         }
         case NIL_TRANS_PEER: {
             const char *target = target_uri;
-            if (strncasecmp(target, "PEER://", 7) == 0) target += 7;
-            else if (strncasecmp(target, "PEER:", 5) == 0) target += 5;
+            if (runtime_strncasecmp(target, "PEER://", 7) == 0) target += 7;
+            else if (runtime_strncasecmp(target, "PEER:", 5) == 0) target += 5;
             peer_send(target, (const char *)data, len);
             return true;
         }

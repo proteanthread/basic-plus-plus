@@ -15,5 +15,6 @@
 #include "types/types.h"
 
 BValue func_tnfs_dir(VMContext *vm, int argc, BValue *argv, BppError *err);
+void   func_tnfs_register(void);
 
 #endif // EVAL_FUNCTIONS_HARDWARE_FUNC_TNFS_H

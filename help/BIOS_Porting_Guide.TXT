@@ -1,0 +1,93 @@
+Title:        BIOS Porting Guide
+Tier:         2
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/bios/, engine/include/bios/bios_hal.h
+Generated:    no
+Status:       Active
+
+BASIC++ BIOS SUBSYSTEM AND HAL PORTING GUIDE
+
+An engineering guide for porting the BASIC++ BIOS emulation subsystem
+(libbios) and Hardware Abstraction Layer (HAL) to bare-metal microcontrollers,
+custom emulators, and host operating systems.
+
+
+1. ARCHITECTURAL BLUEPRINT AND SUBSYSTEM STRUCTURE
+
+The BIOS subsystem (engine/src/bios/) provides a freestanding C17 virtual
+machine layer that emulates IBM PC/XT/AT BIOS interrupts and memory
+structures. This enables vintage BASIC code using PEEK, POKE, INP, OUT, and
+interrupt calls (CALL INTERRUPT) to execute safely without host hardware
+dependencies.
+
+1.1 Source Code Layout
+- engine/include/bios/bios_hal.h: Defines HAL interface types, operating
+  modes, and the BiosHAL dispatch struct.
+- engine/src/bios/bios_hal_vm.c: Default virtual machine HAL dispatch
+  implementation.
+- engine/src/bios/bios_pc.c, bios_xt.c, bios_at.c: Core machine personality
+  emulators.
+- engine/src/bios/bios_int10.c through bios_int1a.c: BIOS interrupt service
+  routines.
+
+1.2 Tri-Mode HAL Dispatch Architecture
+The HAL operates in one of three compile-time modes configured by
+BIOS_HAL_MODE:
+
+1. BIOS_HAL_MODE_STATIC_INLINE (Mode 1): Direct inline memory and I/O port
+   mapping for embedded microcontrollers (ARM Cortex-M, ESP32, RISC-V).
+   Sub-8KB footprint with zero function pointer indirection overhead.
+2. BIOS_HAL_MODE_PLUGGABLE_STRUCT (Mode 2): Dynamic function pointer dispatch
+   table (BiosHAL) used by host desktop emulators and virtual machines.
+   Allows external host drivers to trap reads and writes.
+3. BIOS_HAL_MODE_MACRO_OVERRIDE (Mode 3): Macro wrappers for FreeDOS, UEFI,
+   and real-mode PC targets where operations map directly to CPU instructions
+   (cli, sti, in, out).
+
+
+2. PLUGGABLE HAL INTERFACE SPECIFICATION (MODE 2)
+
+When running under BIOS_HAL_MODE_PLUGGABLE_STRUCT, the host initializes a
+BiosHAL struct defined in engine/include/bios/bios_hal.h:
+
+    typedef struct {
+        void*               user_data;
+        BiosHalPortIn8Fn    port_in8;
+        BiosHalPortOut8Fn   port_out8;
+        BiosHalPortIn16Fn   port_in16;
+        BiosHalPortOut16Fn  port_out16;
+        BiosHalMemRead8Fn   mem_read8;
+        BiosHalMemWrite8Fn  mem_write8;
+        BiosHalAssertIRQFn  assert_irq;
+        BiosHalTickTimerFn  tick_timer;
+    } BiosHAL;
+
+2.1 Implementing Custom HAL Callbacks
+To attach custom virtual devices or embedded peripherals to the BIOS VM:
+
+    #include "bios/bios_hal.h"
+
+    static uint8_t custom_port_in8(void* user_data, uint16_t port) {
+        if (port == 0x3F8) {
+            return UART_ReadByte(); // Virtual COM1 serial port
+        }
+        return 0xFF; // Unmapped bus float
+    }
+
+    void setup_custom_hal(BiosHAL* hal, void* context) {
+        bios_hal_init_default(hal, context);
+        hal->port_in8 = custom_port_in8;
+    }
+
+
+3. PORTING STEPS FOR NEW HARDWARE PLATFORMS
+
+1. Step 1: Set HAL Operating Mode: Choose BIOS_HAL_MODE_STATIC_INLINE for
+   microcontroller firmware or BIOS_HAL_MODE_PLUGGABLE_STRUCT for emulator
+   embedding.
+2. Step 2: Initialize Default Callbacks: Call bios_hal_init_default(&hal,
+   user_data) to bind safe fallback stubs.
+3. Step 3: Map Video and Peripheral Windows: Map the 128 KB video RAM window
+   (0xA0000-0xBFFFF) and BIOS Data Area (0x0400-0x04FF).
+4. Step 4: Link with Engine Core: Compile and link with libkernel and
+   libengine.

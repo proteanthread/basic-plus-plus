@@ -2,7 +2,7 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
-// NEEDS: libcore (file.h, file.c, micro_lib_metadata.h, micro_lib_metadata.c)
+// NEEDS: libcore (file.h, file.c, language_descriptor.h)
 // NEEDS: libcore (string.h)
 // NEEDS: libengine (backspace.h, eval.h, eval.c, string.c)
 // NEEDS: libkernel (errors.h)
@@ -13,24 +13,29 @@
 #include "statements/filesystem/binary_ops/backspace.h"
 #include "eval/eval.h"
 #include "runtime/file.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "types/errors.h"
-#include <string.h>
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_backspace_desc = {
+    .name = "BACKSPACE",
+    .category = "File System & I/O",
+    .syntax = "BACKSPACE [#]channel",
+    .description = "Repositions the file pointer backwards by one record or block (IBM CALL/360 / DG).",
+    .error_summary = "Error 2: Syntax error, Error 13: Type mismatch, Error 52: Bad file number",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_STATEMENT
+};
 
 void stmt_backspace_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "BACKSPACE",
-        .category = "File System & I/O",
-        .syntax = "BACKSPACE [#]channel",
-        .help_text = "Repositions the file pointer backwards by one record or block (IBM CALL/360 / DG).",
-        .error_codes = "Error 2: Syntax error, Error 13: Type mismatch, Error 52: Bad file number"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_backspace_desc);
 }
 
 BppError stmt_backspace_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BppToken tok = lex_peek(lex);
     if (tok.type == TOK_KEYWORD && tok.as.keyword == KW_BACKSPACE) {

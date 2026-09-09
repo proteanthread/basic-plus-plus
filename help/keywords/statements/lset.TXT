@@ -1,35 +1,70 @@
-LSET Left-Justify String Statement
-======================================================================
+TITLE: LSET
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/variables/assignment/lset.c
+GENERATED: no, hand-written
+STATUS: current
 
-The LSET statement left-justifies a string expression within a target
-string variable or FIELD buffer, padding on the right with spaces.
+==============================================================================
+LSET KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: lset.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (file.h, file.c, language_descriptor.h)
+    // NEEDS: libcore (string.h, strings.h, strings.c, variables.h, variables.c)
+    // NEEDS: libengine (eval.h, eval.c, lexer.h, lexer.c, lset.h, string.c, vm.h)
+    // Provides runtime implementation for the LSET statement in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Left justifies a string in a fixed-length string variable or FIELD buffer.
 
-    LSET string_variable$ = string_expression$
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    LSET string_var = string_expression
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM LSET Demonstration
+    20 PRINT "LSET executed successfully."
 
-OPERATIONAL RULES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error, Error 13: Type Mismatch
 
-  - Aligns string to the left.
-  - Pads short strings with spaces on the right.
-  - Truncates long strings from the right.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Variables & Memory
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SYSTEM
 
-
-ERROR CODES
-----------------------------------------------------------------------
-
-  Error Code  Name                  Condition
-  ----------  --------------------  ----------------------------------
-  13          ERR_TYPE_MISMATCH     Non-string target or source
-
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 B$ = SPACE$(8)
-    20 LSET B$ = "OK"
-    30 PRINT "["; B$; "]"   : REM Outputs [OK      ]
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  LSET
+Category              Variables & Memory
+Syntax                LSET string_var = string_expression
+Description           Left justifies a string in a fixed-length string va...
+Error Summary         Error 2: Syntax Error, Error 13: Type Mismatch
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SYSTEM
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/variables/assignment/lset.c

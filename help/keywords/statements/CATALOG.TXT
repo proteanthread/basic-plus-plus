@@ -1,0 +1,68 @@
+TITLE: CATALOG
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/introspection/help.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+CATALOG KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: help.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libengine (eval.h, help.h, spec.h)
+    // Provides runtime implementation for the HELP and CATALOG statements in BASI
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Displays interactive catalog listing of keyword categories, dynamic modules,
+global labels, custom blocks, and specifications.
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    CATALOG [category_name | keyword1 [, keyword2...]]
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM CATALOG Demonstration
+    20 PRINT "CATALOG executed successfully."
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Introspection
+Subsystem:     SUBSYSTEM_CORE
+Safety Level:  SAFETY_SAFE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  CATALOG
+Category              Introspection
+Syntax                CATALOG [category_name | keyword1 [, keyword2...]]
+Description           Displays interactive catalog listing of keyword cat...
+Error Summary         Error 2: Syntax Error
+Subsystem             SUBSYSTEM_CORE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/introspection/help.c

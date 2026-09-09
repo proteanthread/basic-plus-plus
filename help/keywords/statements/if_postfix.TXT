@@ -1,23 +1,67 @@
-IF_POSTFIX Trailing Conditional Statement Modifier
-==================================================
+TITLE: IF_POSTFIX
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/ast/eval_ast.c
+GENERATED: no, hand-written
+STATUS: current
 
-Executes a preceding statement only if the trailing condition expression evaluates to true.
+==============================================================================
+IF_POSTFIX KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: eval_ast.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community -- All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: baspp.exe, bpp.exe, bs.exe, libengine
+    // NEEDS: libcore, libkernel
+    // Implements component functionality for IF_POSTFIX.
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Postfix conditional modifier executing the preceding statement only when
+condition is true.
 
-    statement IF condition
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    statement IF condition [ELSE statement]
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM IF_POSTFIX Demonstration
+    20 PRINT "IF_POSTFIX executed successfully."
 
-OPERATIONAL NOTES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error
 
-  Multiple trailing postfix conditions evaluate right-to-left.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       Perl, Ruby, BASIC++ Standard
+Since Version: 6.0.0
+Category:      Control Flow
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SAFE
 
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 PRINT "X is positive" IF X > 0
-    20 LET Y = 10 IF Flag% = 1
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  IF_POSTFIX
+Category              Control Flow
+Syntax                statement IF condition [ELSE statement]
+Description           Postfix conditional modifier executing the precedin...
+Error Summary         Error 2: Syntax Error
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         Perl, Ruby, BASIC++ Standard
+Since Version         6.0.0
+Source File           engine/src/eval/ast/eval_ast.c

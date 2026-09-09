@@ -1,100 +1,136 @@
-# BASIC++ v6.5.2 Graphics and Sound
+<!--
+Title:        Graphics_Sound
+Tier:         2
+Applies to:   BASIC++ v6.5.2 (baspp, SDL2)
+Authority:    engine/src/device/bgi/, engine/src/device/
+Generated:    no, manual reference
+Status:       current
+-->
+
+# BASIC++ v6.5.2 Graphics and Sound Reference
 
 ## 1. GRAPHICS OVERVIEW
 
-BASIC++ provides two levels of graphics programming. The first is GW-BASIC/QBASIC compatible with standard SCREEN modes and pixel operations (PSET, LINE, CIRCLE, PAINT, DRAW). The second is the extended BGI system with custom resolutions (SET SCREEN, SET GRAPHICS), retro hardware mode emulation (SET MODE), and advanced rasterizer features. See the Graphics Modes guide for the complete screen mode reference.
+BASIC++ provides a dual-layer graphics programming model. The baseline layer offers full compatibility with vintage GW-BASIC and QuickBASIC standard `SCREEN` modes and 2D drawing primitives (`PSET`, `PRESET`, `LINE`, `CIRCLE`, `PAINT`, `DRAW`). The extended layer integrates the Borland Graphics Interface (BGI) subsystem with custom window resolutions (`SET SCREEN`, `SET GRAPHICS`), retro hardware profile emulation (`SET MODE`), and viewport transformations.
 
 ## 2. DRAWING PRIMITIVES
 
-PSET (x, y) [, color] sets a single pixel. Without a color argument, the current foreground color is used.
+- `PSET (x, y) [, color]`: Sets an individual pixel at coordinate `(x, y)`. If color is omitted, the current foreground attribute is used.
+- `PRESET (x, y)`: Resets the pixel at `(x, y)` to the active background color.
+- `LINE (x1, y1)-(x2, y2) [, [color] [, [B|BF] [, style]]]`: Draws a line between two coordinates. The `B` option draws an outlined box, while `BF` draws a solid filled box. The `style` parameter accepts a 16-bit bitmask for patterned or dashed lines (e.g., `&HAAAA` for dotted).
+- `CIRCLE (x, y), radius [, [color] [, [start] [, [end] [, aspect]]]]`: Draws a circle, elliptical arc, or sector. Angles are expressed in radians. Specifying negative angles draws radial closure lines from the center to arc endpoints.
+- `PAINT (x, y) [, [fill_color] [, border_color]]`: Performs a flood-fill algorithm beginning at `(x, y)` and terminating at boundaries matching `border_color`.
 
-PRESET (x, y) resets a pixel to the background color.
+## 3. THE DRAW MACRO LANGUAGE
 
-LINE (x1,y1)-(x2,y2) [, color [, B|BF [, style]]] draws a line, rectangle (B), or filled rectangle (BF). The optional style argument is a 16-bit pattern for dashed lines: `LINE (0,0)-(100,0), 15, , &HAAAA` draws a dotted line.
-
-CIRCLE (x,y), radius [, color [, start [, end [, aspect]]]] draws a circle, arc, or ellipse. Start and end angles are in radians. Negative angles draw the radius line from center to arc endpoint. Aspect ratios other than 1.0 produce ellipses.
-
-PAINT (x, y) [, fill_color [, border_color]] flood-fills a region bounded by border_color. If border_color is omitted, the fill stops at any color different from the background.
-
-## 3. THE DRAW STATEMENT
-
-DRAW interprets a graphics macro language string for turtle-style drawing:
+`DRAW macro_string$` executes graphics command strings using a turtle-graphics execution model:
 
 ```basic
 10 SCREEN 12
 20 DRAW "BM320,240"          ' Move to center without drawing
-30 DRAW "C14"                 ' Set color to yellow
-40 DRAW "S4"                  ' Set scale factor to 4
-50 DRAW "U50 R50 D50 L50"    ' Draw a square
-60 DRAW "E25 F25 G25 H25"    ' Draw a diamond
+30 DRAW "C14 S4"             ' Set color to yellow, scale to 4
+40 DRAW "U50 R50 D50 L50"    ' Draw a square
+50 DRAW "E25 F25 G25 H25"    ' Draw a diamond
 ```
 
-Command reference: U (up), D (down), L (left), R (right), E (up-right 45°), F (down-right 45°), G (down-left 45°), H (up-left 45°), M x,y (move to absolute or relative), B (prefix: move without drawing), N (prefix: return to start after drawing), C n (set color), A n (set angle 0-3 in 90° increments), S n (set scale), TA n (turn angle in degrees).
+Command Reference:
+- `U n`, `D n`, `L n`, `R n`: Move up, down, left, right by `n` units.
+- `E n`, `F n`, `G n`, `H n`: Move diagonally (up-right, down-right, down-left, up-left).
+- `M x, y`: Move to absolute or relative coordinate `(x, y)` (prefix with `+` or `-` for relative).
+- `B`: Prefix indicating movement without drawing.
+- `N`: Prefix indicating temporary draw with automatic return to original position.
+- `C n`: Set drawing color to attribute `n`.
+- `A n`: Rotate orientation in 90-degree steps (`n` from 0 to 3).
+- `TA n`: Rotate arbitrary turn angle in degrees.
+- `S n`: Set scaling factor (1 to 255; default 4).
 
-## 4. IMAGE CAPTURE AND DISPLAY
+## 4. IMAGE BLITTING & SPRITE ANIMATION
 
-GET (x1,y1)-(x2,y2), array captures a rectangular screen region into a numeric array. PUT (x, y), array [, action] displays the captured image. Actions: PSET (overwrite), PRESET (inverted overwrite), AND (bitwise AND), OR (bitwise OR), XOR (bitwise XOR, used for sprite animation — PUT twice to erase).
+`GET (x1, y1)-(x2, y2), array%` captures a rectangular raster region into an integer or numeric array buffer.
+
+`PUT (x, y), array% [, action]`: Renders a captured raster buffer onto the active visual page. The `action` parameter defines the raster operation:
+- `PSET`: Overwrites destination pixels directly.
+- `PRESET`: Overwrites destination pixels with inverted color bits.
+- `AND`: Bitwise AND with existing canvas pixels.
+- `OR`: Bitwise OR for transparent overlay composition.
+- `XOR`: Bitwise XOR for flicker-free sprite animation (applying twice restores background).
 
 ```basic
 10 SCREEN 7
 20 DIM Sprite%(500)
 30 CIRCLE (10, 10), 8, 15
 40 PAINT (10, 10), 14, 15
-50 GET (0,0)-(20,20), Sprite%
+50 GET (0, 0)-(20, 20), Sprite%
 60 CLS
 70 FOR X = 0 TO 300 STEP 5
-80   PUT (X, 100), Sprite%, XOR    ' Draw
+80   PUT (X, 100), Sprite%, XOR    ' Draw sprite
 90   DELAY 50
-100  PUT (X, 100), Sprite%, XOR    ' Erase
+100  PUT (X, 100), Sprite%, XOR    ' Erase sprite
 110 NEXT X
 ```
 
-## 5. SOUND
+## 5. SOUND GENERATION
 
-BEEP produces a short audible tone (800 Hz for 0.25 seconds).
+- `BEEP`: Generates a standard audible alert tone (800 Hz for 0.25 seconds).
+- `SOUND frequency, duration`: Generates a pure frequency in Hertz (37 to 32767 Hz). The `duration` parameter is measured in clock ticks (18.2 ticks per second on vintage DOS targets; millisecond-scaled on modern systems).
+- `SOUND 0, 0`: Silences active audio channels immediately.
 
-SOUND frequency, duration plays a tone. Frequency is in hertz (37-32767). Duration is in clock ticks (18.2 ticks per second on legacy systems, millisecond-accurate on modern builds): `SOUND 440, 18.2` plays concert A for one second.
+## 6. THE PLAY MUSIC MACRO LANGUAGE
 
-SOUND 0, 0 turns off any playing tone.
-
-## 6. THE PLAY STATEMENT
-
-PLAY interprets a music macro language string for melodic sequences:
+`PLAY music_string$` parses and plays musical sequences in the background or foreground:
 
 ```basic
-10 PLAY "T120 L4 O4 CDEFGAB"    ' Scale in quarter notes at 120 BPM
-20 PLAY "T160 L8 O3 CDEC CDEC"  ' Frere Jacques
-30 PLAY "L2 EGG L4 FEE"          ' Continue melody
+10 PLAY "T120 L4 O4 C D E F G A B"
+20 PLAY "T160 L8 O3 C D E C C D E C"
+30 PLAY "L2 E G G L4 F E E"
 ```
 
-Command reference: A-G (notes), # or + (sharp), - (flat), O n (octave 0-6), L n (length: 1=whole, 2=half, 4=quarter, 8=eighth, 16=sixteenth), T n (tempo in BPM), P n (pause for n length), . (dotted note, 1.5x duration), > (up one octave), < (down one octave), MN (music normal: 7/8 duration), ML (music legato: full duration), MS (music staccato: 3/4 duration), MB (music background: queue and continue), MF (music foreground: wait until complete).
+Command Reference:
+- `A` through `G`: Musical notes in the current octave.
+- `#` or `+`: Sharp suffix; `-`: Flat suffix.
+- `O n`: Select octave (0 through 6; default 4).
+- `L n`: Select default note length (1 = whole, 2 = half, 4 = quarter, 8 = eighth, 16 = sixteenth).
+- `T n`: Set tempo in beats per minute (32 to 255; default 120).
+- `P n`: Rest (pause) for duration `n`.
+- `.`: Dotted note modifier (extends duration by 50%).
+- `>` / `<`: Increment or decrement current octave.
+- `MN`: Music normal (note sounds 7/8 of duration, followed by 1/8 rest).
+- `ML`: Music legato (note sounds full duration).
+- `MS`: Music staccato (note sounds 3/4 of duration).
+- `MB`: Music background (buffers notes and returns execution immediately).
+- `MF`: Music foreground (blocks execution until melody completes).
 
-## 7. NOISE
+## 7. SYNTHESIZED NOISE GENERATION
 
-NOISE frequency, duration, type generates noise effects. The type argument selects the noise waveform: 0 = white noise, 1 = pink noise, 2 = brownian noise. This is a BASIC++ extension.
+`NOISE frequency, duration, type` generates procedural noise effects:
+- `type = 0`: White noise (uniform distribution across audible spectrum).
+- `type = 1`: Pink noise (equal energy per octave, 1/f falloff).
+- `type = 2`: Brownian noise (integrated random walk, deep rumble).
 
-## 8. SOUND PLAYBACK
+## 8. DIGITAL AUDIO PLAYBACK
 
-SNDPLAY "filename" plays a sound file (WAV format). SNDLOOP "filename" plays a sound file in a continuous loop. SNDSTOP stops the currently playing sound. SNDPAUSE pauses playback. SNDVOL n sets the volume (0-100).
+For sampled audio assets, the desktop engine (`baspp`) provides high-level statements:
+- `SNDPLAY "sound.wav"`: Plays a PCM audio waveform.
+- `SNDLOOP "music.wav"`: Plays an audio file in a continuous background loop.
+- `SNDSTOP`: Halts active digital audio playback.
+- `SNDPAUSE`: Toggles pause on active audio playback.
+- `SNDVOL level%`: Adjusts master playback volume (0 to 100).
 
-These statements require SDL2 audio support and are available only in the baspp standard edition.
+## 9. ASYNCHRONOUS MUSIC TRAPPING
 
-## 9. ON PLAY TRAPPING
-
-ON PLAY(n) GOSUB line fires when the music buffer drops below n notes. This allows continuous music playback by refilling the buffer:
+`ON PLAY(n) GOSUB line` triggers when the background music buffer falls below `n` notes (1 to 32), allowing continuous soundtrack streaming without foreground pauses:
 
 ```basic
 10 ON PLAY(2) GOSUB 1000
 20 PLAY ON
-30 PLAY "MB T120 L4 CDEFGAB"    ' Start background music
-40 ' ... game or program logic ...
-1000 ' Refill the music buffer
-1010 PLAY "MB L4 CDEFGAB"
-1020 RETURN
+30 PLAY "MB T120 L4 C D E F G A B"
+40 WHILE Playing% : WEND
+50 PLAY OFF
+60 END
+1000 PLAY "MB L4 C D E F"
+1010 RETURN
 ```
 
-## 10. GRAPHICS AND SOUND AVAILABILITY
+## 10. AVAILABILITY & FALLBACK RASTERIZATION
 
-Graphics and sound are available only in the baspp standard edition (SUPPORT_GRAPHICS enabled). The bpp lite edition and bs batch runner do not include these features. Attempting to use SCREEN, PSET, SOUND, or PLAY in the lite edition produces Error 73 (Advanced feature disabled).
-
-The AAlib fallback (engine/src/device/bgi/aalib/aalib.c) provides ASCII art approximation of graphics on text-only terminals when SDL2 is not available. This allows basic visual verification of graphics programs without a graphical display.
+Graphics and sound operations are active in the `baspp` desktop edition with SDL2. Headless editions (`bpp`, `bs`, `iot`) omit multimedia subsystems; invoking graphical or audio statements returns Error 73 (Advanced feature disabled). When executing on text-only terminals over SSH, the built-in AAlib engine (`engine/src/device/bgi/aalib/aalib.c`) automatically translates graphics frames into high-speed ASCII art characters.

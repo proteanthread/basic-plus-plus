@@ -2,7 +2,7 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libcore (variables.h, variables.c)
 // NEEDS: libengine (global.h, lexer.h, lexer.c, string.c, vm.h)
 // Provides runtime implementation for the GLOBAL statement in BASIC++.
@@ -13,12 +13,24 @@
 #include "vm/vm.h"
 #include "lexer/lexer.h"
 #include "runtime/variables.h"
-#include "runtime/micro_lib_metadata.h"
-#include <string.h>
+#include "runtime/language_descriptor.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_global_desc = {
+    .name = "GLOBAL",
+    .category = "Variables & Memory",
+    .syntax = "GLOBAL variable [AS type] [, variable...]",
+    .description = "Declares global root-level variables accessible everywhere, or binds procedure variables to global scope.",
+    .error_summary = "Error 2: Syntax Error, Error 5: Illegal Function Call",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SYSTEM,
+    .type = FEATURE_STATEMENT
+};
 
 BppError stmt_global_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     if (!vm || !lex) {
         err.code = 5; err.message = "Null VM or lexer context";
@@ -37,7 +49,7 @@ BppError stmt_global_handler(VMContext *vm, LexerContext *lex) {
 
         char name[64] = {0};
         size_t len = (tok.length < sizeof(name) - 1) ? tok.length : sizeof(name) - 1;
-        memcpy(name, tok.start, len);
+        runtime_memcpy(name, tok.start, len);
 
         // Set variable as globally shared across root and procedures
         var_set_shared(var, name);
@@ -64,12 +76,5 @@ BppError stmt_global_handler(VMContext *vm, LexerContext *lex) {
 }
 
 void stmt_global_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "GLOBAL",
-        .category = "Variables & Memory",
-        .syntax = "GLOBAL variable [AS type] [, variable...]",
-        .help_text = "Declares global root-level variables accessible everywhere, or binds procedure variables to global scope.",
-        .error_codes = "Error 2: Syntax Error, Error 5: Illegal Function Call"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_global_desc);
 }

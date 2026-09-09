@@ -10,10 +10,11 @@
 //
 // ---- Includes ----
 
-#include <ctype.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include "runtime/ctype/ctype.h"
+#include "runtime/format/snprintf.h"
+#include "runtime/memory/alloc.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
 
 #include "device/gfx_internal.h"
 #include "platform/platform.h"
@@ -157,7 +158,7 @@ void gfx_scroll_screen(void) {
     int pixel_rows_to_move = g_height - char_h;
     if (pixel_rows_to_move <= 0) return;
 
-    memmove(g_pixels, g_pixels + char_h * g_width, pixel_rows_to_move * g_width * sizeof(uint32_t));
+    runtime_memmove(g_pixels, g_pixels + char_h * g_width, pixel_rows_to_move * g_width * sizeof(uint32_t));
 
     uint32_t bg_color = (g_palette[g_bg_color_idx].b << 24) |
                         (g_palette[g_bg_color_idx].g << 16) |
@@ -167,11 +168,11 @@ void gfx_scroll_screen(void) {
     }
 
     for (int r = 0; r < MAX_GRID_ROWS - 1; ++r) {
-        memcpy(g_screen_chars[r], g_screen_chars[r + 1], MAX_GRID_COLS);
-        memcpy(g_screen_attribs[r], g_screen_attribs[r + 1], MAX_GRID_COLS);
+        runtime_memcpy(g_screen_chars[r], g_screen_chars[r + 1], MAX_GRID_COLS);
+        runtime_memcpy(g_screen_attribs[r], g_screen_attribs[r + 1], MAX_GRID_COLS);
     }
-    memset(g_screen_chars[MAX_GRID_ROWS - 1], ' ', MAX_GRID_COLS);
-    memset(g_screen_attribs[MAX_GRID_ROWS - 1], 7, MAX_GRID_COLS);
+    runtime_memset(g_screen_chars[MAX_GRID_ROWS - 1], ' ', MAX_GRID_COLS);
+    runtime_memset(g_screen_attribs[MAX_GRID_ROWS - 1], 7, MAX_GRID_COLS);
 }
 
 // draws a single character glyph at a specific grid position
@@ -296,8 +297,8 @@ int gfx_con_cls(VDev *dev) {
         BGI_clearviewport(bgi);
         BGI_present(bgi);
     }
-    memset(g_screen_chars, ' ', sizeof(g_screen_chars));
-    memset(g_screen_attribs, 0, sizeof(g_screen_attribs));
+    runtime_memset(g_screen_chars, ' ', sizeof(g_screen_chars));
+    runtime_memset(g_screen_attribs, 0, sizeof(g_screen_attribs));
     g_cursor_x = 0;
     g_cursor_y = 0;
     return 0;
@@ -327,7 +328,7 @@ void vdev_gfx_render_tui(void) {
     int target_h = (term_h - 2) * 2;
     if (target_h <= 0) target_h = 2;
 
-    printf("\033[H");
+    platform_console_puts("\033[H");
 
     for (int ty = 0; ty < target_h; ty += 2) {
         for (int tx = 0; tx < target_w; ++tx) {
@@ -350,11 +351,11 @@ void vdev_gfx_render_tui(void) {
             uint8_t g2 = (c2 >> 16) & 0xFF;
             uint8_t b2 = (c2 >> 8) & 0xFF;
 
-            printf("\033[48;2;%d;%d;%dm\033[38;2;%d;%d;%dm▄", r1, g1, b1, r2, g2, b2);
+            platform_console_printf("\033[48;2;%d;%d;%dm\033[38;2;%d;%d;%dm▄", r1, g1, b1, r2, g2, b2);
         }
-        printf("\033[0m\n");
+        platform_console_puts("\033[0m\n");
     }
-    fflush(stdout);
+    platform_console_flush();
 }
 
 // polls host window, keyboard, and mouse input events

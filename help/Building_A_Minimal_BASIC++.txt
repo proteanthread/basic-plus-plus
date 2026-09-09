@@ -1,172 +1,89 @@
-======================================================================
-  BASIC++ V6.5.2 BUILDING A MINIMAL BASIC++
-======================================================================
+Title:        Building A Minimal BASIC++
+Tier:         1
+Applies to:   BASIC++ v6.5.2 (iot, bs, bpp, FreeDOS)
+Authority:    CMakeLists.txt, engine/include/types/config.h
+Generated:    no
+Status:       Active
+
+BUILDING A MINIMAL BASIC++ ENGINE
+
+An architectural guide for stripping optional subsystems to produce minimal
+footprint interpreter binaries for microcontrollers, embedded IoT devices,
+FreeDOS real mode, and restricted deployment sandboxes.
 
 
-======================================================================
-  1. PURPOSE
-======================================================================
+1. MINIMAL ENGINE ARCHITECTURE
 
-A minimal build of BASIC++ strips away optional subsystems to produce the smallest possible interpreter binary. This is useful for embedded targets (ESP32, Arduino, Raspberry Pi Pico), constrained environments (FreeDOS real mode with less than 640 KB), educational deployments where only core BASIC is needed, and CI/CD pipelines that need a fast-building BASIC executor.
+The full desktop edition (baspp) links the complete 11-modular library
+spectrum (libboot through libadvanced). A minimal build halts linkage at
+lower layers in the chain, disabling optional feature gates.
 
+The absolute minimum functional interpreter requires four foundational
+libraries:
+- libboot     : Bootstrapping and phase initialization.
+- libplatform : Minimal console and time hooks.
+- libkernel   : Lexer, memory manager, and execution loop context.
+- libengine   : AST evaluator, parser, runtime variables, and control flow.
 
-======================================================================
-  2. WHAT "MINIMAL" MEANS
-======================================================================
-
-The full baspp standard edition links all 12 micro-libraries in the chain from libboot through libadvanced. A minimal build stops at a lower point in the chain and disables optional feature gates. The absolute minimum functional interpreter requires libboot, libplatform, libkernel, and libengine ? four libraries that provide the lexer, parser, expression evaluator, variable system, and VM execution loop.
-
-With only these four libraries you get: line-numbered program entry, LET, PRINT, INPUT, IF/THEN/ELSE, FOR/NEXT, WHILE/WEND, DO/LOOP, GOTO, GOSUB/RETURN, DIM, DATA/READ/RESTORE, DEF FN, REM, END, STOP, RUN, LIST, NEW, and all arithmetic, comparison, and logical operators.
-
-You lose: file I/O (OPEN, CLOSE, GET, PUT), network operations, the HELP system, SELFTEST, the TUI editor, graphics, sound, ALIAS/OVERRIDE/SCOPE, modules, tasks, security enforcement, and BIOS virtualization.
-
-
-======================================================================
-  3. MINIMAL BUILD CONFIGURATION
-======================================================================
+With these four libraries, the runtime executes line-numbered and structured
+programs: LET, PRINT, INPUT, IF/THEN/ELSE, FOR/NEXT, WHILE/WEND, DO/LOOP,
+GOTO, GOSUB/RETURN, DIM, DATA/READ/RESTORE, DEF FN, and all arithmetic
+operators.
 
 
-----------------------------------------------------------------------
-  Embedded Profile
-----------------------------------------------------------------------
+2. COMPILE-TIME FEATURE GATES
 
-```bash
-cmake .. -DBASIC_EMBEDDED=ON \
-         -DSUPPORT_FILES=OFF \
-         -DSUPPORT_TRY=OFF \
-         -DSUPPORT_STRUCT=OFF \
-         -DSUPPORT_MODULE=OFF \
-         -DSUPPORT_TASK=OFF \
-         -DSUPPORT_HELP=OFF \
-         -DSUPPORT_GRAPHICS=OFF \
-         -DSUPPORT_MAT=OFF \
-         -DSUPPORT_NET=OFF \
-         -DSUPPORT_GEMINI=OFF \
-         -DSUPPORT_BIOS=OFF \
-         -DSUPPORT_OOP=OFF \
-         -DSUPPORT_EDITOR=OFF
+Subsystems can be selectively disabled via CMake definitions:
 
-This configuration produces an interpreter with the embedded memory profile:
-
-| Pool | Size |
-|------|------|
-| Program memory | 8 KB |
-| Variable space | 4 KB |
-| String heap | 4 KB |
-| Scratch area | 2 KB |
-| Stack depth | 31 |
-| Named variables | 64 |
-| DIM arrays | 16 |
-| Array elements | 512 |
-| User functions | 8 |
+    cmake .. -DBASIC_EMBEDDED=ON \
+             -DSUPPORT_FILES=OFF \
+             -DSUPPORT_TRY=OFF \
+             -DSUPPORT_STRUCT=OFF \
+             -DSUPPORT_MODULE=OFF \
+             -DSUPPORT_TASK=OFF \
+             -DSUPPORT_HELP=OFF \
+             -DSUPPORT_GRAPHICS=OFF \
+             -DSUPPORT_MAT=OFF \
+             -DSUPPORT_NET=OFF \
+             -DSUPPORT_GEMINI=OFF \
+             -DSUPPORT_BIOS=OFF \
+             -DSUPPORT_OOP=OFF \
+             -DSUPPORT_EDITOR=OFF
 
 
-----------------------------------------------------------------------
-  FreeDOS 16-Bit Profile
-----------------------------------------------------------------------
+3. PRESET TARGET MEMORY PROFILES
 
-```bash
-cmake .. -DBASIC_FREEDOS_16=ON \
-         -DCMAKE_SYSTEM_NAME=DOS \
-         -DCMAKE_C_COMPILER=wcc
+3.1 Embedded Microcontroller Profile (BASIC_EMBEDDED)
+Targeted at ESP32, ARM Cortex-M, and RISC-V with sub-32KB RAM:
+- Program Memory : 8 KB
+- Variable Table : 4 KB
+- String Heap    : 4 KB
+- Scratch Buffer : 2 KB
+- Stack Depth    : 31 frames
+- Named Variables: 64
+- DIM Arrays     : 16
 
-The FreeDOS profile provides more resources than embedded but fits within conventional memory:
+3.2 FreeDOS 16-Bit Real-Mode Profile (BASIC_FREEDOS_16)
+Targeted at vintage PC hardware under 640 KB conventional memory:
+- Program Memory : 32 KB
+- Variable Table : 16 KB
+- String Heap    : 16 KB
+- Scratch Buffer : 8 KB
+- Stack Depth    : 63 frames
+- Named Variables: 128
+- DIM Arrays     : 32
 
-| Pool | Size |
-|------|------|
-| Program memory | 32 KB |
-| Variable space | 16 KB |
-| String heap | 16 KB |
-| Scratch area | 8 KB |
-| Stack depth | 63 |
-| Named variables | 128 |
-| DIM arrays | 32 |
-| Array elements | 2048 |
-| User functions | 16 |
-
-
-======================================================================
-  4. ADDING FEATURES BACK INCREMENTALLY
-======================================================================
-
-Starting from a minimal build, features can be added back individually by enabling their gates. Each feature corresponds to a specific library in the chain and its associated SUPPORT_* flag:
-
-To add file I/O, enable SUPPORT_FILES and link libscript. This adds OPEN, CLOSE, INPUT #, PRINT #, GET, PUT, EOF, LOC, LOF, SEEK, FILES, DIR, KILL, MKDIR, RMDIR, CHDIR.
-
-To add the HELP system and SELFTEST, enable SUPPORT_HELP and link libcore. This requires libscript, so file I/O is included automatically.
-
-To add error trapping with TRY/CATCH, enable SUPPORT_TRY. This is available at the libengine level and requires no additional library links.
-
-To add MAT matrix operations, enable SUPPORT_MAT. This is available at the libengine level.
-
-To add network operations (VNET, Gemini), link libserver and enable SUPPORT_NET and SUPPORT_GEMINI.
-
-To add metaprogramming (ALIAS, OVERRIDE, SCOPE), link libflex.
-
-To add the TUI editor, link libstandard and enable SUPPORT_EDITOR. This requires ncurses on Linux.
-
-To add graphics, link libadvanced and ensure SDL2 is available. Enable SUPPORT_GRAPHICS.
+3.3 IoT Micro-REPL Profile (iot.exe)
+The dedicated headless micro-REPL links up to libkernel with a fixed 2 MB
+(2097152L bytes) monotonic arena pool, optimized for embedded hardware
+control and GPIO/sensor loops.
 
 
-======================================================================
-  5. CUSTOM BUILD CONFIGURATIONS
-======================================================================
+4. CUSTOM DEPLOYMENT SCENARIOS
 
-The feature gate system allows creating custom configurations for specific deployment scenarios:
-
-
-----------------------------------------------------------------------
-  Educational Classroom Build
-----------------------------------------------------------------------
-
-An educational build includes core language, help, and testing, but disables system access:
-
-```bash
-cmake .. -DSUPPORT_FILES=OFF \
-         -DSUPPORT_TASK=OFF \
-         -DSUPPORT_NET=OFF \
-         -DSUPPORT_MODULE=OFF
-
-This produces an interpreter where students can write and test programs but cannot access the filesystem, network, or external modules. Combine with --security=3 (EDUCATIONAL) at runtime for additional restrictions.
-
-
-----------------------------------------------------------------------
-  IoT Sensor Platform Build
-----------------------------------------------------------------------
-
-A sensor platform needs file I/O and networking but not graphics or the editor:
-
-```bash
-cmake .. -DBASIC_LITE_BUILD=ON \
-         -DSUPPORT_GRAPHICS=OFF \
-         -DSUPPORT_EDITOR=OFF \
-         -DSUPPORT_BIOS=OFF
-
-
-----------------------------------------------------------------------
-  CI/CD Pipeline Build
-----------------------------------------------------------------------
-
-A pipeline build produces only the bs batch runner with minimal dependencies:
-
-```bash
-cmake .. --target bs \
-         -DSUPPORT_GRAPHICS=OFF \
-         -DSUPPORT_EDITOR=OFF \
-         -DSUPPORT_BIOS=OFF
-
-
-======================================================================
-  6. BINARY SIZE CONSIDERATIONS
-======================================================================
-
-The full baspp standard edition with all features compiles to approximately 2-4 MB depending on the platform and optimization level. A minimal embedded build compiles to under 64 KB. The primary size contributors are:
-
-- The lexer keyword table (grows with keyword count)
-- The statement dispatch table (one function pointer per keyword)
-- The expression evaluator function library
-- The HELP text database (significant; disable SUPPORT_HELP to exclude)
-- The BGI rasterizer and font data (disable SUPPORT_GRAPHICS to exclude)
-- The BIOS emulation tables (disable SUPPORT_BIOS to exclude)
-
-Compile with -Os (optimize for size) rather than -O2 (optimize for speed) when binary size is critical.
+1. Classroom Educational Profile: Enables HELP and SELFTEST, but disables host
+   shell execution (SHELL) and external filesystem writes.
+2. Headless Data Processing Node: Strips interactive REPL prompts and
+   graphics; retains JSON, file streams, and network sockets.
+3. Firmware Command Parser: Binds the bare evaluator directly to a UART ring
+   buffer without filesystem support.

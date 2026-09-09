@@ -1,22 +1,72 @@
-# `BITCOUNT` Population Count Function
+<!--
+Title:        BITCOUNT
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/eval/functions/bits/manipulation/bitcount.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Function Definition
+# `BITCOUNT` Keyword Reference
 
-The `BITCOUNT` function counts the number of set bits (population count / Hamming weight) in a 64-bit integer.
+## Source Header
 
-### Syntax Signatures:
-```basic
-count = BITCOUNT(value)
+```c
+// FILENAME: bitcount.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine (sys_fn.c)
+// NEEDS: libcore (language_descriptor.h)
+// NEEDS: libengine (bitcount.h)
+// Provides runtime implementation for the BITCOUNT built-in function in BASIC
+//
+// ---- Includes ----
 ```
 
-### Operational Rules:
-- Returns the number of bits set to 1 across all 64 bits of `value`.
+## 1. Description & Usage
+
+Returns the population count (number of set bits) of an integer value.
+
+## 2. Syntax
+
+```basic
+BITCOUNT(val)
+```
+
+## 3. Code Example
+
+```basic
+10 Val = BITCOUNT(val)
+20 PRINT "Result: "; Val
+```
+
+## 4. Error Conditions
+
+Error 13: Type Mismatch
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Bitwise & Logical Functions
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_PURE
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 PRINT "BITCOUNT(255) = "; BITCOUNT(255) : REM Outputs 8
-20 PRINT "BITCOUNT(34359738368) = "; BITCOUNT(34359738368) : REM Outputs 1
-```
+| Field | Value |
+|---|---|
+| Name | BITCOUNT |
+| Category | Bitwise & Logical Functions |
+| Syntax | BITCOUNT(val) |
+| Description | Returns the population count (number of set bits) of an integer value. |
+| Error Summary | Error 13: Type Mismatch |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_PURE |
+| Feature Type | FEATURE_FUNCTION |
+| Delimiter Mask | none |
+| Compatibility | none |
+| Since Version | none |
+| Source File | engine/src/eval/functions/bits/manipulation/bitcount.c |

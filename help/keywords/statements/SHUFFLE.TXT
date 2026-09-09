@@ -1,0 +1,70 @@
+TITLE: SHUFFLE
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/variables/data/stmt_shuffle.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+SHUFFLE KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: stmt_shuffle.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (arrays.h, language_descriptor.h, strings.h, variables.h)
+    // NEEDS: libengine (eval.h, lexer.h, rnd.h, stmt_shuffle.h, vm.h)
+    // Provides runtime implementation for the SHUFFLE statement in BASIC++.
+    //
+    // ---- Includes ----
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Randomly shuffles array elements or string characters in-place using
+Fisher-Yates algorithm.
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    SHUFFLE arr[()] [, seed] | SHUFFLE (arr [, seed]) | SHUFFLE str$ [, seed]
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = SHUFFLE arr[()] [, seed] | SHUFFLE (arr [, seed]) | SHUFFLE str$ [, seed]
+    20 PRINT "Result: "; Val
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error, Error 13: Type Mismatch
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Variables & Memory
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_PURE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  SHUFFLE
+Category              Variables & Memory
+Syntax                SHUFFLE arr[()] [, seed] | SHUFFLE (arr [, seed]) |...
+Description           Randomly shuffles array elements or string characte...
+Error Summary         Error 2: Syntax Error, Error 13: Type Mismatch
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_PURE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/variables/data/stmt_shuffle.c

@@ -1,40 +1,71 @@
-SHARED Procedure Variable Scope Statement
-======================================================================
+TITLE: SHARED
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/oop/shared.c
+GENERATED: no, hand-written
+STATUS: current
 
-The SHARED statement grants a SUB or FUNCTION direct access to
-module-level (global) variables without passing them as arguments.
+==============================================================================
+SHARED KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: shared.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (share.c)
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libcore (variables.h, variables.c)
+    // NEEDS: libengine (eval.h, eval.c, lexer.h, lexer.c, shared.h, string.c, vm.
+    // NEEDS: libkernel (security.h, security.c, vdev.h, vdev.c)
+    // Provides runtime implementation for the SHARED statement in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Grants SUB or FUNCTION procedures access to module-level global variables.
 
-    SHARED var1 [, var2, var3, ...]
-    DIM SHARED var1(...)
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    SHARED variable [, variable...]
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM SHARED Demonstration
+    20 PRINT "SHARED executed successfully."
 
-OPERATIONAL RULES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error, Error 33: Illegal Outside SUB/FUNCTION
 
-  - Used inside procedure bodies to access module globals.
-  - DIM SHARED in module scope shares arrays with all procedures.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Variables & Memory
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SYSTEM
 
-
-ERROR CODES
-----------------------------------------------------------------------
-
-  Error Code  Name                  Condition
-  ----------  --------------------  ----------------------------------
-  2           ERR_SYNTAX_ERROR      SHARED outside valid scope
-
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 G = 100
-    20 CALL ModifyG()
-    30 PRINT G
-
-    100 SUB ModifyG()
-    110   SHARED G
-    120   G = G + 50
-    130 END SUB
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  SHARED
+Category              Variables & Memory
+Syntax                SHARED variable [, variable...]
+Description           Grants SUB or FUNCTION procedures access to module-...
+Error Summary         Error 2: Syntax Error, Error 33: Illegal Outside SU...
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SYSTEM
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/oop/shared.c

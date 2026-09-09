@@ -2,7 +2,7 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libengine (compat.h, eval.h, eval.c, string.c, vm.h)
 // NEEDS: libkernel (bgi_gfx.h, bgi_gfx.c, errors.h)
 // Provides runtime implementation for the COMPAT statement in BASIC++.
@@ -10,26 +10,38 @@
 // ---- Includes ----
 
 #include "statements/graphics/compat.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "types/errors.h"
 #include "vm/vm.h"
 #include "eval/eval.h"
 #include "device/bgi_gfx.h"
-#include <string.h>
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_gfx_compat_desc = {
+    .name = "GFX.COMPAT",
+    .category = "Graphics & Retro Modes",
+    .syntax = "SET MODE mode_num",
+    .description = "Sets retro graphics hardware compatibility profiles (CGA, EGA, VGA, Atari, Hercules).",
+    .error_summary = "Error 5: Illegal Function Call (unsupported graphics mode)",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SAFE,
+    .type = FEATURE_STATEMENT
+};
 
 extern BppError stmt_screen_handler(VMContext *vm, LexerContext *lex);
 
-BppError stmt_gr_handler(VMContext *vm, LexerContext *lex) { (void)vm; (void)lex; BppError e; memset(&e, 0, sizeof(e)); bgi_gfx_set_screen_mode_custom(40, 40, 4, 40, 4, 60.0f); return e; }
-BppError stmt_hgr_handler(VMContext *vm, LexerContext *lex) { (void)vm; (void)lex; BppError e; memset(&e, 0, sizeof(e)); bgi_gfx_set_screen_mode_custom(280, 160, 3, 40, 4, 60.0f); return e; }
-BppError stmt_hgr2_handler(VMContext *vm, LexerContext *lex) { (void)vm; (void)lex; BppError e; memset(&e, 0, sizeof(e)); bgi_gfx_set_screen_mode_custom(280, 192, 3, 0, 0, 60.0f); return e; }
-BppError stmt_hcolor_handler(VMContext *vm, LexerContext *lex) { (void)vm; (void)lex; BppError e; memset(&e, 0, sizeof(e)); return e; }
-BppError stmt_hlin_handler(VMContext *vm, LexerContext *lex) { (void)vm; (void)lex; BppError e; memset(&e, 0, sizeof(e)); return e; }
-BppError stmt_vlin_handler(VMContext *vm, LexerContext *lex) { (void)vm; (void)lex; BppError e; memset(&e, 0, sizeof(e)); return e; }
-BppError stmt_hplot_handler(VMContext *vm, LexerContext *lex) { (void)vm; (void)lex; BppError e; memset(&e, 0, sizeof(e)); return e; }
+BppError stmt_gr_handler(VMContext *vm, LexerContext *lex) { (void)vm; (void)lex; BppError e; runtime_memset(&e, 0, sizeof(e)); bgi_gfx_set_screen_mode_custom(40, 40, 4, 40, 4, 60.0f); return e; }
+BppError stmt_hgr_handler(VMContext *vm, LexerContext *lex) { (void)vm; (void)lex; BppError e; runtime_memset(&e, 0, sizeof(e)); bgi_gfx_set_screen_mode_custom(280, 160, 3, 40, 4, 60.0f); return e; }
+BppError stmt_hgr2_handler(VMContext *vm, LexerContext *lex) { (void)vm; (void)lex; BppError e; runtime_memset(&e, 0, sizeof(e)); bgi_gfx_set_screen_mode_custom(280, 192, 3, 0, 0, 60.0f); return e; }
+BppError stmt_hcolor_handler(VMContext *vm, LexerContext *lex) { (void)vm; (void)lex; BppError e; runtime_memset(&e, 0, sizeof(e)); return e; }
+BppError stmt_hlin_handler(VMContext *vm, LexerContext *lex) { (void)vm; (void)lex; BppError e; runtime_memset(&e, 0, sizeof(e)); return e; }
+BppError stmt_vlin_handler(VMContext *vm, LexerContext *lex) { (void)vm; (void)lex; BppError e; runtime_memset(&e, 0, sizeof(e)); return e; }
+BppError stmt_hplot_handler(VMContext *vm, LexerContext *lex) { (void)vm; (void)lex; BppError e; runtime_memset(&e, 0, sizeof(e)); return e; }
 
 BppError stmt_graphics_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     int mode_arg = 0;
     BppToken tok = lex_peek(lex);
@@ -82,18 +94,11 @@ BppError stmt_mode_handler(VMContext *vm, LexerContext *lex) {
     return stmt_screen_handler(vm, lex);
 }
 
-BppError stmt_drawto_handler(VMContext *vm, LexerContext *lex) { (void)vm; (void)lex; BppError e; memset(&e, 0, sizeof(e)); return e; }
-BppError stmt_border_handler(VMContext *vm, LexerContext *lex) { (void)vm; (void)lex; BppError e; memset(&e, 0, sizeof(e)); return e; }
-BppError stmt_ink_handler(VMContext *vm, LexerContext *lex) { (void)vm; (void)lex; BppError e; memset(&e, 0, sizeof(e)); return e; }
-BppError stmt_paper_handler(VMContext *vm, LexerContext *lex) { (void)vm; (void)lex; BppError e; memset(&e, 0, sizeof(e)); return e; }
+BppError stmt_drawto_handler(VMContext *vm, LexerContext *lex) { (void)vm; (void)lex; BppError e; runtime_memset(&e, 0, sizeof(e)); return e; }
+BppError stmt_border_handler(VMContext *vm, LexerContext *lex) { (void)vm; (void)lex; BppError e; runtime_memset(&e, 0, sizeof(e)); return e; }
+BppError stmt_ink_handler(VMContext *vm, LexerContext *lex) { (void)vm; (void)lex; BppError e; runtime_memset(&e, 0, sizeof(e)); return e; }
+BppError stmt_paper_handler(VMContext *vm, LexerContext *lex) { (void)vm; (void)lex; BppError e; runtime_memset(&e, 0, sizeof(e)); return e; }
 
 void stmt_gfx_compat_register(void) {
-    MicroLibMetadata meta = {
-        .name = "GFX.COMPAT",
-        .category = "Graphics & Retro Modes",
-        .syntax = "SET MODE mode_num",
-        .help_text = "Sets retro graphics hardware compatibility profiles (CGA, EGA, VGA, Atari, Hercules).",
-        .error_codes = "Error 5: Illegal Function Call (unsupported graphics mode)"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_gfx_compat_desc);
 }

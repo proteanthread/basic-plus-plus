@@ -1,25 +1,72 @@
-# `CARG` Complex Argument / Phase Angle Function
+<!--
+Title:        CARG
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/module/mathext.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Function Definition
+# `CARG` Keyword Reference
 
-The `CARG` function computes the principal argument (phase angle $\theta$) of a complex number $z = x + iy$ in radians:
+## Source Header
 
-$$\theta = \text{atan2}(y, x)$$
-
-### Syntax Signatures:
-```basic
-phase# = CARG(complex_val)
-phase# = CARG(real_val, imag_val)
+```c
+// FILENAME: mathext.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore (funcreg.h, funcreg.c, math.h)
+// NEEDS: libengine (math.c)
+// Provides core logic and interface definitions for mathext within BASIC++.
+//
+// ---- Includes ----
 ```
 
-### Operational Rules:
-- Returns radians in range $(-\pi, +\pi]$.
+## 1. Description & Usage
+
+Returns the phase angle / argument in radians of complex number z (atan2(im, re)).
+
+## 2. Syntax
+
+```basic
+CARG(z)
+```
+
+## 3. Code Example
+
+```basic
+10 Val = CARG(z)
+20 PRINT "Result: "; Val
+```
+
+## 4. Error Conditions
+
+Error 13: Type Mismatch
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Math & Complex Numbers
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_PURE
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 Z = COMPLEX(0, 1)
-20 PRINT "Phase angle of i = "; CARG(Z); " (expected PI/2)"
-```
+| Field | Value |
+|---|---|
+| Name | CARG |
+| Category | Math & Complex Numbers |
+| Syntax | CARG(z) |
+| Description | Returns the phase angle / argument in radians of complex number z (atan2(im, re)). |
+| Error Summary | Error 13: Type Mismatch |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_PURE |
+| Feature Type | FEATURE_FUNCTION |
+| Delimiter Mask | none |
+| Compatibility | BASIC++ Standard |
+| Since Version | 6.0.0 |
+| Source File | engine/src/module/mathext.c |

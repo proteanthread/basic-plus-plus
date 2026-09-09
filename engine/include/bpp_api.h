@@ -33,10 +33,13 @@ extern "C" {
 // Opaque Handle for BASIC++ Engine Context
 typedef struct BppEngineContext BppEngineContext;
 
+#ifndef BPP_VALUE_DEFINED
+#define BPP_VALUE_DEFINED
 // Value Types returned by bpp_eval_expr
 typedef enum {
     BPP_VAL_NULL = 0,
     BPP_VAL_NUMBER,
+    BPP_VAL_INTEGER,
     BPP_VAL_STRING,
     BPP_VAL_ERROR
 } BppValueType;
@@ -49,6 +52,7 @@ typedef struct {
         int error_code;
     } as;
 } BppValue;
+#endif
 
 // Host Function Pointer Signature for C17 / Python 3 callbacks
 typedef BppValue (*BppHostFn)(BppEngineContext *ctx, const char *name, int argc, const BppValue *args, void *userdata);

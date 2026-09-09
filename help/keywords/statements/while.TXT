@@ -1,27 +1,71 @@
-WHILE Structured While Loop Initiation Statement
-================================================
+TITLE: WHILE
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/loops/conditional/while.c
+GENERATED: no, hand-written
+STATUS: current
 
-Repeatedly executes a block of statements as long as the entry condition evaluates to true (non-zero).
+==============================================================================
+WHILE KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: while.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore, libengine, libkernel, libplatform
+    // Provides runtime implementation for the WHILE statement in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Executes a series of statements in a loop as long as condition evaluates to
+non-zero (true).
 
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
     WHILE condition
-      [statements]
-    WEND
 
-
-OPERATIONAL NOTES
-----------------------------------------------------------------------
-
-  Non-recursive VM loop frame evaluation.
-
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 WHILE NOT EOF(1)
-    20   LINE INPUT #1, L$
-    30   PRINT L$
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 C = 1
+    20 WHILE C <= 3
+    30   PRINT C : C = C + 1
     40 WEND
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error, Error 30: WHILE Without WEND
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Looping / Control Flow
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SAFE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  WHILE
+Category              Looping / Control Flow
+Syntax                WHILE condition
+Description           Executes a series of statements in a loop as long a...
+Error Summary         Error 2: Syntax Error, Error 30: WHILE Without WEND
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/loops/conditional/while.c

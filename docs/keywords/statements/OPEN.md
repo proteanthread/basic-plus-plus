@@ -1,29 +1,75 @@
-# `OPEN` File and Virtual Device Channel Open Statement
+<!--
+Title:        OPEN
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/statements/filesystem/file_ops/open.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Keyword Definition
+# `OPEN` Keyword Reference
 
-Opens a file or virtual device channel for sequential, random-access, or binary data input/output.
+## Source Header
 
-### Syntax Signatures:
-```basic
-OPEN mode$, [#]filenum%, filename$ [, reclen%]
-OPEN filename$ [FOR mode] [ACCESS access] [LOCK lock] AS [#]filenum% [LEN = reclen%]
+```c
+// FILENAME: open.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore (ctype.h, ctype.c, file.h, file.c)
+// NEEDS: libcore (language_descriptor.h, string.h)
+// NEEDS: libengine (eval.h, eval.c, lexer.h, lexer.c, map.h, map.c, open.h)
+// NEEDS: libengine (string.c, vm.h)
+// NEEDS: libplatform (platform.h)
+// Provides runtime implementation for the OPEN statement in BASIC++.
+//
+// ---- Includes ----
 ```
 
-### Error Handling & Boundary Conditions:
-- **Error 53 (ERR_FILE_NOT_FOUND)**: File not found in input mode.
-- **Error 55 (ERR_FILE_ALREADY_OPEN)**: Channel already in use.
+## 1. Description & Usage
 
-### Operational Notes:
-- Supports modes: INPUT (I), OUTPUT (O), APPEND (A), RANDOM (R), BINARY (B).
+Opens a file channel for INPUT, OUTPUT, APPEND, BINARY, or RANDOM I/O operations.
+
+## 2. Syntax
+
+```basic
+OPEN filespec [FOR mode] AS [#]file_num [LEN=reclen]
+```
+
+## 3. Code Example
+
+```basic
+10 REM OPEN Demonstration
+20 PRINT "OPEN executed successfully."
+```
+
+## 4. Error Conditions
+
+Error 2: Syntax Error, Error 52: Bad File Number, Error 53: File Not Found, Error 55: File Already Open
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Filesystem I/O
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_IO
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 OPEN "O", #1, "DATA.TXT"          : REM Classic syntax
-20 OPEN "RECORD.DAT" FOR RANDOM AS #2 LEN = 64 : REM Extended syntax
-30 PRINT #1, "Hello World"
-40 CLOSE #1, #2
-```
+| Field | Value |
+|---|---|
+| Name | OPEN |
+| Category | Filesystem I/O |
+| Syntax | OPEN filespec [FOR mode] AS [#]file_num [LEN=reclen] |
+| Description | Opens a file channel for INPUT, OUTPUT, APPEND, BINARY, or RANDOM I/O operations. |
+| Error Summary | Error 2: Syntax Error, Error 52: Bad File Number, Error 53: File Not Found, Error 55: File Already Open |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_IO |
+| Feature Type | FEATURE_STATEMENT |
+| Delimiter Mask | none |
+| Compatibility | none |
+| Since Version | none |
+| Source File | engine/src/statements/filesystem/file_ops/open.c |

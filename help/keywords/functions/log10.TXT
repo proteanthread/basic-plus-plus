@@ -1,16 +1,70 @@
-LOG10 Common Logarithm (Base-10) Function
-======================================================================
+TITLE: LOG10
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/functions/math/algebra/log10.c
+GENERATED: no, hand-written
+STATUS: current
 
-The LOG10 function computes the base-10 logarithm.
+==============================================================================
+LOG10 KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: log10.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (math_fn.c)
+    // NEEDS: libcore (math.h, language_descriptor.h, string.h)
+    // NEEDS: libengine (log10.h, math.c, string.c)
+    // Provides runtime implementation for the LOG10 built-in function in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Returns the base-10 logarithm of x (x > 0).
 
-    result# = LOG10(numeric_expression)
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    LOG10(x) | LGT(x)
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = LOG10(10) | LGT(10)
+    20 PRINT "Result: "; Val
 
-CODE EXAMPLES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 5: Illegal Function Call (x <= 0), Error 13: Type Mismatch (LOG10
+expects one numeric argument)
 
-    10 PRINT LOG10(100)   : REM Outputs 2
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Math & Trigonometry
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_PURE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  LOG10
+Category              Math & Trigonometry
+Syntax                LOG10(x) | LGT(x)
+Description           Returns the base-10 logarithm of x (x > 0).
+Error Summary         Error 5: Illegal Function Call (x <= 0), Error 13: ...
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_PURE
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/eval/functions/math/algebra/log10.c

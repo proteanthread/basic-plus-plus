@@ -9,12 +9,29 @@
 
 #include "vm/events_internal.h"
 #include "vm/events_net.h"
+#include "runtime/format/snprintf.h"
+#include "runtime/string/strops.h"
+#include "platform/platform.h"
 
 //
 // ---- Event Polling Loop ----
 
 void vm_trigger_event_polling(VMContext *vm) {
     if (!vm || !vm->running) return;
+
+    // 0. Break Check
+    if (vm->break_triggered) {
+        if (vm->break_trap_line > 0.0 && vm->break_enabled && !vm->in_error_handler && try_stack_count(vm->try_stack) == 0) {
+            vm->break_triggered = false;
+            if (vm_gosub_push(vm, vm->current_line, vm->current_pos)) {
+                vm_jump(vm, vm->break_trap_line, NULL);
+                return;
+            }
+        } else {
+            vm->running = false;
+            return;
+        }
+    }
 
     // 1. Timer Check
     if (vm->timer_state == 1 && vm->timer_interval > 0.0) {
@@ -40,8 +57,15 @@ void vm_trigger_event_polling(VMContext *vm) {
     }
 
     // 2. Key Check
-    int key_pressed = platform_inkey_char();
-    if (key_pressed > 0) {
+    int key_pressed = platform_peek_key();
+    if (key_pressed == 3) {
+        platform_inkey_char(); // Consume Ctrl+C
+        vm_trigger_break(vm);
+        if (!vm->break_enabled || vm->break_trap_line == 0.0) {
+            vm->running = false;
+            return;
+        }
+    } else if (key_pressed > 0) {
         int scan = key_pressed & 0xFF;
         int mods = (key_pressed >> 8) & 0x1FF;
         int F_key = 0;
@@ -135,6 +159,7 @@ void vm_trigger_event_polling(VMContext *vm) {
         }
 
         if (idx != -1) {
+            platform_inkey_char(); // Consume matched trapped key
             if (vm->key_state[idx] == 1) {
                 if (!vm->in_key_handler[idx] && !vm->in_error_handler && try_stack_count(vm->try_stack) == 0) {
                     vm->in_key_handler[idx] = true;

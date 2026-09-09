@@ -1,29 +1,73 @@
-DRAW Graphics Macro Language Drawing Statement
-==============================================
+TITLE: DRAW
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/graphics/draw/draw.c
+GENERATED: no, hand-written
+STATUS: current
 
-Interprets a Graphics Macro Language (GML) command string to draw lines, shapes, and angles.
+==============================================================================
+DRAW KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: draw.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libcore (strings.h, strings.c)
+    // NEEDS: libengine (bgi.h, bgi.c, draw.h, eval.h, eval.c, lexer.h, lexer.c)
+    // NEEDS: libengine (string.c, vm.h)
+    // NEEDS: libkernel (security.h, security.c, vdev.h, vdev.c)
+    // Provides runtime implementation for the DRAW statement in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Executes graphics macro commands to draw shapes using vector movement
+language.
 
-    DRAW command_string$
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    DRAW command_str$
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM DRAW Demonstration
+    20 PRINT "DRAW executed successfully."
 
-ERROR CONDITIONS
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 5: Illegal Function Call (invalid DRAW command string)
 
-  - Error 5 (ERR_ILLEGAL_FUNCTION_CALL): Invalid GML syntax in command string.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Graphics & Drawing
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SAFE
 
-
-OPERATIONAL NOTES
-----------------------------------------------------------------------
-
-  Full support for U, D, L, R, E, F, G, H, M, B, N, A, TA, C, S, and X commands.
-
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 SCREEN 12
-    20 DRAW "BM320,240 U50 R50 D50 L50" : REM Draw square
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  DRAW
+Category              Graphics & Drawing
+Syntax                DRAW command_str$
+Description           Executes graphics macro commands to draw shapes usi...
+Error Summary         Error 5: Illegal Function Call (invalid DRAW comman...
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/graphics/draw/draw.c

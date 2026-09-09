@@ -2,7 +2,7 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libcore (variables.h, variables.c)
 // NEEDS: libengine (lexer.h, lexer.c, public.h, string.c, vm.h)
 // Provides runtime implementation for the PUBLIC statement in BASIC++.
@@ -13,14 +13,26 @@
 #include "vm/vm.h"
 #include "lexer/lexer.h"
 #include "runtime/variables.h"
-#include "runtime/micro_lib_metadata.h"
-#include <string.h>
+#include "runtime/language_descriptor.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_public_desc = {
+    .name = "PUBLIC",
+    .category = "Variables & Memory",
+    .syntax = "PUBLIC [SUB|FUNCTION] name [, name...]",
+    .description = "Exports specified variables or procedures from the current module scope to global scope.",
+    .error_summary = "Error 2: Syntax Error, Error 5: Illegal Function Call",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SYSTEM,
+    .type = FEATURE_STATEMENT
+};
 
 extern BppError stmt_sub_handler(VMContext *vm, LexerContext *lex);
 
 BppError stmt_public_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     if (!vm || !lex) {
         err.code = 5; err.message = "Null VM or lexer context";
@@ -51,7 +63,7 @@ BppError stmt_public_handler(VMContext *vm, LexerContext *lex) {
 
         char name[64] = {0};
         size_t len = (tok.length < sizeof(name) - 1) ? tok.length : sizeof(name) - 1;
-        memcpy(name, tok.start, len);
+        runtime_memcpy(name, tok.start, len);
 
         var_set_shared(var, name);
 
@@ -74,7 +86,7 @@ BppError stmt_public_handler(VMContext *vm, LexerContext *lex) {
 
 BppError stmt_private_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     if (!vm || !lex) {
         err.code = 5; err.message = "Null VM or lexer context";
@@ -105,12 +117,5 @@ BppError stmt_private_handler(VMContext *vm, LexerContext *lex) {
 }
 
 void stmt_public_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "PUBLIC",
-        .category = "Variables & Memory",
-        .syntax = "PUBLIC [SUB|FUNCTION] name [, name...]",
-        .help_text = "Exports specified variables or procedures from the current module scope to global scope.",
-        .error_codes = "Error 2: Syntax Error, Error 5: Illegal Function Call"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_public_desc);
 }

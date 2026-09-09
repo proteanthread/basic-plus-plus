@@ -1,16 +1,68 @@
-REVERSE$ String Character Reversal Function
-======================================================================
+TITLE: REVERSE$
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/runtime/string/strops.c
+GENERATED: no, hand-written
+STATUS: current
 
-The REVERSE$ function reverses the order of characters in a string.
+==============================================================================
+REVERSE$ KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: strops.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libboot, libcore, libengine, libhardware, libkernel, libserver, 
+    // NEEDS: libcore (ctype.h, ctype.c, memops.h, memops.c, strops.h)
+    // Freestanding string search and manipulation implementation.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Returns string str$ with all characters in reverse order.
 
-    reversed$ = REVERSE$(string_expression$)
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    REVERSE$(str$)
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = REVERSE$(str$)
+    20 PRINT "Result: "; Val
 
-CODE EXAMPLES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 14: Out of String Space
 
-    10 PRINT REVERSE$("ABCDE")   : REM Outputs "EDCBA"
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      String Functions
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_PURE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  REVERSE$
+Category              String Functions
+Syntax                REVERSE$(str$)
+Description           Returns string str$ with all characters in reverse ...
+Error Summary         Error 14: Out of String Space
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_PURE
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         BASIC++ Standard
+Since Version         6.0.0
+Source File           engine/src/runtime/string/strops.c

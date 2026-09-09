@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
 // NEEDS: libcore (memory.h, memory.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libcore (strings.h, strings.c)
 // NEEDS: libengine (endloop.h, eval.h, eval.c, string.c)
 // Provides runtime implementation for the ENDLOOP statement in BASIC++.
@@ -13,34 +13,43 @@
 #include "statements/loops/conditional/endloop.h"
 #include "eval/eval.h"
 #include "runtime/strings.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "memory/memory.h"
-#include <string.h>
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_endloop_desc = {
+    .name = "ENDLOOP",
+    .category = "Looping / Control Flow",
+    .syntax = "ENDLOOP",
+    .description = "Terminates a BASIC09 structured LOOP...ENDLOOP block and loops back to LOOP.",
+    .error_summary = "Error 2: Syntax Error, Error 32: ENDLOOP Without LOOP",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SAFE,
+    .type = FEATURE_STATEMENT
+};
+
+static const LangDesc g_exitif_desc = {
+    .name = "EXITIF",
+    .category = "Looping / Control Flow",
+    .syntax = "EXITIF condition [THEN statement(s)]",
+    .description = "Evaluates condition in a BASIC09 LOOP...ENDLOOP block and exits the loop if true.",
+    .error_summary = "Error 2: Syntax Error, Error 33: Invalid EXIT Scope",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SAFE,
+    .type = FEATURE_STATEMENT
+};
 
 #if defined(_WIN32)
-#define strncasecmp _strnicmp
+#define runtime_strncasecmp runtime_strncasecmp
 #endif
 
 void stmt_endloop_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "ENDLOOP",
-        .category = "Looping / Control Flow",
-        .syntax = "ENDLOOP",
-        .help_text = "Terminates a BASIC09 structured LOOP...ENDLOOP block and loops back to LOOP.",
-        .error_codes = "Error 2: Syntax Error, Error 32: ENDLOOP Without LOOP"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_endloop_desc);
 }
 
 void stmt_exitif_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "EXITIF",
-        .category = "Looping / Control Flow",
-        .syntax = "EXITIF condition [THEN statement(s)]",
-        .help_text = "Evaluates condition in a BASIC09 LOOP...ENDLOOP block and exits the loop if true.",
-        .error_codes = "Error 2: Syntax Error, Error 33: Invalid EXIT Scope"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_endloop_desc);
 }
 
 static bool exitif_val_is_truthy(BValue val) {
@@ -53,7 +62,7 @@ static bool exitif_val_is_truthy(BValue val) {
 BppError stmt_endloop_handler(VMContext *vm, LexerContext *lex) {
     (void)lex;
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BppLineNumber loop_line = 0;
     const char *loop_pos = NULL;
@@ -70,7 +79,7 @@ BppError stmt_endloop_handler(VMContext *vm, LexerContext *lex) {
 
 BppError stmt_exitif_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BppLineNumber cur_ln = vm_get_current_line(vm);
 
@@ -86,7 +95,7 @@ BppError stmt_exitif_handler(VMContext *vm, LexerContext *lex) {
     BppToken tok = lex_peek(lex);
     bool has_then = false;
     if ((tok.type == TOK_KEYWORD && tok.as.keyword == KW_THEN) ||
-        (tok.type == TOK_IDENT && tok.length == 4 && strncasecmp(tok.start, "THEN", 4) == 0)) {
+        (tok.type == TOK_IDENT && tok.length == 4 && runtime_strncasecmp(tok.start, "THEN", 4) == 0)) {
         lex_next(lex); // Consume THEN
         has_then = true;
     }
@@ -139,9 +148,9 @@ BppError stmt_exitif_handler(VMContext *vm, LexerContext *lex) {
             BppToken stok = lex_next(scan_lex);
             while (stok.type != TOK_EOF && stok.type != TOK_EOL) {
                 bool is_loop = (stok.type == TOK_KEYWORD && stok.as.keyword == KW_LOOP) ||
-                               (stok.type == TOK_IDENT && stok.length == 4 && strncasecmp(stok.start, "LOOP", 4) == 0);
+                               (stok.type == TOK_IDENT && stok.length == 4 && runtime_strncasecmp(stok.start, "LOOP", 4) == 0);
                 bool is_endloop = (stok.type == TOK_KEYWORD && stok.as.keyword == KW_ENDLOOP) ||
-                                 (stok.type == TOK_IDENT && stok.length == 7 && strncasecmp(stok.start, "ENDLOOP", 7) == 0);
+                                 (stok.type == TOK_IDENT && stok.length == 7 && runtime_strncasecmp(stok.start, "ENDLOOP", 7) == 0);
                 if (is_loop) {
                     nest++;
                 } else if (is_endloop) {

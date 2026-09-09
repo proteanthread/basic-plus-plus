@@ -2,7 +2,7 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libengine (eval.h, eval.c, lexer.h, lexer.c, seek.h, string.c, vm.h)
 // NEEDS: libkernel (security.h, security.c, vdev.h, vdev.c)
 // Provides runtime implementation for the SEEK statement in BASIC++.
@@ -15,23 +15,29 @@
 #include "eval/eval.h"
 #include "device/vdev.h"
 #include "security/security.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
+
+
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_seek_desc = {
+    .name = "SEEK",
+    .category = "Filesystem I/O",
+    .syntax = "SEEK [#]file_num, position",
+    .description = "Sets the byte offset position for the next read or write operation on an open file.",
+    .error_summary = "Error 2: Syntax Error, Error 52: Bad File Number, Error 63: Bad Record Number",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_STATEMENT
+};
 
 void stmt_seek_register(void) {
-    MicroLibMetadata meta = {
-        .name = "SEEK",
-        .category = "Filesystem I/O",
-        .syntax = "SEEK [#]file_num, position",
-        .help_text = "Sets the byte offset position for the next read or write operation on an open file.",
-        .error_codes = "Error 2: Syntax Error, Error 52: Bad File Number, Error 63: Bad Record Number"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_seek_desc);
 }
-#include <string.h>
-
 BppError stmt_seek_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     (void)vm; (void)lex;
     return err;
 }

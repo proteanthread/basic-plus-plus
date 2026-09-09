@@ -1,20 +1,67 @@
-BASIC++ STATEMENT REFERENCE: VAR
-======================================================================
+TITLE: VAR
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/variable/var.c
+GENERATED: no, hand-written
+STATUS: current
 
-1. SYNTAX & DESCRIPTION
-  VAR varname [AS Type] [= initial_expression]
+==============================================================================
+VAR KEYWORD REFERENCE
+==============================================================================
 
-Declares a variable with optional explicit typing or automatic type inference
-and optional initial value assignment.
+SOURCE HEADER:
+    // FILENAME: var.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community -- All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: baspp.exe, bpp.exe, bs.exe, libengine
+    // NEEDS: libcore, libkernel
+    // Implements component functionality for VAR.
 
-2. PARAMETERS
-- varname: Variable identifier.
-- Type: Optional data type.
-- initial_expression: Initial assignment expression.
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Declares a block-scoped typed variable with optional immediate initialization
+expression.
 
-3. ERROR CODES
-- Error 10 (ERR_DUPLICATE_DEFINITION): Variable declared multiple times.
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    VAR [DIM] varname [AS type] [= expr]
 
-4. EXAMPLES
-  10 VAR Limit% = 500
-  20 VAR Prefix$ = "Log_"
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM VAR Demonstration
+    20 PRINT "VAR executed successfully."
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error, Error 13: Type Mismatch
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Variables & Memory
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SAFE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  VAR
+Category              Variables & Memory
+Syntax                VAR [DIM] varname [AS type] [= expr]
+Description           Declares a block-scoped typed variable with optiona...
+Error Summary         Error 2: Syntax Error, Error 13: Type Mismatch
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         BASIC++ Standard
+Since Version         6.0.0
+Source File           engine/src/variable/var.c

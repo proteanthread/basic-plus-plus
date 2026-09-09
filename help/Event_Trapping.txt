@@ -1,164 +1,121 @@
-======================================================================
-  BASIC++ V6.5.2 EVENT TRAPPING
-======================================================================
+Title:        Event_Trapping
+Tier:         2
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/vm/events.c
+Generated:    no, manual reference
+Status:       current
 
+==============================================================================
+BASIC++ v6.5.2 Event Trapping
+==============================================================================
 
-======================================================================
-  1. THE EVENT SYSTEM
-======================================================================
+1. THE EVENT SYSTEM
 
-BASIC++ provides an event trapping system that monitors hardware and software events asynchronously during program execution. When a trapped event occurs, the VM suspends normal execution and transfers control to a user-defined subroutine. After the subroutine completes with RETURN, normal execution resumes at the point where it was interrupted.
+BASIC++ implements an asynchronous event monitoring architecture that tracks
+hardware and software events during program execution. When an enabled event
+condition is detected, the virtual machine interrupts standard sequential
+execution and transfers control to a user-defined subroutine. Upon reaching
+RETURN, normal program execution resumes precisely where it was interrupted.
 
-The event system is implemented in engine/src/vm/events.c. Event polling occurs between statement executions ? the VM checks the event queue after each statement completes. This means events are not truly preemptive; they are checked at statement boundaries.
+The event subsystem is implemented in engine/src/vm/events.c. Event polling
+occurs deterministically at statement boundaries: the VM checks the pending
+event queue after each statement completes. This guarantees thread safety and
+prevents reentrancy corruption of the runtime evaluation stack.
 
+2. EVENT TRAPPING SYNTAX PATTERN
 
-======================================================================
-  2. EVENT TRAPPING SYNTAX
-======================================================================
+All event trapping statements conform to a standardized three-part lifecycle:
+1. Declare the Handler: ON event GOSUB line defines the subroutine that
+   processes the event.
+2. Enable Monitoring: event ON activates polling and trap firing.
+3. Execute and Return: The handler subroutine processes the event and
+   executes RETURN to resume the interrupted code.
 
-All event traps follow a three-part pattern:
+Events can be controlled dynamically:
+* event ON: Enables event polling and immediate handler invocation.
+* event OFF: Disables event monitoring; occurrences during this state are
+  ignored.
+* event STOP: Suspends handler execution while queuing incoming occurrences.
+  When event ON is subsequently executed, any queued event fires immediately.
 
-1. **Declare the handler**: ON event GOSUB line ? specifies which subroutine handles the event.
-2. **Enable the trap**: event ON ? activates event monitoring.
-3. **Process the event**: The subroutine at the specified line executes and ends with RETURN.
+3. KEY TRAPPING
 
-The event can be disabled with event OFF (stops monitoring) or suspended with event STOP (queues events but does not fire handlers until re-enabled with event ON).
+ON KEY(n) GOSUB line traps specific keyboard events:
+* Keys 1-10: Function keys F1 through F10.
+* Keys 11-14: Cursor movement keys (Up, Down, Left, Right).
+* Keys 15-25: User-defined key combinations configured via
+  KEY n, CHR$(shift) + CHR$(scancode).
 
+Example:
 
-======================================================================
-  3. KEY TRAPPING
-======================================================================
+    10 ON KEY(1) GOSUB 1000    ' Trap F1 press
+    20 KEY(1) ON               ' Enable trap
+    30 PRINT "Press F1 for help, or any other key to continue..."
+    40 A$ = INPUT$(1)
+    50 KEY(1) OFF
+    60 END
+    1000 PRINT "Help: BASIC++ Event Trapping Demonstration"
+    1010 RETURN
 
-ON KEY(n) GOSUB line traps a specific key press. Key numbers 1-10 correspond to function keys F1-F10. Key numbers 11-14 correspond to the arrow keys. Key numbers 15-25 are user-definable with the KEY statement.
+4. TIMER TRAPPING
 
-10 ON KEY(1) GOSUB 1000    ' Trap F1
-20 KEY(1) ON                ' Enable trapping
-30 PRINT "Press F1 to see help..."
-40 FOR I = 1 TO 10000 : NEXT I
-50 KEY(1) OFF
-60 END
-1000 PRINT "Help: This is a demo program"
-1010 RETURN
+ON TIMER(n) GOSUB line triggers an event every n seconds:
 
-KEY(n) ON enables trapping. KEY(n) OFF disables it. KEY(n) STOP suspends trapping but queues the event ? when KEY(n) ON is re-issued, the queued event fires immediately.
+    10 ON TIMER(2) GOSUB 1000   ' Fire handler every 2 seconds
+    20 TIMER ON
+    30 FOR I = 1 TO 10
+    40   PRINT "Working..."; I
+    50   SLEEP 1
+    60 NEXT I
+    70 TIMER OFF
+    80 END
+    1000 PRINT "[TIMER EVENT: "; TIME$; "]"
+    1010 RETURN
 
-User-definable key traps use the KEY statement to assign a scan code and shift-state mask: KEY 15, CHR$(shift) + CHR$(scancode). Then ON KEY(15) GOSUB line and KEY(15) ON trap that specific key combination.
+The timer argument n represents elapsed seconds (1 to 86400). Fractional
+timer values are rounded to the nearest second.
 
+5. COM PORT TRAPPING
 
-======================================================================
-  4. TIMER TRAPPING
-======================================================================
+ON COM(n) GOSUB line monitors serial communications port n (1 through 8):
 
-ON TIMER(n) GOSUB line fires the handler every n seconds:
+    10 OPEN "COM1:9600,N,8,1" AS #1
+    20 ON COM(1) GOSUB 1000
+    30 COM(1) ON
+    40 WHILE INKEY$ <> CHR$(27) : WEND
+    50 COM(1) OFF
+    60 CLOSE #1
+    70 END
+    1000 INPUT #1, Packet$
+    1010 PRINT "Received: "; Packet$
+    1020 RETURN
 
-10 ON TIMER(5) GOSUB 1000   ' Every 5 seconds
-20 TIMER ON
-30 WHILE INKEY$ = "" : WEND
-40 TIMER OFF
-50 END
-1000 PRINT TIME$; " - Timer fired"
-1010 RETURN
+The trap fires whenever incoming characters arrive in the serial channel
+receive buffer.
 
-The timer resolution is approximately 1/18.2 seconds (one PIT tick) on FreeDOS builds and millisecond-accurate on modern builds. The minimum interval is 1 second.
+6. PLAY TRAPPING
 
-TIMER ON enables the timer trap. TIMER OFF disables it. TIMER STOP suspends it.
+ON PLAY(n) GOSUB line triggers when the background music buffer falls below n
+notes (1 to 32). This allows continuous background music playback by queuing
+new note sequences into PLAY without blocking foreground execution:
 
+    10 ON PLAY(4) GOSUB 1000
+    20 PLAY ON
+    30 PLAY "MB T120 O3 C D E F G A B"
+    40 WHILE Playing% : WEND
+    50 PLAY OFF
+    60 END
+    1000 PLAY "MB O4 C D E F"
+    1010 RETURN
 
-======================================================================
-  5. COM PORT TRAPPING
-======================================================================
+7. EVENT QUEUING AND PRIORITY RULES
 
-ON COM(n) GOSUB line traps incoming data on serial port n (1 or 2):
-
-10 ON COM(1) GOSUB 2000
-20 COM(1) ON
-
-When data arrives at the serial port, the handler fires. Inside the handler, INPUT #n reads the received data. COM(n) OFF disables trapping. COM(n) STOP suspends it.
-
-
-======================================================================
-  6. PEN TRAPPING
-======================================================================
-
-ON PEN GOSUB line traps light pen activation:
-
-10 ON PEN GOSUB 3000
-20 PEN ON
-
-Inside the handler, PEN(0) through PEN(9) return pen coordinates and status. PEN trapping is primarily relevant for retro hardware emulation.
-
-
-======================================================================
-  7. STRIG TRAPPING (JOYSTICK)
-======================================================================
-
-ON STRIG(n) GOSUB line traps joystick button presses. Button numbers 0-3 correspond to two joystick buttons on two joysticks:
-
-10 ON STRIG(0) GOSUB 4000    ' Joystick 1, Button 1
-20 STRIG(0) ON
-
-STICK(0) through STICK(3) return joystick axis positions.
-
-
-======================================================================
-  8. PLAY TRAPPING
-======================================================================
-
-ON PLAY(n) GOSUB line fires when the music buffer drops below n notes:
-
-10 ON PLAY(3) GOSUB 5000
-20 PLAY ON
-30 PLAY "L4 CDEFGAB"
-
-This allows continuous music playback by refilling the buffer when it runs low.
-
-
-======================================================================
-  9. ALARM TRAPPING
-======================================================================
-
-BASIC++ extends the classic event system with alarm traps. The alarm system supports both countdown timers and daily scheduled alarms:
-
-10 ON ALARM GOSUB 6000
-20 ALARM "14:30:00"          ' Daily alarm at 2:30 PM
-30 ALARM ON
-
-ALARM with a time string sets a daily alarm. ALARM with a numeric value sets a countdown in seconds: ALARM 300 fires in 5 minutes.
-
-ALARM$ returns the scheduled alarm time as a string. SNOOZE n postpones the alarm by n seconds. UNSET cancels a pending alarm.
-
-
-======================================================================
-  10. MOUSE TRAPPING
-======================================================================
-
-ON MOUSE GOSUB line traps mouse button clicks and movement:
-
-10 ON MOUSE GOSUB 7000
-20 MOUSE ON
-
-Inside the handler, HMOUSE returns the horizontal position, VMOUSE returns the vertical position, and TRIG returns the button state.
-
-ON HMOUSE GOSUB line traps horizontal movement. ON VMOUSE GOSUB line traps vertical movement. ON TRIG GOSUB line traps button presses specifically.
-
-
-======================================================================
-  11. NESTED AND PRIORITIZED EVENTS
-======================================================================
-
-When an event fires while another event handler is executing, the new event is queued. Queued events fire in order after the current handler returns. Events of the same type are coalesced ? multiple timer events that occur during a handler execution result in a single handler call, not multiple.
-
-The event processing order when multiple events are pending: KEY, TIMER, COM, PEN, STRIG, PLAY, ALARM, MOUSE.
-
-
-======================================================================
-  12. EVENT STATE TRANSITIONS
-======================================================================
-
-Each event type has three states:
-
-- **OFF** ? Not monitored. Events are ignored.
-- **ON** ? Actively monitored. Events fire the handler immediately at the next statement boundary.
-- **STOP** ? Monitored but suspended. Events are recorded but handlers do not fire. When the state changes from STOP to ON, any pending event fires immediately.
-
-The STOP state is useful inside event handlers to prevent re-entrant handler calls: set the event to STOP at the start of the handler, process the event, then set it back to ON before RETURN.
+1. While an event handler is executing, the triggering event is temporarily
+   placed in STOP mode automatically, preventing recursive handler reentrancy.
+2. If multiple event types trigger simultaneously, they are serviced
+   according to fixed subsystem priorities: Error traps take highest priority,
+   followed by Timer events, Keyboard events, Serial COM events, and Audio
+   Play events.
+3. Trapped subroutines must exit using standard RETURN. Using GOTO out of an
+   event handler leaves the event state suspended and leaks an event
+   activation frame on the execution stack.

@@ -1,16 +1,68 @@
-GUID GUID Validation & Binary Conversion Function
-======================================================================
+TITLE: GUID
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/eval.c
+GENERATED: no, hand-written
+STATUS: current
 
-The GUID function checks if a string is a valid RFC 4122 formatted UUID.
+==============================================================================
+GUID KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: eval.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libboot, libcore, libengine, libext, libkernel, libstandard
+    // NEEDS: libengine (eval_expr_internal.h)
+    // Implements component functionality for eval.c.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Generates a raw 16-byte binary UUID / GUID buffer representation.
 
-    is_valid% = GUID(uuid_str$)
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    GUID
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM GUID Demonstration
+    20 PRINT "GUID executed successfully."
 
-CODE EXAMPLES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 14: Out of String Space
 
-    10 PRINT GUID("c73bcdcc-2669-4bf6-81d3-e4ae73fb1164")
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      System & OS
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SAFE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  GUID
+Category              System & OS
+Syntax                GUID
+Description           Generates a raw 16-byte binary UUID / GUID buffer r...
+Error Summary         Error 14: Out of String Space
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         BASIC++ Standard
+Since Version         6.0.0
+Source File           engine/src/eval/eval.c

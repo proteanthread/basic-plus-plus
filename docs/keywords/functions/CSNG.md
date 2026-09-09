@@ -1,25 +1,71 @@
-# `CSNG` Convert to Single-Precision Float
+<!--
+Title:        CSNG
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/eval/type.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Function Definition
+# `CSNG` Keyword Reference
 
-The `CSNG` function converts a numeric expression or numeric string into a 32-bit single-precision floating-point value (`VAL_NUMBER` rounded to single-precision float precision).
+## Source Header
 
-### Syntax Signatures:
-```basic
-result! = CSNG(expression)
+```c
+// FILENAME: type.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libengine (type.h)
+// Provides core logic and interface definitions for type within BASIC++.
+//
+// ---- Includes ----
 ```
 
-### Operational Rules:
-- Converts integers or double-precision floats to 32-bit IEEE 754 single precision (~6-7 significant decimal digits).
-- String arguments containing numeric text are parsed and converted.
+## 1. Description & Usage
+
+Converts numeric expression to single-precision 32-bit floating-point value.
+
+## 2. Syntax
+
+```basic
+CSNG(expr)
+```
+
+## 3. Code Example
+
+```basic
+10 Val = CSNG(e10pr)
+20 PRINT "Result: "; Val
+```
+
+## 4. Error Conditions
+
+Error 6: Overflow, Error 13: Type Mismatch
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: GW-BASIC, QBASIC, BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Type Conversion
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_PURE
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 DBL# = 3.141592653589793
-20 SNG! = CSNG(DBL#)
-30 PRINT "Double: "; DBL#
-40 PRINT "Single: "; SNG!
-```
+| Field | Value |
+|---|---|
+| Name | CSNG |
+| Category | Type Conversion |
+| Syntax | CSNG(expr) |
+| Description | Converts numeric expression to single-precision 32-bit floating-point value. |
+| Error Summary | Error 6: Overflow, Error 13: Type Mismatch |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_PURE |
+| Feature Type | FEATURE_FUNCTION |
+| Delimiter Mask | none |
+| Compatibility | GW-BASIC, QBASIC, BASIC++ Standard |
+| Since Version | 6.0.0 |
+| Source File | engine/src/eval/type.c |

@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (func_gopher.c, stmt_gopher.c)
 // NEEDED BY: libkernel (fujinet.c)
-// NEEDS: libcore (gopher.h, hal.h, memops.h, memops.c, snprintf.h, snprintf.c)
+// NEEDS: libcore (gopher.h, hal.h, memops.h, memops.c, runtime_snprintf.h, runtime_snprintf.c)
 // NEEDS: libcore (string.h)
 // NEEDS: libengine (string.c)
 // NEEDS: libkernel (errors.h, types.h)
@@ -17,7 +17,7 @@
 #include "hal/hal.h"
 #include "runtime/string/memops.h"
 #include "runtime/format/snprintf.h"
-#include <string.h>
+#include "runtime/string/strops.h"
 
 char *net_gopher_fetch(VMContext *vm, const char *url, BppError *out_err) {
     (void)vm;

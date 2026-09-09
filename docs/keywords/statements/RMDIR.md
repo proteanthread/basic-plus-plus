@@ -1,25 +1,74 @@
-# `RMDIR` Remove Directory Statement
+<!--
+Title:        RMDIR
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/statements/filesystem/dir_ops/rmdir.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Keyword Definition
+# `RMDIR` Keyword Reference
 
-Removes an existing empty directory from disk or the virtual filesystem.
+## Source Header
 
-### Syntax Signatures:
-```basic
-RMDIR path_expression$
+```c
+// FILENAME: rmdir.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore (language_descriptor.h, string.h)
+// NEEDS: libcore (strings.h, strings.c)
+// NEEDS: libengine (eval.h, eval.c, rmdir.h, string.c)
+// NEEDS: libplatform (platform.h)
+// Provides runtime implementation for the RMDIR statement in BASIC++.
+//
+// ---- Includes ----
 ```
 
-### Error Handling & Boundary Conditions:
-- **Error 76 (ERR_PATH_NOT_FOUND)**: Directory does not exist.
-- **Error 75 (ERR_PATH_FILE_ACCESS_ERROR)**: Directory not empty or access denied.
+## 1. Description & Usage
 
-### Operational Notes:
-- Directory must be empty before removal.
+Removes an empty directory from disk.
+
+## 2. Syntax
+
+```basic
+RMDIR pathname$
+```
+
+## 3. Code Example
+
+```basic
+10 REM RMDIR Demonstration
+20 PRINT "RMDIR executed successfully."
+```
+
+## 4. Error Conditions
+
+Error 2: Syntax Error, Error 75: Path/File Access Error, Error 76: Path Not Found
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Filesystem I/O
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_IO
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 RMDIR "TEMP_DIR"
-```
+| Field | Value |
+|---|---|
+| Name | RMDIR |
+| Category | Filesystem I/O |
+| Syntax | RMDIR pathname$ |
+| Description | Removes an empty directory from disk. |
+| Error Summary | Error 2: Syntax Error, Error 75: Path/File Access Error, Error 76: Path Not Found |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_IO |
+| Feature Type | FEATURE_STATEMENT |
+| Delimiter Mask | none |
+| Compatibility | none |
+| Since Version | none |
+| Source File | engine/src/statements/filesystem/dir_ops/rmdir.c |

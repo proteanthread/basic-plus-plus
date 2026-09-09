@@ -33,7 +33,7 @@ endif()
 
 # Enforce compiler warnings for type-safety and standard conformance
 if(MSVC)
-    add_compile_options(/W4 /WX /wd4100 /wd4201 /wd4996) # Wall, treat warnings as errors, disable unused param
+    add_compile_options(/MP /W4 /WX /wd4100 /wd4201 /wd4996 $<$<NOT:$<CONFIG:Debug>>:/O2> $<$<NOT:$<CONFIG:Debug>>:/Oi> $<$<NOT:$<CONFIG:Debug>>:/Ot>) # Multi-processor, Wall, treat warnings as errors, disable unused param, O2 speed
     add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
     if(ENABLE_ASAN)
         add_compile_options(/fsanitize=address /Zi /wd5072)
@@ -149,9 +149,13 @@ endif()
 add_executable(bppc
     engine/src/tools/bppc.c
     engine/src/tools/bppc/bppc_transpile.c
+    engine/src/tools/bppc/bppc_expr.c
+    engine/src/tools/bppc/bppc_stmt.c
     engine/src/tools/bppc/bppc_detok.c
     engine/src/tools/bppc/bppc_bytecode.c
     engine/src/tools/bppc/bppc_main.c
+    engine/src/tools/bppc/bppc_freestanding.c
+    engine/src/compiler/trans_pascal.c
     ${FULL_STD_OBJECTS}
 )
 target_include_directories(bppc PRIVATE engine/include)
@@ -170,8 +174,12 @@ target_link_libraries(detok PRIVATE libadvanced ${SDL2_LIBRARIES} ${SYS_LIBS})
 add_executable(trans
     engine/src/tools/trans.c
     engine/src/tools/bppc/bppc_transpile.c
+    engine/src/tools/bppc/bppc_expr.c
+    engine/src/tools/bppc/bppc_stmt.c
     engine/src/tools/bppc/bppc_detok.c
     engine/src/tools/bppc/bppc_bytecode.c
+    engine/src/tools/bppc/bppc_freestanding.c
+    engine/src/compiler/trans_pascal.c
     ${HEADLESS_OBJECTS}
 )
 target_include_directories(trans PRIVATE engine/include)
@@ -195,27 +203,27 @@ endif()
 
 # Note: basstub, baspp_headless, and baspp_mobile targets are excluded per user directive.
 
-# Size Optimization configurations for Lite targets
+# Performance Optimization configurations for targets
 if(MSVC)
-    target_compile_options(bpp PRIVATE $<$<NOT:$<CONFIG:Debug>>:/O1> $<$<NOT:$<CONFIG:Debug>>:/GL>)
-    target_compile_options(bs PRIVATE $<$<NOT:$<CONFIG:Debug>>:/O1> $<$<NOT:$<CONFIG:Debug>>:/GL>)
-    target_compile_options(trans PRIVATE $<$<NOT:$<CONFIG:Debug>>:/O1> $<$<NOT:$<CONFIG:Debug>>:/GL>)
-    target_compile_options(iot PRIVATE $<$<NOT:$<CONFIG:Debug>>:/O1> $<$<NOT:$<CONFIG:Debug>>:/GL>)
+    target_compile_options(bpp PRIVATE $<$<NOT:$<CONFIG:Debug>>:/O2> $<$<NOT:$<CONFIG:Debug>>:/Oi> $<$<NOT:$<CONFIG:Debug>>:/Ot> $<$<NOT:$<CONFIG:Debug>>:/GL>)
+    target_compile_options(bs PRIVATE $<$<NOT:$<CONFIG:Debug>>:/O2> $<$<NOT:$<CONFIG:Debug>>:/Oi> $<$<NOT:$<CONFIG:Debug>>:/Ot> $<$<NOT:$<CONFIG:Debug>>:/GL>)
+    target_compile_options(trans PRIVATE $<$<NOT:$<CONFIG:Debug>>:/O2> $<$<NOT:$<CONFIG:Debug>>:/Oi> $<$<NOT:$<CONFIG:Debug>>:/Ot> $<$<NOT:$<CONFIG:Debug>>:/GL>)
+    target_compile_options(iot PRIVATE $<$<NOT:$<CONFIG:Debug>>:/O2> $<$<NOT:$<CONFIG:Debug>>:/Oi> $<$<NOT:$<CONFIG:Debug>>:/Ot> $<$<NOT:$<CONFIG:Debug>>:/GL>)
     target_link_options(bpp PRIVATE $<$<NOT:$<CONFIG:Debug>>:/LTCG> $<$<NOT:$<CONFIG:Debug>>:/OPT:REF> $<$<NOT:$<CONFIG:Debug>>:/OPT:ICF>)
     target_link_options(bs PRIVATE $<$<NOT:$<CONFIG:Debug>>:/LTCG> $<$<NOT:$<CONFIG:Debug>>:/OPT:REF> $<$<NOT:$<CONFIG:Debug>>:/OPT:ICF>)
     target_link_options(trans PRIVATE $<$<NOT:$<CONFIG:Debug>>:/LTCG> $<$<NOT:$<CONFIG:Debug>>:/OPT:REF> $<$<NOT:$<CONFIG:Debug>>:/OPT:ICF>)
     target_link_options(iot PRIVATE $<$<NOT:$<CONFIG:Debug>>:/LTCG> $<$<NOT:$<CONFIG:Debug>>:/OPT:REF> $<$<NOT:$<CONFIG:Debug>>:/OPT:ICF>)
-    target_compile_options(baspp PRIVATE $<$<NOT:$<CONFIG:Debug>>:/O1> $<$<NOT:$<CONFIG:Debug>>:/GL>)
+    target_compile_options(baspp PRIVATE $<$<NOT:$<CONFIG:Debug>>:/O2> $<$<NOT:$<CONFIG:Debug>>:/Oi> $<$<NOT:$<CONFIG:Debug>>:/Ot> $<$<NOT:$<CONFIG:Debug>>:/GL>)
     target_link_options(baspp PRIVATE $<$<NOT:$<CONFIG:Debug>>:/LTCG>)
 else()
-    target_compile_options(bpp PRIVATE -Os -flto -ffunction-sections -fdata-sections)
-    target_compile_options(bs PRIVATE -Os -flto -ffunction-sections -fdata-sections)
-    target_compile_options(trans PRIVATE -Os -flto -ffunction-sections -fdata-sections)
-    target_compile_options(iot PRIVATE -Os -flto -ffunction-sections -fdata-sections)
-    target_link_options(bpp PRIVATE -Os -flto -Wl,--gc-sections)
-    target_link_options(bs PRIVATE -Os -flto -Wl,--gc-sections)
-    target_link_options(trans PRIVATE -Os -flto -Wl,--gc-sections)
-    target_link_options(iot PRIVATE -Os -flto -Wl,--gc-sections)
+    target_compile_options(bpp PRIVATE -O3 -flto -ffunction-sections -fdata-sections)
+    target_compile_options(bs PRIVATE -O3 -flto -ffunction-sections -fdata-sections)
+    target_compile_options(trans PRIVATE -O3 -flto -ffunction-sections -fdata-sections)
+    target_compile_options(iot PRIVATE -O3 -flto -ffunction-sections -fdata-sections)
+    target_link_options(bpp PRIVATE -O3 -flto -Wl,--gc-sections)
+    target_link_options(bs PRIVATE -O3 -flto -Wl,--gc-sections)
+    target_link_options(trans PRIVATE -O3 -flto -Wl,--gc-sections)
+    target_link_options(iot PRIVATE -O3 -flto -Wl,--gc-sections)
 endif()
 
 # Post-build copy rules for standalone execution
@@ -262,11 +270,21 @@ add_custom_command(TARGET iot POST_BUILD
     $<TARGET_FILE:iot>
     "${CMAKE_SOURCE_DIR}/"
 )
+add_custom_command(TARGET basicpp POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+    $<TARGET_FILE:basicpp>
+    "${CMAKE_SOURCE_DIR}/"
+)
 
 # Option to build C freestanding unit test targets (OFF by default for clean production builds)
 option(BUILD_TESTING "Build C freestanding unit test targets" OFF)
 
 if(BUILD_TESTING)
+    # --- Unit Test Target: test_interop_c_api ---
+    add_executable(test_interop_c_api tests/interop_c_api_suite.c)
+    target_include_directories(test_interop_c_api PRIVATE engine/include)
+    target_link_libraries(test_interop_c_api PRIVATE basicpp ${SYS_LIBS})
+
     # --- Unit Test Target: runtime_freestanding_test ---
     add_executable(runtime_freestanding_test tests/runtime_freestanding_test.c)
     target_include_directories(runtime_freestanding_test PRIVATE engine/include)
@@ -339,16 +357,22 @@ if(BUILD_TESTING)
     add_executable(compiler_freestanding_test
         tests/compiler_freestanding_test.c
         engine/src/tools/bppc/bppc_transpile.c
+        engine/src/tools/bppc/bppc_expr.c
+        engine/src/tools/bppc/bppc_stmt.c
         engine/src/tools/bppc/bppc_detok.c
         engine/src/tools/bppc/bppc_bytecode.c
+        engine/src/tools/bppc/bppc_freestanding.c
+        engine/src/compiler/trans_pascal.c
         ${HEADLESS_OBJECTS}
     )
     target_include_directories(compiler_freestanding_test PRIVATE engine/include)
     target_compile_definitions(compiler_freestanding_test PRIVATE BASIC_LITE_BUILD BASIC_HEADLESS_BUILD NO_SDL2)
     target_link_libraries(compiler_freestanding_test PRIVATE libcompiler_ir libscript ${SYS_LIBS})
-    if(NOT MSVC)
-        set_target_properties(compiler_freestanding_test PROPERTIES LINK_FLAGS "-Wl,--start-group")
-    endif()
+endif()
+
+# Native Compiled Benchmark Targets
+if(EXISTS "${CMAKE_SOURCE_DIR}/benchmarks/CMakeLists.txt")
+    add_subdirectory(benchmarks)
 endif()
 
 
@@ -364,4 +388,18 @@ else()
         COMMENT "Pruning intermediate compiler artifacts from build_linux and repository root..."
     )
 endif()
+
+# Custom target for documentation verification gate (Five-Tier Standard & 100% Mirror Parity)
+if(WIN32)
+    add_custom_target(docs_verify
+        COMMAND powershell -ExecutionPolicy Bypass -File "${CMAKE_SOURCE_DIR}/tools/verify_docs.ps1"
+        COMMENT "Verifying documentation 100% mirror parity and Five-Tier Standard compliance..."
+    )
+else()
+    add_custom_target(docs_verify
+        COMMAND bash "${CMAKE_SOURCE_DIR}/tools/verify_docs.sh"
+        COMMENT "Verifying documentation 100% mirror parity and Five-Tier Standard compliance..."
+    )
+endif()
+
 

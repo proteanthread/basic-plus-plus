@@ -181,8 +181,9 @@
 // ---- Includes ----
 
 #include "runtime/strings.h"
-#include <string.h>
-#include <stdlib.h>
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "runtime/memory/alloc.h"
 
 struct BppString {
     uint32_t      ref_count;
@@ -223,7 +224,7 @@ struct StringContext {
 
 StringContext *str_init(MemoryContext *mem) {
     if (!mem) return NULL;
-    StringContext *ctx = (StringContext *)calloc(1, sizeof(StringContext));
+    StringContext *ctx = (StringContext *)runtime_calloc(1, sizeof(StringContext));
     if (!ctx) return NULL;
     ctx->mem = mem;
     ctx->head = NULL;
@@ -247,7 +248,7 @@ StringContext *str_init(MemoryContext *mem) {
     }
 
     // Initialize high-speed Small String Slab Pool
-    ctx->pool_storage = (char *)malloc(SMALL_STR_POOL_SIZE);
+    ctx->pool_storage = (char *)runtime_calloc(1, SMALL_STR_POOL_SIZE);
     if (ctx->pool_storage) {
         ctx->free_list = NULL;
         for (size_t i = 0; i < SMALL_STR_POOL_SLOTS; i++) {
@@ -271,10 +272,10 @@ void str_shutdown(StringContext *ctx) {
         curr = next;
     }
     if (ctx->pool_storage) {
-        free(ctx->pool_storage);
+        runtime_free(ctx->pool_storage);
         ctx->pool_storage = NULL;
     }
-    free(ctx);
+    runtime_free(ctx);
 }
 
 BppStringRef str_create(StringContext *ctx, const char *data, size_t length) {
@@ -308,7 +309,7 @@ BppStringRef str_create(StringContext *ctx, const char *data, size_t length) {
     str->length = length;
 
     if (data) {
-        memcpy(str->data, data, length);
+        runtime_memcpy(str->data, data, length);
     }
     str->data[length] = '\0';
 
@@ -339,15 +340,15 @@ BppStringRef str_append_inplace(StringContext *ctx, BppStringRef target, const c
         size_t new_len = t_len + length;
         BppStringRef res = str_create(ctx, NULL, new_len);
         if (!res) return NULL;
-        if (target && t_len > 0) memcpy(res->data, target->data, t_len);
-        memcpy(res->data + t_len, data, length);
+        if (target && t_len > 0) runtime_memcpy(res->data, target->data, t_len);
+        runtime_memcpy(res->data + t_len, data, length);
         res->data[new_len] = '\0';
         return res;
     }
 
     // Fast Path: In-place append if ref_count == 1 and capacity permits
     if (target->ref_count == 1 && target->length + length <= target->capacity) {
-        memcpy(target->data + target->length, data, length);
+        runtime_memcpy(target->data + target->length, data, length);
         target->length += length;
         target->data[target->length] = '\0';
         return target;
@@ -363,8 +364,8 @@ BppStringRef str_append_inplace(StringContext *ctx, BppStringRef target, const c
     new_str->ref_count = 1;
     new_str->length = new_len;
     new_str->capacity = new_cap;
-    memcpy(new_str->data, target->data, target->length);
-    memcpy(new_str->data + target->length, data, length);
+    runtime_memcpy(new_str->data, target->data, target->length);
+    runtime_memcpy(new_str->data + target->length, data, length);
     new_str->data[new_len] = '\0';
 
     new_str->next = NULL;
@@ -389,7 +390,7 @@ BppStringRef str_assign_inplace(StringContext *ctx, BppStringRef target, const c
         return str_create(ctx, data, length);
     }
     if (length <= target->capacity) {
-        if (data && length > 0) memcpy(target->data, data, length);
+        if (data && length > 0) runtime_memcpy(target->data, data, length);
         target->length = length;
         target->data[length] = '\0';
         return target;
@@ -404,7 +405,7 @@ BppStringRef str_assign_inplace(StringContext *ctx, BppStringRef target, const c
     new_str->ref_count = 1;
     new_str->length = length;
     new_str->capacity = new_cap;
-    if (data && length > 0) memcpy(new_str->data, data, length);
+    if (data && length > 0) runtime_memcpy(new_str->data, data, length);
     new_str->data[length] = '\0';
     new_str->next = NULL;
     new_str->prev = ctx->tail;
@@ -424,15 +425,15 @@ BppStringRef str_concat_multi(StringContext *ctx, const char **parts, const size
     size_t total_len = 0;
     for (size_t i = 0; i < count; i++) {
         if (lens && lens[i] > 0) total_len += lens[i];
-        else if (parts && parts[i]) total_len += strlen(parts[i]);
+        else if (parts && parts[i]) total_len += runtime_strlen(parts[i]);
     }
     BppStringRef res = str_create(ctx, NULL, total_len);
     if (!res) return NULL;
     size_t pos = 0;
     for (size_t i = 0; i < count; i++) {
-        size_t l = (lens ? lens[i] : (parts && parts[i] ? strlen(parts[i]) : 0));
+        size_t l = (lens ? lens[i] : (parts && parts[i] ? runtime_strlen(parts[i]) : 0));
         if (parts && parts[i] && l > 0) {
-            memcpy(res->data + pos, parts[i], l);
+            runtime_memcpy(res->data + pos, parts[i], l);
             pos += l;
         }
     }
@@ -445,16 +446,16 @@ BppStringRef str_concat_multi_inplace(StringContext *ctx, BppStringRef target, c
     size_t total_len = 0;
     for (size_t i = 0; i < count; i++) {
         if (lens && lens[i] > 0) total_len += lens[i];
-        else if (parts && parts[i]) total_len += strlen(parts[i]);
+        else if (parts && parts[i]) total_len += runtime_strlen(parts[i]);
     }
     if (target && target->ref_count == 1 && target->capacity >= total_len &&
         (void *)target != (void *)&ctx->empty_str &&
         ((void *)target < (void *)ctx->char_table || (void *)target >= (void *)(ctx->char_table + 256))) {
         size_t pos = 0;
         for (size_t i = 0; i < count; i++) {
-            size_t l = (lens ? lens[i] : (parts && parts[i] ? strlen(parts[i]) : 0));
+            size_t l = (lens ? lens[i] : (parts && parts[i] ? runtime_strlen(parts[i]) : 0));
             if (parts && parts[i] && l > 0) {
-                memcpy(target->data + pos, parts[i], l);
+                runtime_memcpy(target->data + pos, parts[i], l);
                 pos += l;
             }
         }
@@ -477,10 +478,10 @@ BppStringRef str_concat(StringContext *ctx, BppStringRef a, BppStringRef b) {
     if (!res) return NULL;
 
     if (a && len_a > 0) {
-        memcpy(res->data, a->data, len_a);
+        runtime_memcpy(res->data, a->data, len_a);
     }
     if (b && len_b > 0) {
-        memcpy(res->data + len_a, b->data, len_b);
+        runtime_memcpy(res->data + len_a, b->data, len_b);
     }
     res->data[new_len] = '\0';
 
@@ -574,7 +575,7 @@ bool str_is_unique(BppStringRef ref) {
 BppStringRef str_create_static(const char *data, size_t length) {
     if (!data && length == 0) data = "";
     size_t size = sizeof(BppString) + length + 1;
-    BppString *str = (BppString *)malloc(size);
+    BppString *str = (BppString *)runtime_calloc(1, size);
     if (!str) return NULL;
     str->ref_count = 0xF0000001; // Permanent static singleton
     str->length = length;
@@ -582,7 +583,7 @@ BppStringRef str_create_static(const char *data, size_t length) {
     str->next = NULL;
     str->prev = NULL;
     if (data && length > 0) {
-        memcpy(str->data, data, length);
+        runtime_memcpy(str->data, data, length);
     }
     str->data[length] = '\0';
     return str;
@@ -590,6 +591,6 @@ BppStringRef str_create_static(const char *data, size_t length) {
 
 void str_free_static(BppStringRef ref) {
     if (ref && ref->ref_count == 0xF0000001) {
-        free((void *)ref);
+        runtime_free((void *)ref);
     }
 }

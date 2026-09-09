@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (string_fn.c)
 // NEEDS: libcore (memory.h, memory.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libcore (strings.h, strings.c)
 // NEEDS: libengine (string.c, tek.h)
 // Provides runtime implementation for the TEK built-in function in BASIC++.
@@ -12,18 +12,23 @@
 
 #include "eval/functions/string/format/tek.h"
 #include "runtime/strings.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/string.h"
 #include "runtime/memory.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_tek__vec_desc = {
+    .name = "TEK$/VEC$",
+    .category = "Graphics & Vector Telemetry",
+    .syntax = "TEK$(x, y) / VEC$(x1, y1, x2, y2)",
+    .description = "Generates 10-bit Tektronix 4010/4014 vector coordinate sequence (TEK$) and vector line sequence (VEC$).",
+    .error_summary = "Error 13: Type Mismatch",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SAFE,
+    .type = FEATURE_FUNCTION
+};
 void func_tek_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "TEK$/VEC$",
-        .category = "Graphics & Vector Telemetry",
-        .syntax = "TEK$(x, y) / VEC$(x1, y1, x2, y2)",
-        .help_text = "Generates 10-bit Tektronix 4010/4014 vector coordinate sequence (TEK$) and vector line sequence (VEC$).",
-        .error_codes = "Error 13: Type Mismatch"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_tek__vec_desc);
 }
 
 static void encode_tek_coord(int x, int y, char out[4]) {
@@ -70,9 +75,9 @@ BValue func_vec_eval(VMContext *vm, const char *uname, int arg_count, BValue *ar
     res.type = VAL_STRING;
     res.as.string = NULL;
 
-    if (runtime_strcmp(uname, "VEC") != 0 && runtime_strcmp(uname, "VEC$") != 0 &&
-        runtime_strcmp(uname, "_VEC") != 0 && runtime_strcmp(uname, "_VEC$") != 0 &&
-        runtime_strcmp(uname, "GFX.VEC") != 0 && runtime_strcmp(uname, "GFX.VEC$") != 0) {
+    if (runtime_strcmp(uname, "VEC$") != 0 &&
+        runtime_strcmp(uname, "_VEC$") != 0 &&
+        runtime_strcmp(uname, "GFX.VEC$") != 0) {
         return res;
     }
 

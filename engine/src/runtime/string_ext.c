@@ -13,9 +13,10 @@
 #include "vm/vm.h"
 #include "runtime/strings.h"
 #include "runtime/num_format.h"
-#include <string.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "runtime/format/snprintf.h"
+#include "runtime/memory/alloc.h"
 
 // SPLIT$(string$, delimiter$, index) -> String
 BValue string_split_func(BValue *args, int argc, void *rt) {
@@ -27,7 +28,7 @@ BValue string_split_func(BValue *args, int argc, void *rt) {
     const char *delim = str_data(args[1].as.string);
     int index = (int)args[2].as.number;
     
-    if (index < 0 || strlen(delim) == 0) {
+    if (index < 0 || runtime_strlen(delim) == 0) {
         BValue res;
         res.type = VAL_STRING;
         res.as.string = str_create(vm_get_str(vm), "", 0);
@@ -36,7 +37,7 @@ BValue string_split_func(BValue *args, int argc, void *rt) {
 
     int current_idx = 0;
     const char *start = str;
-    const char *end = strstr(start, delim);
+    const char *end = runtime_strstr(start, delim);
     
     while (end != NULL) {
         if (current_idx == index) {
@@ -45,15 +46,15 @@ BValue string_split_func(BValue *args, int argc, void *rt) {
             res.as.string = str_create(vm_get_str(vm), start, end - start);
             return res;
         }
-        start = end + strlen(delim);
-        end = strstr(start, delim);
+        start = end + runtime_strlen(delim);
+        end = runtime_strstr(start, delim);
         current_idx++;
     }
     
     if (current_idx == index) {
         BValue res;
         res.type = VAL_STRING;
-        res.as.string = str_create(vm_get_str(vm), start, strlen(start));
+        res.as.string = str_create(vm_get_str(vm), start, runtime_strlen(start));
         return res;
     }
     
@@ -137,7 +138,7 @@ BValue string_sprintf_func(BValue *args, int argc, void *rt) {
         if (spec_len >= sizeof(safe_fmt)) {
             spec_len = sizeof(safe_fmt) - 1;
         }
-        memcpy(safe_fmt, spec_start, spec_len);
+        runtime_memcpy(safe_fmt, spec_start, spec_len);
         safe_fmt[spec_len] = '\0';
         
         size_t remaining = sizeof(buf) - buf_pos;
@@ -147,8 +148,8 @@ BValue string_sprintf_func(BValue *args, int argc, void *rt) {
                 // Integer-like specifiers: require numeric argument
                 if (arg_idx < argc && args[arg_idx].type == VAL_NUMBER) {
                     int ival = (int)args[arg_idx].as.number;
-                    snprintf(buf + buf_pos, remaining, safe_fmt, ival);
-                    buf_pos += strnlen(buf + buf_pos, remaining);
+                    runtime_snprintf(buf + buf_pos, remaining, safe_fmt, ival);
+                    buf_pos += runtime_strnlen(buf + buf_pos, remaining);
                     arg_idx++;
                 } else {
                     buf[buf_pos++] = '0';
@@ -159,8 +160,8 @@ BValue string_sprintf_func(BValue *args, int argc, void *rt) {
             case 'f': case 'e': case 'E': case 'g': case 'G':
                 // Float specifiers: require numeric argument
                 if (arg_idx < argc && args[arg_idx].type == VAL_NUMBER) {
-                    snprintf(buf + buf_pos, remaining, safe_fmt, args[arg_idx].as.number);
-                    buf_pos += strnlen(buf + buf_pos, remaining);
+                    runtime_snprintf(buf + buf_pos, remaining, safe_fmt, args[arg_idx].as.number);
+                    buf_pos += runtime_strnlen(buf + buf_pos, remaining);
                     arg_idx++;
                 } else {
                     buf[buf_pos++] = '0';
@@ -171,8 +172,8 @@ BValue string_sprintf_func(BValue *args, int argc, void *rt) {
             case 's':
                 // String specifier: require string argument
                 if (arg_idx < argc && args[arg_idx].type == VAL_STRING && args[arg_idx].as.string) {
-                    snprintf(buf + buf_pos, remaining, safe_fmt, str_data(args[arg_idx].as.string));
-                    buf_pos += strnlen(buf + buf_pos, remaining);
+                    runtime_snprintf(buf + buf_pos, remaining, safe_fmt, str_data(args[arg_idx].as.string));
+                    buf_pos += runtime_strnlen(buf + buf_pos, remaining);
                     arg_idx++;
                 } else {
                     if (arg_idx < argc) arg_idx++;
@@ -219,7 +220,7 @@ BValue string_lpad_func(BValue *args, int argc, void *rt) {
     const char *pad = str_data(args[2].as.string);
     char pchar = pad[0] ? pad[0] : ' ';
     
-    int cur_len = (int)strlen(str);
+    int cur_len = (int)runtime_strlen(str);
     if (target_len <= 0) {
         BValue res;
         res.type = VAL_STRING;
@@ -233,7 +234,7 @@ BValue string_lpad_func(BValue *args, int argc, void *rt) {
         return res;
     }
     
-    char *buf = calloc(1, target_len + 1);
+    char *buf = runtime_calloc(1, target_len + 1);
     if (!buf) {
         BValue res;
         res.type = VAL_STRING;
@@ -241,13 +242,13 @@ BValue string_lpad_func(BValue *args, int argc, void *rt) {
         return res;
     }
     int pad_len = target_len - cur_len;
-    memset(buf, pchar, pad_len);
-    memcpy(buf + pad_len, str, cur_len + 1);
+    runtime_memset(buf, pchar, pad_len);
+    runtime_memcpy(buf + pad_len, str, cur_len + 1);
     
     BValue res;
     res.type = VAL_STRING;
     res.as.string = str_create(vm_get_str(vm), buf, target_len);
-    free(buf);
+    runtime_free(buf);
     return res;
 }
 
@@ -262,7 +263,7 @@ BValue string_rpad_func(BValue *args, int argc, void *rt) {
     const char *pad = str_data(args[2].as.string);
     char pchar = pad[0] ? pad[0] : ' ';
     
-    int cur_len = (int)strlen(str);
+    int cur_len = (int)runtime_strlen(str);
     if (target_len <= 0) {
         BValue res;
         res.type = VAL_STRING;
@@ -276,21 +277,21 @@ BValue string_rpad_func(BValue *args, int argc, void *rt) {
         return res;
     }
     
-    char *buf = calloc(1, target_len + 1);
+    char *buf = runtime_calloc(1, target_len + 1);
     if (!buf) {
         BValue res;
         res.type = VAL_STRING;
         res.as.string = str_create(vm_get_str(vm), "", 0);
         return res;
     }
-    memcpy(buf, str, cur_len);
-    memset(buf + cur_len, pchar, target_len - cur_len);
+    runtime_memcpy(buf, str, cur_len);
+    runtime_memset(buf + cur_len, pchar, target_len - cur_len);
     buf[target_len] = '\0';
     
     BValue res;
     res.type = VAL_STRING;
     res.as.string = str_create(vm_get_str(vm), buf, target_len);
-    free(buf);
+    runtime_free(buf);
     return res;
 }
 
@@ -303,14 +304,14 @@ BValue string_lset_func(BValue *args, int argc, void *rt) {
     const char *str = str_data(args[0].as.string);
     int target_len = (int)args[1].as.number;
     
-    int cur_len = (int)strlen(str);
+    int cur_len = (int)runtime_strlen(str);
     if (target_len <= 0) {
         BValue res;
         res.type = VAL_STRING;
         res.as.string = str_create(vm_get_str(vm), "", 0);
         return res;
     }
-    char *buf = calloc(1, target_len + 1);
+    char *buf = runtime_calloc(1, target_len + 1);
     if (!buf) {
         BValue res;
         res.type = VAL_STRING;
@@ -318,17 +319,17 @@ BValue string_lset_func(BValue *args, int argc, void *rt) {
         return res;
     }
     if (cur_len >= target_len) {
-        memcpy(buf, str, target_len);
+        runtime_memcpy(buf, str, target_len);
     } else {
-        memcpy(buf, str, cur_len);
-        memset(buf + cur_len, ' ', target_len - cur_len);
+        runtime_memcpy(buf, str, cur_len);
+        runtime_memset(buf + cur_len, ' ', target_len - cur_len);
     }
     buf[target_len] = '\0';
     
     BValue res;
     res.type = VAL_STRING;
     res.as.string = str_create(vm_get_str(vm), buf, target_len);
-    free(buf);
+    runtime_free(buf);
     return res;
 }
 
@@ -341,14 +342,14 @@ BValue string_rset_func(BValue *args, int argc, void *rt) {
     const char *str = str_data(args[0].as.string);
     int target_len = (int)args[1].as.number;
     
-    int cur_len = (int)strlen(str);
+    int cur_len = (int)runtime_strlen(str);
     if (target_len <= 0) {
         BValue res;
         res.type = VAL_STRING;
         res.as.string = str_create(vm_get_str(vm), "", 0);
         return res;
     }
-    char *buf = calloc(1, target_len + 1);
+    char *buf = runtime_calloc(1, target_len + 1);
     if (!buf) {
         BValue res;
         res.type = VAL_STRING;
@@ -356,18 +357,18 @@ BValue string_rset_func(BValue *args, int argc, void *rt) {
         return res;
     }
     if (cur_len >= target_len) {
-        memcpy(buf, str + (cur_len - target_len), target_len);
+        runtime_memcpy(buf, str + (cur_len - target_len), target_len);
     } else {
         int pad_len = target_len - cur_len;
-        memset(buf, ' ', pad_len);
-        memcpy(buf + pad_len, str, cur_len);
+        runtime_memset(buf, ' ', pad_len);
+        runtime_memcpy(buf + pad_len, str, cur_len);
     }
     buf[target_len] = '\0';
     
     BValue res;
     res.type = VAL_STRING;
     res.as.string = str_create(vm_get_str(vm), buf, target_len);
-    free(buf);
+    runtime_free(buf);
     return res;
 }
 
@@ -376,7 +377,7 @@ static BValue string_join_func(BValue *args, int argc, void *rt) {
     BppError err_obj = {0};
     BppError *err = &err_obj;
     BValue res;
-    memset(&res, 0, sizeof(res));
+    runtime_memset(&res, 0, sizeof(res));
     if (args[0].type != VAL_ARRAY_REF || !args[0].as.string) {
         err->code = 13; err->message = "JOIN$ expects an array reference";
         vm_set_error(vm, err->code, err->message);
@@ -396,7 +397,7 @@ static BValue string_join_func(BValue *args, int argc, void *rt) {
     }
     size_t out_cap = 256;
     size_t out_len = 0;
-    char *out_buf = calloc(1, out_cap);
+    char *out_buf = runtime_calloc(1, out_cap);
     if (!out_buf) {
         err->code = 7; err->message = "Out of memory in JOIN$";
         vm_set_error(vm, err->code, err->message);
@@ -412,16 +413,16 @@ static BValue string_join_func(BValue *args, int argc, void *rt) {
             num_format_display(temp, sizeof(temp), flat[i].as.number, false, false);
             add_str = temp;
         } else if (flat[i].type == VAL_INTEGER) {
-            snprintf(temp, sizeof(temp), "%d", (int)flat[i].as.number);
+            runtime_snprintf(temp, sizeof(temp), "%d", (int)flat[i].as.number);
             add_str = temp;
         }
-        size_t add_len = strlen(add_str);
-        size_t dlen = (i > 0) ? strlen(delim) : 0;
+        size_t add_len = runtime_strlen(add_str);
+        size_t dlen = (i > 0) ? runtime_strlen(delim) : 0;
         if (out_len + add_len + dlen + 1 >= out_cap) {
             out_cap = (out_len + add_len + dlen + 1) * 2;
-            char *n = realloc(out_buf, out_cap);
+            char *n = runtime_realloc(out_buf, out_cap);
             if (!n) {
-                free(out_buf);
+                runtime_free(out_buf);
                 err->code = 7; err->message = "Out of memory in JOIN$";
                 vm_set_error(vm, err->code, err->message);
                 return res;
@@ -429,22 +430,22 @@ static BValue string_join_func(BValue *args, int argc, void *rt) {
             out_buf = n;
         }
         if (i > 0) {
-            memcpy(out_buf + out_len, delim, dlen);
+            runtime_memcpy(out_buf + out_len, delim, dlen);
             out_len += dlen;
         }
-        memcpy(out_buf + out_len, add_str, add_len);
+        runtime_memcpy(out_buf + out_len, add_str, add_len);
         out_len += add_len;
         out_buf[out_len] = '\0';
     }
     res.type = VAL_STRING;
     res.as.string = str_create(vm_get_str(vm), out_buf, out_len);
-    free(out_buf);
+    runtime_free(out_buf);
     return res;
 }
 
 void register_string_ext_functions(void) {
     FunctionEntry fe;
-    memset(&fe, 0, sizeof(fe));
+    runtime_memset(&fe, 0, sizeof(fe));
     fe.module_name = "string_ext";
     fe.overridable = 1;
     fe.category = FCAT_STRING;

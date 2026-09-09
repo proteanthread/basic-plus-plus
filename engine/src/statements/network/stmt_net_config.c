@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
 // NEEDS: libcore (memops.h, memops.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c)
+// NEEDS: libcore (language_descriptor.h)
 // NEEDS: libcore (strops.h, strops.c)
 // NEEDS: libengine (eval.h, eval.c, events_net.h, events_net.c)
 // NEEDS: libengine (stmt_net_config.h, stmt_nil_bead.h, stmt_nil_bead.c)
@@ -15,7 +15,7 @@
 #include "statements/network/stmt_nil_bead.h"
 #include "eval/eval.h"
 #include "vm/events_net.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/string/strops.h"
 #include "runtime/string/memops.h"
 
@@ -84,6 +84,17 @@ BppError stmt_net_config_handler(VMContext *vm, LexerContext *lex) {
     return err;
 }
 
+static const LangDesc g_net_config_desc = {
+    .name = "NET.CONFIG",
+    .category = "Hardware & Network",
+    .syntax = "NET.CONFIG iface$, ip$, netmask$, gateway$, dns$ | NET ON|OFF|STOP",
+    .description = "Configures network interface TCP/IP settings or controls network event trapping.",
+    .error_summary = "Error 5: Syntax error in NET statement",
+    .subsystem = SUBSYSTEM_SERVER,
+    .safety = SAFETY_IO,
+    .type = FEATURE_STATEMENT
+};
+
 void stmt_net_config_register(void) {
-    // Registered in VM dispatch
+    lang_desc_register(&g_net_config_desc);
 }

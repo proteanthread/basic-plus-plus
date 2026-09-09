@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (string_fn.c)
 // NEEDS: libcore (memory.h, memory.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libcore (strings.h, strings.c)
 // NEEDS: libengine (ert.h, string.c)
 // Provides runtime implementation for the ERT built-in function in BASIC++.
@@ -11,19 +11,24 @@
 // ---- Includes ----
 
 #include "eval/functions/string/format/ert.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/strings.h"
 #include "runtime/string.h"
 #include "runtime/memory.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_ert_desc = {
+    .name = "ERT$",
+    .category = "String Functions",
+    .syntax = "ERT$(error_code)",
+    .description = "Returns the standard error message text corresponding to an error number (DEC BASIC-PLUS).",
+    .error_summary = "Error 13: Type Mismatch",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_FUNCTION
+};
 void func_ert_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "ERT$",
-        .category = "String Functions",
-        .syntax = "ERT$(error_code)",
-        .help_text = "Returns the standard error message text corresponding to an error number (DEC BASIC-PLUS).",
-        .error_codes = "Error 13: Type Mismatch"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_ert_desc);
 }
 
 static const char *get_error_text(int code) {

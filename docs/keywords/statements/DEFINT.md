@@ -1,25 +1,73 @@
-# `DEFINT` Define Integer Default Type
+<!--
+Title:        DEFINT
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/statements/variables/declaration/defint.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Keyword Definition
+# `DEFINT` Keyword Reference
 
-The `DEFINT` statement declares that all variable identifiers beginning with the specified letter(s) or letter ranges default to integer variables (`%` / 64-bit signed integers in standard BASIC++) when declared or referenced without an explicit type suffix.
+## Source Header
 
-### Syntax Signatures:
-```basic
-DEFINT letter_range [, letter_range2, ...]
+```c
+// FILENAME: defint.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore (ctype.h, ctype.c, language_descriptor.h)
+// NEEDS: libcore (string.h, variables.h, variables.c)
+// NEEDS: libengine (defint.h, string.c)
+// Provides runtime implementation for the DEFINT statement in BASIC++.
+//
+// ---- Includes ----
 ```
 
-### Operational Rules:
-- Declares that un-suffixed variables starting with the given letters will be stored as integer values.
-- Truncates/rounds floating-point assignments to integer precision.
-- Overridden by explicit suffixes (`!`, `#`, `$`).
+## 1. Description & Usage
+
+Sets default type of variables beginning with specified letters to integer.
+
+## 2. Syntax
+
+```basic
+DEFINT letter_range [, letter_range...]
+```
+
+## 3. Code Example
+
+```basic
+10 REM DEFINT Demonstration
+20 PRINT "DEFINT executed successfully."
+```
+
+## 4. Error Conditions
+
+Error 2: Syntax Error
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Variables & Types
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_SAFE
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 DEFINT I-N : REM Fortran/BASIC classic integer convention
-20 I = 42 : J = 10
-30 PRINT "I / J = "; I \ J; " (integer division)"
-```
+| Field | Value |
+|---|---|
+| Name | DEFINT |
+| Category | Variables & Types |
+| Syntax | DEFINT letter_range [, letter_range...] |
+| Description | Sets default type of variables beginning with specified letters to integer. |
+| Error Summary | Error 2: Syntax Error |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_SAFE |
+| Feature Type | FEATURE_STATEMENT |
+| Delimiter Mask | none |
+| Compatibility | none |
+| Since Version | none |
+| Source File | engine/src/statements/variables/declaration/defint.c |

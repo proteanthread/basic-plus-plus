@@ -1,26 +1,75 @@
-# `PRINT` Formatted Console and File Output Statement
+<!--
+Title:        PRINT
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/statements/core/io/print.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Keyword Definition
+# `PRINT` Keyword Reference
 
-Outputs text, numeric values, and expressions to the screen console, line printer, or open file channel.
+## Source Header
 
-### Syntax Signatures:
-```basic
-PRINT [#filenum%,] [USING format_string$;] [expression [{; | ,}] ...]
+```c
+// FILENAME: print.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore (dialect.h, dialect.c, math.h)
+// NEEDS: libcore (language_descriptor.h)
+// NEEDS: libcore (num_format.h, num_format.c, string.h, using.h)
+// NEEDS: libengine (eval.h, eval.c, math.c, stmt.h, string.c)
+// NEEDS: libkernel (vcon.h, vcon.c, vdev.h, vdev.c)
+// Provides runtime implementation for the PRINT statement in BASIC++.
+//
+// ---- Includes ----
 ```
 
-### Error Handling & Boundary Conditions:
-- **Error 52 (ERR_BAD_FILE_NUMBER)**: File channel not open for output.
+## 1. Description & Usage
 
-### Operational Notes:
-- Semicolon suppresses trailing newline; comma advances to next tab stop (14 cols).
+Outputs formatted text or numeric expressions to console or file, with 2D grid and 1D buffer cursor positioning.
+
+## 2. Syntax
+
+```basic
+PRINT [#n,] [AT x, y | AT(x, y) | AT[x, y] | AT{map}] [@z | @(z) | @[z] | @{map}] [exprlist] [;|,]
+```
+
+## 3. Code Example
+
+```basic
+10 Val = PRINT [#n,] [AT 10, y | AT(10, y) | AT[10, y] | AT{map}] [@z | @(z) | @[z] | @{map}] [e10prlist] [;|,]
+20 PRINT "Result: "; Val
+```
+
+## 4. Error Conditions
+
+Error 2: Syntax Error, Error 5: Illegal Function Call, Error 13: Type Mismatch, Error 52: Bad File Number
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Console I/O
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_SAFE
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 PRINT "Name", "Score"
-20 PRINT "Alice"; 95
-30 PRINT USING "Total: $$###.##"; 49.99
-```
+| Field | Value |
+|---|---|
+| Name | PRINT |
+| Category | Console I/O |
+| Syntax | PRINT [#n,] [AT x, y \| AT(x, y) \| AT[x, y] \| AT{map}] [@z \| @(z) \| @[z] \| @{map}] [exprlist] [;\|,] |
+| Description | Outputs formatted text or numeric expressions to console or file, with 2D grid and 1D buffer cursor positioning. |
+| Error Summary | Error 2: Syntax Error, Error 5: Illegal Function Call, Error 13: Type Mismatch, Error 52: Bad File Number |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_SAFE |
+| Feature Type | FEATURE_STATEMENT |
+| Delimiter Mask | none |
+| Compatibility | none |
+| Since Version | none |
+| Source File | engine/src/statements/core/io/print.c |

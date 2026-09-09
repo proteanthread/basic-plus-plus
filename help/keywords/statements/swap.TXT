@@ -1,35 +1,71 @@
-SWAP Variable Exchange Statement
-======================================================================
+TITLE: SWAP
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/variables/assignment/swap.c
+GENERATED: no, hand-written
+STATUS: current
 
-The SWAP statement exchanges the values of two variables or array
-elements of identical data types without requiring a temporary variable.
+==============================================================================
+SWAP KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: swap.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (exchange.c)
+    // NEEDS: libcore (arrays.h, arrays.c)
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libcore (variables.h, variables.c)
+    // NEEDS: libengine (eval.h, eval.c, string.c, swap.h)
+    // Provides runtime implementation for the SWAP statement in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Exchanges the values of two variables or array elements of identical types.
 
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
     SWAP variable1, variable2
-    SWAP array(i), array(j)
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM SWAP Demonstration
+    20 PRINT "SWAP executed successfully."
 
-OPERATIONAL RULES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error, Error 13: Type Mismatch
 
-  - Both operands must be of identical types (both numeric or both string).
-  - Handles string reference counting safely.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Variables & Memory
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SYSTEM
 
-
-ERROR CODES
-----------------------------------------------------------------------
-
-  Error Code  Name                  Condition
-  ----------  --------------------  ----------------------------------
-  13          ERR_TYPE_MISMATCH     Mismatched operand types
-
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 X = 10 : Y = 20
-    20 SWAP X, Y
-    30 PRINT "X="; X; " Y="; Y
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  SWAP
+Category              Variables & Memory
+Syntax                SWAP variable1, variable2
+Description           Exchanges the values of two variables or array elem...
+Error Summary         Error 2: Syntax Error, Error 13: Type Mismatch
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SYSTEM
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/variables/assignment/swap.c

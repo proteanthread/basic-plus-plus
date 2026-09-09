@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
 // NEEDS: libcore (arrays.h, arrays.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libengine (eval.h, eval.c, lexer.h, lexer.c, option.h, string.c, vm.h)
 // NEEDS: libplatform (platform.h)
 // Provides runtime implementation for the OPTION statement in BASIC++.
@@ -15,30 +15,35 @@
 #include "lexer/lexer.h"
 #include "eval/eval.h"
 #include "runtime/arrays.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "platform/platform.h"
-#include <string.h>
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_option_desc = {
+    .name = "OPTION",
+    .category = "Variables & Memory",
+    .syntax = "OPTION BASE {0 | 1} | OPTION EXPLICIT",
+    .description = "Sets minimum subscript array indexing base (0 or 1) or enforces explicit variable declaration.",
+    .error_summary = "Error 2: Syntax Error, Error 5: Illegal Function Call",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SYSTEM,
+    .type = FEATURE_STATEMENT
+};
 
 void stmt_option_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "OPTION",
-        .category = "Variables & Memory",
-        .syntax = "OPTION BASE {0 | 1} | OPTION EXPLICIT",
-        .help_text = "Sets minimum subscript array indexing base (0 or 1) or enforces explicit variable declaration.",
-        .error_codes = "Error 2: Syntax Error, Error 5: Illegal Function Call"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_option_desc);
 }
 
 BppError stmt_option_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BppToken tok = lex_next(lex);
     if (tok.type == TOK_IDENT || tok.type == TOK_KEYWORD) {
         char kw[32];
         if (tok.length >= sizeof(kw)) tok.length = sizeof(kw) - 1;
-        memcpy(kw, tok.start, tok.length);
+        runtime_memcpy(kw, tok.start, tok.length);
         kw[tok.length] = '\0';
 
         if (platform_strcasecmp(kw, "BASE") == 0) {

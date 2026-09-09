@@ -1,47 +1,73 @@
-# `UBOUND` Upper Bound Array Function
+<!--
+Title:        UBOUND
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/eval/functions/math/linear_algebra/ubound.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Function Definition
+# `UBOUND` Keyword Reference
 
-The `UBOUND` function returns the highest valid subscript index for a designated dimension of an array. If no dimension is specified, `UBOUND` defaults to the first dimension (dimension 1).
+## Source Header
 
-### Syntax Signatures:
-```basic
-result = UBOUND(arrayname [, dimension])
+```c
+// FILENAME: ubound.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine (sys_fn.c)
+// NEEDS: libcore (arrays.h, arrays.c, math.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
+// NEEDS: libengine (math.c, string.c, ubound.h, vm.h)
+// Provides runtime implementation for the UBOUND built-in function in BASIC++
+//
+// ---- Includes ----
 ```
 
-### Operational Rules:
-- **Default Dimension**: If `dimension` is omitted, dimension 1 is queried.
-- **Dimension Parameter**: Must be an integer between 1 and the total number of dimensions in the array ($1 \le \text{dim} \le D$).
-- **Return Value**: Integer number representing the upper index limit declared in `DIM` or `REDIM`.
-- **Return Type**: `VAL_NUMBER`.
+## 1. Description & Usage
+
+Returns the highest subscript for the indicated dimension of an array.
+
+## 2. Syntax
+
+```basic
+high% = UBOUND(array [, dimension%])
+```
+
+## 3. Code Example
+
+```basic
+10 Val = high% = UBOUND(array [, dimension%])
+20 PRINT "Result: "; Val
+```
+
+## 4. Error Conditions
+
+Error 9: Subscript out of range, Error 13: Type Mismatch
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Array Functions
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_IO
 
 ---
 
-## 2. Language Dialect & Compatibility
+## LanguageDescriptor (LangDesc) Quick Reference
 
-| Dialect | Syntax | Default Base | Notes |
-|---|---|---|---|
-| **GW-BASIC / BASICA** | *None* | N/A | Not supported natively in GW-BASIC |
-| **QuickBASIC / QBASIC** | `UBOUND(A, 1)` | 1 default | Standard QuickBASIC |
-| **Visual Basic** | `UBound(A, 1)` | 1 default | Standard |
-| **BASIC++ (Master)** | `UBOUND(A [, dim])` | 1 default | Full multidimensional inspection |
-
----
-
-## 3. Examples
-
-### Iterating Over Array Bounds
-```basic
-10 DIM Values(25)
-20 FOR I = LBOUND(Values) TO UBOUND(Values)
-30   Values(I) = I * 10
-40 NEXT I
-50 PRINT "Array has "; UBOUND(Values) - LBOUND(Values) + 1; " total elements."
-```
-
-### Checking Dimensions of 2D Matrix
-```basic
-100 DIM Board(8, 8)
-110 PRINT "Rows: "; UBOUND(Board, 1)
-120 PRINT "Cols: "; UBOUND(Board, 2)
-```
+| Field | Value |
+|---|---|
+| Name | UBOUND |
+| Category | Array Functions |
+| Syntax | high% = UBOUND(array [, dimension%]) |
+| Description | Returns the highest subscript for the indicated dimension of an array. |
+| Error Summary | Error 9: Subscript out of range, Error 13: Type Mismatch |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_IO |
+| Feature Type | FEATURE_FUNCTION |
+| Delimiter Mask | none |
+| Compatibility | none |
+| Since Version | none |
+| Source File | engine/src/eval/functions/math/linear_algebra/ubound.c |

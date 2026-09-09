@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
 // NEEDS: libcore (iot_sensors.h, iot_sensors.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libcore (strops.h, strops.c)
 // NEEDS: libengine (eval.h, eval.c, lexer.h, lexer.c, string.c, vm.h)
 // Implements the NEOPIXEL statement for WS2812 addressable RGB LED control.
@@ -13,14 +13,25 @@
 #include "vm/vm.h"
 #include "lexer/lexer.h"
 #include "eval/eval.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/string/strops.h"
 #include "iot_sensors.h"
-#include <string.h>
+#include "runtime/string/memops.h"
+
+static const LangDesc g_neopixel_desc = {
+    .name = "NEOPIXEL",
+    .category = "Sensors & Actuators",
+    .syntax = "NEOPIXEL pin, index, r, g, b | NEOPIXEL.SHOW pin | NEOPIXEL.CLEAR pin",
+    .description = "Controls WS2812 / NeoPixel addressable RGB LED strip colors and latching.",
+    .error_summary = "Error 2: Syntax Error, Error 13: Type Mismatch",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SAFE,
+    .type = FEATURE_STATEMENT
+};
 
 BppError stmt_neopixel_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     bool is_show = false;
     bool is_clear = false;
@@ -85,12 +96,5 @@ BppError stmt_neopixel_handler(VMContext *vm, LexerContext *lex) {
 }
 
 void stmt_neopixel_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "NEOPIXEL",
-        .category = "Sensors & Actuators",
-        .syntax = "NEOPIXEL pin, index, r, g, b | NEOPIXEL.SHOW pin | NEOPIXEL.CLEAR pin",
-        .help_text = "Controls WS2812 / NeoPixel addressable RGB LED strip colors and latching.",
-        .error_codes = "Error 2: Syntax Error, Error 13: Type Mismatch"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_neopixel_desc);
 }

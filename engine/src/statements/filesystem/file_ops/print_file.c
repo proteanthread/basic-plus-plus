@@ -2,7 +2,7 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
-// NEEDS: libcore (file.h, file.c, micro_lib_metadata.h, micro_lib_metadata.c)
+// NEEDS: libcore (file.h, file.c, language_descriptor.h)
 // NEEDS: libcore (num_format.h, num_format.c, string.h, strings.h, strings.c)
 // NEEDS: libengine (eval.h, eval.c, lexer.h, lexer.c, print_file.h, string.c)
 // NEEDS: libengine (vm.h)
@@ -17,26 +17,33 @@
 #include "eval/eval.h"
 #include "runtime/file.h"
 #include "runtime/strings.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/num_format.h"
 #include "platform/platform.h"
-#include <string.h>
-#include <stdio.h>
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "runtime/format/snprintf.h"
+
+static const LangDesc g_print_desc = {
+    .name = "PRINT#",
+    .category = "Filesystem I/O",
+    .syntax = "PRINT #file_num, expression_list",
+    .description = "Writes sequential formatted text data to an open disk file channel.",
+    .error_summary = "Error 2: Syntax Error, Error 52: Bad File Number, Error 54: Bad File Mode",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_STATEMENT
+};
+
+void print_using_internal(VMContext *vm, LexerContext *lex, int channel);
 
 void stmt_print_file_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "PRINT#",
-        .category = "Filesystem I/O",
-        .syntax = "PRINT #file_num, expression_list",
-        .help_text = "Writes sequential formatted text data to an open disk file channel.",
-        .error_codes = "Error 2: Syntax Error, Error 52: Bad File Number, Error 54: Bad File Mode"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_print_desc);
 }
 
 BppError stmt_print_file_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BppToken hash = lex_peek(lex);
     if (hash.type == TOK_HASH) {
@@ -59,10 +66,18 @@ BppError stmt_print_file_handler(VMContext *vm, LexerContext *lex) {
         lex_next(lex);
     }
 
+    tok = lex_peek(lex);
+    if (tok.type == TOK_KEYWORD && tok.as.keyword == KW_USING) {
+        lex_next(lex); // Consume 'USING'
+        print_using_internal(vm, lex, channel);
+        return err;
+    }
+
     bool trailing_sep = false;
     size_t col = 0;
 
     char line_buf[4096];
+    runtime_memset(line_buf, 0, sizeof(line_buf));
     size_t buf_len = 0;
 
     while (true) {
@@ -190,9 +205,9 @@ BppError stmt_print_file_handler(VMContext *vm, LexerContext *lex) {
         if (val.type == VAL_NUMBER || val.type == VAL_INTEGER) {
             char num_buf[64];
             num_format_display(num_buf, sizeof(num_buf), val.as.number, true, true);
-            size_t nlen = strlen(num_buf);
+            size_t nlen = runtime_strlen(num_buf);
             if (buf_len + nlen < sizeof(line_buf) - 1) {
-                memcpy(line_buf + buf_len, num_buf, nlen);
+                runtime_memcpy(line_buf + buf_len, num_buf, nlen);
                 buf_len += nlen;
             } else {
                 line_buf[buf_len] = '\0';
@@ -203,10 +218,10 @@ BppError stmt_print_file_handler(VMContext *vm, LexerContext *lex) {
             col += nlen;
         } else if (val.type == VAL_COMPLEX) {
             char cpx_buf[128];
-            snprintf(cpx_buf, sizeof(cpx_buf), "(%g, %g) ", val.as.complex_val.real, val.as.complex_val.imag);
-            size_t clen = strlen(cpx_buf);
+            runtime_snprintf(cpx_buf, sizeof(cpx_buf), "(%g, %g) ", val.as.complex_val.real, val.as.complex_val.imag);
+            size_t clen = runtime_strlen(cpx_buf);
             if (buf_len + clen < sizeof(line_buf) - 1) {
-                memcpy(line_buf + buf_len, cpx_buf, clen);
+                runtime_memcpy(line_buf + buf_len, cpx_buf, clen);
                 buf_len += clen;
             } else {
                 line_buf[buf_len] = '\0';
@@ -220,7 +235,7 @@ BppError stmt_print_file_handler(VMContext *vm, LexerContext *lex) {
             size_t slen = str_len(val.as.string);
             if (sdata && slen > 0) {
                 if (buf_len + slen < sizeof(line_buf) - 1) {
-                    memcpy(line_buf + buf_len, sdata, slen);
+                    runtime_memcpy(line_buf + buf_len, sdata, slen);
                     buf_len += slen;
                 } else {
                     line_buf[buf_len] = '\0';

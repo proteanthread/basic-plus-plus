@@ -1,21 +1,67 @@
-BASIC++ STATEMENT REFERENCE: STATIC
-======================================================================
+TITLE: STATIC
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/variable/var.c
+GENERATED: no, hand-written
+STATUS: current
 
-1. SYNTAX & DESCRIPTION
-  STATIC var1 [AS Type] [, var2 [AS Type] ...]
+==============================================================================
+STATIC KEYWORD REFERENCE
+==============================================================================
 
-Declares local procedure variables whose values persist across procedure
-invocations rather than being destroyed on exit.
+SOURCE HEADER:
+    // FILENAME: var.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community -- All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: baspp.exe, bpp.exe, bs.exe, libengine
+    // NEEDS: libcore, libkernel
+    // Implements component functionality for STATIC.
 
-2. PARAMETERS
-- var: Variable identifier.
-- Type: Optional data type specification.
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Declares procedure-local variables whose storage and values persist across
+successive invocations.
 
-3. ERROR CODES
-- Error 10 (ERR_DUPLICATE_DEFINITION): Duplicate variable in same procedure.
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    STATIC var1 [AS type] [, var2 ...]
 
-4. EXAMPLES
-  10 SUB Accumulate()
-  20   STATIC Total#
-  30   Total# = Total# + 10.5
-  40 END SUB
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM STATIC Demonstration
+    20 PRINT "STATIC executed successfully."
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       QBASIC, VB for DOS, BASIC++ Standard
+Since Version: 6.0.0
+Category:      Variables & Memory
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SAFE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  STATIC
+Category              Variables & Memory
+Syntax                STATIC var1 [AS type] [, var2 ...]
+Description           Declares procedure-local variables whose storage an...
+Error Summary         Error 2: Syntax Error
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         QBASIC, VB for DOS, BASIC++ Standard
+Since Version         6.0.0
+Source File           engine/src/variable/var.c

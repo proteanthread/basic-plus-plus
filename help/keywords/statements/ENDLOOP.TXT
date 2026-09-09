@@ -1,0 +1,71 @@
+TITLE: ENDLOOP
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/loops/conditional/endloop.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+ENDLOOP KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: endloop.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (memory.h, memory.c)
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libcore (strings.h, strings.c)
+    // NEEDS: libengine (endloop.h, eval.h, eval.c, string.c)
+    // Provides runtime implementation for the ENDLOOP statement in BASIC++.
+    //
+    // ---- Includes ----
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Terminates a BASIC09 structured LOOP...ENDLOOP block and loops back to LOOP.
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    ENDLOOP
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM ENDLOOP Demonstration
+    20 PRINT "ENDLOOP executed successfully."
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error, Error 32: ENDLOOP Without LOOP
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Looping / Control Flow
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SAFE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  ENDLOOP
+Category              Looping / Control Flow
+Syntax                ENDLOOP
+Description           Terminates a BASIC09 structured LOOP...ENDLOOP bloc...
+Error Summary         Error 2: Syntax Error, Error 32: ENDLOOP Without LOOP
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/loops/conditional/endloop.c

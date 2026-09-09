@@ -1,43 +1,74 @@
-# `REDIM` Dynamic Array Redimensioning Statement
+<!--
+Title:        REDIM
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/statements/variables/declaration/redim.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Keyword Definition
+# `REDIM` Keyword Reference
 
-The `REDIM` statement dynamically changes the size, dimensions, or bounds of an existing dynamic array during program execution. By default, `REDIM` reallocates the array memory and clears existing contents. When the `PRESERVE` modifier is used, `REDIM` resizes the last dimension of the array while preserving existing element values.
+## Source Header
 
-### Syntax Signatures:
-```basic
-REDIM [PRESERVE] arrayname(subscripts) [AS type] [, arrayname2(...)]
+```c
+// FILENAME: redim.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore (arrays.h, arrays.c)
+// NEEDS: libcore (language_descriptor.h, string.h)
+// NEEDS: libengine (dim.h, dim.c, redim.h, string.c)
+// Provides runtime implementation for the REDIM statement in BASIC++.
+//
+// ---- Includes ----
 ```
 
-### Operational Rules:
-- **Dynamic Arrays Only**: Only dynamically allocated arrays (declared with `REDIM` or `$DYNAMIC`) can be resized. Static arrays trigger Error 10 (`ERR_DUPLICATE_DEFINITION`).
-- **PRESERVE Option**: Retains existing data within common index boundaries. If dimensions change with `PRESERVE`, only the upper bound of the last dimension may be modified.
-- **Memory Allocation**: Backing buffers are safely reallocated or replaced via `realloc` / `calloc` in `engine/src/runtime/arrays.c`.
-- **String Management**: Any elements truncated during downward resizing have their strings dereferenced via `str_release()`.
+## 1. Description & Usage
+
+Changes the dimensions and size of dynamic arrays, optionally preserving existing data.
+
+## 2. Syntax
+
+```basic
+REDIM [PRESERVE] array_name(subscripts...)
+```
+
+## 3. Code Example
+
+```basic
+10 DIM Arr(10)
+20 Arr(5) = 100
+30 PRINT "Arr(5) = "; Arr(5)
+```
+
+## 4. Error Conditions
+
+Error 2: Syntax Error, Error 9: Subscript out of range
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Variables & Memory
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_SYSTEM
 
 ---
 
-## 2. Language Dialect & Compatibility
+## LanguageDescriptor (LangDesc) Quick Reference
 
-| Dialect | Syntax | PRESERVE Support | Notes |
-|---|---|---|---|
-| **GW-BASIC / BASICA** | *None* | No | Required `ERASE` then `DIM` |
-| **QuickBASIC / QBASIC** | `REDIM A(100)` | No (`$DYNAMIC` required) | Cleared data on redim |
-| **Visual Basic** | `ReDim [Preserve] A(N)` | Yes | Preserves data |
-| **BASIC++ (Master)** | `REDIM [PRESERVE] A(N)` | Yes | Native C17 dynamic array manager |
-
----
-
-## 3. Examples
-
-### Dynamically Growing a Data Buffer with PRESERVE
-```basic
-10 REDIM LogList$(10)
-20 FOR I = 1 TO 10
-30   LogList$(I) = "Entry " + NUM$(I)
-40 NEXT I
-50 REM Dynamically expand buffer to 20 items without losing 1..10
-60 REDIM PRESERVE LogList$(20)
-70 PRINT "Retained entry 5: "; LogList$(5)
-80 PRINT "New array upper bound: "; UBOUND(LogList$)
-```
+| Field | Value |
+|---|---|
+| Name | REDIM |
+| Category | Variables & Memory |
+| Syntax | REDIM [PRESERVE] array_name(subscripts...) |
+| Description | Changes the dimensions and size of dynamic arrays, optionally preserving existing data. |
+| Error Summary | Error 2: Syntax Error, Error 9: Subscript out of range |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_SYSTEM |
+| Feature Type | FEATURE_STATEMENT |
+| Delimiter Mask | none |
+| Compatibility | none |
+| Since Version | none |
+| Source File | engine/src/statements/variables/declaration/redim.c |

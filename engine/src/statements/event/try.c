@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
 // NEEDS: libcore (ctype.h, ctype.c, dialect.h, dialect.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libcore (strings.h, strings.c)
 // NEEDS: libengine (lexer.h, lexer.c, string.c, vm.h)
 // NEEDS: libkernel (config.h)
@@ -16,21 +16,29 @@
 #include "lexer/lexer.h"
 #include "runtime/strings.h"
 #include "core/dialect.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "runtime/memory/alloc.h"
+#include "runtime/ctype/ctype.h"
+
+static const LangDesc g_try_desc = {
+    .name = "TRY",
+    .category = "Event Trapping",
+    .syntax = "TRY ... CATCH err_var ... FINALLY ... END TRY",
+    .description = "Structured exception-handling block supporting TRY, CATCH, FINALLY, and END TRY.",
+    .error_summary = "Error 2: Syntax Error, Error 35: TRY Without CATCH/FINALLY",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SAFE,
+    .type = FEATURE_STATEMENT
+};
 
 void stmt_try_register(void) {
-    MicroLibMetadata meta = {
-        .name = "TRY",
-        .category = "Event Trapping",
-        .syntax = "TRY ... CATCH err_var ... FINALLY ... END TRY",
-        .help_text = "Structured exception-handling block supporting TRY, CATCH, FINALLY, and END TRY.",
-        .error_codes = "Error 2: Syntax Error, Error 35: TRY Without CATCH/FINALLY"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_try_desc);
 }
-#include <string.h>
-#include <stdlib.h>
-#include <ctype.h>
+
+
+
 
 extern BValue eval_expression(VMContext *vm, LexerContext *lex, BppError *out_err);
 extern void vm_register_alias(VMContext *vm, const char *name, const char *expansion);
@@ -38,7 +46,7 @@ extern void vm_register_alias(VMContext *vm, const char *name, const char *expan
 // TRY statement handler
 BppError stmt_try_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     (void)lex;
 
     MemoryContext *mem = vm_get_mem(vm);
@@ -134,7 +142,7 @@ BppError stmt_try_handler(VMContext *vm, LexerContext *lex) {
 // CATCH statement handler
 BppError stmt_catch_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BppTryFrame frame;
     TryStack *tstack = vm_get_try_stack(vm);
@@ -150,7 +158,7 @@ BppError stmt_catch_handler(VMContext *vm, LexerContext *lex) {
         if (tok.type == TOK_IDENT) {
             char var_name[64] = {0};
             size_t len = tok.length < sizeof(var_name) - 1 ? tok.length : sizeof(var_name) - 1;
-            memcpy(var_name, tok.start, len);
+            runtime_memcpy(var_name, tok.start, len);
             var_name[len] = '\0';
             lex_next(lex);
 
@@ -167,7 +175,7 @@ BppError stmt_catch_handler(VMContext *vm, LexerContext *lex) {
 // END TRY statement handler
 BppError stmt_end_try_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     (void)vm;
     (void)lex;
     return err;
@@ -176,7 +184,7 @@ BppError stmt_end_try_handler(VMContext *vm, LexerContext *lex) {
 // THROW statement handler
 BppError stmt_throw_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BValue code_val = eval_expression(vm, lex, &err);
     if (err.code != 0) return err;
@@ -201,15 +209,15 @@ BppError stmt_throw_handler(VMContext *vm, LexerContext *lex) {
         }
         if (msg_val.as.string) {
             const char *raw_str = str_data(msg_val.as.string);
-            strncpy(msg_buf, raw_str ? raw_str : "", sizeof(msg_buf) - 1);
+            runtime_strncpy(msg_buf, raw_str ? raw_str : "", sizeof(msg_buf) - 1);
             msg_buf[sizeof(msg_buf) - 1] = '\0';
         }
     }
 
     err.code = code;
-    char *err_msg = (char *)mem_scratch_alloc(vm_get_mem(vm), strlen(msg_buf) + 1);
+    char *err_msg = (char *)mem_scratch_alloc(vm_get_mem(vm), runtime_strlen(msg_buf) + 1);
     if (err_msg) {
-        memcpy(err_msg, msg_buf, strlen(msg_buf) + 1);
+        runtime_memcpy(err_msg, msg_buf, runtime_strlen(msg_buf) + 1);
         err.message = err_msg;
     } else {
         err.message = "User Exception";

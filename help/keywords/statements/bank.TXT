@@ -1,37 +1,69 @@
-BANK Memory Bank Selection Statement
-======================================================================
+TITLE: BANK
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/device/vdev.c
+GENERATED: no, hand-written
+STATUS: current
 
-The BANK statement selects the active 64KB memory bank in BASIC++
-segmented memory architecture.
+==============================================================================
+BANK KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: vdev.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: baspp.exe, bpp.exe, bs.exe, libboot, libcore, libengine, libkern
+    // NEEDS: libcore (alloc.h, ctype.h, hal.h, memops.h, runtime_snprintf.h, stro
+    // Implements virtual device subsystem, registry, subdevice multiplexing, and 
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Selects active expanded memory bank (EMS/XMS or retro banked RAM) for
+segmented addressing.
 
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
     BANK bank_number%
-    current_bank% = BANK()
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM BANK Demonstration
+    20 PRINT "BANK executed successfully."
 
-OPERATIONAL RULES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 5: Illegal Function Call
 
-  - Selects 64KB bank for subsequent PEEK/POKE.
-  - Bank range: 0 to RAMBANKS() - 1.
-  - Subject to security capabilities (Error 70 if restricted).
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       Commodore 128 BASIC 7.0, BASIC++ Standard
+Since Version: 6.0.0
+Category:      Hardware & Memory
+Subsystem:     SUBSYSTEM_PLATFORM
+Safety Level:  SAFETY_SAFE
 
-
-ERROR CODES
-----------------------------------------------------------------------
-
-  Error Code  Name                  Condition
-  ----------  --------------------  ----------------------------------
-  5           ERR_ILLEGAL_FUNCTION  Bank number out of range
-  70          ERR_PERMISSION_DENIED Memory access restricted
-
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 BANK 1
-    20 POKE &H1000, 255
-    30 PRINT PEEK(&H1000)
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  BANK
+Category              Hardware & Memory
+Syntax                BANK bank_number%
+Description           Selects active expanded memory bank (EMS/XMS or ret...
+Error Summary         Error 5: Illegal Function Call
+Subsystem             SUBSYSTEM_PLATFORM
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         Commodore 128 BASIC 7.0, BASIC++ Standard
+Since Version         6.0.0
+Source File           engine/src/device/vdev.c

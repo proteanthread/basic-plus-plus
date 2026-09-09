@@ -13,15 +13,17 @@
 #include "runtime/variables.h"
 #include "runtime/arrays.h"
 #include "memory/memory.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include "platform/platform.h"
+#include "runtime/format/snprintf.h"
+#include "runtime/memory/alloc.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
 
 BppError vm_state_save(VMContext *vm, const char *filename) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
-    FILE *fp = fopen(filename, "wb");
+    void *fp = platform_file_open(filename, "wb");
     if (!fp) {
         err.code = 58;
         err.message = "Failed to open state file for writing";
@@ -29,26 +31,26 @@ BppError vm_state_save(VMContext *vm, const char *filename) {
     }
 
     // 1. Header
-    fwrite("BPPSTATE", 1, 8, fp);
+    platform_file_write(fp, "BPPSTATE", 8);
     uint32_t version = 100; // 1.00
-    fwrite(&version, sizeof(version), 1, fp);
+    platform_file_write(fp, &version, sizeof(version));
 
     extern BppLineNumber vm_get_current_line(VMContext *vm);
     BppLineNumber cur_line = vm_get_current_line(vm);
-    fwrite(&cur_line, sizeof(cur_line), 1, fp);
+    platform_file_write(fp, &cur_line, sizeof(cur_line));
 
     // 2. Program Lines
     size_t count = 0;
     BppProgramLine *lines = mem_program_get_all(vm_get_mem(vm), &count);
     uint32_t line_count = (uint32_t)count;
-    fwrite(&line_count, sizeof(line_count), 1, fp);
+    platform_file_write(fp, &line_count, sizeof(line_count));
 
     for (uint32_t i = 0; i < line_count; i++) {
-        fwrite(&lines[i].line_number, sizeof(BppLineNumber), 1, fp);
-        uint32_t text_len = lines[i].text ? (uint32_t)strlen(lines[i].text) : 0;
-        fwrite(&text_len, sizeof(text_len), 1, fp);
+        platform_file_write(fp, &lines[i].line_number, sizeof(BppLineNumber));
+        uint32_t text_len = lines[i].text ? (uint32_t)runtime_strlen(lines[i].text) : 0;
+        platform_file_write(fp, &text_len, sizeof(text_len));
         if (text_len > 0) {
-            fwrite(lines[i].text, 1, text_len, fp);
+            platform_file_write(fp, lines[i].text, text_len);
         }
     }
 
@@ -56,7 +58,7 @@ BppError vm_state_save(VMContext *vm, const char *filename) {
     if (!var_serialize(vm_get_var(vm), fp)) {
         err.code = 58;
         err.message = "Failed to serialize variables";
-        fclose(fp);
+        platform_file_close(fp);
         return err;
     }
 
@@ -64,19 +66,19 @@ BppError vm_state_save(VMContext *vm, const char *filename) {
     if (!arr_serialize(vm_get_arr(vm), fp)) {
         err.code = 58;
         err.message = "Failed to serialize arrays";
-        fclose(fp);
+        platform_file_close(fp);
         return err;
     }
 
-    fclose(fp);
+    platform_file_close(fp);
     return err;
 }
 
 BppError vm_state_load(VMContext *vm, const char *filename) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
-    FILE *fp = fopen(filename, "rb");
+    void *fp = platform_file_open(filename, "rb");
     if (!fp) {
         err.code = 53;
         err.message = "Failed to open state file for reading";
@@ -85,26 +87,26 @@ BppError vm_state_load(VMContext *vm, const char *filename) {
 
     // 1. Header
     char magic[8];
-    if (fread(magic, 1, 8, fp) != 8 || memcmp(magic, "BPPSTATE", 8) != 0) {
+    if (platform_file_read(fp, magic, 8) != 8 || runtime_memcmp(magic, "BPPSTATE", 8) != 0) {
         err.code = 53;
         err.message = "Invalid state file format";
-        fclose(fp);
+        platform_file_close(fp);
         return err;
     }
 
     uint32_t version = 0;
-    if (fread(&version, sizeof(version), 1, fp) != 1 || version != 100) {
+    if (platform_file_read(fp, &version, sizeof(version)) != sizeof(version) || version != 100) {
         err.code = 53;
         err.message = "Incompatible state file version";
-        fclose(fp);
+        platform_file_close(fp);
         return err;
     }
 
     BppLineNumber cur_line = 0;
-    if (fread(&cur_line, sizeof(cur_line), 1, fp) != 1) {
+    if (platform_file_read(fp, &cur_line, sizeof(cur_line)) != sizeof(cur_line)) {
         err.code = 53;
         err.message = "Corrupted state file (line number)";
-        fclose(fp);
+        platform_file_close(fp);
         return err;
     }
     extern void vm_set_current_line(VMContext *vm, BppLineNumber line);
@@ -113,58 +115,58 @@ BppError vm_state_load(VMContext *vm, const char *filename) {
     // 2. Program Lines
     mem_program_clear(vm_get_mem(vm));
     uint32_t line_count = 0;
-    if (fread(&line_count, sizeof(line_count), 1, fp) != 1) {
+    if (platform_file_read(fp, &line_count, sizeof(line_count)) != sizeof(line_count)) {
         err.code = 53;
         err.message = "Corrupted state file (line count)";
-        fclose(fp);
+        platform_file_close(fp);
         return err;
     }
 
     for (uint32_t i = 0; i < line_count; i++) {
         BppLineNumber line_num = 0;
-        if (fread(&line_num, sizeof(line_num), 1, fp) != 1) {
+        if (platform_file_read(fp, &line_num, sizeof(line_num)) != sizeof(line_num)) {
             err.code = 53;
             err.message = "Corrupted state file (line number entry)";
-            fclose(fp);
+            platform_file_close(fp);
             return err;
         }
 
         uint32_t text_len = 0;
-        if (fread(&text_len, sizeof(text_len), 1, fp) != 1) {
+        if (platform_file_read(fp, &text_len, sizeof(text_len)) != sizeof(text_len)) {
             err.code = 53;
             err.message = "Corrupted state file (text length)";
-            fclose(fp);
+            platform_file_close(fp);
             return err;
         }
 
         char *text = NULL;
         if (text_len > 0) {
-            text = (char *)calloc(1, text_len + 1);
+            text = (char *)runtime_calloc(1, text_len + 1);
             if (!text) {
                 err.code = 53;
                 err.message = "Out of memory loading state program lines";
-                fclose(fp);
+                platform_file_close(fp);
                 return err;
             }
-            if (fread(text, 1, text_len, fp) != text_len) {
-                free(text);
+            if (platform_file_read(fp, text, text_len) != text_len) {
+                runtime_free(text);
                 err.code = 53;
                 err.message = "Corrupted state file (text data)";
-                fclose(fp);
+                platform_file_close(fp);
                 return err;
             }
             text[text_len] = '\0';
         }
 
         mem_program_insert(vm_get_mem(vm), line_num, text ? text : "");
-        if (text) free(text);
+        if (text) runtime_free(text);
     }
 
     // 3. Variables
     if (!var_deserialize(vm_get_var(vm), fp)) {
         err.code = 53;
         err.message = "Failed to deserialize variables";
-        fclose(fp);
+        platform_file_close(fp);
         return err;
     }
 
@@ -172,62 +174,62 @@ BppError vm_state_load(VMContext *vm, const char *filename) {
     if (!arr_deserialize(vm_get_arr(vm), fp)) {
         err.code = 53;
         err.message = "Failed to deserialize arrays";
-        fclose(fp);
+        platform_file_close(fp);
         return err;
     }
 
-    fclose(fp);
+    platform_file_close(fp);
     return err;
 }
 
 char *vm_state_info(VMContext *vm, const char *filename, BppError *err) {
     (void)vm;
-    if (err) memset(err, 0, sizeof(*err));
+    if (err) runtime_memset(err, 0, sizeof(*err));
 
-    FILE *fp = fopen(filename, "rb");
+    void *fp = platform_file_open(filename, "rb");
     if (!fp) {
         if (err) { err->code = 53; err->message = "Failed to open state file"; }
         return NULL;
     }
 
     char magic[8];
-    if (fread(magic, 1, 8, fp) != 8 || memcmp(magic, "BPPSTATE", 8) != 0) {
+    if (platform_file_read(fp, magic, 8) != 8 || runtime_memcmp(magic, "BPPSTATE", 8) != 0) {
         if (err) { err->code = 53; err->message = "Invalid magic bytes"; }
-        fclose(fp);
+        platform_file_close(fp);
         return NULL;
     }
 
     uint32_t version = 0;
-    if (fread(&version, sizeof(version), 1, fp) != 1) {
+    if (platform_file_read(fp, &version, sizeof(version)) != sizeof(version)) {
         if (err) { err->code = 53; err->message = "Failed to read version"; }
-        fclose(fp);
+        platform_file_close(fp);
         return NULL;
     }
 
     BppLineNumber cur_line = 0;
-    if (fread(&cur_line, sizeof(cur_line), 1, fp) != 1) {
+    if (platform_file_read(fp, &cur_line, sizeof(cur_line)) != sizeof(cur_line)) {
         if (err) { err->code = 53; err->message = "Failed to read current line"; }
-        fclose(fp);
+        platform_file_close(fp);
         return NULL;
     }
 
     uint32_t line_count = 0;
-    if (fread(&line_count, sizeof(line_count), 1, fp) != 1) {
+    if (platform_file_read(fp, &line_count, sizeof(line_count)) != sizeof(line_count)) {
         if (err) { err->code = 53; err->message = "Failed to read line count"; }
-        fclose(fp);
+        platform_file_close(fp);
         return NULL;
     }
 
-    fclose(fp);
+    platform_file_close(fp);
 
     char info_buf[256];
-    snprintf(info_buf, sizeof(info_buf), "Format: BPPSTATE, Version: %lld, Current Line: %lld, Program Lines: %u",
+    runtime_snprintf(info_buf, sizeof(info_buf), "Format: BPPSTATE, Version: %lld, Current Line: %lld, Program Lines: %u",
              (long long)version, (long long)cur_line, line_count);
 
-    size_t len = strlen(info_buf);
-    char *res = (char *)calloc(1, len + 1);
+    size_t len = runtime_strlen(info_buf);
+    char *res = (char *)runtime_calloc(1, len + 1);
     if (res) {
-        memcpy(res, info_buf, len + 1);
+        runtime_memcpy(res, info_buf, len + 1);
     }
     return res;
 }

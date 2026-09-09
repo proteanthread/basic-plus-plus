@@ -1,0 +1,69 @@
+TITLE: MUX VAR
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/variables/options/mux.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+MUX VAR KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: mux.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (pack.c, unpack.c)
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libengine (lexer.h, lexer.c, mux.h, string.c, vm.h)
+    // Provides runtime implementation for the MUX statement in BASIC++.
+    //
+    // ---- Includes ----
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Controls channel multiplexing state for virtual devices and streams.
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    MUX channel, state
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM MUX VAR Demonstration
+    20 PRINT "MUX VAR executed successfully."
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 5: Illegal Function Call
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Multiplexing & Channels
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SAFE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  MUX VAR
+Category              Multiplexing & Channels
+Syntax                MUX channel, state
+Description           Controls channel multiplexing state for virtual dev...
+Error Summary         Error 5: Illegal Function Call
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/variables/options/mux.c

@@ -60,7 +60,7 @@ void bios_pc_init(BiosContext* ctx) {
 
     // Write Authentic IBM PC 5150 Copyright Notice at 0xFE000
     const char* copyright = "(C) COPYRIGHT IBM CORP 1981. ALL RIGHTS RESERVED.";
-    size_t cpy_len = strlen(copyright);
+    size_t cpy_len = runtime_strlen(copyright);
     for (size_t i = 0; i < cpy_len; i++) {
         bios_poke_raw(ctx, 0xFE000 + (uint32_t)i, (uint8_t)copyright[i]);
     }

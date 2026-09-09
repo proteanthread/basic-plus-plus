@@ -12,31 +12,31 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libcore (string.h)
 // NEEDED BY: libcore (microplex.c)
-// NEEDED BY: libengine (abs.h, acos.h, and.h, asin.h, ast_internal.h, atan2.h)
+// NEEDED BY: libengine (abs.h, runtime_acos.h, and.h, runtime_asin.h, ast_internal.h, runtime_atan2.h)
 // NEEDED BY: libengine (atn.h, bin.h, bitcount.h, category.h, chr.h, clamp.h)
-// NEEDED BY: libengine (clock_num.h, clock_str.h, comp.h, complex_fn.h, cos.h)
+// NEEDED BY: libengine (clock_num.h, clock_str.h, comp.h, complex_fn.h, runtime_cos.h)
 // NEEDED BY: libengine (cosh.h, cot.h, csc.h, csrlin.h, date.h)
 // NEEDED BY: libengine (dispatch_internal.h, environ.h, eof_fn.h, eqv.h, erl.h)
-// NEEDED BY: libengine (err_fn.h, eval_expr_internal.h, exec_internal.h, exp.h)
-// NEEDED BY: libengine (fix.h, floor.h, fre.h, freefile.h, hex.h, hypot.h)
+// NEEDED BY: libengine (err_fn.h, eval_expr_internal.h, exec_internal.h, runtime_exp.h)
+// NEEDED BY: libengine (fix.h, runtime_floor.h, fre.h, freefile.h, hex.h, hypot.h)
 // NEEDED BY: libengine (imp.h, inkey.h, inp.h, instr.h, int.h, lbound.h)
-// NEEDED BY: libengine (lcase.h, left.h, len.h, lerp.h, loc_fn.h, lof.h, log.h)
+// NEEDED BY: libengine (lcase.h, left.h, len.h, lerp.h, loc_fn.h, lof.h, runtime_log.h)
 // NEEDED BY: libengine (log10.h, log2.h, lpos.h, ltrim.h, max.h, mid.h, min.h)
 // NEEDED BY: libengine (mod.h, not.h, oct.h, or.h, pdif.h, peek.h, pi.h)
 // NEEDED BY: libengine (point_fn.h, pos.h, readbit.h, resetbit.h, right.h)
-// NEEDED BY: libengine (rnd.h, round.h, rtrim.h, sec.h, setbit.h, sgn.h, shl.h)
-// NEEDED BY: libengine (shr.h, shuffle.h, sin.h, sinh.h, space.h, spc.h, sqr.h)
-// NEEDED BY: libengine (str.h, tab.h, tan.h, tanh.h, ticks.h, time.h, timer.h)
+// NEEDED BY: libengine (rnd.h, runtime_round.h, rtrim.h, sec.h, setbit.h, sgn.h, shl.h)
+// NEEDED BY: libengine (shr.h, shuffle.h, runtime_sin.h, sinh.h, space.h, spc.h, sqr.h)
+// NEEDED BY: libengine (str.h, tab.h, runtime_tan.h, tanh.h, ticks.h, time.h, timer.h)
 // NEEDED BY: libengine (togglebit.h, trim.h, ubound.h, ucase.h, val.h)
 // NEEDED BY: libengine (verify_fn.h, xor.h)
 // NEEDED BY: libengine (ast_eval_expr.c, ast_parse_block.c, ast_parse_expr.c)
 // NEEDED BY: libengine (ast_parse_stmt.c, category.c, eval_builtins.c, help.c)
 // NEEDED BY: libengine (helpers.c, ops.c, rpn.c)
 // NEEDS: libcore (algebra.h, alloc.h, basic.h, calendar.h, ctype.h)
-// NEEDS: libcore (float_parse.h, hal.h, memops.h, num_parse.h, snprintf.h)
+// NEEDS: libcore (float_parse.h, hal.h, memops.h, num_parse.h, runtime_snprintf.h)
 // NEEDS: libcore (strings.h, strops.h, trig.h)
 // NEEDS: libcore (algebra.c, alloc.c, basic.c, calendar.c, ctype.c)
-// NEEDS: libcore (float_parse.c, memops.c, num_parse.c, snprintf.c, strings.c)
+// NEEDS: libcore (float_parse.c, memops.c, num_parse.c, runtime_snprintf.c, strings.c)
 // NEEDS: libcore (strops.c, trig.c)
 // NEEDS: libengine (eval.h, lexer.h, vm.h)
 // NEEDS: libengine (eval.c, lexer.c)
@@ -103,24 +103,33 @@ static inline bool eval_is_zero_arg_builtin_function(const char *name) {
             runtime_strcmp(uname, "MAXNUM") == 0 || runtime_strcmp(uname, "_MAXNUM") == 0 || runtime_strcmp(uname, "MATH.MAXNUM") == 0 ||
             runtime_strcmp(uname, "EPS") == 0 || runtime_strcmp(uname, "_EPS") == 0 || runtime_strcmp(uname, "MATH.EPS") == 0 ||
             runtime_strcmp(uname, "TRUE") == 0 || runtime_strcmp(uname, "FALSE") == 0 ||
-            runtime_strcmp(uname, "TICKS") == 0 || runtime_strcmp(uname, "TI") == 0 || runtime_strcmp(uname, "TI$") == 0 ||
+            runtime_strcmp(uname, "TICKS") == 0 || runtime_strcmp(uname, "TICKS_MS") == 0 || runtime_strcmp(uname, "TICKS_US") == 0 ||
+            runtime_strcmp(uname, "TI") == 0 || runtime_strcmp(uname, "TI$") == 0 ||
             runtime_strcmp(uname, "DATE") == 0 || runtime_strcmp(uname, "TIME") == 0 || runtime_strcmp(uname, "CLOCK") == 0 || runtime_strcmp(uname, "CLOCK$") == 0 ||
-            runtime_strcmp(uname, "TZ") == 0 || runtime_strcmp(uname, "TZ$") == 0 || runtime_strcmp(uname, "TIMEZONE$") == 0 || runtime_strcmp(uname, "UTC") == 0 || runtime_strcmp(uname, "JIFFIES") == 0 ||
+            runtime_strcmp(uname, "TZ") == 0 || runtime_strcmp(uname, "TZ$") == 0 || runtime_strcmp(uname, "TIMEZONE$") == 0 ||
+            runtime_strcmp(uname, "UTC") == 0 || runtime_strcmp(uname, "UNIXTIME") == 0 || runtime_strcmp(uname, "JIFFIES") == 0 ||
             runtime_strcmp(uname, "HOSTNAME$") == 0 || runtime_strcmp(uname, "USERNAME$") == 0 ||
             runtime_strcmp(uname, "BASEDIR$") == 0 || runtime_strcmp(uname, "BASEPATH$") == 0 || runtime_strcmp(uname, "BASENAME$") == 0 ||
-            runtime_strcmp(uname, "PATH$") == 0 || runtime_strcmp(uname, "ERR$") == 0 ||
+            runtime_strcmp(uname, "WORKDIR$") == 0 || runtime_strcmp(uname, "PATH$") == 0 || runtime_strcmp(uname, "ERR$") == 0 ||
+            runtime_strcmp(uname, "MEMMAP$") == 0 || runtime_strcmp(uname, "VER") == 0 || runtime_strcmp(uname, "VERSION") == 0 ||
+            runtime_strcmp(uname, "VER$") == 0 || runtime_strcmp(uname, "VERSION$") == 0 ||
             runtime_strcmp(uname, "RECOUNT") == 0 || runtime_strcmp(uname, "STATUS") == 0 ||
-            runtime_strcmp(uname, "TIM") == 0 || runtime_strcmp(uname, "HRS") == 0 || runtime_strcmp(uname, "HOURS") == 0 ||
-            runtime_strcmp(uname, "MIN") == 0 || runtime_strcmp(uname, "MINUTES") == 0 ||
-            runtime_strcmp(uname, "SEC") == 0 || runtime_strcmp(uname, "SECONDS") == 0 ||
+            runtime_strcmp(uname, "MESG$") == 0 || runtime_strcmp(uname, "MESG") == 0 ||
+            runtime_strcmp(uname, "TIM") == 0 || runtime_strcmp(uname, "HOUR") == 0 || runtime_strcmp(uname, "HOURS") == 0 ||
+            runtime_strcmp(uname, "MINUTES") == 0 || runtime_strcmp(uname, "SECONDS") == 0 ||
             runtime_strcmp(uname, "JULIAN") == 0 || runtime_strcmp(uname, "JULIAN$") == 0 || runtime_strcmp(uname, "DAT") == 0 ||
             runtime_strcmp(uname, "DAY") == 0 || runtime_strcmp(uname, "MONTH") == 0 || runtime_strcmp(uname, "YEAR") == 0 ||
             runtime_strcmp(uname, "DAY$") == 0 || runtime_strcmp(uname, "MONTH$") == 0 ||
-            runtime_strcmp(uname, "CURDIR$") == 0 || runtime_strcmp(uname, "CURDIR") == 0 ||
             runtime_strcmp(uname, "PREFIX$") == 0 || runtime_strcmp(uname, "PREFIX") == 0 ||
             runtime_strcmp(uname, "MODDIR$") == 0 || runtime_strcmp(uname, "MODDIR") == 0 ||
+            runtime_strcmp(uname, "CURDIR$") == 0 || runtime_strcmp(uname, "CURDIR") == 0 ||
             runtime_strcmp(uname, "DIR$") == 0 || runtime_strcmp(uname, "DIR") == 0 ||
-            runtime_strcmp(uname, "FRE") == 0 || runtime_strcmp(uname, "UNIXTIME") == 0 ||
+            runtime_strcmp(uname, "FRE") == 0 || runtime_strcmp(uname, "MEM") == 0 ||
+            runtime_strcmp(uname, "BAUD") == 0 ||
+            runtime_strcmp(uname, "CPUSPEED") == 0 || runtime_strcmp(uname, "CPUSPEED$") == 0 ||
+            runtime_strcmp(uname, "SYS.CPUSPEED") == 0 || runtime_strcmp(uname, "SYS.CPUSPEED$") == 0 ||
+            runtime_strcmp(uname, "CLOCKS") == 0 || runtime_strcmp(uname, "CLOCKS$") == 0 ||
+            runtime_strcmp(uname, "SYS.CLOCKS") == 0 || runtime_strcmp(uname, "SYS.CLOCKS$") == 0 ||
             runtime_strcmp(uname, "POS") == 0 || runtime_strcmp(uname, "LPOS") == 0);
 }
 
@@ -174,7 +183,7 @@ bool eval_is_builtin_function(const char *name);
 // @brief Check if a token is a keyword representing a built-in function or operand.
 bool eval_is_builtin_function_tok(BppToken tok);
 
-// @brief Read a file's entire contents into a malloc'd string.
+// @brief Read a file's entire contents into a runtime_malloc'd string.
 // @return Heap-allocated NUL-terminated string, or NULL on failure. Caller frees.
 char *eval_read_file_to_string(const char *path);
 

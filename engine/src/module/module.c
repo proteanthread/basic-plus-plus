@@ -14,10 +14,13 @@
 #include "vm/vm.h"
 #include "memory/memory.h"
 #include "types/errors.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <ctype.h>
+#include "runtime/format/snprintf.h"
+#include "runtime/memory/alloc.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "runtime/ctype/ctype.h"
+#include "runtime/conv/float_parse.h"
+#include "platform/platform.h"
 
 typedef struct {
     BppModuleInfo info;
@@ -31,7 +34,7 @@ static int g_module_count = 0;
 static int str_iequal(const char *a, const char *b) {
     if (!a || !b) return 0;
     while (*a && *b) {
-        if (toupper((unsigned char)*a) != toupper((unsigned char)*b)) {
+        if (runtime_toupper((unsigned char)*a) != runtime_toupper((unsigned char)*b)) {
             return 0;
         }
         a++;
@@ -41,7 +44,7 @@ static int str_iequal(const char *a, const char *b) {
 }
 
 void module_system_init(void) {
-    memset(g_module_table, 0, sizeof(g_module_table));
+    runtime_memset(g_module_table, 0, sizeof(g_module_table));
     g_module_count = 0;
 }
 
@@ -146,7 +149,7 @@ const char *module_class_name(BppModuleClass cls) {
 
 void module_caps_string(unsigned int caps, char *buf, int buf_len) {
     if (!buf || buf_len <= 0) return;
-    snprintf(buf, buf_len, "0x%04X", caps);
+    runtime_snprintf(buf, buf_len, "0x%04X", caps);
 }
 
 int module_load_dynamic(struct VMContext *vm, const char *path) {
@@ -157,12 +160,12 @@ int module_load_dynamic(struct VMContext *vm, const char *path) {
 
 BppError vm_load_library_file(struct VMContext *vm, const char *filename) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     if (!vm || !filename) {
         err.code = ERR_ILLEGAL_FUNCTION_CALL;
         return err;
     }
-    FILE *fp = fopen(filename, "r");
+    void *fp = platform_file_open(filename, "r");
     if (!fp) {
         err.code = ERR_FILE_NOT_FOUND;
         return err;
@@ -170,18 +173,18 @@ BppError vm_load_library_file(struct VMContext *vm, const char *filename) {
     MemoryContext *mem = vm_get_mem(vm);
     char line_buf[1024];
     BppLineNumber auto_line = 60000;
-    while (fgets(line_buf, sizeof(line_buf), fp)) {
-        size_t len = strlen(line_buf);
+    while (platform_file_gets(line_buf, sizeof(line_buf), fp)) {
+        size_t len = runtime_strlen(line_buf);
         while (len > 0 && (line_buf[len - 1] == '\r' || line_buf[len - 1] == '\n')) {
             line_buf[--len] = '\0';
         }
         char *p = line_buf;
-        while (isspace((unsigned char)*p)) p++;
+        while (runtime_isspace((unsigned char)*p)) p++;
         if (*p != '\0') {
-            if (isdigit((unsigned char)*p)) {
-                BppLineNumber line_num = (BppLineNumber)atof(p);
-                while (isdigit((unsigned char)*p) || *p == '.') p++;
-                while (isspace((unsigned char)*p)) p++;
+            if (runtime_isdigit((unsigned char)*p)) {
+                BppLineNumber line_num = (BppLineNumber)runtime_atof(p);
+                while (runtime_isdigit((unsigned char)*p) || *p == '.') p++;
+                while (runtime_isspace((unsigned char)*p)) p++;
                 mem_lib_program_insert(mem, line_num, p);
             } else {
                 mem_lib_program_insert(mem, auto_line, p);
@@ -189,6 +192,6 @@ BppError vm_load_library_file(struct VMContext *vm, const char *filename) {
             }
         }
     }
-    fclose(fp);
+    platform_file_close(fp);
     return err;
 }

@@ -9,9 +9,12 @@
 // ---- Includes ----
 
 #include "interop/interop_marshal.h"
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
+#include "runtime/memory/alloc.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "runtime/format/snprintf.h"
+#include "runtime/conv/float_parse.h"
+#include "runtime/conv/num_parse.h"
 
 static char* interop_strdup_safe(const char* str) {
     if (str == NULL) {
@@ -21,9 +24,9 @@ static char* interop_strdup_safe(const char* str) {
     while (str[len] != '\0') {
         len++;
     }
-    char* copy = (char*)calloc(len + 1, sizeof(char));
+    char* copy = (char*)runtime_calloc(len + 1, sizeof(char));
     if (copy != NULL) {
-        memcpy(copy, str, len);
+        runtime_memcpy(copy, str, len);
     }
     return copy;
 }
@@ -70,7 +73,7 @@ int interop_value_to_number(const InteropValue* val, double* out_val) {
             return 0;
         case INTEROP_TYPE_STRING:
             if (val->as.string_val != NULL) {
-                *out_val = strtod(val->as.string_val, NULL);
+                *out_val = runtime_strtod(val->as.string_val, NULL);
                 return 0;
             }
             return -1;
@@ -83,18 +86,18 @@ int interop_value_to_string(const InteropValue* val, char** out_val) {
     if (val == NULL || out_val == NULL) return -1;
     
     char buffer[128];
-    memset(buffer, 0, sizeof(buffer));
+    runtime_memset(buffer, 0, sizeof(buffer));
     
     switch (val->type) {
         case INTEROP_TYPE_STRING:
             *out_val = interop_strdup_safe(val->as.string_val);
             return (*out_val != NULL) ? 0 : -1;
         case INTEROP_TYPE_NUMBER:
-            snprintf(buffer, sizeof(buffer), "%.14g", val->as.number_val);
+            runtime_snprintf(buffer, sizeof(buffer), "%.14g", val->as.number_val);
             *out_val = interop_strdup_safe(buffer);
             return (*out_val != NULL) ? 0 : -1;
         case INTEROP_TYPE_INTEGER:
-            snprintf(buffer, sizeof(buffer), "%lld", (long long)val->as.integer_val);
+            runtime_snprintf(buffer, sizeof(buffer), "%lld", (long long)val->as.integer_val);
             *out_val = interop_strdup_safe(buffer);
             return (*out_val != NULL) ? 0 : -1;
         case INTEROP_TYPE_BOOLEAN:
@@ -120,7 +123,7 @@ int interop_value_to_integer(const InteropValue* val, int64_t* out_val) {
             return 0;
         case INTEROP_TYPE_STRING:
             if (val->as.string_val != NULL) {
-                *out_val = (int64_t)strtoll(val->as.string_val, NULL, 10);
+                *out_val = (int64_t)runtime_strtoll(val->as.string_val, NULL, 10);
                 return 0;
             }
             return -1;
@@ -157,17 +160,17 @@ void interop_value_release(InteropValue* val) {
     if (val == NULL) return;
     
     if (val->type == INTEROP_TYPE_STRING && val->as.string_val != NULL) {
-        free(val->as.string_val);
+        runtime_free(val->as.string_val);
     }
     
-    memset(val, 0, sizeof(InteropValue));
+    runtime_memset(val, 0, sizeof(InteropValue));
     val->type = INTEROP_TYPE_NULL;
 }
 
 int interop_value_clone(const InteropValue* src, InteropValue* dst) {
     if (src == NULL || dst == NULL) return -1;
     
-    memset(dst, 0, sizeof(InteropValue));
+    runtime_memset(dst, 0, sizeof(InteropValue));
     dst->type = src->type;
     
     switch (src->type) {

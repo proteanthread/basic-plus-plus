@@ -16,6 +16,7 @@
 #include "lexer/lexer.h"
 
 BppError stmt_let_handler(VMContext *vm, LexerContext *lex);
+BppError stmt_let_handler_ex(VMContext *vm, LexerContext *lex, bool is_explicit_let, bool is_set_object_only);
 void stmt_let_register(void);
 
 #endif // STATEMENTS_VARIABLES_LET_H

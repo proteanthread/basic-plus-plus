@@ -18,7 +18,7 @@
 // NEEDED BY: libcore (file_internal.h, float_parse.c, gemini.c)
 // NEEDED BY: libcore (hal_freestanding.c, hal_sdl2.c, keyword_props.c)
 // NEEDED BY: libcore (logger.c, mem_system.c, memops.c, memory.h, metadata.c)
-// NEEDED BY: libcore (qsort.c, regex.c, segmented_mem.c, snprintf.c, sscanf.c)
+// NEEDED BY: libcore (qsort.c, regex.c, segmented_mem.c, runtime_snprintf.c, sscanf.c)
 // NEEDED BY: libcore (string.h, strops.c, struct.c, vfs.c)
 // NEEDED BY: libengine (alias.c, ast_internal.h, bios.c, bios_hal_vm.c)
 // NEEDED BY: libengine (category.c, context.c, control.c, data.c)
@@ -56,7 +56,7 @@
 // NEEDED BY: libcore (file_internal.h, float_parse.c, gemini.c)
 // NEEDED BY: libcore (hal_freestanding.c, hal_sdl2.c, keyword_props.c)
 // NEEDED BY: libcore (logger.c, mem_system.c, memops.c, memory.h, metadata.c)
-// NEEDED BY: libcore (qsort.c, regex.c, segmented_mem.c, snprintf.c, sscanf.c)
+// NEEDED BY: libcore (qsort.c, regex.c, segmented_mem.c, runtime_snprintf.c, sscanf.c)
 // NEEDED BY: libcore (string.h, strops.c, struct.c, vfs.c)
 // NEEDED BY: libengine (alias.c, ast_internal.h, bios.c, bios_hal_vm.c)
 // NEEDED BY: libengine (category.c, context.c, control.c, data.c)
@@ -94,7 +94,7 @@
 // NEEDED BY: libcore (file_internal.h, float_parse.c, gemini.c)
 // NEEDED BY: libcore (hal_freestanding.c, hal_sdl2.c, keyword_props.c)
 // NEEDED BY: libcore (logger.c, mem_system.c, memops.c, memory.h, metadata.c)
-// NEEDED BY: libcore (qsort.c, regex.c, segmented_mem.c, snprintf.c, sscanf.c)
+// NEEDED BY: libcore (qsort.c, regex.c, segmented_mem.c, runtime_snprintf.c, sscanf.c)
 // NEEDED BY: libcore (string.h, strops.c, struct.c, vfs.c)
 // NEEDED BY: libengine (alias.c, ast_internal.h, bios.c, bios_hal_vm.c)
 // NEEDED BY: libengine (category.c, context.c, control.c, data.c)
@@ -132,7 +132,7 @@
 // NEEDED BY: libcore (error.c, feature_reg.c, float_parse.c, gemini.c)
 // NEEDED BY: libcore (hal_freestanding.c, hal_sdl2.c, keyword_props.c)
 // NEEDED BY: libcore (logger.c, mem_system.c, memops.c, metadata.c, qsort.c)
-// NEEDED BY: libcore (regex.c, segmented_mem.c, snprintf.c, sscanf.c, strops.c)
+// NEEDED BY: libcore (regex.c, segmented_mem.c, runtime_snprintf.c, sscanf.c, strops.c)
 // NEEDED BY: libcore (struct.c, vfs.c)
 // NEEDED BY: libengine (ast_internal.h, dispatch_internal.h)
 // NEEDED BY: libengine (eval_expr_internal.h, eval_internal.h)
@@ -166,6 +166,8 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include "runtime/format/snprintf.h"
+#include "runtime/string/memops.h"
 
 #ifdef __cplusplus
 extern "C" {

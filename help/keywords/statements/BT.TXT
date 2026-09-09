@@ -1,0 +1,72 @@
+TITLE: BT
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/system/wireless/stmt_bluetooth.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+BT KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: stmt_bluetooth.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libcore (strops.h, strops.c, variables.h, variables.c)
+    // NEEDS: libengine (eval.h, eval.c, lexer.h, lexer.c, stmt_bluetooth.h)
+    // NEEDS: libengine (string.c, vm.h)
+    // NEEDS: libserver (iot_net.h, iot_net.c)
+    // Implements BT and BLE statements for Bluetooth Classic and BLE operations.
+    //
+    // ---- Includes ----
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Controls Bluetooth Classic Serial Port Profile (SPP) virtual COM link.
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    BT.START name$ | BT.CONNECT mac_or_name$
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM BT Demonstration
+    20 PRINT "BT executed successfully."
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error, Error 13: Type Mismatch
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Wireless & IoT
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_IO
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  BT
+Category              Wireless & IoT
+Syntax                BT.START name$ | BT.CONNECT mac_or_name$
+Description           Controls Bluetooth Classic Serial Port Profile (SPP...
+Error Summary         Error 2: Syntax Error, Error 13: Type Mismatch
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_IO
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/system/wireless/stmt_bluetooth.c

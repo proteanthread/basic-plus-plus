@@ -1,0 +1,69 @@
+TITLE: HOSTNAME
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/introspection/introspection.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+HOSTNAME KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: introspection.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (language_descriptor.h, memops.h)
+    // NEEDS: libengine (introspection.h, stmt.h)
+    // NEEDS: libkernel (security.h, vdev.h)
+    // NEEDS: libplatform (platform.h)
+    // Provides runtime implementation for system diagnostic statements in BASIC++
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Outputs the system hostname to console.
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    HOSTNAME
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM HOSTNAME Demonstration
+    20 PRINT "HOSTNAME executed successfully."
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 70: Permission Denied
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Introspection
+Subsystem:     SUBSYSTEM_PLATFORM
+Safety Level:  SAFETY_SYSTEM
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  HOSTNAME
+Category              Introspection
+Syntax                HOSTNAME
+Description           Outputs the system hostname to console.
+Error Summary         Error 70: Permission Denied
+Subsystem             SUBSYSTEM_PLATFORM
+Safety Level          SAFETY_SYSTEM
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/introspection/introspection.c

@@ -1,16 +1,71 @@
-RTRIM$ Right-Trim Whitespace Function
-======================================================================
+TITLE: RTRIM$
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/functions/string/manipulation/rtrim.c
+GENERATED: no, hand-written
+STATUS: current
 
-The RTRIM$ function removes trailing whitespace and tabs from a string.
+==============================================================================
+RTRIM$ KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: rtrim.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (string_fn.c)
+    // NEEDS: libcore (memory.h, memory.c)
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libcore (strings.h, strings.c)
+    // NEEDS: libengine (rtrim.h, string.c)
+    // Provides runtime implementation for the RTRIM built-in function in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Returns a copy of str$ with trailing whitespace removed.
 
-    trimmed$ = RTRIM$(string_expression$)
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    RTRIM$(str$)
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = RTRIM$(str$)
+    20 PRINT "Result: "; Val
 
-CODE EXAMPLES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 13: Type Mismatch (RTRIM$ expects one string argument)
 
-    10 PRINT RTRIM$("Hello   ")   : REM Outputs "Hello"
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      String Functions
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_IO
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  RTRIM$
+Category              String Functions
+Syntax                RTRIM$(str$)
+Description           Returns a copy of str$ with trailing whitespace rem...
+Error Summary         Error 13: Type Mismatch (RTRIM$ expects one string ...
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_IO
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/eval/functions/string/manipulation/rtrim.c

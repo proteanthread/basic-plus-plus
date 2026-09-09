@@ -1,23 +1,71 @@
-# `MEMMAP` Memory Mapping Statement
+<!--
+Title:        MEMMAP
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/runtime/memory/alloc.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Keyword Definition
+# `MEMMAP` Keyword Reference
 
-The `MEMMAP` statement configures virtual memory map windows, maps physical or hardware virtual device buffers into user memory banks, or prints a diagnostic memory overview.
+## Source Header
 
-### Syntax Signatures:
-```basic
-MEMMAP
-MEMMAP bank%, target_segment&, size_bytes&
+```c
+// FILENAME: alloc.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libboot, libcore, libengine, libkernel
+// NEEDS: libcore (alloc.h, memops.h, memops.c)
+// Freestanding allocator bridge implementation.
+//
+// ---- Includes ----
 ```
 
-### Operational Rules:
-- When executed without arguments, outputs the active virtual memory structure and bank allocation table to the console.
-- When given arguments, maps virtual device address spaces into the specified memory bank.
+## 1. Description & Usage
+
+Queries memory map descriptors for the specified physical or virtual memory region index.
+
+## 2. Syntax
+
+```basic
+MEMMAP(region_idx%)
+```
+
+## 3. Code Example
+
+```basic
+10 Val = MEMMAP(region_id10%)
+20 PRINT "Result: "; Val
+```
+
+## 4. Error Conditions
+
+Error 5: Illegal Function Call
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Hardware & Memory
+- **Subsystem**: SUBSYSTEM_PLATFORM
+- **Safety Level**: SAFETY_SAFE
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 MEMMAP : REM Display current memory mapping table
-```
+| Field | Value |
+|---|---|
+| Name | MEMMAP |
+| Category | Hardware & Memory |
+| Syntax | MEMMAP(region_idx%) |
+| Description | Queries memory map descriptors for the specified physical or virtual memory region index. |
+| Error Summary | Error 5: Illegal Function Call |
+| Subsystem | SUBSYSTEM_PLATFORM |
+| Safety Level | SAFETY_SAFE |
+| Feature Type | FEATURE_FUNCTION |
+| Delimiter Mask | none |
+| Compatibility | BASIC++ Standard |
+| Since Version | 6.0.0 |
+| Source File | engine/src/runtime/memory/alloc.c |

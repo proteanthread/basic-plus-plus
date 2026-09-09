@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (string_fn.c)
 // NEEDS: libcore (hal.h, memory.h, memory.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libcore (strings.h, strings.c)
 // NEEDS: libengine (lcase.h, string.c)
 // Provides runtime implementation for the LCASE built-in function in BASIC++.
@@ -11,20 +11,25 @@
 // ---- Includes ----
 
 #include "eval/functions/string/manipulation/lcase.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/strings.h"
 #include "runtime/string.h"
 #include "runtime/memory.h"
 #include "hal/hal.h"
+#include "runtime/ctype/ctype.h"
+
+static const LangDesc g_lcase_desc = {
+    .name = "LCASE$",
+    .category = "String Functions",
+    .syntax = "LCASE$(str$)",
+    .description = "Returns a copy of str$ with all uppercase letters converted to lowercase.",
+    .error_summary = "Error 13: Type Mismatch (LCASE$ expects one string argument)",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_FUNCTION
+};
 void func_lcase_register(void) {
-    MicroLibMetadata meta = {
-        .name = "LCASE$",
-        .category = "String Functions",
-        .syntax = "LCASE$(str$)",
-        .help_text = "Returns a copy of str$ with all uppercase letters converted to lowercase.",
-        .error_codes = "Error 13: Type Mismatch (LCASE$ expects one string argument)"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_lcase_desc);
 }
 
 BValue func_lcase_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err) {

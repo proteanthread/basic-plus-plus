@@ -2,7 +2,7 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libengine (eval.h, eval.c, lexer.h, lexer.c, string.c, vm.h, voice.h)
 // NEEDS: libkernel (security.h, security.c, vdev.h, vdev.c)
 // NEEDS: libplatform (platform.h)
@@ -17,23 +17,28 @@
 #include "device/vdev.h"
 #include "security/security.h"
 #include "platform/platform.h"
-#include "runtime/micro_lib_metadata.h"
-#include <string.h>
+#include "runtime/language_descriptor.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_voice_desc = {
+    .name = "VOICE",
+    .category = "Sound & Audio",
+    .syntax = "VOICE channel, waveform, attack, decay, sustain, release",
+    .description = "Configures synthesizer voice envelope parameters (ADSR) for multi-channel sound output.",
+    .error_summary = "Error 2: Syntax Error, Error 5: Illegal Function Call",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_STATEMENT
+};
 
 void stmt_voice_register(void) {
-    MicroLibMetadata meta = {
-        .name = "VOICE",
-        .category = "Sound & Audio",
-        .syntax = "VOICE channel, waveform, attack, decay, sustain, release",
-        .help_text = "Configures synthesizer voice envelope parameters (ADSR) for multi-channel sound output.",
-        .error_codes = "Error 2: Syntax Error, Error 5: Illegal Function Call"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_voice_desc);
 }
 
 BppError stmt_voice_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     if (security_check(SECOP_VDEV, 0) != 0) {
         err.code = 70;
         err.message = "Permission denied: VOICE blocked by sandbox settings";
@@ -52,7 +57,7 @@ BppError stmt_voice_handler(VMContext *vm, LexerContext *lex) {
 
 BppError stmt_noise_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     if (security_check(SECOP_VDEV, 0) != 0) {
         err.code = 70;
         err.message = "Permission denied: NOISE blocked by sandbox settings";
@@ -82,7 +87,7 @@ BppError stmt_noise_handler(VMContext *vm, LexerContext *lex) {
 
 BppError stmt_sndplay_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     if (security_check(SECOP_VDEV, 0) != 0) {
         err.code = 70;
         err.message = "Permission denied: SNDPLAY blocked by sandbox settings";
@@ -99,7 +104,7 @@ BppError stmt_sndplay_handler(VMContext *vm, LexerContext *lex) {
 
 BppError stmt_sndloop_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     if (security_check(SECOP_VDEV, 0) != 0) {
         err.code = 70;
         err.message = "Permission denied: SNDLOOP blocked by sandbox settings";
@@ -116,7 +121,7 @@ BppError stmt_sndloop_handler(VMContext *vm, LexerContext *lex) {
 
 BppError stmt_sndstop_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     (void)lex;
     if (security_check(SECOP_VDEV, 0) != 0) {
         err.code = 70;
@@ -129,7 +134,7 @@ BppError stmt_sndstop_handler(VMContext *vm, LexerContext *lex) {
 
 BppError stmt_sndpause_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     (void)lex;
     if (security_check(SECOP_VDEV, 0) != 0) {
         err.code = 70;
@@ -142,7 +147,7 @@ BppError stmt_sndpause_handler(VMContext *vm, LexerContext *lex) {
 
 BppError stmt_sndvol_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     if (security_check(SECOP_VDEV, 0) != 0) {
         err.code = 70;
         err.message = "Permission denied: SNDVOL blocked by sandbox settings";

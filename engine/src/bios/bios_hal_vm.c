@@ -59,7 +59,7 @@ static void default_tick_timer(void* user_data, uint32_t elapsed_us) {
 
 void bios_hal_init_default(BiosHAL* hal, void* user_data) {
     if (!hal) return;
-    memset(hal, 0, sizeof(BiosHAL));
+    runtime_memset(hal, 0, sizeof(BiosHAL));
     hal->user_data   = user_data;
     hal->port_in8    = default_port_in8;
     hal->port_out8   = default_port_out8;

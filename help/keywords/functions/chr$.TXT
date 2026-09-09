@@ -1,25 +1,73 @@
-CHR$ Character from ASCII Code Function
-======================================================================
+TITLE: CHR$
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/functions/string/conversion/chr.c
+GENERATED: no, hand-written
+STATUS: current
 
-The CHR$ function returns a single-character string corresponding to the
-provided ASCII code (0 to 255).
+==============================================================================
+CHR$ KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: chr.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (string_fn.c)
+    // NEEDS: libcore (memory.h, memory.c)
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libcore (strings.h, strings.c)
+    // NEEDS: libengine (chr.h, string.c, vm.h)
+    // Provides runtime implementation for the CHR built-in function in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Returns a 1-character string containing the character corresponding to ASCII
+code (0-255).
 
-    char_str$ = CHR$(code_point%)
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    CHR$(code)
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = CHR$(code)
+    20 PRINT "Result: "; Val
 
-ERROR CODES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 5: Illegal Function Call (code out of range 0-255), Error 13: Type
+Mismatch (CHR$ expects one numeric argument)
 
-  Error Code  Name                  Condition
-  ----------  --------------------  ----------------------------------
-  5           ERR_ILLEGAL_FUNCTION  Code not in range 0..255
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      String Functions
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_IO
 
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 PRINT CHR$(66)   : REM Outputs "B"
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  CHR$
+Category              String Functions
+Syntax                CHR$(code)
+Description           Returns a 1-character string containing the charact...
+Error Summary         Error 5: Illegal Function Call (code out of range 0...
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_IO
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/eval/functions/string/conversion/chr.c

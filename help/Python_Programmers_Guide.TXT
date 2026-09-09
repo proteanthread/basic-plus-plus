@@ -1,0 +1,156 @@
+Title:        Python_Programmers_Guide
+Tier:         1
+Applies to:   BASIC++ v6.5.2, all targets
+Authority:    engine/src/eval/functions/system/func_python.c,
+              engine/include/basicpp.h, engine/include/runtime/set.h,
+              source/codegen/
+Generated:    no, hand-written
+Status:       current
+
+==============================================================================
+BASIC++ FOR PYTHON PROGRAMMERS
+==============================================================================
+
+What is real, what is not, and where the two languages genuinely differ.
+
+1. READ THIS BEFORE YOU PLAN ANYTHING
+------------------------------------------------------------------------------
+
+PYTHON$ does not evaluate Python. The function is registered and has a
+reference page, and its implementation in
+engine/src/eval/functions/system/func_python.c is thirty lines that validate
+the argument is a string and then return the literal "None":
+
+    res.as.string = str_create(vm_get_str(vm), "None", 4);
+    return res;
+
+Its registry entry carries .handler = NULL. There is no CPython embedding, no
+interpreter, no Py_Initialize anywhere in the tree, and there is no
+interop_python.c in engine/src/interop/.
+
+So: BASIC++ cannot call Python today, and Python cannot call BASIC++ through
+any Python-specific path. Anything you may have read that says otherwise is
+describing an interface, not an implementation.
+
+What you can do is in section 4, and it is not nothing.
+
+2. WHAT BASIC++ OFFERS THAT CPYTHON DOES NOT
+------------------------------------------------------------------------------
+
+These are structural differences, not benchmarks.
+
+It runs freestanding. Zero libc, no operating system required. The engine
+boots on bare metal and on microcontrollers. CPython cannot do this at all,
+and it is the largest single difference between the two.
+
+Deterministic memory. Reference counting with explicit add_ref and release, an
+arena allocator, and no garbage collector. No collection pause, ever. CPython
+refcounts too but adds a cycle collector that can run at arbitrary points.
+
+It compiles ahead of time. bppc produces a native binary; trans emits source
+in other languages. The interpreter is one of three execution modes rather
+than the only one.
+
+It fits small. Memory profiles in engine/include/types/config.h go down to an
+Embedded tier. A useful CPython needs orders of magnitude more.
+
+Hardware access is a language feature. PEEK, POKE, INP, OUT, port and
+interrupt access, cycle-accurate 8088/8086 timing. In Python this is ctypes
+and a prayer.
+
+3. THE OBJECT MODEL IS THE REAL CONCEPTUAL DIFFERENCE
+------------------------------------------------------------------------------
+
+This is where a Python programmer should spend their attention.
+
+Python fuses two ideas into the class: the rule that decides what a value is,
+and the holder of the behaviour it responds to. Because they are the same
+object, every value has exactly one type.
+
+BASIC++ separates them. A group holds the membership rule and the shared
+shape; an object holds the data. One object can belong to several groups and
+be operated on differently through each. The containment is BLOCK { SET [
+GROUP ( OBJECT ) ] }, three levels standard, four the ceiling.
+
+Two things fall out of that which Python has no equivalent for:
+
+  Relational projection as a primitive. set_project extracts one field from
+  every group in a set; set_project_filter adds a predicate. That is a SELECT
+  with a WHERE, in the language. In Python it is a comprehension, because a
+  list knows nothing about the shape of its members.
+  Multiple membership without inheritance. A record that is at once a report
+  row, an audit entry and a queue message is one object in three groups. In
+  Python it is one class with three responsibilities, three wrappers, or
+  multiple inheritance.
+
+What it costs: no class hierarchy, no virtual dispatch, no access modifiers,
+and behaviour that is harder to locate because you must know which groups an
+object belongs to. Set_Based_Object_Model states the trade in full, including
+the parts that will annoy you.
+
+4. WHAT ACTUALLY WORKS FOR INTEROP TODAY
+------------------------------------------------------------------------------
+
+Transpilation. trans emits source in other languages, and the legacy tree at
+source/codegen/ contains fifteen backends including py3. Check which are wired
+into the current trans binary before relying on one; the engine's own compiler
+targets C17, and Transpiler documents the current reality.
+
+The C boundary. engine/include/basicpp.h is a complete embedding API, and
+Python reaches C through ctypes or cffi like anything else. That is the
+working path from Python to BASIC++ today, and it is a real one:
+
+    import ctypes
+    lib = ctypes.CDLL("./basicpp.dll")
+    lib.bpp_init.restype = ctypes.c_void_p
+    lib.bpp_init.argtypes = [ctypes.c_size_t]
+    ctx = lib.bpp_init(64 * 1024 * 1024)
+    lib.bpp_exec_string(ctypes.c_void_p(ctx), b'PRINT "hello from BASIC++"')
+    lib.bpp_shutdown(ctypes.c_void_p(ctx))
+
+That works because basicpp.h is a stable C ABI with an opaque context handle.
+It is not a Python binding, and nobody has wrapped it into one, but it is the
+honest answer to "how do I call BASIC++ from Python".
+
+Data exchange. bpp_set_number, bpp_set_string, bpp_get_number, bpp_get_string
+move scalars across. bpp_array_bind_view binds a host buffer as a BASIC++
+array with no copy, which is the interesting one if you have a NumPy array and
+want BASIC code to operate on it in place. Note the lifetime is yours to
+manage: the engine does not own the buffer.
+
+5. FAMILIAR THINGS, DIFFERENTLY SPELLED
+------------------------------------------------------------------------------
+
+  Python          BASIC++                     Note
+  --------------  --------------------------  --------------------------------
+  list            array, or SET               SET carries set algebra; arrays
+                                              carry OPTION BASE
+  dict            MAP, or a GROUP             A map is a group whose members
+                                              are all named
+  tuple           GROUP with ordinal members  BppGroupEntry.name may be NULL
+  class           GROUP plus its members      See section 3; there is no class
+  def             FUNCTION / SUB              DECLARE for forward declaration
+  try / except    TRY / HANDLER / RAISE       Also vintage ON ERROR GOTO
+  import          IMPORT, MODULE              See Module_Guide
+  slicing s[2:5]  MID$(s,3,3) or s[3,5]       Bracket form is the HP style
+  f-strings       PRINT USING, FORMAT$
+  complex         COMPLEX, REAL, IMAG, CONJ   Full complex math
+  %               MOD
+  //              \ or INT(a/b)
+
+6. WHERE TO GO NEXT
+------------------------------------------------------------------------------
+
+  You want                               Read
+  -------------------------------------  -------------------------------------
+  The object model in full, with its     Set_Based_Object_Model
+  costs
+  Embedding through the C ABI            C_Host_Embedding_API,
+                                         C_Programmers_Guide
+  Transpiler reality                     Transpiler
+  Modules and imports                    Module_Guide
+  Per-function reference                 docs/keywords/functions/
+
+==============================================================================
+END OF DOCUMENT
+==============================================================================

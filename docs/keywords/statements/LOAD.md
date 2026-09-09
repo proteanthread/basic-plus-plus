@@ -1,24 +1,75 @@
-# `LOAD` Program File Loading Statement
+<!--
+Title:        LOAD
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/statements/program/load.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Keyword Definition
+# `LOAD` Keyword Reference
 
-Loads a BASIC program file from disk into memory, optionally running it immediately if ', R' is appended.
+## Source Header
 
-### Syntax Signatures:
-```basic
-LOAD filename$ [, R]
+```c
+// FILENAME: load.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore (ctype.h, ctype.c, memory.h, memory.c)
+// NEEDS: libcore (language_descriptor.h, string.h)
+// NEEDS: libcore (strings.h, strings.c, variables.h, variables.c)
+// NEEDS: libengine (eval.h, eval.c, lexer.h, lexer.c, load.h, string.c, vm.h)
+// NEEDS: libkernel (errors.h, security.h, security.c, vdev.h, vdev.c)
+// Provides runtime implementation for the LOAD statement in BASIC++.
+//
+// ---- Includes ----
 ```
 
-### Error Handling & Boundary Conditions:
-- **Error 53 (ERR_FILE_NOT_FOUND)**: Specified program file does not exist.
+## 1. Description & Usage
 
-### Operational Notes:
-- Clears current variable state unless CHAIN is used.
+Loads a program file into memory from disk storage, optionally running it.
+
+## 2. Syntax
+
+```basic
+LOAD filename_expr [, R]
+```
+
+## 3. Code Example
+
+```basic
+10 REM LOAD Demonstration
+20 PRINT "LOAD executed successfully."
+```
+
+## 4. Error Conditions
+
+Error 2: Syntax Error, Error 53: File Not Found, Error 70: Permission Denied
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Program Mgmt & Editing
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_SAFE
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-LOAD "GAME.BAS", R : REM Loads and immediately executes GAME.BAS
-```
+| Field | Value |
+|---|---|
+| Name | LOAD |
+| Category | Program Mgmt & Editing |
+| Syntax | LOAD filename_expr [, R] |
+| Description | Loads a program file into memory from disk storage, optionally running it. |
+| Error Summary | Error 2: Syntax Error, Error 53: File Not Found, Error 70: Permission Denied |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_SAFE |
+| Feature Type | FEATURE_STATEMENT |
+| Delimiter Mask | none |
+| Compatibility | none |
+| Since Version | none |
+| Source File | engine/src/statements/program/load.c |

@@ -1,28 +1,73 @@
-# `LLIST` Printer Program Source Listing Command
+<!--
+Title:        LLIST
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/statements/program/llist.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Keyword Definition
+# `LLIST` Keyword Reference
 
-Outputs program source lines from memory directly to the default line printer device (LPT1).
+## Source Header
 
-### Syntax Signatures:
-```basic
-LLIST [start_line%] - [end_line%]
+```c
+// FILENAME: llist.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore (memory.h, memory.c, string.h)
+// NEEDS: libengine (eval.h, eval.c, lexer.h, lexer.c, llist.h, string.c, vm.h
+// NEEDS: libkernel (errors.h, security.h, security.c, vprinter.h, vprinter.c)
+// Provides runtime implementation for the LLIST statement in BASIC++.
+//
+// ---- Includes ----
 ```
 
-### Error Handling & Boundary Conditions:
-- **Error 25 (ERR_DEVICE_FAULT)**: Printer is offline or out of paper.
+## 1. Description & Usage
 
-### Operational Notes:
-- Routes through the built-in virtual text-to-PDF pseudo-printer driver.
-- Outputs standard PDF 1.4 documents formatted with built-in Courier font (10pt, 12pt line leading, Letter/A4 pagination).
-- Automatically saves to `<program_name>.pdf` in the current working directory, or `OUTPUT.PDF` if no program file was loaded.
+Lists program lines to the line printer device (LPT1: / virtual printer).
+
+## 2. Syntax
+
+```basic
+LLIST [start_line] [- [end_line]]
+```
+
+## 3. Code Example
+
+```basic
+10 REM LLIST Demonstration
+20 PRINT "LLIST executed successfully."
+```
+
+## 4. Error Conditions
+
+Error 5: Illegal function call
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Program Management
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_IO
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-LLIST         : REM Prints entire program listing to PDF
-LLIST 10-50   : REM Prints lines 10 to 50 to PDF
-LLIST 100-    : REM Prints from line 100 to end of program to PDF
-```
+| Field | Value |
+|---|---|
+| Name | LLIST |
+| Category | Program Management |
+| Syntax | LLIST [start_line] [- [end_line]] |
+| Description | Lists program lines to the line printer device (LPT1: / virtual printer). |
+| Error Summary | Error 5: Illegal function call |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_IO |
+| Feature Type | FEATURE_STATEMENT |
+| Delimiter Mask | none |
+| Compatibility | none |
+| Since Version | none |
+| Source File | engine/src/statements/program/llist.c |

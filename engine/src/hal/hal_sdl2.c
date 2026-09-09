@@ -221,7 +221,16 @@ void sdl2_audio_tone(uint32_t frequency_hz, uint32_t duration_ms) {
     size_t total_samples = (size_t)((double)AUDIO_SAMPLE_RATE * ((double)duration_ms / 1000.0));
     if (total_samples == 0) return;
 
-    int16_t *buf = (int16_t *)runtime_malloc(total_samples * sizeof(int16_t));
+    static int16_t s_audio_static_buf[16384];
+    size_t need_bytes = total_samples * sizeof(int16_t);
+    int16_t *buf = NULL;
+    bool is_dyn = false;
+    if (need_bytes <= sizeof(s_audio_static_buf)) {
+        buf = s_audio_static_buf;
+    } else {
+        buf = (int16_t *)runtime_calloc(1, need_bytes);
+        is_dyn = true;
+    }
     if (!buf) return;
 
     double phase = 0.0;
@@ -236,8 +245,10 @@ void sdl2_audio_tone(uint32_t frequency_hz, uint32_t duration_ms) {
         }
     }
 
-    SDL_QueueAudio(s_audio_dev, buf, (Uint32)(total_samples * sizeof(int16_t)));
-    runtime_free(buf);
+    SDL_QueueAudio(s_audio_dev, buf, (Uint32)need_bytes);
+    if (is_dyn) {
+        runtime_free(buf);
+    }
 }
 
 void sdl2_audio_stop(void) {

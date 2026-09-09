@@ -66,15 +66,15 @@ static inline bool is_tok_kw(BppToken tok, BppKeywordId kw, const char *name, si
     return false;
 }
 
-static inline double fast_int_pow(double base, int exp) {
-    if (exp == 0) return 1.0;
-    if (exp < 0) return 1.0 / fast_int_pow(base, -exp);
+static inline double fast_int_pow(double base, int runtime_exp) {
+    if (runtime_exp == 0) return 1.0;
+    if (runtime_exp < 0) return 1.0 / fast_int_pow(base, -runtime_exp);
     double res = 1.0;
     double b = base;
-    while (exp > 0) {
-        if (exp & 1) res *= b;
+    while (runtime_exp > 0) {
+        if (runtime_exp & 1) res *= b;
         b *= b;
-        exp >>= 1;
+        runtime_exp >>= 1;
     }
     return res;
 }
@@ -111,6 +111,25 @@ static inline size_t ast_format_num(char *buf, double val) {
     }
 }
 
+static inline bool is_ast_string_node(EvalAstNode *node) {
+    if (!node) return false;
+    if (node->type == AST_NODE_LITERAL && node->val.type == VAL_STRING) return true;
+    if (node->type == AST_NODE_STRING_FUNC) {
+        return (node->str_func != AST_STR_LEN &&
+                node->str_func != AST_STR_ASC &&
+                node->str_func != AST_STR_INSTR &&
+                node->str_func != AST_STR_PEEK);
+    }
+    if (node->type == AST_NODE_VARIABLE) {
+        size_t len = runtime_strlen(node->var_name);
+        return (len > 0 && node->var_name[len - 1] == '$');
+    }
+    if (node->type == AST_NODE_BINARY_OP && node->op == TOK_PLUS) {
+        return is_ast_string_node(node->left) || is_ast_string_node(node->right);
+    }
+    return false;
+}
+
 
 //
 // ---- Prototypes Across AST Micro-Modules ----
@@ -121,7 +140,11 @@ void eval_ast_flatten_concat(VMContext *vm, EvalAstNode *node, const char **part
                              BppString **to_release, size_t *scount, size_t *rcount,
                              size_t max_parts, BppError *err);
 double eval_ast_calc_binary_op(BppTokenType op, double n1, double n2);
+double eval_ast_eval_num(VMContext *vm, EvalAstNode *node, BppError *err);
+BValue eval_ast_eval_str_func(VMContext *vm, EvalAstNode *node, BppError *err);
 
+bool eval_ast_exec_assign(VMContext *vm, EvalAstNode *node, BppError *err);
+bool eval_ast_exec_ctrl(VMContext *vm, EvalAstNode *node, BppError *err);
 EvalAstNode *eval_ast_compile_subroutine(VMContext *vm, const BppProgramLine *lines, size_t count, BppLineNumber target_line);
 EvalAstNode *eval_ast_parse_expression(LexerContext *lex);
 EvalAstNode *parse_single_statement(LexerContext *lex);

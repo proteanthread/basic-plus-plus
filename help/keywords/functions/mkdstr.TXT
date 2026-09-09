@@ -1,18 +1,69 @@
-BASIC++ FUNCTION REFERENCE: MKD$ / MKDSTR
-======================================================================
+TITLE: MKDSTR
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/builtins/string_fn.c
+GENERATED: no, hand-written
+STATUS: current
 
-1. SYNTAX & DESCRIPTION
-  result$ = MKD$(double_expr#)
+==============================================================================
+MKDSTR KEYWORD REFERENCE
+==============================================================================
 
-Converts a 64-bit double-precision floating-point number into an 8-byte binary
-string. Deserialized using CVD.
+SOURCE HEADER:
+    // FILENAME: string_fn.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore, libengine
+    // Provides core logic and interface definitions for string_fn within BASIC++.
+    //
+    // ---- Includes ----
 
-2. PARAMETERS & RETURN VALUES
-- double_expr#: Numeric expression converted to double.
-- Returns: 8-byte binary string.
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Encodes a double-precision floating-point number into an 8-byte fielded binary
+string.
 
-3. ERROR CODES
-- Error 13 (ERR_TYPE_MISMATCH): Argument cannot be evaluated as numeric.
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    MKDSTR(dbl_val#) | MKD$(dbl_val#)
 
-4. EXAMPLES
-  10 LSET D$ = MKD$(3.14159265358979)
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = MKDSTR(dbl_val#) | MKD$(dbl_val#)
+    20 PRINT "Result: "; Val
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 14: Out of String Space
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       GW-BASIC, QBASIC, BASIC++ Standard
+Since Version: 6.0.0
+Category:      Binary & Byte Conversion
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_PURE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  MKDSTR
+Category              Binary & Byte Conversion
+Syntax                MKDSTR(dbl_val#) | MKD$(dbl_val#)
+Description           Encodes a double-precision floating-point number in...
+Error Summary         Error 14: Out of String Space
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_PURE
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         GW-BASIC, QBASIC, BASIC++ Standard
+Since Version         6.0.0
+Source File           engine/src/eval/builtins/string_fn.c

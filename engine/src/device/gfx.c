@@ -17,7 +17,6 @@
 #include "types/types.h"
 #include "vm/vm.h"
 #include "hal/hal.h"
-#include "runtime/memory/alloc.h"
 #include "runtime/string/memops.h"
 #include "runtime/string/strops.h"
 #include "runtime/format/snprintf.h"
@@ -281,7 +280,11 @@ int vdev_image_create(int w, int h, int mode) {
     if (slot == -1) return -1;
 
     size_t num_bytes = (size_t)w * (size_t)h * sizeof(uint32_t);
-    uint32_t *pixels = (uint32_t *)runtime_malloc(num_bytes);
+    HalContext *hal = hal_get();
+    uint32_t *pixels = NULL;
+    if (hal && hal->mem.alloc) {
+        pixels = (uint32_t *)hal->mem.alloc(num_bytes);
+    }
     if (!pixels) return -1;
     runtime_memset(pixels, 0, num_bytes);
 
@@ -300,7 +303,10 @@ int vdev_image_load(const char *filename) {
 void vdev_image_free(int handle) {
     if (handle >= 0 && handle < MAX_IMAGE_SLOTS && g_image_slots[handle].active) {
         if (g_image_slots[handle].pixels) {
-            runtime_free(g_image_slots[handle].pixels);
+            HalContext *hal = hal_get();
+            if (hal && hal->mem.free) {
+                hal->mem.free(g_image_slots[handle].pixels);
+            }
             g_image_slots[handle].pixels = NULL;
         }
         g_image_slots[handle].active = false;
@@ -321,7 +327,11 @@ int vdev_image_copy(int handle) {
     int w = g_image_slots[handle].width;
     int h = g_image_slots[handle].height;
     size_t num_bytes = (size_t)w * (size_t)h * sizeof(uint32_t);
-    uint32_t *pixels = (uint32_t *)runtime_malloc(num_bytes);
+    HalContext *hal = hal_get();
+    uint32_t *pixels = NULL;
+    if (hal && hal->mem.alloc) {
+        pixels = (uint32_t *)hal->mem.alloc(num_bytes);
+    }
     if (!pixels) return -1;
 
     runtime_memcpy(pixels, g_image_slots[handle].pixels, num_bytes);

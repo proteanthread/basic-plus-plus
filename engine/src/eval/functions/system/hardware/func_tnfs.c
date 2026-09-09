@@ -11,9 +11,19 @@
 #include "eval/functions/system/hardware/func_tnfs.h"
 #include "runtime/tnfs.h"
 #include "runtime/strings.h"
+#include "runtime/language_descriptor.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
 
-#include <stdlib.h>
-#include <string.h>
+static const LangDesc g_tnfs_dir_desc = {
+    .name = "TNFS.DIR$", .category = "Hardware & Network", .syntax = "TNFS.DIR$([path$ [, pattern$]])",
+    .description = "Retrieves directory listing from a mounted TNFS network file system.",
+    .error_summary = "None", .subsystem = SUBSYSTEM_HARDWARE, .safety = SAFETY_IO, .type = FEATURE_FUNCTION
+};
+
+void func_tnfs_register(void) {
+    lang_desc_register(&g_tnfs_dir_desc);
+}
 
 BValue func_tnfs_dir(VMContext *vm, int argc, BValue *argv, BppError *err) {
     (void)err;
@@ -32,7 +42,5 @@ BValue func_tnfs_dir(VMContext *vm, int argc, BValue *argv, BppError *err) {
         return (BValue){.type = VAL_STRING, .as.string = str_create(vm_get_str(vm), "", 0)};
     }
 
-    BValue res = (BValue){.type = VAL_STRING, .as.string = str_create(vm_get_str(vm), listing, strlen(listing))};
-    free(listing);
-    return res;
+    return (BValue){.type = VAL_STRING, .as.string = str_create(vm_get_str(vm), listing, runtime_strlen(listing))};
 }

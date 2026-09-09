@@ -8,6 +8,20 @@
 // ---- Includes ----
 
 #include "statements/matrices/mat_internal.h"
+#include "runtime/language_descriptor.h"
+#include "runtime/string/strops.h"
+#include "runtime/string/memops.h"
+
+static const LangDesc g_mat_desc = {
+    .name = "MAT",
+    .category = "Matrix Operations",
+    .syntax = "MAT var = expr",
+    .description = "Performs matrix operations including addition, subtraction, multiplication, scalar, transpose, and inverse.",
+    .error_summary = "Error 9: Subscript Out of Range, Error 13: Type Mismatch",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_STATEMENT
+};
 
 //
 // ---- Array Parsing Helpers ----
@@ -16,7 +30,7 @@ bool parse_array_name(LexerContext *lex, char *out_name, size_t max_len) {
     BppToken tok = lex_next(lex);
     if (tok.type != TOK_IDENT) return false;
     size_t len = (tok.length < max_len - 1) ? tok.length : max_len - 1;
-    memcpy(out_name, tok.start, len);
+    runtime_memcpy(out_name, tok.start, len);
     out_name[len] = '\0';
     return true;
 }
@@ -54,7 +68,7 @@ BppError stmt_mat_ops_handler(VMContext *vm, LexerContext *lex) {
 
 BppError stmt_mat_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     if (!vm || !lex) {
         err.code = 1; err.message = "Invalid context";
@@ -64,18 +78,18 @@ BppError stmt_mat_handler(VMContext *vm, LexerContext *lex) {
     BppToken tok = lex_peek(lex);
 
     if ((tok.type == TOK_KEYWORD && tok.as.keyword == KW_INPUT) ||
-        (tok.type == TOK_IDENT && tok.length == 5 && strncasecmp(tok.start, "INPUT", 5) == 0)) {
+        (tok.type == TOK_IDENT && tok.length == 5 && runtime_strncasecmp(tok.start, "INPUT", 5) == 0)) {
         lex_next(lex);
         return stmt_mat_input_handler(vm, lex);
     } else if ((tok.type == TOK_KEYWORD && tok.as.keyword == KW_PRINT) ||
-               (tok.type == TOK_IDENT && tok.length == 5 && strncasecmp(tok.start, "PRINT", 5) == 0)) {
+               (tok.type == TOK_IDENT && tok.length == 5 && runtime_strncasecmp(tok.start, "PRINT", 5) == 0)) {
         lex_next(lex);
         return stmt_mat_print_handler(vm, lex);
-    } else if (tok.type == TOK_IDENT && tok.length == 5 && strncasecmp(tok.start, "WRITE", 5) == 0) {
+    } else if (tok.type == TOK_IDENT && tok.length == 5 && runtime_strncasecmp(tok.start, "WRITE", 5) == 0) {
         lex_next(lex);
         return stmt_mat_write_handler(vm, lex);
     } else if ((tok.type == TOK_KEYWORD && tok.as.keyword == KW_READ) ||
-               (tok.type == TOK_IDENT && tok.length == 4 && strncasecmp(tok.start, "READ", 4) == 0)) {
+               (tok.type == TOK_IDENT && tok.length == 4 && runtime_strncasecmp(tok.start, "READ", 4) == 0)) {
         lex_next(lex);
         return stmt_mat_read_handler(vm, lex);
     }
@@ -125,11 +139,11 @@ BppError stmt_mat_handler(VMContext *vm, LexerContext *lex) {
     BppToken rhs_tok = lex_peek(lex);
 
     bool is_zer = (rhs_tok.type == TOK_KEYWORD && rhs_tok.as.keyword == KW_ZER) ||
-                  (rhs_tok.type == TOK_IDENT && rhs_tok.length == 3 && strncasecmp(rhs_tok.start, "ZER", 3) == 0);
-    bool is_con = (rhs_tok.type == TOK_IDENT && rhs_tok.length == 3 && strncasecmp(rhs_tok.start, "CON", 3) == 0);
+                  (rhs_tok.type == TOK_IDENT && rhs_tok.length == 3 && runtime_strncasecmp(rhs_tok.start, "ZER", 3) == 0);
+    bool is_con = (rhs_tok.type == TOK_IDENT && rhs_tok.length == 3 && runtime_strncasecmp(rhs_tok.start, "CON", 3) == 0);
     bool is_idn = (rhs_tok.type == TOK_KEYWORD && rhs_tok.as.keyword == KW_IDN) ||
-                  (rhs_tok.type == TOK_IDENT && rhs_tok.length == 3 && strncasecmp(rhs_tok.start, "IDN", 3) == 0);
-    bool is_nul = (rhs_tok.type == TOK_IDENT && rhs_tok.length == 4 && strncasecmp(rhs_tok.start, "NUL$", 4) == 0);
+                  (rhs_tok.type == TOK_IDENT && rhs_tok.length == 3 && runtime_strncasecmp(rhs_tok.start, "IDN", 3) == 0);
+    bool is_nul = (rhs_tok.type == TOK_IDENT && rhs_tok.length == 4 && runtime_strncasecmp(rhs_tok.start, "NUL$", 4) == 0);
 
     if (is_zer || is_con || is_idn || is_nul) {
         lex_next(lex);
@@ -175,7 +189,7 @@ BppError stmt_mat_handler(VMContext *vm, LexerContext *lex) {
     }
 
     bool is_trn = (rhs_tok.type == TOK_KEYWORD && rhs_tok.as.keyword == KW_TRN) ||
-                  (rhs_tok.type == TOK_IDENT && rhs_tok.length == 3 && strncasecmp(rhs_tok.start, "TRN", 3) == 0);
+                  (rhs_tok.type == TOK_IDENT && rhs_tok.length == 3 && runtime_strncasecmp(rhs_tok.start, "TRN", 3) == 0);
     if (is_trn) {
         lex_next(lex);
         if (lex_next(lex).type != TOK_LPAREN) {
@@ -195,7 +209,7 @@ BppError stmt_mat_handler(VMContext *vm, LexerContext *lex) {
     }
 
     bool is_inv = (rhs_tok.type == TOK_KEYWORD && rhs_tok.as.keyword == KW_INV) ||
-                  (rhs_tok.type == TOK_IDENT && rhs_tok.length == 3 && strncasecmp(rhs_tok.start, "INV", 3) == 0);
+                  (rhs_tok.type == TOK_IDENT && rhs_tok.length == 3 && runtime_strncasecmp(rhs_tok.start, "INV", 3) == 0);
     if (is_inv) {
         lex_next(lex);
         if (lex_next(lex).type != TOK_LPAREN) {
@@ -215,7 +229,7 @@ BppError stmt_mat_handler(VMContext *vm, LexerContext *lex) {
     }
 
     bool is_cross = (rhs_tok.type == TOK_KEYWORD && rhs_tok.as.keyword == KW_CROSS) ||
-                    (rhs_tok.type == TOK_IDENT && rhs_tok.length == 5 && strncasecmp(rhs_tok.start, "CROSS", 5) == 0);
+                    (rhs_tok.type == TOK_IDENT && rhs_tok.length == 5 && runtime_strncasecmp(rhs_tok.start, "CROSS", 5) == 0);
     if (is_cross) {
         lex_next(lex);
         if (lex_next(lex).type != TOK_LPAREN) {
@@ -278,7 +292,7 @@ BppError stmt_mat_handler(VMContext *vm, LexerContext *lex) {
     if (rhs_tok.type == TOK_IDENT) {
         char name_a[256];
         size_t nlen = (rhs_tok.length < sizeof(name_a) - 1) ? rhs_tok.length : sizeof(name_a) - 1;
-        memcpy(name_a, rhs_tok.start, nlen);
+        runtime_memcpy(name_a, rhs_tok.start, nlen);
         name_a[nlen] = '\0';
 
         if (arr_exists(arr, name_a)) {
@@ -292,7 +306,7 @@ BppError stmt_mat_handler(VMContext *vm, LexerContext *lex) {
                 if (!is_scalar_rhs && peek_t.type == TOK_IDENT) {
                     char check_name[256] = {0};
                     size_t clen = peek_t.length < sizeof(check_name) - 1 ? peek_t.length : sizeof(check_name) - 1;
-                    memcpy(check_name, peek_t.start, clen);
+                    runtime_memcpy(check_name, peek_t.start, clen);
                     check_name[clen] = '\0';
                     if (!arr_exists(arr, check_name)) is_scalar_rhs = true;
                 }
@@ -318,7 +332,7 @@ BppError stmt_mat_handler(VMContext *vm, LexerContext *lex) {
                 if (!is_scalar_rhs && peek_t.type == TOK_IDENT) {
                     char check_name[256] = {0};
                     size_t clen = peek_t.length < sizeof(check_name) - 1 ? peek_t.length : sizeof(check_name) - 1;
-                    memcpy(check_name, peek_t.start, clen);
+                    runtime_memcpy(check_name, peek_t.start, clen);
                     check_name[clen] = '\0';
                     if (!arr_exists(arr, check_name)) is_scalar_rhs = true;
                 }
@@ -344,7 +358,7 @@ BppError stmt_mat_handler(VMContext *vm, LexerContext *lex) {
                 if (!is_scalar_rhs && peek_t.type == TOK_IDENT) {
                     char check_name[256] = {0};
                     size_t clen = peek_t.length < sizeof(check_name) - 1 ? peek_t.length : sizeof(check_name) - 1;
-                    memcpy(check_name, peek_t.start, clen);
+                    runtime_memcpy(check_name, peek_t.start, clen);
                     check_name[clen] = '\0';
                     if (!arr_exists(arr, check_name)) is_scalar_rhs = true;
                 }
@@ -402,12 +416,5 @@ BppError stmt_mat_handler(VMContext *vm, LexerContext *lex) {
 // ---- Metadata Registration ----
 
 void stmt_mat_ops_register(void) {
-    MicroLibMetadata meta = {
-        .name = "MAT",
-        .category = "Matrix Operations",
-        .syntax = "MAT var = expr",
-        .help_text = "Performs matrix operations including addition, subtraction, multiplication, scalar, transpose, and inverse.",
-        .error_codes = "Error 9: Subscript Out of Range, Error 13: Type Mismatch"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_mat_desc);
 }

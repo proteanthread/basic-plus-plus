@@ -1,0 +1,68 @@
+TITLE: READU
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/filesystem/file_ops/readu.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+READU KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: readu.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (exec_dispatch.c)
+    // NEEDS: libengine (eval.h, lexer.h, readu.h, vm.h)
+    // Provides runtime implementation for the READU statement in BASIC++.
+    //
+    // ---- Includes ----
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Reads a record from a channel or ISAM store and sets an exclusive update lock.
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    READU [#]ch, id, var$ | READU[ch, id] var$ | READU var$ FROM [#]ch, id
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM READU Demonstration
+    20 PRINT "READU executed successfully."
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 52: Bad File Number, Error 5: Illegal Function Call
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Pick & Business BASIC
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_IO
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  READU
+Category              Pick & Business BASIC
+Syntax                READU [#]ch, id, var$ | READU[ch, id] var$ | READU ...
+Description           Reads a record from a channel or ISAM store and set...
+Error Summary         Error 52: Bad File Number, Error 5: Illegal Functio...
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_IO
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/filesystem/file_ops/readu.c

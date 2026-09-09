@@ -1,17 +1,72 @@
-STRING$ Repeated Character String Generator Function
-======================================================================
+TITLE: STRING$
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/functions/string/manipulation/string.c
+GENERATED: no, hand-written
+STATUS: current
 
-The STRING$ function creates a string containing N repeated characters.
+==============================================================================
+STRING$ KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: string.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: baspp.exe, bpp.exe, bs.exe, libboot, libcore, libengine, libext,
+    // NEEDS: libcore (hal.h, memory.h, memory.c)
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libcore (strings.h, strings.c)
+    // Implements component functionality for string.c.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Returns a string of n repeating characters specified by ASCII code or 1st char
+of string.
 
-    res$ = STRING$(count%, ascii_code%)
-    res$ = STRING$(count%, char_str$)
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    STRING$(n, char_spec)
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = STRING$(n, char_spec)
+    20 PRINT "Result: "; Val
 
-CODE EXAMPLES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 5: Illegal Function Call (n < 0), Error 13: Type Mismatch (STRING$
+argument type error)
 
-    10 PRINT STRING$(10, "*")   : REM Outputs "**********"
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      String Functions
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_IO
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  STRING$
+Category              String Functions
+Syntax                STRING$(n, char_spec)
+Description           Returns a string of n repeating characters specifie...
+Error Summary         Error 5: Illegal Function Call (n < 0), Error 13: T...
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_IO
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/eval/functions/string/manipulation/string.c

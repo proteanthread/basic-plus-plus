@@ -1,34 +1,71 @@
-# `SIZE` Data Structure Size Function
+<!--
+Title:        SIZE
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/eval/eval.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Function Definition
+# `SIZE` Keyword Reference
 
-The `SIZE` function (and alias `LEN` for non-string types or `SIZEOF`) returns the size in bytes occupied by a variable, user-defined type (`TYPE ... END TYPE`), or array element in memory.
+## Source Header
 
-### Syntax Signatures:
-```basic
-bytes% = SIZE(variable_name)
-bytes% = SIZE(type_name)
-bytes% = SIZE(array_name())
+```c
+// FILENAME: eval.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libboot, libcore, libengine, libext, libkernel, libstandard
+// NEEDS: libengine (eval_expr_internal.h)
+// Implements component functionality for eval.c.
+//
+// ---- Includes ----
 ```
 
-### Operational Rules:
-- Returns exact memory footprint in bytes:
-  - `INTEGER` (%): 8 bytes (or 2/4 in legacy modes)
-  - `SINGLE` (!): 4 bytes
-  - `DOUBLE` (#): 8 bytes
-  - `STRING` ($): Size of string reference descriptor (or length for fixed strings)
-  - User-defined `TYPE`: Sum of field sizes and struct alignment padding.
+## 1. Description & Usage
+
+Returns the memory size in bytes occupied by the specified variable, array, or user-defined type.
+
+## 2. Syntax
+
+```basic
+SIZE(var_or_type)
+```
+
+## 3. Code Example
+
+```basic
+10 Val = SIZE(var_or_type)
+20 PRINT "Result: "; Val
+```
+
+## 4. Error Conditions
+
+None
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Introspection
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_PURE
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 TYPE Particle
-20   x AS DOUBLE
-30   y AS DOUBLE
-40   mass AS DOUBLE
-50 END TYPE
-60 DIM P AS Particle
-70 PRINT "Size of Particle structure: "; SIZE(P); " bytes (expected 24)"
-```
+| Field | Value |
+|---|---|
+| Name | SIZE |
+| Category | Introspection |
+| Syntax | SIZE(var_or_type) |
+| Description | Returns the memory size in bytes occupied by the specified variable, array, or user-defined type. |
+| Error Summary | None |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_PURE |
+| Feature Type | FEATURE_FUNCTION |
+| Delimiter Mask | none |
+| Compatibility | BASIC++ Standard |
+| Since Version | 6.0.0 |
+| Source File | engine/src/eval/eval.c |

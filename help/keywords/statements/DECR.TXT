@@ -1,0 +1,68 @@
+TITLE: DECR
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/variables/assignment/decr.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+DECR KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: decr.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (common_reg_stmts.c)
+    // NEEDS: libcore (arrays.h, language_descriptor.h, strings.h, variables.h)
+    // NEEDS: libengine (decr.h, eval.h, lexer.h, vm.h)
+    // Provides runtime implementation for the DECR statement in BASIC++.
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Decrements the numeric variable or array element by step (default 1).
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    DECR variable [, step]
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM DECR Demonstration
+    20 PRINT "DECR executed successfully."
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error, Error 9: Subscript out of range, Error 13: Type
+Mismatch
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Variables & Memory
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_PURE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  DECR
+Category              Variables & Memory
+Syntax                DECR variable [, step]
+Description           Decrements the numeric variable or array element by...
+Error Summary         Error 2: Syntax Error, Error 9: Subscript out of ra...
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_PURE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/variables/assignment/decr.c

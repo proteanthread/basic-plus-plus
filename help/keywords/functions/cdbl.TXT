@@ -1,17 +1,68 @@
-CDBL Convert to Double-Precision Float Function
-======================================================================
+TITLE: CDBL
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/type.c
+GENERATED: no, hand-written
+STATUS: current
 
-The CDBL function converts a numeric value to a 64-bit double-precision
-floating-point number.
+==============================================================================
+CDBL KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: type.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libengine (type.h)
+    // Provides core logic and interface definitions for type within BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Converts numeric expression to double-precision 64-bit floating-point value.
 
-    dbl# = CDBL(numeric_expression)
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    CDBL(expr)
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = CDBL(e10pr)
+    20 PRINT "Result: "; Val
 
-CODE EXAMPLES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 6: Overflow, Error 13: Type Mismatch
 
-    10 PRINT CDBL(100)   : REM Outputs 100.0
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       GW-BASIC, QBASIC, BASIC++ Standard
+Since Version: 6.0.0
+Category:      Type Conversion
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_PURE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  CDBL
+Category              Type Conversion
+Syntax                CDBL(expr)
+Description           Converts numeric expression to double-precision 64-...
+Error Summary         Error 6: Overflow, Error 13: Type Mismatch
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_PURE
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         GW-BASIC, QBASIC, BASIC++ Standard
+Since Version         6.0.0
+Source File           engine/src/eval/type.c

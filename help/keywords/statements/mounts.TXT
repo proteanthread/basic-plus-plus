@@ -1,22 +1,75 @@
-MOUNTS Display Active VFS Mounts Statement
-==========================================
+TITLE: MOUNTS
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/runtime/vfs.c
+GENERATED: no, hand-written
+STATUS: current
 
-Displays a table of all currently active virtual filesystem mount points and devices.
+==============================================================================
+MOUNTS KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: vfs.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: baspp.exe (desktop.c)
+    // NEEDED BY: libcore (error.c, spec.c)
+    // NEEDED BY: libengine (context.c, control.c, data.c, events_internal.h)
+    // NEEDED BY: libengine (exec_internal.h, vm_internal.h)
+    // NEEDS: libcore (hal.h, memops.h, memops.c, runtime_snprintf.h, runtime_snpr
+    // NEEDS: libcore (strops.h, strops.c, vfs.h)
+    // NEEDS: libkernel (vdev.h, vdev.c)
+    // NEEDS: libplatform (platform.h)
+    // Provides core logic and interface definitions for vfs within BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Lists all currently active mounted virtual filesystem mount points and device
+types.
 
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
     MOUNTS
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM MOUNTS Demonstration
+    20 PRINT "MOUNTS executed successfully."
 
-OPERATIONAL NOTES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+None
 
-  Diagnostic utility statement.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Virtual Filesystems
+Subsystem:     SUBSYSTEM_PLATFORM
+Safety Level:  SAFETY_SAFE
 
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 MOUNTS : REM Prints active mount table
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  MOUNTS
+Category              Virtual Filesystems
+Syntax                MOUNTS
+Description           Lists all currently active mounted virtual filesyst...
+Error Summary         None
+Subsystem             SUBSYSTEM_PLATFORM
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         BASIC++ Standard
+Since Version         6.0.0
+Source File           engine/src/runtime/vfs.c

@@ -1,30 +1,36 @@
-// FILENAME: acos.c
+// FILENAME: runtime_acos.c
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (math_fn.c)
-// NEEDS: libcore (math.h, micro_lib_metadata.h, micro_lib_metadata.c, string.h)
-// NEEDS: libengine (acos.h, math.c, string.c)
+// NEEDS: libcore (math.h, language_descriptor.h, string.h)
+// NEEDS: libengine (runtime_acos.h, math.c, string.c)
 // Provides runtime implementation for the ACOS built-in function in BASIC++.
 //
 // ---- Includes ----
 
 #include "eval/functions/math/trig/acos.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/math.h"
 #include "runtime/string.h"
+#include "runtime/string/strops.h"
+#include "runtime/math/math.h"
+#include "vm/vm.h"
+
+static const LangDesc g_acos_desc = {
+    .name = "ACOS",
+    .category = "Math Functions",
+    .syntax = "ACOS(x)",
+    .description = "Returns the arccosine of x (in radians, degrees, or grads depending on angle mode) for -1.0 <= x <= 1.0.",
+    .error_summary = "Error 5: Illegal Function Call (ACOS argument out of range [-1, 1]), Error 13: Type Mismatch (ACOS expects one numeric argument)",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_PURE,
+    .type = FEATURE_FUNCTION
+};
 void func_acos_register(void) {
-    MicroLibMetadata meta = {
-        .name = "ACOS",
-        .category = "Math Functions",
-        .syntax = "ACOS(x)",
-        .help_text = "Returns the arccosine of x in radians for -1.0 <= x <= 1.0.",
-        .error_codes = "Error 5: Illegal Function Call (ACOS argument out of range [-1, 1]), Error 13: Type Mismatch (ACOS expects one numeric argument)"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_acos_desc);
 }
 
 BValue func_acos_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err) {
-    (void)vm;
     BValue res;
     res.type = VAL_NONE;
     res.as.number = 0.0;
@@ -48,5 +54,13 @@ BValue func_acos_eval(VMContext *vm, const char *uname, int arg_count, BValue *a
 
     res.type = VAL_NUMBER;
     res.as.number = runtime_acos(args[0].as.number);
+
+    int mode = vm_get_angle_mode(vm);
+    if (mode == 1) {
+        res.as.number *= (180.0 / 3.14159265358979323846);
+    } else if (mode == 2) {
+        res.as.number *= (200.0 / 3.14159265358979323846);
+    }
+
     return res;
 }

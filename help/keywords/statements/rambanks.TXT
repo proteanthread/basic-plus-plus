@@ -1,23 +1,69 @@
-RAMBANKS Available Memory Banks Function
-======================================================================
+TITLE: RAMBANKS
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/device/vdev.c
+GENERATED: no, hand-written
+STATUS: current
 
-The RAMBANKS function returns the total number of 64KB virtual memory
-banks available in the VM memory subsystem.
+==============================================================================
+RAMBANKS KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: vdev.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: baspp.exe, bpp.exe, bs.exe, libboot, libcore, libengine, libkern
+    // NEEDS: libcore (alloc.h, ctype.h, hal.h, memops.h, runtime_snprintf.h, stro
+    // Implements virtual device subsystem, registry, subdevice multiplexing, and 
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Configures or reserves the total number of banked memory pages available to
+the runtime.
 
-    count% = RAMBANKS()
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    RAMBANKS count%
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM RAMBANKS Demonstration
+    20 PRINT "RAMBANKS executed successfully."
 
-OPERATIONAL RULES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 5: Illegal Function Call
 
-  - Returns integer count of available 64KB banks.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Hardware & Memory
+Subsystem:     SUBSYSTEM_PLATFORM
+Safety Level:  SAFETY_SAFE
 
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 PRINT "Banks: "; RAMBANKS()
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  RAMBANKS
+Category              Hardware & Memory
+Syntax                RAMBANKS count%
+Description           Configures or reserves the total number of banked m...
+Error Summary         Error 5: Illegal Function Call
+Subsystem             SUBSYSTEM_PLATFORM
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         BASIC++ Standard
+Since Version         6.0.0
+Source File           engine/src/device/vdev.c

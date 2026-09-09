@@ -8,6 +8,9 @@
 // ---- Includes ----
 
 #include "runtime/file_internal.h"
+#include "runtime/format/snprintf.h"
+#include "runtime/string/strops.h"
+#include "runtime/string/memops.h"
 
 //
 // ---- Character & Stream Reading ----
@@ -271,19 +274,27 @@ int file_write_raw(FileContext *ctx, int channel, const char *data, size_t len) 
         return (hal && hal->io.file_write) ? (int)hal->io.file_write(chan->handle, data, 1, len) : -1;
     } else if (chan->vdev) {
         VDev *dev = chan->vdev;
-        if (dev->ops.puts) {
-            return dev->ops.puts(dev, data);
+        if (dev->dev_write) {
+            return dev->dev_write(dev, data, (int)len);
         }
         if (dev->ops.putc) {
             int count = 0;
             for (size_t i = 0; i < len; i++) {
-                if (dev->ops.putc(dev, data[i]) != -1) count++;
+                if (dev->ops.putc(dev, (unsigned char)data[i]) != -1) {
+                    count++;
+                }
             }
             return count;
         }
-        if (dev->dev_write) {
-            return dev->dev_write(dev, data, (int)len);
+        if (dev->ops.puts) {
+            char tmp[1024];
+            if (len < sizeof(tmp)) {
+                runtime_memcpy(tmp, data, len);
+                tmp[len] = '\0';
+                return dev->ops.puts(dev, tmp);
+            }
         }
+        return -1;
     }
     return -1;
 }

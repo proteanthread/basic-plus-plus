@@ -1,30 +1,68 @@
-PCOPY Video Display Page Copy Statement
-=======================================
+TITLE: PCOPY
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/device/gfx.c
+GENERATED: no, hand-written
+STATUS: current
 
-Copies the complete video buffer contents of one display page to another in multi-page screen modes.
+==============================================================================
+PCOPY KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: gfx.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore, libengine, libkernel, libplatform
+    // Implements virtual device and graphics rendering logic for gfx.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Copies an entire video display buffer page from source_page to dest_page.
 
-    PCOPY source_page%, destination_page%
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    PCOPY source_page, dest_page
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM PCOPY Demonstration
+    20 PRINT "PCOPY executed successfully."
 
-ERROR CONDITIONS
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 5: Illegal Function Call
 
-  - Error 5 (ERR_ILLEGAL_FUNCTION_CALL): Page index outside mode range.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       QuickBASIC, QBASIC, BASIC++ Standard
+Since Version: 6.0.0
+Category:      Graphics & Display
+Subsystem:     SUBSYSTEM_ADVANCED
+Safety Level:  SAFETY_SAFE
 
-
-OPERATIONAL NOTES
-----------------------------------------------------------------------
-
-  Enables double-buffered, flicker-free animation.
-
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 SCREEN 7, , 0, 1 : REM Screen 7: Draw to page 1, display page 0
-    20 CIRCLE (160, 100), 50, 14
-    30 PCOPY 1, 0 : REM Flip page 1 onto display page 0
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  PCOPY
+Category              Graphics & Display
+Syntax                PCOPY source_page, dest_page
+Description           Copies an entire video display buffer page from sou...
+Error Summary         Error 5: Illegal Function Call
+Subsystem             SUBSYSTEM_ADVANCED
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         QuickBASIC, QBASIC, BASIC++ Standard
+Since Version         6.0.0
+Source File           engine/src/device/gfx.c

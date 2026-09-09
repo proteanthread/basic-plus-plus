@@ -1,0 +1,71 @@
+TITLE: INTERRUPT
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/system/hardware/interrupt.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+INTERRUPT KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: interrupt.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (call.c, exec_internal.h)
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libcore (variables.h, variables.c)
+    // NEEDS: libengine (bios.h, bios.c, eval.h, eval.c, interrupt.h, map.h, map.c
+    // NEEDS: libengine (string.c, time.h, time.c)
+    // Provides runtime implementation for the INTERRUPT statement in BASIC++.
+    //
+    // ---- Includes ----
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    CALL INTERRUPT(int_num%, inregs, outregs) / INTERRUPT int_num%, inregs, outregs
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = CALL INTERRUPT(int_num%, inregs, outregs) / INTERRUPT int_num%, inregs, outregs
+    20 PRINT "Result: "; Val
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+None
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      System & Hardware
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SYSTEM
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  INTERRUPT
+Category              System & Hardware
+Syntax                CALL INTERRUPT(int_num%, inregs, outregs) / INTERRU...
+Description           none
+Error Summary         None
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SYSTEM
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/system/hardware/interrupt.c

@@ -14,14 +14,31 @@
 #include "eval/eval.h"
 #include "runtime/strings.h"
 #include "device/vdev.h"
+#include "hal/hal.h"
+#include "runtime/language_descriptor.h"
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include "runtime/format/snprintf.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_gemini_browse_desc = {
+    .name = "GEMINI.BROWSE",
+    .category = "Hardware & Network",
+    .syntax = "GEMINI.BROWSE [url$]",
+    .description = "Fetches and displays a Gemini protocol capsule page in the terminal.",
+    .error_summary = "None",
+    .subsystem = SUBSYSTEM_SERVER,
+    .safety = SAFETY_IO,
+    .type = FEATURE_STATEMENT
+};
+
+void stmt_gemini_browse_register(void) {
+    lang_desc_register(&g_gemini_browse_desc);
+}
 
 BppError stmt_gemini_browse_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     const char *target_url = "gemini://geminiprotocol.net/";
     BValue url_val = {0};
@@ -39,10 +56,9 @@ BppError stmt_gemini_browse_handler(VMContext *vm, LexerContext *lex) {
     if (doc) {
         if (vm_get_vdev(vm)) {
             vdev_puts(vm_get_vdev(vm), doc);
-        } else {
-            fputs(doc, stdout);
         }
-        free(doc);
+        HalContext *hal = hal_get();
+        if (hal && hal->mem.free) hal->mem.free(doc);
     }
 
     if (url_val.type == VAL_STRING && url_val.as.string) {

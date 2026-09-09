@@ -1,26 +1,69 @@
-REM Remark / Comment Statement
-======================================================================
+TITLE: REM
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/core/program/rem.c
+GENERATED: no, hand-written
+STATUS: current
 
-The REM statement (and shorthand ') inserts comments and documentation
-into BASIC++ source code. The interpreter ignores the rest of the line.
+==============================================================================
+REM KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: rem.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libengine (lexer.h, lexer.c, rem.h, string.c, vm.h)
+    // Provides runtime implementation for the REM statement in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Defines a remark/comment line ignored by the BASIC engine during execution.
 
-    REM comment_text
-    ' comment_text
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    REM [comment text] or ' [comment text]
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM REM Demonstration
+    20 PRINT "REM executed successfully."
 
-OPERATIONAL RULES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+None (comments never generate errors)
 
-  - All text until end of line is ignored.
-  - Colons inside REM comments do not separate statements.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Control Flow
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SAFE
 
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 REM Initialize counters
-    20 COUNT = 0 ' Start at zero
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  REM
+Category              Control Flow
+Syntax                REM [comment text] or ' [comment text]
+Description           Defines a remark/comment line ignored by the BASIC ...
+Error Summary         None (comments never generate errors)
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/core/program/rem.c

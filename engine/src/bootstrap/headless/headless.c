@@ -17,16 +17,18 @@
 #include "device/vdev.h"
 #include "debug/logger.h"
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include "runtime/format/snprintf.h"
+#include "runtime/memory/alloc.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "runtime/math/math.h"
 
 int main(int argc, char **argv) {
     platform_init();
     bool enable_logging = false;
     for (int i = 1; i < argc; i++) {
-        if (strcmp(argv[i], "--log") == 0 || strncmp(argv[i], "--log=", 6) == 0 ||
-            strcmp(argv[i], "--debug") == 0 || strcmp(argv[i], "--trace") == 0) {
+        if (runtime_strcmp(argv[i], "--runtime_log") == 0 || runtime_strncmp(argv[i], "--runtime_log=", 6) == 0 ||
+            runtime_strcmp(argv[i], "--debug") == 0 || runtime_strcmp(argv[i], "--trace") == 0) {
             enable_logging = true;
             break;
         }
@@ -45,6 +47,7 @@ int main(int argc, char **argv) {
     }
 
     if (argc > 1) {
+        vm_set_running(vm, true);
         BppError err = vm_load_program_file(vm, argv[1]);
         if (err.code != 0) {
             fprintf(stderr, "Error %d loading %s: %s\n", err.code, argv[1], err.message);
@@ -52,9 +55,13 @@ int main(int argc, char **argv) {
             platform_shutdown();
             return err.code;
         }
-        err = vm_execute_line(vm, "RUN");
-        if (err.code != 0) {
-            fprintf(stderr, "Error %d in line %lld: %s\n", err.code, (long long)vm_get_current_line(vm), err.message);
+        size_t prog_count = 0;
+        mem_program_get_all(vm_get_mem(vm), &prog_count);
+        if (prog_count > 0) {
+            err = vm_execute_line(vm, "RUN");
+            if (err.code != 0) {
+                fprintf(stderr, "Error %d in line %lld: %s\n", err.code, (long long)vm_get_current_line(vm), err.message);
+            }
         }
         boot_shutdown_vm(vm);
         platform_shutdown();

@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
 // NEEDS: libcore (memory.h, memory.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libcore (variables.h, variables.c)
 // NEEDS: libengine (eval.h, eval.c, lexer.h, lexer.c, new.h, string.c, vm.h)
 // NEEDS: libkernel (errors.h, security.h, security.c, vdev.h, vdev.c)
@@ -18,14 +18,27 @@
 #include "eval/eval.h"
 #include "memory/memory.h"
 #include "runtime/variables.h"
+#include "runtime/arrays.h"
 #include "device/vdev.h"
 #include "security/security.h"
-#include "runtime/micro_lib_metadata.h"
-#include <string.h>
+#include "runtime/language_descriptor.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_new_desc = {
+    .name = "NEW",
+    .category = "Program Mgmt & Editing",
+    .syntax = "NEW",
+    .description = "Clears the current program from memory and resets all variables.",
+    .error_summary = "Error 2: Syntax Error",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SAFE,
+    .type = FEATURE_STATEMENT
+};
 
 BppError stmt_new_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     (void)lex;
     if (!vm) {
         err.code = ERR_ILLEGAL_FUNCTION_CALL;
@@ -33,6 +46,7 @@ BppError stmt_new_handler(VMContext *vm, LexerContext *lex) {
     }
     mem_program_clear(vm_get_mem(vm));
     var_clear_all(vm_get_var(vm));
+    arr_clear_all(vm_get_arr(vm));
     vm_reset_for_run(vm);
     vm_clear_error(vm);
     vm_set_running(vm, true);
@@ -41,13 +55,6 @@ BppError stmt_new_handler(VMContext *vm, LexerContext *lex) {
 }
 
 void stmt_new_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "NEW",
-        .category = "Program Mgmt & Editing",
-        .syntax = "NEW",
-        .help_text = "Clears the current program from memory and resets all variables.",
-        .error_codes = "Error 2: Syntax Error"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_new_desc);
 }
 

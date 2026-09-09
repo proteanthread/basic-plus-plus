@@ -1,0 +1,68 @@
+TITLE: MUTEX
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/system/stmt_mutex.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+MUTEX KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: stmt_mutex.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (exec_dispatch.c)
+    // NEEDS: libengine (eval.h, lexer.h, stmt_mutex.h, vm.h)
+    // Provides runtime implementation for MUTEX concurrency statement and functio
+    //
+    // ---- Includes ----
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Creates, locks, or unlocks a virtual concurrency mutex.
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    m = MUTEX(name$) | MUTEX_LOCK(m) | MUTEX_UNLOCK(m)
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = m = MUTEX(name$) | MUTEX_LOCK(m) | MUTEX_UNLOCK(m)
+    20 PRINT "Result: "; Val
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+None
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Concurrency
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SAFE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  MUTEX
+Category              Concurrency
+Syntax                m = MUTEX(name$) | MUTEX_LOCK(m) | MUTEX_UNLOCK(m)
+Description           Creates, locks, or unlocks a virtual concurrency mu...
+Error Summary         None
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/system/stmt_mutex.c

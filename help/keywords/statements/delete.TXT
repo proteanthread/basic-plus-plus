@@ -1,32 +1,71 @@
-DELETE Program Line Deletion Command
-====================================
+TITLE: DELETE
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/program/delete.c
+GENERATED: no, hand-written
+STATUS: current
 
-Deletes a single program line or a contiguous range of lines from active program memory.
+==============================================================================
+DELETE KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: delete.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (memory.h, memory.c)
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libengine (delete.h, isam.h, isam.c, lexer.h, lexer.c, string.c, vm.
+    // NEEDS: libkernel (errors.h)
+    // Provides runtime implementation for the DELETE statement in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Deletes specified line numbers or ranges of lines from program memory.
 
-    DELETE [start_line%] - [end_line%]
-    DELETE line%
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    DELETE [start_line] [- [end_line]]
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM DELETE Demonstration
+    20 PRINT "DELETE executed successfully."
 
-ERROR CONDITIONS
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error, Error 8: Undefined Line Number
 
-  - Error 8 (ERR_UNDEFINED_LINE_NUMBER): Specified line range not found.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Program Mgmt & Editing
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SAFE
 
-
-OPERATIONAL NOTES
-----------------------------------------------------------------------
-
-  Silent execution in non-interactive batch runners.
-
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 REM Line to keep
-    20 REM Line to delete
-    30 REM Line to delete
-    DELETE 20-30
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  DELETE
+Category              Program Mgmt & Editing
+Syntax                DELETE [start_line] [- [end_line]]
+Description           Deletes specified line numbers or ranges of lines f...
+Error Summary         Error 2: Syntax Error, Error 8: Undefined Line Number
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/program/delete.c

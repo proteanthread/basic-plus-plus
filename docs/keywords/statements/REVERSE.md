@@ -1,26 +1,71 @@
-# `REVERSE` Reverse Video Display Toggle Statement
+<!--
+Title:        REVERSE
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/device/gfx.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Keyword Definition
+# `REVERSE` Keyword Reference
 
-Toggles reverse video display attribute mode on virtual console devices.
+## Source Header
 
-### Syntax Signatures:
-```basic
-REVERSE flag%
+```c
+// FILENAME: gfx.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore, libengine, libkernel, libplatform
+// Implements virtual device and graphics rendering logic for gfx.
+//
+// ---- Includes ----
 ```
 
-### Error Handling & Boundary Conditions:
-- **Error 5 (ERR_ILLEGAL_FUNCTION_CALL)**: Flag must be 0 or 1.
+## 1. Description & Usage
 
-### Operational Notes:
-- ANSI video attribute control.
+Sets or inverts character drawing and printing direction.
+
+## 2. Syntax
+
+```basic
+REVERSE [state%]
+```
+
+## 3. Code Example
+
+```basic
+10 REM REVERSE Demonstration
+20 PRINT "REVERSE executed successfully."
+```
+
+## 4. Error Conditions
+
+None
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Graphics & Display
+- **Subsystem**: SUBSYSTEM_ADVANCED
+- **Safety Level**: SAFETY_SAFE
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 REVERSE 1
-20 PRINT "Highlighted Text"
-30 REVERSE 0
-```
+| Field | Value |
+|---|---|
+| Name | REVERSE |
+| Category | Graphics & Display |
+| Syntax | REVERSE [state%] |
+| Description | Sets or inverts character drawing and printing direction. |
+| Error Summary | None |
+| Subsystem | SUBSYSTEM_ADVANCED |
+| Safety Level | SAFETY_SAFE |
+| Feature Type | FEATURE_STATEMENT |
+| Delimiter Mask | none |
+| Compatibility | BASIC++ Standard |
+| Since Version | 6.0.0 |
+| Source File | engine/src/device/gfx.c |

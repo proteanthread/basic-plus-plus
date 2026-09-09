@@ -1,0 +1,68 @@
+TITLE: TRANSLATE
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/extended/stmt_translate.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+TRANSLATE KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: stmt_translate.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (exec_dispatch.c)
+    // NEEDS: libkernel (vm.h, eval.h, lexer.h, errors.h, translate.h)
+    // Provides runtime implementation for the TRANSLATE statement (Wang 2200).
+    //
+    // ---- Includes ----
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Performs in-place character translation on a string variable (Wang 2200).
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    TRANSLATE var$ USING table$ | TRANSLATE var$, from$, to$ | TRANSLATE[from$, to$] var$
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM TRANSLATE Demonstration
+    20 PRINT "TRANSLATE executed successfully."
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error, Error 13: Type Mismatch
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Strings & Formatting
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SAFE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  TRANSLATE
+Category              Strings & Formatting
+Syntax                TRANSLATE var$ USING table$ | TRANSLATE var$, from$...
+Description           Performs in-place character translation on a string...
+Error Summary         Error 2: Syntax Error, Error 13: Type Mismatch
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/extended/stmt_translate.c

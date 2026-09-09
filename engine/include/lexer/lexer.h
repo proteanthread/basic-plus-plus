@@ -1,16 +1,6 @@
 // FILENAME: lexer.h
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
-// NEEDED BY: libboot, libcore, libengine, libext, libkernel
-// NEEDS: libcore (memory.h, memory.c)
-// NEEDS: libkernel (types.h)
-// Implements component functionality for lexer.h.
-//
-// ---- Includes ----
-
-// FILENAME: lexer.h
-// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
-// VERSION: 6.5.2.0
 // NEEDED BY: libboot (common_internal.h, stmt_reboot.c)
 // NEEDED BY: libcore (analyzer.c, bpp_api.c, clear.c, funcreg.h, get.c)
 // NEEDED BY: libcore (keyword_props.h, list.c, metadata.h, spec.h, using.h)
@@ -119,6 +109,7 @@ typedef enum {
     TOK_IMAGINARY,      // Imaginary constant e.g. 4I, 3.14i
     TOK_STRING,         // String literal inside double quotes
     TOK_RPN_LITERAL,    // RPN literal inside curly braces
+    TOK_PN_LITERAL,     // PN literal inside square brackets
     TOK_IDENT,          // Identifier (variable name or label reference)
     TOK_KEYWORD,        // Built-in language statement/command
     // Operators
@@ -133,6 +124,7 @@ typedef enum {
     TOK_GT,             // >
     TOK_LE,             // <=
     TOK_GE,             // >=
+    TOK_IN,             // IN (set membership)
     TOK_AND,            // AND
     TOK_OR,             // OR
     TOK_NOT,            // NOT
@@ -160,6 +152,7 @@ typedef enum {
     TOK_UNARY_MINUS,    // Internal unary minus
     TOK_UNARY_PLUS,     // Internal unary plus
     TOK_DIRECTIVE,      // ::DIRECTIVE
+    TOK_PRAGMA,         // !!PRAGMA
     TOK_GLOBAL_LABEL,   // ::label:
     TOK_NAMESPACE_DECL, // ::[namespace]
     TOK_DOCSTRING,      // // docstring
@@ -167,8 +160,11 @@ typedef enum {
     TOK_PERIOD,         // .
     TOK_LBRACKET,       // [
     TOK_RBRACKET,       // ]
+    TOK_LBRACE,         // {
+    TOK_RBRACE,         // }
     TOK_AMPERSAND,      // & (infix string concatenation / token)
     TOK_BACKSLASH,      // \ (statement separator / token)
+    TOK_PIPE,           // | (set union / bitwise OR token)
     TOK_AT,             // @ (HP path/channel descriptor prefix)
     TOK_UNKNOWN
 } BppTokenType;
@@ -177,6 +173,7 @@ typedef enum {
 typedef enum {
     KW_NONE = 0,
     KW_PRINT,
+    KW_AT,
     KW_LET,
     KW_INPUT,
     KW_IF,
@@ -314,12 +311,21 @@ typedef enum {
     KW_REDUCE,
     KW_RENUM,
     KW_REFORMAT,
+    KW_RENAME,
+    KW_REVERT,
     KW_DELETE,
     KW_HELP,
     KW_CATALOG,
     KW_CATEGORY,
     KW_CATEGORIES,
+    KW_DEVICE,
     KW_DEVICES,
+    KW_XIO,
+    KW_PR,
+    KW_UNALIAS,
+    KW_BAUD,
+    KW_SPEED,
+    KW_CPUSPEED,
 
     KW_IOCTL,
     KW_MOUNT,
@@ -330,7 +336,13 @@ typedef enum {
     KW_OUT,
     KW_POKE,
     KW_BIOS,
+    KW_PUSH,
+    KW_POP,
+    KW_STACK,
+    KW_UDX,
+    KW_XCHG,
     KW_GEMINI,
+    KW_UPNP,
     KW_UNLESS,
     KW_DEMAND,
     KW_TRY,
@@ -364,10 +376,23 @@ typedef enum {
     KW_LPRINT,
     KW_LLIST,
     KW_RANDOMIZE,
+    KW_SHUFFLE,
     KW_PWD,
     KW_HOSTNAME,
     KW_USERNAME,
     KW_PATH,
+    KW_COMSPEC,
+    KW_LOGNAME,
+    KW_HOMEPATH,
+    KW_HOMEDRIVE,
+    KW_USERPATH,
+    KW_COMPUTERNAME,
+    KW_TOTALMEM,
+    KW_AVAILMEM,
+    KW_UPTIME,
+    KW_EPOCH,
+    KW_UNIXTIME,
+    KW_STARDATE,
     KW_TITLE,
     KW_SCREENMOVE,
     KW_FULLSCREEN,
@@ -496,6 +521,7 @@ typedef enum {
     KW_IDN,
     KW_TRN,
     KW_INV,
+    KW_COLLATE,
     // Super BASIC Keywords
     KW_COMPLEX,
     KW_DEFCPX,
@@ -559,7 +585,12 @@ typedef enum {
     KW_NOMARGIN,
     KW_NOPAGE,
     KW_PAGE,
-    KW_DCOUNT,
+    KW_DEGREE,
+    KW_RADIAN,
+    KW_GRAD,
+    KW_WBYTE,
+    KW_RBYTE,
+    KW_TRANSLATE,
     KW_CREATEINDEX,
     KW_DELETEINDEX,
     KW_SETINDEX,
@@ -642,7 +673,29 @@ typedef enum {
     KW_PORT,
     KW_SNIFF,
     KW_PACKET,
-    KW_CRYPTO
+    KW_CRYPTO,
+    KW_DEVCTL,
+    KW_WALL,
+    KW_MESG,
+    KW_LOGGER,
+    KW_TALK,
+    KW_BIND,
+    KW_LOG,
+    KW_LOGINFO,
+    KW_LOGWARN,
+    KW_LOGERROR,
+    KW_LOGDEBUG, KW_LOGTRACE, KW_SEND, KW_RECEIVE,
+    KW_PUBLISH, KW_SUBSCRIBE, KW_UNSUBSCRIBE, KW_UNPUBLISH,
+    KW_SIGNAL, KW_RAISE, KW_PUBSUB, KW_MSGSEND,
+    KW_MSGRECV, KW_ONSIGNAL, KW_RAISESIGNAL, KW_PIPE,
+    KW_STREAMPIPE, KW_EXTERN, KW_YIELD, KW_AWAIT,
+    KW_NEG, KW_QSAVE, KW_QLOAD, KW_QRUN,
+    KW_COMPILE, KW_JIT, KW_PACK, KW_FILL,
+    KW_IN, KW_ROL, KW_ROR, KW_BITFIELD,
+    KW_MAXLEN, KW_BIT, KW_CLRBIT,
+    KW_READU, KW_WRITEU, KW_RELEASE, KW_LOCKED,
+    KW_MUTEX, KW_WORD, KW_DWORD, KW_PTR, KW_DEREF,
+    KW_MASK, KW_KEYCOUNT
 } BppKeywordId;
 
 typedef BppTokenType LexTokenType;
@@ -675,6 +728,7 @@ typedef struct LexerContext LexerContext;
 // ---- Public Scanner API ----
 
 LexerContext *lex_init(MemoryContext *mem, const char *source);
+void          lex_init_stack(LexerContext *ctx, MemoryContext *mem, const char *source);
 void          lex_shutdown(LexerContext *ctx);
 BppToken      lex_next(LexerContext *ctx);
 BppToken      lex_peek(LexerContext *ctx);
@@ -703,10 +757,10 @@ static inline bool tok_str_equals_ci(const char *s1, const char *s2, size_t n) {
 // checks whether token matches a keyword ID or its case-insensitive string literal
 static inline bool tok_is_keyword(BppToken tok, BppKeywordId kw, const char *name_literal) {
     if (tok.type == TOK_KEYWORD && tok.as.keyword == kw) return true;
-    if (tok.type == TOK_IDENT && name_literal != NULL) {
+    if (name_literal != NULL && tok.start != NULL) {
         size_t len = 0;
         while (name_literal[len]) len++;
-        return (tok.length == len && tok_str_equals_ci(tok.start, name_literal, len));
+        if (tok.length == len && tok_str_equals_ci(tok.start, name_literal, len)) return true;
     }
     return false;
 }

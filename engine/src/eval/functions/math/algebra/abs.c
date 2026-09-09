@@ -2,25 +2,31 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (math_fn.c)
-// NEEDS: libcore (math.h, micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (math.h, language_descriptor.h, string.h)
 // NEEDS: libengine (abs.h, math.c, string.c)
 // Provides runtime implementation for the ABS built-in function in BASIC++.
 //
 // ---- Includes ----
 
 #include "eval/functions/math/algebra/abs.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/math.h"
 #include "runtime/string.h"
+#include "runtime/string/strops.h"
+#include "runtime/math/math.h"
+
+static const LangDesc g_abs_desc = {
+    .name = "ABS",
+    .category = "Math Functions",
+    .syntax = "ABS(x)",
+    .description = "Returns the absolute value of a numeric expression.",
+    .error_summary = "Error 13: Type Mismatch (ABS expects one numeric argument)",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_PURE,
+    .type = FEATURE_FUNCTION
+};
 void func_abs_register(void) {
-    MicroLibMetadata meta = {
-        .name = "ABS",
-        .category = "Math Functions",
-        .syntax = "ABS(x)",
-        .help_text = "Returns the absolute value of a numeric expression.",
-        .error_codes = "Error 13: Type Mismatch (ABS expects one numeric argument)"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_abs_desc);
 }
 
 BValue func_abs_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err) {

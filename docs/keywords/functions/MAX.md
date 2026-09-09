@@ -1,24 +1,72 @@
-# `MAX` Maximum Value Function (Universal Dual-Format)
+<!--
+Title:        MAX
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/eval/functions/math/algebra/max.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Function/Operator Definition
+# `MAX` Keyword Reference
 
-The `MAX` keyword evaluates numeric expressions and returns the largest (maximum) numeric value. It is supported in both **infix** notation (`a MAX b`) and **prefix/variadic** functional notation (`MAX(a, b [, c...])`).
+## Source Header
 
-### Syntax Signatures:
-```basic
-largest = val1 MAX val2
-largest = MAX(val1, val2 [, val3, ...])
+```c
+// FILENAME: max.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine (math_fn.c)
+// NEEDS: libcore (math.h, language_descriptor.h, string.h)
+// NEEDS: libengine (math.c, max.h, string.c)
+// Provides runtime implementation for the MAX built-in function in BASIC++.
+//
+// ---- Includes ----
 ```
 
-### Operational Rules:
-- Returns $\max(x_1, x_2, \dots, x_n)$.
-- In RPN stack evaluation blocks: `{ 10 20 MAX }`.
+## 1. Description & Usage
+
+Returns the maximum of two or more numeric values (supports dual prefix & infix notation).
+
+## 2. Syntax
+
+```basic
+MAX(val1, val2 [, ...]) or val1 MAX val2
+```
+
+## 3. Code Example
+
+```basic
+10 Val = MAX(val1, val2 [, ...]) or val1 MAX val2
+20 PRINT "Result: "; Val
+```
+
+## 4. Error Conditions
+
+Error 13: Type Mismatch (MAX expects numeric arguments)
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Math Functions
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_PURE
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 PRINT "Infix: "; 42 MAX 17 : REM Outputs 42
-20 PRINT "Prefix: "; MAX(42, 17, 88, 5) : REM Outputs 88
-```
+| Field | Value |
+|---|---|
+| Name | MAX |
+| Category | Math Functions |
+| Syntax | MAX(val1, val2 [, ...]) or val1 MAX val2 |
+| Description | Returns the maximum of two or more numeric values (supports dual prefix & infix notation). |
+| Error Summary | Error 13: Type Mismatch (MAX expects numeric arguments) |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_PURE |
+| Feature Type | FEATURE_FUNCTION |
+| Delimiter Mask | none |
+| Compatibility | none |
+| Since Version | none |
+| Source File | engine/src/eval/functions/math/algebra/max.c |

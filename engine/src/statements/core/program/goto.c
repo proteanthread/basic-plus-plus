@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
 // NEEDS: libcore (memory.h, memory.c, metadata.h, metadata.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libcore (strings.h, strings.c)
 // NEEDS: libengine (eval.h, eval.c, goto.h, lexer.h, lexer.c, string.c, vm.h)
 // NEEDS: libplatform (platform.h)
@@ -12,7 +12,7 @@
 // ---- Includes ----
 
 #include "statements/core/program/goto.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "vm/vm.h"
 #include "lexer/lexer.h"
 #include "eval/eval.h"
@@ -20,29 +20,34 @@
 #include "memory/memory.h"
 #include "runtime/metadata.h"
 #include "platform/platform.h"
-#include <string.h>
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_goto_desc = {
+    .name = "GOTO",
+    .category = "Control Flow",
+    .syntax = "GOTO line_num | expr | label",
+    .description = "Unconditionally transfers execution to the specified program line number, expression, or label.",
+    .error_summary = "Error 8: Undefined line number (target line does not exist), Error 2: Syntax error (missing line number)",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SAFE,
+    .type = FEATURE_STATEMENT
+};
 
 void stmt_goto_register(void) {
-    MicroLibMetadata meta = {
-        .name = "GOTO",
-        .category = "Control Flow",
-        .syntax = "GOTO line_num | expr | label",
-        .help_text = "Unconditionally transfers execution to the specified program line number, expression, or label.",
-        .error_codes = "Error 8: Undefined line number (target line does not exist), Error 2: Syntax error (missing line number)"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_goto_desc);
 }
 
 BppError stmt_goto_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BppToken tok = lex_peek(lex);
     if (tok.type == TOK_GLOBAL_LABEL) {
         lex_next(lex);
         char label_name[64];
         int len = (int)(tok.length < sizeof(label_name) - 1 ? tok.length : sizeof(label_name) - 1);
-        memcpy(label_name, tok.as.string, len);
+        runtime_memcpy(label_name, tok.as.string, len);
         label_name[len] = '\0';
 
         char filename[256];
@@ -54,7 +59,7 @@ BppError stmt_goto_handler(VMContext *vm, LexerContext *lex) {
         }
 
         const char *cur_file = vm_get_current_filename(vm);
-        if (filename[0] != '\0' && cur_file[0] != '\0' && strcasecmp(filename, cur_file) != 0) {
+        if (filename[0] != '\0' && cur_file[0] != '\0' && runtime_strcasecmp(filename, cur_file) != 0) {
             BppError load_err = vm_load_program_file(vm, filename);
             if (load_err.code != 0) return load_err;
         }
@@ -67,7 +72,7 @@ BppError stmt_goto_handler(VMContext *vm, LexerContext *lex) {
     if (tok.type == TOK_IDENT) {
         char label_name[64];
         int len = (int)(tok.length < sizeof(label_name) - 1 ? tok.length : sizeof(label_name) - 1);
-        memcpy(label_name, tok.start, len);
+        runtime_memcpy(label_name, tok.start, len);
         label_name[len] = '\0';
 
         char filename[256];

@@ -1,32 +1,68 @@
-OVER Transparent Text Overlay Attribute Statement
-=================================================
+TITLE: OVER
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/device/gfx.c
+GENERATED: no, hand-written
+STATUS: current
 
-Toggles transparent text background overlay mode (printing text without erasing background pixels).
+==============================================================================
+OVER KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: gfx.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore, libengine, libkernel, libplatform
+    // Implements virtual device and graphics rendering logic for gfx.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Controls overstrike transparent printing mode (0=overwrite, 1=XOR/overstrike).
 
-    OVER over_flag%
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    OVER state%
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM OVER Demonstration
+    20 PRINT "OVER executed successfully."
 
-ERROR CONDITIONS
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 5: Illegal Function Call
 
-  - Error 5 (ERR_ILLEGAL_FUNCTION_CALL): Flag must be 0 or 1.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       Sinclair ZX Spectrum, BASIC++ Standard
+Since Version: 6.0.0
+Category:      Graphics & Display
+Subsystem:     SUBSYSTEM_ADVANCED
+Safety Level:  SAFETY_SAFE
 
-
-OPERATIONAL NOTES
-----------------------------------------------------------------------
-
-  Sinclair ZX Spectrum and Locomotive BASIC attribute emulation.
-
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 SCREEN 12 : CLS
-    20 LINE (10, 10)-(200, 100), 2, BF
-    30 OVER 1
-    40 PRINT "Text over graphics"
-    50 OVER 0
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  OVER
+Category              Graphics & Display
+Syntax                OVER state%
+Description           Controls overstrike transparent printing mode (0=ov...
+Error Summary         Error 5: Illegal Function Call
+Subsystem             SUBSYSTEM_ADVANCED
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         Sinclair ZX Spectrum, BASIC++ Standard
+Since Version         6.0.0
+Source File           engine/src/device/gfx.c

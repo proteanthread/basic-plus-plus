@@ -1,0 +1,161 @@
+Title:        Pascal_Programmers_Guide
+Tier:         1
+Applies to:   BASIC++ v6.5.2, all targets
+Authority:    engine/include/basicpp.h, engine/src/interop/,
+              source/codegen/, tools/bas2pas.py
+Generated:    no, hand-written
+Status:       current
+
+==============================================================================
+BASIC++ FOR PASCAL PROGRAMMERS
+==============================================================================
+
+Turbo Pascal, Free Pascal and Delphi programmers will find BASIC++ more
+familiar than the word BASIC suggests. This says where the resemblance is
+real, where it is not, and what interop actually exists.
+
+1. WHAT IS REAL, STATED FIRST
+------------------------------------------------------------------------------
+
+There is no interop_pascal.c in engine/src/interop/. The interop sources are
+interop_core.c, interop_handle.c, interop_error.c, interop_marshal.c,
+interop_com.c, interop_com_register.c, interop_ipc.c and interop_jsonrpc.c. No
+Pascal-specific layer exists.
+
+What does exist:
+
+  Pascal code emission. tools/bas2pas.py converts BASIC++ to Pascal, and the
+  legacy tree at source/codegen/ contains a pas backend among fifteen. Verify
+  which backends the current trans binary actually carries; the engine's own
+  compiler targets C17 only. See Transpiler.
+  The C ABI. engine/include/basicpp.h is a stable C interface, and Free Pascal
+  calls C with external declarations and cdecl. That is the working route in
+  both directions, and section 4 shows it.
+  EXTERN. A BASIC++ statement for declaring foreign entry points. Read
+  docs/keywords/statements/EXTERN.md for its current argument support before
+  designing around it.
+
+Anything describing a dedicated Pascal bridge is describing an intention.
+
+2. WHERE PASCAL HABITS TRANSFER DIRECTLY
+------------------------------------------------------------------------------
+
+More than you would expect, because both languages come from the same era of
+structured programming and BASIC++ has taken the structured path deliberately.
+
+  Pascal                    BASIC++                   Note
+  ------------------------  ------------------------  ------------------------
+  program / unit            MODULE ... END MODULE     IMPORT to use one
+  procedure                 SUB
+  function                  FUNCTION
+  forward                   DECLARE
+  record ... end            TYPE ... END TYPE
+  const                     CONST
+  var (declaration)         DIM, VAR
+  array[1..10] of           DIM A(10)                 OPTION BASE 0/1 sets the
+                                                      origin
+  case ... of               SELECT CASE
+  repeat ... until          REPEAT ... UNTIL          Both keywords exist
+  while ... do              WHILE ... WEND, or DO
+                            ... LOOP
+  for ... to ... do         FOR ... TO ... NEXT       STEP supported
+  with                      WITH
+  try / except              TRY / HANDLER / RAISE
+  exit                      EXIT
+  interface /               PUBLIC on module members
+  implementation
+  Ord, Chr                  ASC, CHR$
+  Copy(s,i,n)               MID$(s,i,n)
+  Pos(sub,s)                INSTR(s,sub)              Argument order differs
+  Length(s)                 LEN(s)
+  Trim                      TRIM$, LTRIM$, RTRIM$
+  IntToStr, StrToInt        STR$, VAL
+  @x / Addr(x)              VARPTR(x)
+  absolute                  DEF SEG, PEEK, POKE       See Systems_Programming
+  Inc, Dec                  INCR, DECR                Both keywords exist
+  Assign/Reset/Rewrite      OPEN
+  BlockRead/BlockWrite      GET, PUT                  Random-access records
+
+OPTION BASE deserves a note. Pascal lets you declare array[5..12]; BASIC++
+arrays start at 0 or 1 as OPTION BASE selects, and there is no arbitrary lower
+bound. Use LBOUND and UBOUND rather than assuming.
+
+3. WHERE IT DIFFERS IN WAYS THAT MATTER
+------------------------------------------------------------------------------
+
+No strong static typing. BASIC++ has type sigils ($, %, !, #, &) and
+DEFINT/DEFSNG/DEFDBL/DEFSTR/DEFLNG, but it will not refuse to compile the way
+Pascal does. Where Pascal catches an error at compile time, BASIC++ may raise
+error 13 at run time.
+
+No pointer type in the Pascal sense. VARPTR, PTR, POINTER and DEREF exist, but
+there is no ^T typed pointer with compiler-checked dereference.
+
+No sets in the Pascal sense  --  and something better. Pascal's set of is a
+bitmask over a small ordinal type. BASIC++ sets are first-class containers
+with real set algebra over arbitrary values: set_union, set_intersection,
+set_difference, set_sym_diff, set_is_subset, set_cardinality. See
+Set_Based_Object_Model.
+
+No classes. Free Pascal's object model does not carry over. BASIC++ has no
+inheritance and no virtual dispatch; behaviour attaches to a group rather than
+to a type. Section 3 of Set_Based_Object_Model has the full table of what is
+and is not supported.
+
+4. CALLING BASIC++ FROM FREE PASCAL
+------------------------------------------------------------------------------
+
+Through the C ABI, which is what basicpp.h exports:
+
+    program EmbedBasic;
+    {$MODE OBJFPC}
+    uses ctypes;
+
+    function bpp_init(ram_bytes: csize_t): Pointer; cdecl; external 'basicpp';
+    function bpp_exec_string(ctx: Pointer; src: PChar): cint; cdecl; external 
+    procedure bpp_shutdown(ctx: Pointer); cdecl; external 'basicpp';
+
+    var
+      Ctx: Pointer;
+    begin
+      Ctx := bpp_init(64 * 1024 * 1024);
+      bpp_exec_string(Ctx, 'PRINT "Hello from BASIC++"');
+      bpp_shutdown(Ctx);
+    end.
+
+BppEngineContext is opaque, so Pointer is the correct Pascal mapping.
+
+Marshalling notes that will save you an afternoon:
+
+  BASIC++ strings across the C boundary are null-terminated char *, not Pascal
+  ShortString or AnsiString. Convert at the boundary.
+  bpp_get_string returns engine-owned memory. Copy it; do not free it.
+  bpp_eval_expr returns a BppValue you own. Release it with bpp_value_free.
+  Records passed across need explicit packing. Free Pascal's default record
+  alignment is not guaranteed to match the C struct layout; use {$PACKRECORDS
+  C}.
+
+5. CALLING FREE PASCAL FROM BASIC++
+------------------------------------------------------------------------------
+
+Compile your Pascal as a shared library exporting cdecl symbols, then reach it
+with EXTERN. Read docs/keywords/statements/EXTERN.md for the argument types
+currently supported before committing to a signature; that page is generated
+from the registration site and is the authority.
+
+6. WHERE TO GO NEXT
+------------------------------------------------------------------------------
+
+  You want                               Read
+  -------------------------------------  -------------------------------------
+  The C ABI in detail                    C_Programmers_Guide,
+                                         C_Host_Embedding_API
+  Transpiler reality, including the      Transpiler
+  Pascal backend
+  Sets and the object model              Set_Based_Object_Model
+  Modules                                Module_Guide
+  Systems access                         Systems_Programming
+
+==============================================================================
+END OF DOCUMENT
+==============================================================================

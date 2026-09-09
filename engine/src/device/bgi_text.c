@@ -2,7 +2,7 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (context.c)
-// NEEDS: libcore (hal.h, memops.h, memops.c, snprintf.h, snprintf.c)
+// NEEDS: libcore (hal.h, memops.h, memops.c, runtime_snprintf.h, runtime_snprintf.c)
 // NEEDS: libengine (bios.h, bios.c)
 // NEEDS: libkernel (bgi_text.h, vcon.h, vcon.c)
 // Implements virtual device and graphics rendering logic for bgi_text.

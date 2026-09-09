@@ -1,24 +1,72 @@
-# `RESETBIT` Bit Clear Operator (Universal Dual-Format)
+<!--
+Title:        RESETBIT
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/eval/functions/bits/manipulation/resetbit.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Function/Operator Definition
+# `RESETBIT` Keyword Reference
 
-The `RESETBIT` keyword clears a specific bit position (0 to 63) of a 64-bit integer to 0. It is supported in both **infix** and **prefix** notation.
+## Source Header
 
-### Syntax Signatures:
-```basic
-result = value RESETBIT bit_pos
-result = RESETBIT(value, bit_pos)
+```c
+// FILENAME: resetbit.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine (sys_fn.c)
+// NEEDS: libcore (language_descriptor.h)
+// NEEDS: libengine (resetbit.h)
+// Provides runtime implementation for the RESETBIT built-in function in BASIC
+//
+// ---- Includes ----
 ```
 
-### Operational Rules:
-- Returns `(uint64_t)value & ~(1ULL << (uint64_t)bit_pos)`.
-- In RPN stack evaluation blocks: `{ value bit_pos RESETBIT }`.
+## 1. Description & Usage
+
+Clears (sets to 0) the bit at the specified zero-based bit index in an integer value.
+
+## 2. Syntax
+
+```basic
+RESETBIT(val, bit)
+```
+
+## 3. Code Example
+
+```basic
+10 Val = RESETBIT(val, bit)
+20 PRINT "Result: "; Val
+```
+
+## 4. Error Conditions
+
+Error 13: Type Mismatch
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Bitwise & Logical Functions
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_PURE
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 PRINT "Infix: "; 1024 RESETBIT 10 : REM Outputs 0
-20 PRINT "Prefix: "; RESETBIT(1024, 10) : REM Outputs 0
-```
+| Field | Value |
+|---|---|
+| Name | RESETBIT |
+| Category | Bitwise & Logical Functions |
+| Syntax | RESETBIT(val, bit) |
+| Description | Clears (sets to 0) the bit at the specified zero-based bit index in an integer value. |
+| Error Summary | Error 13: Type Mismatch |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_PURE |
+| Feature Type | FEATURE_FUNCTION |
+| Delimiter Mask | none |
+| Compatibility | none |
+| Since Version | none |
+| Source File | engine/src/eval/functions/bits/manipulation/resetbit.c |

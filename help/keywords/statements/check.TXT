@@ -1,30 +1,70 @@
-CHECK Assertion and Invariant Check Statement
-=============================================
+TITLE: CHECK
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/debug/diagnostics/check.c
+GENERATED: no, hand-written
+STATUS: current
 
-Validates a logical assertion, terminating execution with an error if the condition evaluates to false.
+==============================================================================
+CHECK KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: check.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (analyzer.h, analyzer.c, memory.h, memory.c)
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libengine (check.h, lexer.h, lexer.c, string.c, vm.h)
+    // NEEDS: libkernel (vdev.h, vdev.c)
+    // Provides runtime implementation for the CHECK statement in BASIC++.
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Executes 7-stage code health audit, keyword-variable conflict detection, and
+semantic inference.
 
-    CHECK condition [, "failure_message"]
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    CHECK [file$] [SUMMARY|DETAILED|JSON|CONFLICTS|SMART]
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM CHECK Demonstration
+    20 PRINT "CHECK executed successfully."
 
-ERROR CONDITIONS
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error, Error 53: File Not Found
 
-  - Error 250 (ERR_ASSERTION_FAILED): Evaluated condition was false (0).
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Debug & Testing
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SAFE
 
-
-OPERATIONAL NOTES
-----------------------------------------------------------------------
-
-  Zero runtime overhead when assertions are disabled via compiler switches.
-
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 X = 100
-    20 CHECK X > 0, "X must be positive"
-    30 PRINT "Check passed."
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  CHECK
+Category              Debug & Testing
+Syntax                CHECK [file$] [SUMMARY|DETAILED|JSON|CONFLICTS|SMART]
+Description           Executes 7-stage code health audit, keyword-variabl...
+Error Summary         Error 2: Syntax Error, Error 53: File Not Found
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/debug/diagnostics/check.c

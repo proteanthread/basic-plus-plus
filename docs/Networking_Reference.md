@@ -1,0 +1,304 @@
+<!--
+Title:        Networking_Reference
+Tier:         1
+Applies to:   BASIC++ v6.5.2, all targets
+Authority:    engine/lib/platform/plat_net.c, engine/src/runtime/vnet.c,
+              vnet_nat.c, sock_engine.c, packet_sniff.c, gemini.c, gopher.c,
+              tnfs.c, peer.c, session.c, engine/iot/src/iot_net.c
+Generated:    no, hand-written
+Status:       current
+-->
+
+# Networking Reference
+
+Everything BASIC++ does with a network, and the one fact that governs all of
+it.
+
+---
+
+## 1. There are two socket layers, and only one of them works
+
+**BASIC++ contains a complete, working socket implementation. The `SOCK.*`
+keywords are wired to a different layer that does nothing.**
+
+That sentence is the whole state of BASIC++ networking, and it is better news
+than it sounds, because the missing piece is a connection between two things
+that both already exist.
+
+**The real layer.** `engine/lib/platform/plat_net.c` calls `WSAStartup`,
+`getaddrinfo`, `socket`, `connect`, `bind`, `listen`, `accept`, `send`,
+`recv`, `select`, and `ioctlsocket` or `fcntl` for non-blocking mode. It
+includes `<winsock2.h>` and `<ws2tcpip.h>` on Windows and `<sys/socket.h>`,
+`<netdb.h>` and `<arpa/inet.h>` on POSIX, and `ws2_32` is linked at
+`engine/CMakeLists.txt` line 555. On top of it, `engine/src/runtime/vnet.c`
+provides sixteen channels: TCP and UDP, client and server, non-blocking
+accept that reports the connecting client's IP, and a `VDev` wrapper so a
+network channel can be opened as a device. Nothing in either file is
+simulated.
+
+**The stub layer.** `engine/src/runtime/sock_engine.c` scans a static array
+of `SOCK_MAX_HANDLES` entries, claims a free slot, and returns its index plus
+one. `sock_bind()` records a port number into the slot's struct. The file
+includes `sock_engine.h`, `strops.h` and `memops.h` and no socket header of
+any kind.
+
+**The wiring.** `engine/src/statements/network/stmt_sock.c` includes
+`runtime/sock_engine.h`. So `SOCK.BIND`, `SOCK.LISTEN`, `SOCK.SEND`,
+`SOCK.CLOSE` and `SOCK.SETSOCKOPT` drive the handle table while the working
+implementation sits one directory away, unused by them.
+
+Section 7 is the work that joins them, and it is a redirect rather than an
+implementation.
+
+---
+
+## 2. What is simulated, stated plainly
+
+Beyond the socket split, several protocol and radio layers are fixed-response
+simulations. A program calling them appears to work and accomplishes nothing.
+
+**Packet capture.** `packet_sniff_start()` sets `active = true` and then, in
+the source's own words, populates a "simulated last packet": source MAC
+`AA:BB:CC:DD:EE:01`, destination `FF:FF:FF:FF:FF:FF`, RSSI -65, source IP
+`192.168.1.1` port 80, payload `SSID:BASIC_NODE_AP`, packet count 1. Every
+capture on every machine returns that packet. There is no pcap, no raw
+socket, no promiscuous mode.
+
+**Gemini.** `net_gemini_fetch()` takes a `url` parameter and never reads it.
+It allocates 512 bytes and writes a fixed gemtext capsule containing two
+links and an ASCII cat, then returns success. `net_gemini_serve()` casts its
+arguments to void and returns true.
+
+**Gopher.** `net_gopher_fetch()` returns a fixed menu and casts `url` to void.
+`net_gopher_serve()` returns true without acting.
+
+**TNFS.** `tnfs_mount()` sets `session_id = 0x1982` and opens no socket.
+`tnfs_list_directory()` returns a fixed listing of `AUTORUN.BAS`, `DEMO.ATR`
+and `GAMES.DSK`.
+
+**HTTP.** `HTTP.GET$` calls `iot_http_get()` in `engine/iot/src/iot_net.c`,
+which casts `url` to void and returns the literal string
+`{"status":"ok","code":200}`.
+
+**WiFi, MQTT, ESP-NOW, Bluetooth, BLE and WebREPL.** All of
+`engine/iot/src/iot_net.c`. `iot_wifi_connect` ignores the SSID and password
+and sets a flag. `iot_wifi_get_ip` returns the string `192.168.1.100`.
+`iot_wifi_scan` returns three invented networks. `iot_mqtt_publish` returns
+true without publishing. `iot_ble_scan` returns two invented devices.
+
+**TLS.** There is none. Zero references to mbedTLS, BearSSL, wolfSSL or
+OpenSSL in either `CMakeLists.txt`. Gemini is TLS-mandatory by specification,
+so a real Gemini client cannot exist here until TLS does.
+
+---
+
+## 3. What the simulation is useful for meanwhile
+
+The stub is not worthless while it lasts, and some of it is worth keeping as
+an option once the real path is wired through.
+
+- **Protocol logic.** Framing, parsing, state machines and error handling are
+  the hard part of network programming, and all of it can be developed
+  deterministically against the stub.
+- **Regression testing.** A packet that is identical on every run is exactly
+  what a test wants. When real capture arrives, the simulated backend should
+  remain selectable for tests.
+- **Teaching.** A student can write a TCP server without root and without a
+  firewall conversation.
+
+What it cannot do: talk to anything real through the `SOCK.*` and radio
+keywords. Do not use those today to fetch a page, probe a host, audit a
+network, or move a file between machines.
+
+---
+
+## 4. The socket surface
+
+| Keyword | Kind | Purpose |
+|---|---|---|
+| `SOCK` | statement | Socket operations |
+| `SOCK.OPEN%` | function | Open, returns a handle |
+| `SOCK.ACCEPT%` | function | Accept a pending connection |
+| `SOCK.RECV$` | function | Receive |
+| `SOCK.POLL%` | function | Poll for readiness |
+| `SOCK.STATUS%` | function | Handle state |
+
+Underneath, `sock_engine.c` provides `sock_open`, `sock_bind`, `sock_listen`,
+`sock_accept`, `sock_send`, `sock_recv`, `sock_poll`, `sock_close`,
+`sock_setsockopt` and `sock_has_pending_data`. The shape is BSD sockets and
+the semantics are today a handle table.
+
+That list is worth comparing with what the real layer already offers:
+
+| `sock_engine.h` | `plat_net.c` equivalent |
+|---|---|
+| `sock_open` + `sock_connect` | `platform_socket_connect(host, port, socktype, err)` |
+| `sock_bind` + `sock_listen` | `platform_socket_listen(port, err)` |
+| `sock_accept` | `platform_socket_accept(sock, ip_buf, len, err)` |
+| `sock_send` | `platform_socket_send(sock, buf, len)` |
+| `sock_recv` | `platform_socket_recv(sock, buf, len, err_code)` |
+| `sock_poll` | `platform_socket_poll_readable(sock, timeout_ms)` |
+| `sock_close` | `platform_socket_close(sock)` |
+| `sock_setsockopt` non-blocking | `platform_socket_set_nonblocking(sock, nonblock)` |
+
+The mapping is nearly one to one. The one genuine difference is that
+`plat_net.c` folds bind and listen into a single call and resolves the host
+inside connect, so the redirect has to keep a small amount of per-handle state
+to preserve the `SOCK.*` call order.
+
+Error 52, "Bad socket handle", is what you get for an out-of-range or closed
+handle.
+
+---
+
+## 5. Packet inspection
+
+| Keyword | Kind | Returns |
+|---|---|---|
+| `SNIFF` | statement | Starts and stops capture, takes a channel and filter |
+| `PACKET.SRC$` | function | Source address |
+| `PACKET.MAC$` | function | Source MAC |
+| `PACKET.PORT` | function | Port |
+| `PACKET.TYPE$` | function | Frame type |
+| `PACKET.LEN` | function | Payload length |
+| `PACKET.PAYLOAD$` | function | Payload |
+| `PACKET.RSSI` | function | Signal strength |
+
+All of them read the single simulated packet described in section 2. The
+filter argument is stored and not applied.
+
+---
+
+## 6. Protocols
+
+| Protocol | Keywords | State |
+|---|---|---|
+| Network channels | `vnet_open`, `vnet_open_host`, `vnet_accept`, `vnet_send`, `vnet_recv` | **Real, verified.** Runs on `plat_net.c`. This is the layer that works |
+| Gemini | `GEMINI`, `GEMINI.BROWSE`, `GEMINI.GET$`, `GEMINI.META$`, `GEMINI.STATUS%` | **Stub, verified.** `net_gemini_fetch` ignores `url`; `net_gemini_serve` does nothing. Cannot be real without TLS |
+| Gopher | `GOPHER`, `GOPHER.GET$` | **Stub, verified.** Fixed menu, `url` cast to void. Needs no TLS, so it is the easiest one to make real |
+| HTTP | `HTTP.GET$` | **Stub, verified.** Returns `{"status":"ok","code":200}` from `iot_net.c`. No TLS means no HTTPS regardless |
+| TNFS | `TNFS`, `TNFS.DIR$` | **Stub, verified.** Hardcoded session id, no socket, fixed listing. The published default port UDP 9868 is still unverified against the specification |
+| WiFi and radio | `WIFI`, `MQTT`, `ESPNOW`, `BT`, `WEBREPL` | **Stub, verified.** All of `iot_net.c`; see section 2 |
+| FujiNet | `FUJI.IP$`, `FUJI.SSID$`, `FUJI.STATUS$`, `FUJI.JSON.GET$` | `fujinet.c` is 20 KB and substantial; its transport depends on the stack above and its state is not yet established |
+| UPnP | `UPNP.FORWARD`, `UPNP.UNFORWARD`, `UPNP.EXTERNALIP$`, `UPNP.STATUS` | Port mapping and NAT traversal; `dev_upnp.c` and `func_upnp.c` exist, state not yet established |
+| Peer | `PEER`, `PUBLISH`, `SUBSCRIBE`, `PUBSUB`, `MSGSEND`, `MSGRECV$` | Publish and subscribe messaging over `peer.c` and `msg_broker.c` |
+| Remote | `REMOTE.EXEC`, `REMOTE.EVAL$` | Remote execution |
+| Packing | `NET.PACK$`, `NET.UNPACK`, `NET.CONFIG` | Wire format, `nil_transport.c`, `nil_bead.c`, `nil_compress.c` |
+
+Rows marked "verified" were established by reading the source. Rows without a
+verdict list their source file so the next person to need one can establish
+its state rather than assume it, and this table should be updated as each is
+verified.
+
+---
+
+## 7. What a network programmer should know
+
+**For back-end work.** The real socket layer is there and reachable from C
+today: `platform_socket_*` and the `vnet_*` channel API. What is absent is
+TLS, an HTTP server framework, request routing, and any client driver for an
+external database. A production service is buildable in principle over
+`vnet.c` and is not buildable through the `SOCK.*` keywords until section 8
+item 1 lands. The most reliable route today is to embed BASIC++ inside a host
+that owns the network, through `engine/include/basicpp.h`. See
+`C_Programmers_Guide`.
+
+**For systems and security administration.** `SNIFF` and the `PACKET.*`
+functions are teaching tools; they will not audit a network you are
+responsible for. Port probing through `SOCK.*` reports success without
+connecting, which is worse than not working.
+
+What *is* real and useful for administration: `SHELL`, `ENVIRON$`, `EXEC$`,
+the file and directory statements, real serial ports through `plat_serial.c`,
+`LOGGER` with six levels and host log-sink routing, `CRYPTO.HASH$` and
+`CRYPTO.HMAC$` (genuine SHA-256 and HMAC-SHA256), the scripting target `bs`,
+and the safety levels in `Security`. A batch pipeline that inspects files,
+hashes them and reports is entirely buildable.
+
+Not on that list, deliberately: `CRYPTO.ENCRYPT$` and `CRYPTO.DECRYPT$` are a
+repeating-key XOR, and `CRYPTO.KEY$` is deterministic with no entropy source.
+See `Systems_Administration_Guide` section 1.
+
+**For web work.** The `wap` target in the root `CMakeLists.txt` builds under
+Emscripten and exports eight functions to JavaScript. It is real and it is the
+one place where the `SOCK.*` split is not a limitation, because a client-side
+page needs none of it. See `Web_And_Backend_Guide`.
+
+---
+
+## 8. The work that makes this real
+
+Committed work for the next release, not a wish list. Ordered by dependency:
+each item needs the ones above it.
+
+1. **Redirect `sock_engine.c` at the real layer.** Not a rewrite: a second
+   implementation behind the unchanged `sock_engine.h`, calling
+   `platform_socket_connect`, `platform_socket_listen`,
+   `platform_socket_accept`, `platform_socket_send`, `platform_socket_recv`,
+   `platform_socket_poll_readable`, `platform_socket_close` and
+   `platform_socket_set_nonblocking`. The handle table keeps the mapping from
+   BASIC handle numbers to `BppSocket` values and the bind-then-listen call
+   order. The existing implementation stays as the freestanding and test
+   backend, selected the way `hal_hosted.c` and `hal_freestanding.c` are
+   selected today. Nothing above `sock_engine.h` changes, which is why this
+   is the first item and the smallest.
+
+2. **TLS.** Required before Gemini, HTTPS, TNFS over anything untrusted, or
+   any authenticated protocol can be honest. Gemini is TLS-mandatory by
+   specification, so the Gemini client cannot be finished without it. The
+   candidates are BearSSL and mbedTLS, both of which suit a freestanding
+   project; the choice needs making explicitly, and it is the single largest
+   decision in this list.
+
+3. **Real protocol clients**, replacing the stubs, in this order: Gopher
+   (plain TCP, no TLS, so it can land immediately after item 1), HTTP —
+   replacing `iot_http_get` rather than wrapping it — TNFS, then Gemini once
+   TLS exists.
+
+4. **Real radio.** `iot_net.c` needs a hardware implementation for WiFi,
+   MQTT, ESP-NOW and Bluetooth, which means it depends on the ESP32 hardware
+   HAL rather than on items 1 to 3. See `IoT_And_Embedded_Guide`.
+
+5. **Real packet capture.** pcap on hosted targets, raw sockets where
+   permitted, with an explicit privilege story: what it requires, how it
+   fails without it, and what it will not do.
+
+6. **Real cryptography.** Not networking as such, but it gates the same
+   things. `CRYPTO.ENCRYPT$` is currently a repeating-key XOR and
+   `CRYPTO.KEY$` is deterministic with no entropy source. Both need real
+   implementations before anything calls itself secure. See
+   `Systems_Administration_Guide` section 1.
+
+Until items 1 and 2 exist, every protocol document in this project must say
+which layer it means, or it is misleading its reader. Once they do, this
+document and `Virtual_Network` both need rewriting, and that rewrite is part
+of the work rather than a follow-up to it.
+
+---
+
+## 9. Where the code is
+
+| Concern | Path |
+|---|---|
+| Real sockets | `engine/lib/platform/plat_net.c` |
+| Network channels | `engine/src/runtime/vnet.c` |
+| NAT | `engine/src/runtime/vnet_nat.c` |
+| Socket handle table (stub) | `engine/src/runtime/sock_engine.c` |
+| `SOCK` statement wiring | `engine/src/statements/network/stmt_sock.c` |
+| Packet capture | `engine/src/runtime/packet_sniff.c` |
+| Gemini | `engine/src/runtime/gemini.c` |
+| Gopher | `engine/src/runtime/gopher.c` |
+| TNFS | `engine/src/runtime/tnfs.c` |
+| WiFi, MQTT, BT, HTTP (simulated) | `engine/iot/src/iot_net.c` |
+| FujiNet | `engine/src/device/fujinet.c` |
+| Peer messaging | `engine/src/runtime/peer.c`, `engine/src/device/msg_broker.c` |
+| Sessions | `engine/src/runtime/session.c` |
+| Wire format | `engine/src/runtime/nil_transport.c`, `nil_bead.c`, `nil_compress.c` |
+
+## See also
+
+- `Virtual_Network` for the virtual network model
+- `Implementation_Status` for the evidence register this document draws on
+- `Security` for safety levels and the sandbox
+- `IoT_And_Embedded_Guide` for `WIFI`, `MQTT`, `ESPNOW` and `BT`
+- `C_Programmers_Guide` for embedding in a host that owns the network

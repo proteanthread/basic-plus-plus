@@ -2,7 +2,7 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c)
+// NEEDS: libcore (language_descriptor.h)
 // NEEDS: libcore (session.h, session.c, string.h)
 // NEEDS: libengine (echo.h, string.c)
 // NEEDS: libkernel (errors.h, vdev.h, vdev.c)
@@ -12,34 +12,43 @@
 
 #include "statements/io/echo.h"
 #include "runtime/session.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "types/errors.h"
 #include "device/vdev.h"
-#include <string.h>
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_echo_desc = {
+    .name = "ECHO",
+    .category = "Console & Keyboard",
+    .syntax = "ECHO [ON | OFF]",
+    .description = "Enables terminal input character echo (DEC / Timesharing).",
+    .error_summary = "None",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SAFE,
+    .type = FEATURE_STATEMENT
+};
+
+static const LangDesc g_noecho_desc = {
+    .name = "NOECHO",
+    .category = "Console & Keyboard",
+    .syntax = "NO ECHO | NOECHO",
+    .description = "Disables terminal input character echo for secure/password entry.",
+    .error_summary = "None",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SAFE,
+    .type = FEATURE_STATEMENT
+};
 
 void stmt_echo_register(void) {
-    static const MicroLibMetadata meta_echo = {
-        .name = "ECHO",
-        .category = "Console & Keyboard",
-        .syntax = "ECHO [ON | OFF]",
-        .help_text = "Enables terminal input character echo (DEC / Timesharing).",
-        .error_codes = "None"
-    };
-    microlib_register(&meta_echo);
+    lang_desc_register(&g_echo_desc);
 
-    static const MicroLibMetadata meta_noecho = {
-        .name = "NOECHO",
-        .category = "Console & Keyboard",
-        .syntax = "NO ECHO | NOECHO",
-        .help_text = "Disables terminal input character echo for secure/password entry.",
-        .error_codes = "None"
-    };
-    microlib_register(&meta_noecho);
+    lang_desc_register(&g_noecho_desc);
 }
 
 BppError stmt_echo_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BppToken tok = lex_peek(lex);
     if (tok.type == TOK_KEYWORD && tok.as.keyword == KW_ECHO) {
@@ -65,7 +74,7 @@ BppError stmt_echo_handler(VMContext *vm, LexerContext *lex) {
 
 BppError stmt_noecho_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BppToken tok = lex_peek(lex);
     if (tok.type == TOK_KEYWORD && tok.as.keyword == KW_NOECHO) {

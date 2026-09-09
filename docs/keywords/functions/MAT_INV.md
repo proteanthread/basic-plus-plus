@@ -1,26 +1,72 @@
-# `MAT_INV` Matrix Inversion Function & Statement
+<!--
+Title:        MAT_INV
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/module/mathext.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Keyword Definition
+# `MAT_INV` Keyword Reference
 
-The `MAT ... = INV(A)` statement computes the matrix inverse $A^{-1}$ of a non-singular square matrix $A$, optionally setting the determinant variable.
+## Source Header
 
-### Syntax Signatures:
-```basic
-MAT B = INV(A)
-det# = DET
+```c
+// FILENAME: mathext.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore (funcreg.h, funcreg.c, math.h)
+// NEEDS: libengine (math.c)
+// Provides core logic and interface definitions for mathext within BASIC++.
+//
+// ---- Includes ----
 ```
 
-### Operational Rules:
-- Calculates inverse using Gaussian elimination with partial pivoting.
-- If matrix is singular ($\det A = 0$), triggers Error 11 (`ERR_DIVISION_BY_ZERO`) or sets determinant to 0.
+## 1. Description & Usage
+
+Computes the multiplicative inverse of square matrix using Gaussian elimination.
+
+## 2. Syntax
+
+```basic
+MAT_INV(matrix)
+```
+
+## 3. Code Example
+
+```basic
+10 Val = MAT_INV(matri10)
+20 PRINT "Result: "; Val
+```
+
+## 4. Error Conditions
+
+Error 5: Illegal Function Call (singular matrix)
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Matrix Operations
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_PURE
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 DIM A(2, 2), B(2, 2)
-20 A(1, 1) = 4 : A(1, 2) = 7 : A(2, 1) = 2 : A(2, 2) = 6
-30 MAT B = INV(A)
-40 PRINT "Matrix inverted. Determinant = "; DET
-```
+| Field | Value |
+|---|---|
+| Name | MAT_INV |
+| Category | Matrix Operations |
+| Syntax | MAT_INV(matrix) |
+| Description | Computes the multiplicative inverse of square matrix using Gaussian elimination. |
+| Error Summary | Error 5: Illegal Function Call (singular matrix) |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_PURE |
+| Feature Type | FEATURE_FUNCTION |
+| Delimiter Mask | none |
+| Compatibility | BASIC++ Standard |
+| Since Version | 6.0.0 |
+| Source File | engine/src/module/mathext.c |

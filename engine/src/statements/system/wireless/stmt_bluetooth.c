@@ -2,7 +2,7 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libcore (strops.h, strops.c, variables.h, variables.c)
 // NEEDS: libengine (eval.h, eval.c, lexer.h, lexer.c, stmt_bluetooth.h)
 // NEEDS: libengine (string.c, vm.h)
@@ -15,15 +15,37 @@
 #include "vm/vm.h"
 #include "lexer/lexer.h"
 #include "eval/eval.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/string/strops.h"
 #include "runtime/variables.h"
 #include "iot_net.h"
-#include <string.h>
+#include "runtime/string/memops.h"
+
+static const LangDesc g_bt_desc = {
+    .name = "BT",
+    .category = "Wireless & IoT",
+    .syntax = "BT.START name$ | BT.CONNECT mac_or_name$",
+    .description = "Controls Bluetooth Classic Serial Port Profile (SPP) virtual COM link.",
+    .error_summary = "Error 2: Syntax Error, Error 13: Type Mismatch",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_STATEMENT
+};
+
+static const LangDesc g_ble_desc = {
+    .name = "BLE",
+    .category = "Wireless & IoT",
+    .syntax = "BLE.ADV.START name$, uuid$ | BLE.ADV.STOP | BLE.SCAN [duration_ms]",
+    .description = "Controls Bluetooth Low Energy advertising beacons and GATT scanning.",
+    .error_summary = "Error 2: Syntax Error, Error 13: Type Mismatch",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_STATEMENT
+};
 
 BppError stmt_bt_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     bool is_start = false;
     bool is_connect = false;
@@ -58,7 +80,7 @@ BppError stmt_bt_handler(VMContext *vm, LexerContext *lex) {
 
 BppError stmt_ble_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     bool is_adv = false;
     bool is_adv_stop = false;
@@ -134,23 +156,9 @@ BppError stmt_ble_handler(VMContext *vm, LexerContext *lex) {
 }
 
 void stmt_bt_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "BT",
-        .category = "Wireless & IoT",
-        .syntax = "BT.START name$ | BT.CONNECT mac_or_name$",
-        .help_text = "Controls Bluetooth Classic Serial Port Profile (SPP) virtual COM link.",
-        .error_codes = "Error 2: Syntax Error, Error 13: Type Mismatch"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_bt_desc);
 }
 
 void stmt_ble_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "BLE",
-        .category = "Wireless & IoT",
-        .syntax = "BLE.ADV.START name$, uuid$ | BLE.ADV.STOP | BLE.SCAN [duration_ms]",
-        .help_text = "Controls Bluetooth Low Energy advertising beacons and GATT scanning.",
-        .error_codes = "Error 2: Syntax Error, Error 13: Type Mismatch"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_bt_desc);
 }

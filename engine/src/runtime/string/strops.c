@@ -278,6 +278,16 @@ size_t runtime_strlcat(char *dst, const char *src, size_t siz) {
     return dstlen + srclen;
 }
 
+char *runtime_strdup(const char *s) {
+    if (!s) return NULL;
+    size_t len = runtime_strlen(s);
+    char *copy = (char *)runtime_calloc(1, len + 1);
+    if (copy) {
+        runtime_memcpy(copy, s, len);
+    }
+    return copy;
+}
+
 char *runtime_strdup_custom(const char *s, void *(*alloc_fn)(size_t)) {
     if (!s || !alloc_fn) return NULL;
     size_t len = runtime_strlen(s);

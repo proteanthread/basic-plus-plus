@@ -44,6 +44,15 @@ LexerContext *lex_init(MemoryContext *mem, const char *source) {
     return ctx;
 }
 
+// initializes a stack-allocated lexer scanner state
+void lex_init_stack(LexerContext *ctx, MemoryContext *mem, const char *source) {
+    if (!ctx || !source) return;
+    runtime_memset(ctx, 0, sizeof(LexerContext));
+    ctx->mem = mem;
+    ctx->source = source;
+    ctx->pos = source;
+}
+
 // releases memory held by the lexer context
 void lex_shutdown(LexerContext *ctx) {
     if (!ctx) return;
@@ -63,6 +72,79 @@ void lex_set_pos(LexerContext *ctx, const char *pos) {
     if (ctx && pos) {
         ctx->pos = pos;
     }
+}
+
+// checks if position matches a vintage short variable expression in spaceless BASIC (e.g. Q1<1, D(7), C1>=1)
+static bool scan_is_vintage_short_var_expr(const char *p) {
+    if (!p || !runtime_isalpha((unsigned char)*p)) return false;
+    char c1 = p[1];
+    if (c1 == '(' || c1 == '[' || c1 == '<' || c1 == '>' || c1 == '=' ||
+        c1 == '+' || c1 == '-' || c1 == '*' || c1 == '/' || c1 == '^' ||
+        c1 == ':' || c1 == '\0' || c1 == '\n' || c1 == ',' || c1 == ';' ||
+        c1 == '$' || c1 == '%' || c1 == '!' || c1 == '#' || c1 == '&') {
+        return true;
+    }
+    if (runtime_strncasecmp(p + 1, "THEN", 4) == 0 || runtime_strncasecmp(p + 1, "ELSE", 4) == 0 ||
+        runtime_strncasecmp(p + 1, "GOTO", 4) == 0 || runtime_strncasecmp(p + 1, "TO", 2) == 0 ||
+        runtime_strncasecmp(p + 1, "AND", 3) == 0 || runtime_strncasecmp(p + 1, "OR", 2) == 0) {
+        return true;
+    }
+    if (runtime_isdigit((unsigned char)c1)) {
+        char c2 = p[2];
+        if (c2 == '(' || c2 == '[' || c2 == '<' || c2 == '>' || c2 == '=' ||
+            c2 == '+' || c2 == '-' || c2 == '*' || c2 == '/' || c2 == '^' ||
+            c2 == ':' || c2 == '\0' || c2 == '\n' || c2 == ',' || c2 == ';' ||
+            c2 == '$' || c2 == '%' || c2 == '!' || c2 == '#' || c2 == '&') {
+            return true;
+        }
+        if (runtime_strncasecmp(p + 2, "THEN", 4) == 0 || runtime_strncasecmp(p + 2, "ELSE", 4) == 0 ||
+            runtime_strncasecmp(p + 2, "GOTO", 4) == 0 || runtime_strncasecmp(p + 2, "TO", 2) == 0 ||
+            runtime_strncasecmp(p + 2, "AND", 3) == 0 || runtime_strncasecmp(p + 2, "OR", 2) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+static inline bool scan_is_vintage_func_or_kw(const char *p) {
+    if (!p) return false;
+    if (runtime_strncasecmp(p, "INT", 3) == 0 ||
+        runtime_strncasecmp(p, "ABS", 3) == 0 ||
+        runtime_strncasecmp(p, "SQR", 3) == 0 ||
+        runtime_strncasecmp(p, "RND", 3) == 0 ||
+        runtime_strncasecmp(p, "SIN", 3) == 0 ||
+        runtime_strncasecmp(p, "COS", 3) == 0 ||
+        runtime_strncasecmp(p, "TAN", 3) == 0 ||
+        runtime_strncasecmp(p, "ATN", 3) == 0 ||
+        runtime_strncasecmp(p, "LOG", 3) == 0 ||
+        runtime_strncasecmp(p, "EXP", 3) == 0 ||
+        runtime_strncasecmp(p, "LEN", 3) == 0 ||
+        runtime_strncasecmp(p, "VAL", 3) == 0 ||
+        runtime_strncasecmp(p, "STR$", 4) == 0 ||
+        runtime_strncasecmp(p, "CHR$", 4) == 0 ||
+        runtime_strncasecmp(p, "ASC", 3) == 0 ||
+        runtime_strncasecmp(p, "TAB", 3) == 0 ||
+        runtime_strncasecmp(p, "SPC", 3) == 0 ||
+        runtime_strncasecmp(p, "NOT", 3) == 0 ||
+        runtime_strncasecmp(p, "PEEK", 4) == 0 ||
+        runtime_strncasecmp(p, "POS", 3) == 0 ||
+        runtime_strncasecmp(p, "FN", 2) == 0) {
+        return true;
+    }
+    return false;
+}
+
+static inline bool scan_is_op_bound(char next_char, const char *next_pos) {
+    if (scan_is_kw_bound(next_char) || runtime_isdigit((unsigned char)next_char) ||
+        next_char == '(' || next_char == '[' || next_char == '-' || next_char == '.' ||
+        next_char == '"' || next_char == '$') {
+        return true;
+    }
+    if (runtime_isalpha((unsigned char)next_char)) {
+        if (scan_is_vintage_short_var_expr(next_pos)) return true;
+        if (scan_is_vintage_func_or_kw(next_pos)) return true;
+    }
+    return false;
 }
 
 //
@@ -140,7 +222,19 @@ static BppToken scan_ident_or_keyword(LexerContext *ctx) {
         return tok;
     }
 
-    if (is_start && runtime_strncasecmp(start, "READ", 4) == 0 && (scan_is_kw_bound(start[4]) || runtime_isalpha((unsigned char)start[4]))) {
+    if (is_start && runtime_strncasecmp(start, "READU", 5) == 0 &&
+        (scan_is_kw_bound(start[5]) || start[5] == '[' || start[5] == '(' || (!scan_is_followed_by_assignment(start + 5) && runtime_isalnum((unsigned char)start[5])))) {
+        tok.type = TOK_KEYWORD;
+        tok.as.keyword = KW_READU;
+        tok.length = 5;
+        ctx->pos = start + 5;
+        return tok;
+    }
+
+    if (is_start && runtime_strncasecmp(start, "READ", 4) == 0 &&
+        runtime_strncasecmp(start, "READU", 5) != 0 &&
+        runtime_strncasecmp(start, "READBIT", 7) != 0 &&
+        (scan_is_kw_bound(start[4]) || (runtime_isalpha((unsigned char)start[4]) && !scan_is_followed_by_assignment(start + 4)))) {
         tok.type = TOK_KEYWORD;
         tok.as.keyword = KW_READ;
         tok.length = 4;
@@ -148,11 +242,22 @@ static BppToken scan_ident_or_keyword(LexerContext *ctx) {
         return tok;
     }
 
-    if (is_start && runtime_strncasecmp(start, "DATA", 4) == 0 && (scan_is_kw_bound(start[4]) || runtime_isdigit((unsigned char)start[4]) || start[4] == '-' || start[4] == '.' || start[4] == '"')) {
+    if (is_start && runtime_strncasecmp(start, "DATA", 4) == 0 &&
+        (scan_is_kw_bound(start[4]) || runtime_isdigit((unsigned char)start[4]) || start[4] == '-' || start[4] == '.' || start[4] == '"' ||
+         (runtime_isalpha((unsigned char)start[4]) && !scan_is_followed_by_assignment(start + 4)))) {
         tok.type = TOK_KEYWORD;
         tok.as.keyword = KW_DATA;
         tok.length = 4;
         ctx->pos = start + 4;
+        return tok;
+    }
+
+    if (is_start && runtime_strncasecmp(start, "CLEAR", 5) == 0 &&
+        (scan_is_kw_bound(start[5]) || (runtime_isalpha((unsigned char)start[5]) && !scan_is_followed_by_assignment(start + 5)))) {
+        tok.type = TOK_KEYWORD;
+        tok.as.keyword = KW_CLEAR;
+        tok.length = 5;
+        ctx->pos = start + 5;
         return tok;
     }
 
@@ -172,7 +277,8 @@ static BppToken scan_ident_or_keyword(LexerContext *ctx) {
         return tok;
     }
 
-    if (is_start && runtime_strncasecmp(start, "FOR", 3) == 0 && runtime_strncasecmp(start, "FORM", 4) != 0 && runtime_strncasecmp(start, "FORMAT", 6) != 0 && (scan_is_kw_bound(start[3]) || runtime_isalpha((unsigned char)start[3]))) {
+    if (runtime_strncasecmp(start, "FOR", 3) == 0 && runtime_strncasecmp(start, "FORM", 4) != 0 && runtime_strncasecmp(start, "FORMAT", 6) != 0 &&
+        (scan_is_kw_bound(start[3]) || (is_start && runtime_isalpha((unsigned char)start[3]) && scan_has_keyword_on_line(start + 3, "TO")))) {
         tok.type = TOK_KEYWORD;
         tok.as.keyword = KW_FOR;
         tok.length = 3;
@@ -180,7 +286,8 @@ static BppToken scan_ident_or_keyword(LexerContext *ctx) {
         return tok;
     }
 
-    if (is_start && runtime_strncasecmp(start, "NEXT", 4) == 0 && (scan_is_kw_bound(start[4]) || runtime_isalpha((unsigned char)start[4]))) {
+    if (is_start && runtime_strncasecmp(start, "NEXT", 4) == 0 &&
+        (scan_is_kw_bound(start[4]) || (runtime_isalpha((unsigned char)start[4]) && !scan_is_followed_by_assignment(start + 4)))) {
         tok.type = TOK_KEYWORD;
         tok.as.keyword = KW_NEXT;
         tok.length = 4;
@@ -188,7 +295,68 @@ static BppToken scan_ident_or_keyword(LexerContext *ctx) {
         return tok;
     }
 
-    if (is_start && runtime_strncasecmp(start, "IF", 2) == 0 && (scan_is_kw_bound(start[2]) || runtime_isalnum((unsigned char)start[2]))) {
+    if (is_start && runtime_strncasecmp(start, "WHILE", 5) == 0 &&
+        !scan_is_followed_by_assignment(start + 5) &&
+        (scan_is_kw_bound(start[5]) || runtime_isalnum((unsigned char)start[5]) || scan_is_vintage_short_var_expr(start + 5)) &&
+        start[5] != '$' && start[5] != '%' && start[5] != '!' && start[5] != '#' && start[5] != '&') {
+        tok.type = TOK_KEYWORD;
+        tok.as.keyword = KW_WHILE;
+        tok.length = 5;
+        ctx->pos = start + 5;
+        return tok;
+    }
+
+    if (is_start && runtime_strncasecmp(start, "COLOR", 5) == 0 &&
+        !scan_is_followed_by_assignment(start + 5) &&
+        (runtime_isdigit((unsigned char)start[5]) || (scan_is_kw_bound(start[5]) && start[5] != '$' && start[5] != '%' && start[5] != '!' && start[5] != '#' && start[5] != '&'))) {
+        tok.type = TOK_KEYWORD;
+        tok.as.keyword = KW_COLOR;
+        tok.length = 5;
+        ctx->pos = start + 5;
+        return tok;
+    }
+
+    if (is_start && runtime_strncasecmp(start, "LOCATE", 6) == 0 &&
+        !scan_is_followed_by_assignment(start + 6) &&
+        (runtime_isdigit((unsigned char)start[6]) || (scan_is_kw_bound(start[6]) && start[6] != '$' && start[6] != '%' && start[6] != '!' && start[6] != '#' && start[6] != '&'))) {
+        tok.type = TOK_KEYWORD;
+        tok.as.keyword = KW_LOCATE;
+        tok.length = 6;
+        ctx->pos = start + 6;
+        return tok;
+    }
+
+    if (is_start && runtime_strncasecmp(start, "SCREEN", 6) == 0 &&
+        !scan_is_followed_by_assignment(start + 6) &&
+        (runtime_isdigit((unsigned char)start[6]) || (scan_is_kw_bound(start[6]) && start[6] != '$' && start[6] != '%' && start[6] != '!' && start[6] != '#' && start[6] != '&'))) {
+        tok.type = TOK_KEYWORD;
+        tok.as.keyword = KW_SCREEN;
+        tok.length = 6;
+        ctx->pos = start + 6;
+        return tok;
+    }
+
+    if (is_start && runtime_strncasecmp(start, "SOUND", 5) == 0 &&
+        !scan_is_followed_by_assignment(start + 5) &&
+        (runtime_isdigit((unsigned char)start[5]) || (scan_is_kw_bound(start[5]) && start[5] != '$' && start[5] != '%' && start[5] != '!' && start[5] != '#' && start[5] != '&'))) {
+        tok.type = TOK_KEYWORD;
+        tok.as.keyword = KW_SOUND;
+        tok.length = 5;
+        ctx->pos = start + 5;
+        return tok;
+    }
+
+    if (is_start && runtime_strncasecmp(start, "PLAY", 4) == 0 &&
+        !scan_is_followed_by_assignment(start + 4) &&
+        (start[4] == '"' || (scan_is_kw_bound(start[4]) && start[4] != '$' && start[4] != '%' && start[4] != '!' && start[4] != '#' && start[4] != '&'))) {
+        tok.type = TOK_KEYWORD;
+        tok.as.keyword = KW_PLAY;
+        tok.length = 4;
+        ctx->pos = start + 4;
+        return tok;
+    }
+
+    if (runtime_strncasecmp(start, "IF", 2) == 0 && (scan_is_kw_bound(start[2]) || runtime_isdigit((unsigned char)start[2]) || start[2] == '(' || (is_start && runtime_isalnum((unsigned char)start[2])) || scan_is_vintage_short_var_expr(start + 2))) {
         tok.type = TOK_KEYWORD;
         tok.as.keyword = KW_IF;
         tok.length = 2;
@@ -236,7 +404,7 @@ static BppToken scan_ident_or_keyword(LexerContext *ctx) {
         return tok;
     }
 
-    if (runtime_strncasecmp(start, "TO", 2) == 0 && (start[2] == '\0' || (!runtime_isalpha((unsigned char)start[2]) && start[2] != '_'))) {
+    if (runtime_strncasecmp(start, "TO", 2) == 0 && (scan_is_kw_bound(start[2]) || runtime_isdigit((unsigned char)start[2]) || start[2] == '-')) {
         tok.type = TOK_KEYWORD;
         tok.as.keyword = KW_TO;
         tok.length = 2;
@@ -249,6 +417,62 @@ static BppToken scan_ident_or_keyword(LexerContext *ctx) {
         tok.as.keyword = KW_STEP;
         tok.length = 4;
         ctx->pos = start + 4;
+        return tok;
+    }
+
+    if (!is_start && runtime_strncasecmp(start, "AND", 3) == 0 && scan_is_op_bound(start[3], start + 3)) {
+        tok.type = TOK_AND;
+        tok.as.keyword = KW_AND;
+        tok.length = 3;
+        ctx->pos = start + 3;
+        return tok;
+    }
+
+    if (!is_start && runtime_strncasecmp(start, "OR", 2) == 0 && scan_is_op_bound(start[2], start + 2)) {
+        tok.type = TOK_OR;
+        tok.as.keyword = KW_OR;
+        tok.length = 2;
+        ctx->pos = start + 2;
+        return tok;
+    }
+
+    if (!is_start && runtime_strncasecmp(start, "XOR", 3) == 0 && scan_is_op_bound(start[3], start + 3)) {
+        tok.type = TOK_XOR;
+        tok.as.keyword = KW_XOR;
+        tok.length = 3;
+        ctx->pos = start + 3;
+        return tok;
+    }
+
+    if (runtime_strncasecmp(start, "NOT", 3) == 0 && scan_is_op_bound(start[3], start + 3)) {
+        tok.type = TOK_NOT;
+        tok.as.keyword = KW_NOT;
+        tok.length = 3;
+        ctx->pos = start + 3;
+        return tok;
+    }
+
+    if (!is_start && runtime_strncasecmp(start, "MOD", 3) == 0 && scan_is_op_bound(start[3], start + 3)) {
+        tok.type = TOK_MOD;
+        tok.as.keyword = KW_MOD;
+        tok.length = 3;
+        ctx->pos = start + 3;
+        return tok;
+    }
+
+    if (!is_start && runtime_strncasecmp(start, "EQV", 3) == 0 && scan_is_op_bound(start[3], start + 3)) {
+        tok.type = TOK_EQV;
+        tok.as.keyword = KW_EQV;
+        tok.length = 3;
+        ctx->pos = start + 3;
+        return tok;
+    }
+
+    if (!is_start && runtime_strncasecmp(start, "IMP", 3) == 0 && scan_is_op_bound(start[3], start + 3)) {
+        tok.type = TOK_IMP;
+        tok.as.keyword = KW_IMP;
+        tok.length = 3;
+        ctx->pos = start + 3;
         return tok;
     }
 
@@ -267,11 +491,44 @@ static BppToken scan_ident_or_keyword(LexerContext *ctx) {
         }
         bool is_short_var = (ctx->pos == start + 1 || (ctx->pos == start + 2 && runtime_isdigit((unsigned char)start[1])));
         if (is_short_var) {
-            if ((runtime_strncasecmp(ctx->pos, "GOTO", 4) == 0 && (scan_is_kw_bound(ctx->pos[4]) || runtime_isdigit((unsigned char)ctx->pos[4]))) ||
-                (runtime_strncasecmp(ctx->pos, "GOSUB", 5) == 0 && (scan_is_kw_bound(ctx->pos[5]) || runtime_isdigit((unsigned char)ctx->pos[5]))) ||
-                (runtime_strncasecmp(ctx->pos, "THEN", 4) == 0 && (scan_is_kw_bound(ctx->pos[4]) || runtime_isalnum((unsigned char)ctx->pos[4]))) ||
-                (runtime_strncasecmp(ctx->pos, "ELSE", 4) == 0 && (scan_is_kw_bound(ctx->pos[4]) || runtime_isalnum((unsigned char)ctx->pos[4])))) {
-                break;
+            const char *w_end = start;
+            while (runtime_isalnum((unsigned char)*w_end) || *w_end == '_') w_end++;
+            size_t seg_len = (size_t)(w_end - start);
+            bool is_full_kw = false;
+            if (seg_len < 64) {
+                char seg_w[64];
+                runtime_memcpy(seg_w, start, seg_len);
+                seg_w[seg_len] = '\0';
+                if (lex_find_keyword_by_name(seg_w) != KW_NONE) {
+                    is_full_kw = true;
+                }
+            }
+            if (!is_full_kw) {
+                const char *full_end = w_end;
+                while (runtime_isalnum((unsigned char)*full_end) || *full_end == '_' || *full_end == '.') full_end++;
+                size_t full_w_len = (size_t)(full_end - start);
+                if (full_w_len < 64) {
+                    char full_w[64];
+                    runtime_memcpy(full_w, start, full_w_len);
+                    full_w[full_w_len] = '\0';
+                    if (lex_find_keyword_by_name(full_w) != KW_NONE) {
+                        is_full_kw = true;
+                    }
+                }
+            }
+            if (!is_full_kw) {
+                if ((runtime_strncasecmp(ctx->pos, "GOTO", 4) == 0 && (scan_is_kw_bound(ctx->pos[4]) || runtime_isdigit((unsigned char)ctx->pos[4]))) ||
+                    (runtime_strncasecmp(ctx->pos, "GOSUB", 5) == 0 && (scan_is_kw_bound(ctx->pos[5]) || runtime_isdigit((unsigned char)ctx->pos[5]))) ||
+                    (runtime_strncasecmp(ctx->pos, "THEN", 4) == 0 && (scan_is_kw_bound(ctx->pos[4]) || runtime_isalnum((unsigned char)ctx->pos[4]))) ||
+                    (runtime_strncasecmp(ctx->pos, "ELSE", 4) == 0 && (scan_is_kw_bound(ctx->pos[4]) || runtime_isalnum((unsigned char)ctx->pos[4]))) ||
+                    (runtime_strncasecmp(ctx->pos, "TO", 2) == 0 && (scan_is_kw_bound(ctx->pos[2]) || runtime_isalnum((unsigned char)ctx->pos[2]) || ctx->pos[2] == '-' || ctx->pos[2] == '.')) ||
+                    (runtime_strncasecmp(ctx->pos, "STEP", 4) == 0 && (scan_is_kw_bound(ctx->pos[4]) || runtime_isalnum((unsigned char)ctx->pos[4]) || ctx->pos[4] == '-' || ctx->pos[4] == '.')) ||
+                    (runtime_strncasecmp(ctx->pos, "AND", 3) == 0 && scan_is_op_bound(ctx->pos[3], ctx->pos + 3)) ||
+                    (runtime_strncasecmp(ctx->pos, "OR", 2) == 0 && scan_is_op_bound(ctx->pos[2], ctx->pos + 2)) ||
+                    (runtime_strncasecmp(ctx->pos, "XOR", 3) == 0 && scan_is_op_bound(ctx->pos[3], ctx->pos + 3)) ||
+                    (runtime_strncasecmp(ctx->pos, "MOD", 3) == 0 && scan_is_op_bound(ctx->pos[3], ctx->pos + 3))) {
+                    break;
+                }
             }
         }
         ctx->pos++;
@@ -297,6 +554,17 @@ static BppToken scan_ident_or_keyword(LexerContext *ctx) {
         temp_name[tok.length] = '\0';
         BppKeywordId kw_id = lex_find_keyword_by_name(temp_name);
         if (kw_id != KW_NONE) {
+            bool is_assigned = scan_is_followed_by_assignment(ctx->pos) || scan_is_preceded_by_let(start, ctx->source);
+            if (is_assigned && kw_id != KW_LET) {
+                tok.type = TOK_IDENT;
+                return tok;
+            }
+            if (!is_start && (kw_id == KW_LINE || kw_id == KW_KEY || kw_id == KW_COLOR || kw_id == KW_SCREEN ||
+                             kw_id == KW_LOCATE || kw_id == KW_CLS || kw_id == KW_CIRCLE || kw_id == KW_PSET ||
+                             kw_id == KW_PRESET || kw_id == KW_CLEAR || kw_id == KW_HOME || kw_id == KW_SWAP)) {
+                tok.type = TOK_IDENT;
+                return tok;
+            }
             if (kw_id == KW_AND) tok.type = TOK_AND;
             else if (kw_id == KW_OR) tok.type = TOK_OR;
             else if (kw_id == KW_NOT) tok.type = TOK_NOT;
@@ -307,6 +575,7 @@ static BppToken scan_ident_or_keyword(LexerContext *ctx) {
             else if (kw_id == KW_GT) tok.type = TOK_GT;
             else if (kw_id == KW_LE) tok.type = TOK_LE;
             else if (kw_id == KW_GE) tok.type = TOK_GE;
+            else if (kw_id == KW_IN) tok.type = TOK_IN;
             else if (kw_id == KW_IMP) tok.type = TOK_IMP;
             else if (kw_id == KW_EQV) tok.type = TOK_EQV;
             else if (kw_id == KW_MOD) tok.type = TOK_MOD;
@@ -357,6 +626,7 @@ BppToken lex_next(LexerContext *ctx) {
     tok.start = ctx->pos;
 
     if (scan_try_directive_or_label(ctx, &tok)) return tok;
+    if (scan_try_pragma(ctx, &tok)) return tok;
     if (scan_try_docstring(ctx, &tok)) return tok;
 
     if (*ctx->pos == '\0') {
@@ -382,6 +652,7 @@ BppToken lex_next(LexerContext *ctx) {
     }
 
     if (scan_try_rpn_literal(ctx, &tok)) return tok;
+    if (scan_try_pn_literal(ctx, &tok)) return tok;
     if (scan_try_string_literal(ctx, &tok)) return tok;
     if (scan_try_radix_number(ctx, &tok)) return tok;
     if (scan_try_decimal_number(ctx, &tok)) return tok;
@@ -442,8 +713,11 @@ BppToken lex_next(LexerContext *ctx) {
         case '#': tok.type = TOK_HASH; break;
         case '[': tok.type = TOK_LBRACKET; break;
         case ']': tok.type = TOK_RBRACKET; break;
+        case '{': tok.type = TOK_LBRACE; break;
+        case '}': tok.type = TOK_RBRACE; break;
         case '&': tok.type = TOK_AMPERSAND; break;
         case '\\': tok.type = TOK_BACKSLASH; break;
+        case '|': tok.type = TOK_PIPE; break;
         case '@': tok.type = TOK_AT; break;
         default:  tok.type = TOK_UNKNOWN; break;
     }

@@ -4,7 +4,7 @@
 // NEEDED BY: libcore, libengine, libkernel
 // NEEDS: libcore (alloc.h, alloc.c, ctype.h, ctype.c, hal.h)
 // NEEDS: libcore (memops.h, memops.c, num_parse.h, num_parse.c)
-// NEEDS: libcore (snprintf.h, snprintf.c, strops.h, strops.c)
+// NEEDS: libcore (runtime_snprintf.h, runtime_snprintf.c, strops.h, strops.c)
 // NEEDS: libkernel (vcon.h)
 // Implements virtual device and graphics rendering logic for vcon.
 //

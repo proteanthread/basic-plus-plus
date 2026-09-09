@@ -1,24 +1,72 @@
-# `NOT` Logical and Bitwise Complement Operator (Universal Dual-Format)
+<!--
+Title:        NOT
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/eval/functions/bits/logic/not.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Operator/Function Definition
+# `NOT` Keyword Reference
 
-The `NOT` keyword performs bitwise complement across all 64 bits of integer operands or logical negation of boolean expressions. It is supported in both **unary/prefix** (`NOT expr`) and **functional prefix** (`NOT(expr)`) notation.
+## Source Header
 
-### Syntax Signatures:
-```basic
-result = NOT expr
-result = NOT(expr)
+```c
+// FILENAME: not.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine (sys_fn.c)
+// NEEDS: libcore (language_descriptor.h)
+// NEEDS: libengine (not.h)
+// Provides runtime implementation for the NOT built-in function in BASIC++.
+//
+// ---- Includes ----
 ```
 
-### Operational Rules:
-- Performs bitwise complement: `~(int64_t)expr`.
-- In RPN stack evaluation blocks: `{ expr NOT }`.
+## 1. Description & Usage
+
+Performs bitwise and logical negation on an integer or boolean value.
+
+## 2. Syntax
+
+```basic
+NOT(val) or NOT val
+```
+
+## 3. Code Example
+
+```basic
+10 Val = NOT(val) or NOT val
+20 PRINT "Result: "; Val
+```
+
+## 4. Error Conditions
+
+Error 13: Type Mismatch
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Bitwise & Logical Functions
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_PURE
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 PRINT "Unary: "; NOT 0 : REM Outputs -1
-20 PRINT "Functional: "; NOT(0) : REM Outputs -1
-```
+| Field | Value |
+|---|---|
+| Name | NOT |
+| Category | Bitwise & Logical Functions |
+| Syntax | NOT(val) or NOT val |
+| Description | Performs bitwise and logical negation on an integer or boolean value. |
+| Error Summary | Error 13: Type Mismatch |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_PURE |
+| Feature Type | FEATURE_FUNCTION |
+| Delimiter Mask | none |
+| Compatibility | none |
+| Since Version | none |
+| Source File | engine/src/eval/functions/bits/logic/not.c |

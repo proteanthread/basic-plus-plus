@@ -1,162 +1,224 @@
-# BASIC++ v6.5.2 Arrays and Matrices
+<!--
+Title:        Arrays_And_Matrices
+Tier:         1
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/include/types/config.h,
+              engine/src/statements/variables/declaration/dim.c,
+              engine/src/statements/variables/assignment/array_ext.c,
+              engine/src/statements/matrices/,
+              engine/src/eval/functions/math/linear_algebra/
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. DECLARING ARRAYS
+# Arrays and Matrices
 
-DIM declares an array with specified dimensions and bounds:
+Multidimensional arrays, dynamic bounds, array operations, and the `MAT`
+statement family.
+
+An earlier version of this document stated a three-dimension limit, gave the
+array-operation statements a space-separated syntax they do not have, and cited
+two source directories that do not exist. All three are corrected below against
+the sources named in the header.
+
+---
+
+## 1. Declaring arrays
+
+`DIM` declares an array with the given bounds.
 
 ```basic
-10 DIM Scores(100)         ' 1-D: elements 0-100 (101 elements)
-20 DIM Grid(10, 20)        ' 2-D: 11 x 21 = 231 elements
-30 DIM Cube(5, 5, 5)       ' 3-D: 6 x 6 x 6 = 216 elements
+10 DIM Scores(100)          ' 1-D: 0 through 100, 101 elements
+20 DIM Grid(10, 20)         ' 2-D: 11 x 21 = 231 elements
+30 DIM Cube(5, 5, 5)        ' 3-D: 6 x 6 x 6 = 216 elements
+40 DIM Field(3, 3, 3, 3)    ' 4-D, and so on
 ```
 
-The default lower bound is 0. OPTION BASE 1 changes the lower bound to 1 for all subsequent DIM statements. OPTION BASE must appear before any DIM and can only be set once per program.
+**Dimensions.** `dim.c` parses up to **eight** dimensions per array. Three is
+what most vintage BASICs allowed and what most programs use; eight is the
+ceiling here.
 
-Maximum dimensions: 3. Maximum total element count: 4,194,304 on modern builds, 2,048 on FreeDOS, 512 on embedded. These limits are defined in engine/include/types/config.h.
+**Lower bound.** Zero by default. `OPTION BASE 1` changes the default for
+every `DIM` that follows it, and must appear before any array declaration.
 
-If an array element is accessed without a prior DIM, the interpreter automatically creates a 1-D array with an upper bound of 10 (elements 0-10 or 1-10 depending on OPTION BASE).
+**Implicit dimensioning.** Touching an undeclared array allocates a
+one-dimensional array with an upper bound of 10, which is the GW-BASIC
+behaviour and is retained under Rule #1.
 
-## 2. EXPLICIT BOUNDS
+**Element limits**, from `engine/include/types/config.h`. These are per-array
+element counts, not byte counts:
 
-BASIC++ supports explicit lower and upper bounds using the TO keyword:
+| Build profile | `BASIC_MAX_ARRAY_ELEMENTS` | `BASIC_MAX_DIM_ARRAYS` |
+|---|---|---|
+| Modern (Windows, Linux, BSD, iOS, Android, 32-bit FreeDOS) | 4,194,304 | 1,024 |
+| Lite (`BASIC_LITE_BUILD`) | 4,194,304 | 1,024 |
+| FreeDOS 16-bit (`BASIC_FREEDOS_16`) | 2,048 | 32 |
+| Embedded (`BASIC_EMBEDDED`) | 512 | 16 |
+
+The embedded numbers are the reason an IoT program should size its arrays
+explicitly rather than relying on growth. See `IoT_And_Embedded_Guide`.
+
+---
+
+## 2. Explicit bounds and inspection
 
 ```basic
 10 DIM Temperature(1990 TO 2025)     ' Elements 1990 through 2025
-20 DIM Matrix(1 TO 10, 1 TO 10)      ' 10x10 matrix starting at (1,1)
+20 DIM Matrix(1 TO 10, 1 TO 10)      ' 10x10 starting at (1,1)
 ```
 
-LBOUND(array, dimension) returns the lower bound. UBOUND(array, dimension) returns the upper bound. If the dimension argument is omitted, it defaults to 1 (the first dimension).
+`LBOUND(array, dimension)` and `UBOUND(array, dimension)` return the bounds of
+the given dimension; the dimension argument defaults to 1. Both are implemented
+in `engine/src/eval/functions/math/linear_algebra/`.
 
-## 3. DYNAMIC ARRAYS
-
-REDIM re-declares an array, clearing all existing data:
+Writing a loop against `LBOUND` and `UBOUND` rather than against literals is
+what makes a program survive `OPTION BASE` and a `REDIM`:
 
 ```basic
-10 DIM A(10)
-20 PRINT A(5)       ' Prints 0
-30 A(5) = 42
-40 REDIM A(20)      ' All elements reset to 0
-50 PRINT A(5)       ' Prints 0
+10 FOR I = LBOUND(A, 1) TO UBOUND(A, 1)
+20   PRINT A(I)
+30 NEXT I
 ```
 
-REDIM PRESERVE resizes an array while keeping existing data intact. Only the last dimension can be changed with PRESERVE. Elements beyond the old upper bound are initialized to zero (numeric) or empty string (string):
+---
 
-```basic
-10 DIM A(10)
-20 A(5) = 42
-30 REDIM PRESERVE A(20)
-40 PRINT A(5)       ' Prints 42
-```
+## 3. Dynamic arrays
 
-## 4. ERASING ARRAYS
+- `REDIM arr(n)` resizes and clears: every element becomes 0 or the empty
+  string.
+- `REDIM PRESERVE arr(n)` resizes and keeps what fits. Only the last dimension
+  may change, which is the VB and QuickBASIC rule.
+- `ERASE arr1, arr2` releases the storage and allows the name to be dimensioned
+  again.
 
-ERASE deletes one or more arrays from memory:
+`DIM #channel` dimensions a **virtual array** backed by a file rather than by
+memory — `arr_dim_virtual` in `dim.c`. That is how a program on a 512-element
+embedded profile works with a dataset that does not fit in RAM, and it is the
+same idea as a Pick or MultiValue file item. See `Virtual_Memory_RAMBANKs`.
 
-```basic
-10 DIM A(100), B$(50)
-20 ERASE A, B$
-```
+---
 
-After ERASE, the array names are available for re-use with DIM.
+## 4. Array operations
 
-## 5. DATA TYPES IN ARRAYS
+The registered statement is `ARRAY EXT`, and its sub-commands are **dotted**:
 
-Array elements default to double-precision floating point. Type suffixes in the DIM statement create typed arrays:
+| Statement | Effect |
+|---|---|
+| `ARRAY.SORT` | Sorts elements ascending |
+| `ARRAY.REVERSE` | Reverses element order in place |
+| `ARRAY.FILL` | Fills every element with a value |
 
-```basic
-10 DIM Names$(100)           ' String array
-20 DIM Counts%(50)           ' Integer array
-30 DIM Prices!(200)          ' Single-precision array
-40 DIM Values#(100)          ' Double-precision array (same as no suffix)
-```
+`ARRAYFILL` is registered separately, and `SHUFFLE` randomises element order
+using Fisher-Yates (`stmt_shuffle.c`). The sorting engine itself is
+`engine/src/runtime/array_sort.c`.
 
-DIM can also declare arrays of user-defined types:
+Note the syntax carefully: `ARRAY.SORT`, not `ARRAY SORT A()`. Documentation
+that shows the space-separated form with a parenthesised array argument is
+wrong, and this document was one of the places it appeared.
 
-```basic
-10 TYPE Record
-20   Name AS STRING * 30
-30   Value AS DOUBLE
-40 END TYPE
-50 DIM Data(100) AS Record
-60 Data(1).Name = "Alpha"
-70 Data(1).Value = 3.14
-```
+---
 
-## 6. ARRAY ITERATION AND OPTION BASE
+## 5. The MAT family
 
-All loops iterating over array elements must respect the current OPTION BASE. Use LBOUND and UBOUND rather than hardcoded start indices:
+`MAT` is the ANSI Full BASIC matrix statement set — ANSI X3.113-1987 and
+ISO/IEC 10279, the same lineage as `COLLATE` and `ASK`. Most BASIC dialects
+dropped it; BASIC++ keeps it, and that is one of the more distinctive things
+about the language.
+
+Implemented in `engine/src/statements/matrices/`, in eight files:
+`mat_arith.c`, `mat_ops.c`, `mat_special.c`, `mat_transform.c`, `mat_input.c`,
+`mat_print.c`, `mat_read.c`, `mat_write.c`.
+
+### Initialisation
+
+| Statement | Effect |
+|---|---|
+| `MAT ZER A` | Every element zero |
+| `MAT ONE A` | Every element one |
+| `MAT IDN A` | Identity: ones on the main diagonal |
+
+### Arithmetic and transformation
+
+| Statement | Effect |
+|---|---|
+| `MAT C = A + B` | Element-wise addition |
+| `MAT C = A - B` | Element-wise subtraction |
+| `MAT C = A * B` | Matrix product |
+| `MAT C = (k) * A` | Scalar multiplication |
+| `MAT TRN B = A` | Transpose |
+| `MAT INV B = A` | Inverse |
+
+The registered descriptor for `MAT` gives the syntax as `MAT var = expr` and
+describes it as covering addition, subtraction, multiplication, scalar,
+transpose and inverse.
+
+### Input and output
+
+| Statement | Effect |
+|---|---|
+| `MAT INPUT A` | Reads a matrix from the console |
+| `MAT PRINT A` | Formatted row-and-column output |
+| `MAT READ A` | Reads a matrix from `DATA` statements |
+| `MAT WRITE A` | Writes a matrix to a channel |
+
+### Related functions
+
+| Function | Returns |
+|---|---|
+| `DET` | Determinant |
+| `DOT(A, B)` | Vector dot product of two one-dimensional arrays |
+| `CROSS(A, B, C)` | Three-dimensional cross product of `A` and `B` into `C` |
+| `LBOUND`, `UBOUND` | Bounds, as in section 2 |
+
+`DET`, `DOT` and `CROSS` live in
+`engine/src/eval/functions/math/linear_algebra/`, alongside the complex-number
+functions in `complex_fn.c`.
+
+---
+
+## 6. Worked example: solving a system
 
 ```basic
 10 OPTION BASE 1
-20 DIM A(10)
-30 FOR I = LBOUND(A) TO UBOUND(A)
-40   A(I) = I * 2
-50 NEXT I
+20 DIM A(3, 3), B(3, 3), X(3, 3), C(3, 3)
+30 MAT READ A
+40 DATA 2, 1, -1, -3, -1, 2, -2, 1, 2
+50 MAT INV B = A
+60 PRINT "Determinant:"; DET
+70 MAT C = A * B
+80 PRINT "A times its inverse, which should be the identity:"
+90 MAT PRINT C
 ```
 
-This pattern ensures correct behavior regardless of the OPTION BASE setting.
+`MAT INV` sets `DET` as a side effect, so line 60 must follow line 50. A
+determinant of zero means the matrix is singular and the contents of `B` are
+not meaningful; check it before using the result.
 
-## 7. ARRAY SORT
+---
 
-The ARRAY SORT statement sorts an array in ascending or descending order:
+## 7. Choosing between an array and a set
 
-```basic
-10 DIM A(10)
-20 FOR I = 1 TO 10 : A(I) = RND * 100 : NEXT I
-30 ARRAY SORT A()
-40 FOR I = 1 TO 10 : PRINT A(I); : NEXT I
-```
+BASIC++ has two ways to hold a collection, and they are not interchangeable.
 
-ARRAY SORT A(), DESC sorts in descending order. ARRAY REVERSE reverses the element order without sorting. ARRAY SHUFFLE randomizes the element order.
+An **array** is a fixed-shape, positionally addressed block of one type. It is
+the right choice for numeric data, matrices, buffers, lookup tables, and
+anything a loop walks by index. It is what `MAT` operates on.
 
-## 8. ARRAY SEARCH
+A **set** is the fine-grained object model: `BLOCK { SET [ GROUP ( OBJECT ) ] }`,
+with named or ordinal members at each level, three levels standard and four the
+ceiling. It is the right choice for records, heterogeneous structures, and
+anything addressed by name rather than position. See `Set_Based_Object_Model`.
 
-ARRAY SEARCH A(), value, result finds the first element matching value and stores its index in result. If not found, result is set to -1.
+The rough rule: if the index means something arithmetic — a row, a sample
+number, a coordinate — use an array. If it means something nominal — a field
+name, a record key — use a set.
 
-## 9. FILTER AND REDUCE
+---
 
-FILTER creates a new array containing only elements that satisfy a condition. REDUCE applies a function across all elements to produce a single value. These operations are available when the arrayext module is loaded.
+## See also
 
-## 10. DATA/READ/RESTORE
-
-DATA statements store constant values inline in the program. READ assigns the next DATA value to a variable. RESTORE resets the DATA pointer:
-
-```basic
-10 DATA 10, 20, 30, "HELLO", "WORLD"
-20 READ A, B, C
-30 READ D$, E$
-40 PRINT A; B; C; D$; E$
-50 RESTORE
-60 READ X           ' X = 10 (re-reads from beginning)
-```
-
-RESTORE with a line number sets the DATA pointer to that specific line: `RESTORE 500` begins reading from the DATA on line 500.
-
-Reading past the end of all DATA statements produces Error 4 (Out of DATA). Reading a string value into a numeric variable uses VAL() conversion. Reading a numeric value into a string variable uses STR$() conversion.
-
-## 11. MATRIX OPERATIONS (MAT)
-
-MAT operations perform bulk arithmetic on two-dimensional arrays. They require SUPPORT_MAT to be enabled (enabled by default).
-
-MAT ZER A fills all elements of A with zero:
-```basic
-10 DIM A(3, 3)
-20 MAT ZER A
-```
-
-MAT ONE A fills all elements with 1. MAT IDN A fills A with the identity matrix (1 on the diagonal, 0 elsewhere). MAT TRN B = A transposes matrix A into B. MAT INV B = A computes the inverse of A and stores it in B.
-
-MAT arithmetic assigns results to a target matrix:
-```basic
-10 DIM A(3, 3), B(3, 3), C(3, 3)
-20 MAT C = A + B       ' Element-wise addition
-30 MAT C = A - B       ' Element-wise subtraction
-40 MAT C = A * B       ' Matrix multiplication
-50 MAT C = (2) * A     ' Scalar multiplication
-```
-
-MAT PRINT A prints a matrix in formatted rows and columns.
-
-DET returns the determinant of the most recently inverted matrix. DOT(A, B) computes the dot product of two vectors (1-D arrays). CROSS(A, B, C) computes the cross product of two 3-element vectors.
-
-MAT operations respect OPTION BASE for starting indices.
+- `Set_Based_Object_Model` for the set, group and object model
+- `Structured_BASIC` for the ANSI and ECMA lineage of `MAT`
+- `Virtual_Memory_RAMBANKs` for `DIM #` and file-backed arrays
+- `IoT_And_Embedded_Guide` for the constrained-profile limits
+- `Programmers_Guide` for the language as a whole

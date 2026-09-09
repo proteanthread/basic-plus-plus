@@ -3,17 +3,29 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
 // NEEDS: libcore (esp32_hal.h, esp32_hal.c, funcreg.h, funcreg.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libengine (string.c, vm.h)
 // Implements TICKS_MS, TICKS_US, and TICKS_DIFF built-in timing functions.
 //
 // ---- Includes ----
 
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/funcreg.h"
 #include "vm/vm.h"
 #include "esp32_hal.h"
-#include <string.h>
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_ticks_ms_desc = {
+    .name = "TICKS_MS",
+    .category = "Timing & Real-Time",
+    .syntax = "TICKS_MS() | TICKS_US() | TICKS_DIFF(t1, t2)",
+    .description = "Returns monotonically increasing millisecond or microsecond hardware timer counters.",
+    .error_summary = "Error 13: Type Mismatch",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SAFE,
+    .type = FEATURE_FUNCTION
+};
 
 BValue func_ticks_ms_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err) {
     (void)vm;
@@ -59,14 +71,7 @@ BValue func_ticks_diff_eval(VMContext *vm, const char *uname, int arg_count, BVa
 }
 
 void func_ticks_iot_register(void) {
-    MicroLibMetadata meta = {
-        .name = "TICKS_MS",
-        .category = "Timing & Real-Time",
-        .syntax = "TICKS_MS() | TICKS_US() | TICKS_DIFF(t1, t2)",
-        .help_text = "Returns monotonically increasing millisecond or microsecond hardware timer counters.",
-        .error_codes = "Error 13: Type Mismatch"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_ticks_ms_desc);
 
     FunctionEntry entry_ms = {
         .name = "TICKS_MS",

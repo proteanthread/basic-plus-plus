@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
 // NEEDS: libcore (esp32_hal.h, esp32_hal.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libengine (eval.h, eval.c, lexer.h, lexer.c, string.c, vm.h)
 // Implements the SPI statement for Serial Peripheral Interface bus communication.
 //
@@ -12,19 +12,31 @@
 #include "vm/vm.h"
 #include "lexer/lexer.h"
 #include "eval/eval.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "esp32_hal.h"
-#include <string.h>
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_spi_desc = {
+    .name = "SPI",
+    .category = "Hardware & IoT",
+    .syntax = "SPI.TRANSFER cs_pin, data$",
+    .description = "Transfers data synchronously over the SPI serial bus with chip-select control.",
+    .error_summary = "Error 2: Syntax Error, Error 13: Type Mismatch",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_STATEMENT
+};
 
 BppError stmt_spi_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BppToken tok = lex_peek(lex);
     if (tok.type == TOK_PERIOD) {
         lex_next(lex);
         BppToken sub = lex_peek(lex);
-        if (sub.type == TOK_IDENT) lex_next(lex);
+        if (sub.type == TOK_IDENT || sub.type == TOK_KEYWORD) lex_next(lex);
     }
 
     BValue cs_val = eval_expression(vm, lex, &err);
@@ -49,12 +61,5 @@ BppError stmt_spi_handler(VMContext *vm, LexerContext *lex) {
 }
 
 void stmt_spi_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "SPI",
-        .category = "Hardware & IoT",
-        .syntax = "SPI.TRANSFER cs_pin, data$",
-        .help_text = "Transfers data synchronously over the SPI serial bus with chip-select control.",
-        .error_codes = "Error 2: Syntax Error, Error 13: Type Mismatch"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_spi_desc);
 }

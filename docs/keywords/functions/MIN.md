@@ -1,24 +1,72 @@
-# `MIN` Minimum Value Function (Universal Dual-Format)
+<!--
+Title:        MIN
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/eval/functions/math/algebra/min.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Function/Operator Definition
+# `MIN` Keyword Reference
 
-The `MIN` keyword evaluates numeric expressions and returns the smallest (minimum) numeric value. It is supported in both **infix** notation (`a MIN b`) and **prefix/variadic** functional notation (`MIN(a, b [, c...])`).
+## Source Header
 
-### Syntax Signatures:
-```basic
-smallest = val1 MIN val2
-smallest = MIN(val1, val2 [, val3, ...])
+```c
+// FILENAME: min.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine (math_fn.c)
+// NEEDS: libcore (math.h, language_descriptor.h, string.h)
+// NEEDS: libengine (math.c, min.h, string.c)
+// Provides runtime implementation for the MIN built-in function in BASIC++.
+//
+// ---- Includes ----
 ```
 
-### Operational Rules:
-- Returns $\min(x_1, x_2, \dots, x_n)$.
-- In RPN stack evaluation blocks: `{ 10 20 MIN }`.
+## 1. Description & Usage
+
+Returns the minimum of two or more numeric values (supports dual prefix & infix notation).
+
+## 2. Syntax
+
+```basic
+MIN(val1, val2 [, ...]) or val1 MIN val2
+```
+
+## 3. Code Example
+
+```basic
+10 Val = MIN(val1, val2 [, ...]) or val1 MIN val2
+20 PRINT "Result: "; Val
+```
+
+## 4. Error Conditions
+
+Error 13: Type Mismatch (MIN expects numeric arguments)
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Math Functions
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_PURE
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 PRINT "Infix: "; 42 MIN 17 : REM Outputs 17
-20 PRINT "Prefix: "; MIN(42, 17, 88, 5) : REM Outputs 5
-```
+| Field | Value |
+|---|---|
+| Name | MIN |
+| Category | Math Functions |
+| Syntax | MIN(val1, val2 [, ...]) or val1 MIN val2 |
+| Description | Returns the minimum of two or more numeric values (supports dual prefix & infix notation). |
+| Error Summary | Error 13: Type Mismatch (MIN expects numeric arguments) |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_PURE |
+| Feature Type | FEATURE_FUNCTION |
+| Delimiter Mask | none |
+| Compatibility | none |
+| Since Version | none |
+| Source File | engine/src/eval/functions/math/algebra/min.c |

@@ -17,7 +17,7 @@ This document establishes the formal 3-Tier Multi-Layer Safety Architecture to e
 
 2. The 3-Tier Multi-Layer Safety Model
 
-``mermaid
+mermaid
 graph TD
     subgraph "Tier 1: AST & Interpreter Node Level"
         T11["AST Node Execution Loop"] -->|Tick Watchdog| W1["vmcheck_watchdog()"]
@@ -37,7 +37,7 @@ graph TD
         T32["Benchmark Runner (runexhaustive_benchmarks.py)"] -->|Process Timeout| P1
         P1 -->|Exceeds 10s Budget| KILL["Hard Process Terminate (SIGKILL)"]
     end
-`
+
 
 Tier 1: Engine Fast-Path Parity
 - Every loop inside evalastexecute() and executesinglestatement() must invoke vmcheckwatchdog(vm, &err) before executing each statement or node.
@@ -62,4 +62,4 @@ Invariant B: Subroutine & Jump State Granularity
 > Every control-flow statement (GOSUB, ON...GOSUB, RETURN, GOTO) in an AST or cached representation MUST maintain byte-accurate or node-accurate resume position tracking. Returning from a subroutine must never restart a multi-statement line at Node 0.
 
 Invariant C: Line-Boundary State Isolation
-> On sequential line progression without an active jump, vm->currentpos MUST be explicitly cleared (vm->currentpos = NULL`). No statement or AST handler may compare pointers across distinct line string allocations.
+> On sequential line progression without an active jump, vm->currentpos MUST be explicitly cleared (vm->currentpos = NULL). No statement or AST handler may compare pointers across distinct line string allocations.

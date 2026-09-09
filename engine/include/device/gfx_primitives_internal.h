@@ -4,7 +4,7 @@
 // NEEDED BY: libkernel (gfx_draw_core.c, gfx_primitives.c, gfx_stmt_retro.c)
 // NEEDED BY: libkernel (gfx_stmt_shapes.c)
 // NEEDS: libcore (alloc.h, alloc.c, ctype.h, ctype.c, hal.h)
-// NEEDS: libcore (memops.h, memops.c, snprintf.h, snprintf.c)
+// NEEDS: libcore (memops.h, memops.c, runtime_snprintf.h, runtime_snprintf.c)
 // NEEDS: libcore (strops.h, strops.c)
 // NEEDS: libengine (bgi.h, bgi.c, eval.h, eval.c, lexer.h, lexer.c, vm.h)
 // NEEDS: libkernel (gfx_internal.h)

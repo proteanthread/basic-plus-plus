@@ -2,7 +2,7 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libcore (strings.h, strings.c)
 // NEEDS: libengine (eval.h, eval.c, shell.h, string.c)
 // NEEDS: libplatform (platform.h)
@@ -14,25 +14,30 @@
 #include "eval/eval.h"
 #include "platform/platform.h"
 #include "runtime/strings.h"
-#include "runtime/micro_lib_metadata.h"
-#include <string.h>
+#include "runtime/language_descriptor.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_shell_desc = {
+    .name = "SHELL",
+    .category = "System & OS",
+    .syntax = "SHELL [command_string$]",
+    .description = "Suspends the BASIC program and executes an operating system command shell.",
+    .error_summary = "Error 13: Type Mismatch",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SYSTEM,
+    .type = FEATURE_STATEMENT
+};
 
 void stmt_shell_register(void) {
-    MicroLibMetadata meta = {
-        .name = "SHELL",
-        .category = "System & OS",
-        .syntax = "SHELL [command_string$]",
-        .help_text = "Suspends the BASIC program and executes an operating system command shell.",
-        .error_codes = "Error 13: Type Mismatch"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_shell_desc);
 }
 
 BppError stmt_shell_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     BValue cmd_val;
-    memset(&cmd_val, 0, sizeof(cmd_val));
+    runtime_memset(&cmd_val, 0, sizeof(cmd_val));
 
     BppToken tok = lex_peek(lex);
     if (tok.type == TOK_EOF || tok.type == TOK_EOL) {

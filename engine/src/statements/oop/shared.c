@@ -2,7 +2,7 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (share.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libcore (variables.h, variables.c)
 // NEEDS: libengine (eval.h, eval.c, lexer.h, lexer.c, shared.h, string.c, vm.h)
 // NEEDS: libkernel (security.h, security.c, vdev.h, vdev.c)
@@ -16,14 +16,26 @@
 #include "eval/eval.h"
 #include "device/vdev.h"
 #include "security/security.h"
-#include "runtime/micro_lib_metadata.h"
-#include <string.h>
+#include "runtime/language_descriptor.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
 
 #include "runtime/variables.h"
 
+static const LangDesc g_shared_desc = {
+    .name = "SHARED",
+    .category = "Variables & Memory",
+    .syntax = "SHARED variable [, variable...]",
+    .description = "Grants SUB or FUNCTION procedures access to module-level global variables.",
+    .error_summary = "Error 2: Syntax Error, Error 33: Illegal Outside SUB/FUNCTION",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SYSTEM,
+    .type = FEATURE_STATEMENT
+};
+
 BppError stmt_shared_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     if (!vm || !lex) {
         err.code = 5; err.message = "Null VM or lexer context";
@@ -41,7 +53,7 @@ BppError stmt_shared_handler(VMContext *vm, LexerContext *lex) {
 
         char name[64] = {0};
         size_t len = (tok.length < sizeof(name) - 1) ? tok.length : sizeof(name) - 1;
-        memcpy(name, tok.start, len);
+        runtime_memcpy(name, tok.start, len);
 
         var_set_shared(var, name);
 
@@ -58,7 +70,7 @@ BppError stmt_shared_handler(VMContext *vm, LexerContext *lex) {
 
 BppError stmt_local_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     if (!vm || !lex) {
         err.code = 5; err.message = "Null VM or lexer context";
@@ -76,7 +88,7 @@ BppError stmt_local_handler(VMContext *vm, LexerContext *lex) {
 
         char name[64] = {0};
         size_t len = (tok.length < sizeof(name) - 1) ? tok.length : sizeof(name) - 1;
-        memcpy(name, tok.start, len);
+        runtime_memcpy(name, tok.start, len);
 
         var_declare(var, name);
 
@@ -102,7 +114,7 @@ BppError stmt_local_handler(VMContext *vm, LexerContext *lex) {
 
 BppError stmt_static_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     if (!vm || !lex) {
         err.code = 5; err.message = "Null VM or lexer context";
@@ -120,7 +132,7 @@ BppError stmt_static_handler(VMContext *vm, LexerContext *lex) {
 
         char name[64] = {0};
         size_t len = (tok.length < sizeof(name) - 1) ? tok.length : sizeof(name) - 1;
-        memcpy(name, tok.start, len);
+        runtime_memcpy(name, tok.start, len);
 
         var_declare(var, name);
 
@@ -145,13 +157,6 @@ BppError stmt_static_handler(VMContext *vm, LexerContext *lex) {
 }
 
 void stmt_shared_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "SHARED",
-        .category = "Variables & Memory",
-        .syntax = "SHARED variable [, variable...]",
-        .help_text = "Grants SUB or FUNCTION procedures access to module-level global variables.",
-        .error_codes = "Error 2: Syntax Error, Error 33: Illegal Outside SUB/FUNCTION"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_shared_desc);
 }
 

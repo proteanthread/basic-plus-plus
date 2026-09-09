@@ -1,25 +1,72 @@
-# `CONJ` Complex Conjugate Function
+<!--
+Title:        CONJ
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/module/mathext.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Function Definition
+# `CONJ` Keyword Reference
 
-The `CONJ` function computes the complex conjugate of a complex number $z = x + iy$:
+## Source Header
 
-$$\bar{z} = x - iy$$
-
-### Syntax Signatures:
-```basic
-res_complex = CONJ(complex_val)
+```c
+// FILENAME: mathext.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore (funcreg.h, funcreg.c, math.h)
+// NEEDS: libengine (math.c)
+// Provides core logic and interface definitions for mathext within BASIC++.
+//
+// ---- Includes ----
 ```
 
-### Operational Rules:
-- Negates the sign of the imaginary component.
+## 1. Description & Usage
+
+Returns the complex conjugate of complex number z (re - i*im).
+
+## 2. Syntax
+
+```basic
+CONJ(z)
+```
+
+## 3. Code Example
+
+```basic
+10 Val = CONJ(z)
+20 PRINT "Result: "; Val
+```
+
+## 4. Error Conditions
+
+Error 13: Type Mismatch
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Math & Complex Numbers
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_PURE
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 Z = COMPLEX(3, 4)
-20 Z_BAR = CONJ(Z)
-30 PRINT "Conjugate: "; REAL(Z_BAR); " + "; IMAG(Z_BAR); "i" : REM Outputs 3 + -4i
-```
+| Field | Value |
+|---|---|
+| Name | CONJ |
+| Category | Math & Complex Numbers |
+| Syntax | CONJ(z) |
+| Description | Returns the complex conjugate of complex number z (re - i*im). |
+| Error Summary | Error 13: Type Mismatch |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_PURE |
+| Feature Type | FEATURE_FUNCTION |
+| Delimiter Mask | none |
+| Compatibility | BASIC++ Standard |
+| Since Version | 6.0.0 |
+| Source File | engine/src/module/mathext.c |

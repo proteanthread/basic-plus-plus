@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (mat_internal.h)
 // NEEDS: libcore (arrays.h, arrays.c, ctype.h, ctype.c, file.h, file.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libengine (eval.h, eval.c, lexer.h, lexer.c, mat_input.h, string.c)
 // NEEDS: libengine (vm.h)
 // NEEDS: libkernel (errors.h, vdev.h, vdev.c)
@@ -18,21 +18,27 @@
 #include "runtime/arrays.h"
 #include "runtime/file.h"
 #include "device/vdev.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "types/errors.h"
-#include <string.h>
-#include <stdlib.h>
-#include <ctype.h>
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "runtime/memory/alloc.h"
+#include "runtime/ctype/ctype.h"
+#include "runtime/conv/float_parse.h"
+
+static const LangDesc g_mat_input_desc = {
+    .name = "MAT INPUT",
+    .category = "Matrix Operations",
+    .syntax = "MAT INPUT [#file_num,] array_name [(num_rows [, num_cols])]",
+    .description = "Reads numeric or string matrix elements from console input or an open file stream (SDS 940 / DEC PDP-10 Super BASIC).",
+    .error_summary = "Error 2: Syntax Error, Error 9: Subscript Out of Range, Error 52: Bad File Number, Error 62: Input Past End",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_STATEMENT
+};
 
 void stmt_mat_input_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "MAT INPUT",
-        .category = "Matrix Operations",
-        .syntax = "MAT INPUT [#file_num,] array_name [(num_rows [, num_cols])]",
-        .help_text = "Reads numeric or string matrix elements from console input or an open file stream (SDS 940 / DEC PDP-10 Super BASIC).",
-        .error_codes = "Error 2: Syntax Error, Error 9: Subscript Out of Range, Error 52: Bad File Number, Error 62: Input Past End"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_mat_input_desc);
 }
 
 static bool read_field_from_file(FileContext *fc, int channel, char *buf, size_t max_len) {
@@ -40,7 +46,7 @@ static bool read_field_from_file(FileContext *fc, int channel, char *buf, size_t
     int c;
 
     // Skip leading whitespace, newlines, and commas
-    while ((c = file_getc(fc, channel)) != -1 && (isspace((unsigned char)c) || c == ','));
+    while ((c = file_getc(fc, channel)) != -1 && (runtime_isspace((unsigned char)c) || c == ','));
     if (c == -1) return false;
 
     if (c == '"') {
@@ -49,7 +55,7 @@ static bool read_field_from_file(FileContext *fc, int channel, char *buf, size_t
         }
     } else {
         buf[len++] = (char)c;
-        while ((c = file_getc(fc, channel)) != -1 && !isspace((unsigned char)c) && c != ',' && len < max_len - 1) {
+        while ((c = file_getc(fc, channel)) != -1 && !runtime_isspace((unsigned char)c) && c != ',' && len < max_len - 1) {
             buf[len++] = (char)c;
         }
     }
@@ -60,7 +66,7 @@ static bool read_field_from_file(FileContext *fc, int channel, char *buf, size_t
 
 BppError stmt_mat_input_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     VDevContext *vdev = vm_get_vdev(vm);
     FileContext *fc = vm_get_file(vm);
@@ -98,7 +104,7 @@ BppError stmt_mat_input_handler(VMContext *vm, LexerContext *lex) {
 
     char arr_name[64];
     size_t arr_len = (tok.length < sizeof(arr_name) - 1) ? tok.length : sizeof(arr_name) - 1;
-    memcpy(arr_name, tok.start, arr_len);
+    runtime_memcpy(arr_name, tok.start, arr_len);
     arr_name[arr_len] = '\0';
 
     // Optional redimension dimensions: A(r, c) or A(r)
@@ -144,7 +150,7 @@ BppError stmt_mat_input_handler(VMContext *vm, LexerContext *lex) {
     int bounds[4] = {0};
     int dims = arr_get_dimensions(arr, arr_name, bounds, 4);
     int base = arr_get_option_base(arr);
-    bool is_str = (arr_name[strlen(arr_name) - 1] == '$');
+    bool is_str = (arr_name[runtime_strlen(arr_name) - 1] == '$');
 
     char field_buf[256];
     if (dims == 1) {
@@ -159,7 +165,7 @@ BppError stmt_mat_input_handler(VMContext *vm, LexerContext *lex) {
                     if (!vdev_gets(vdev, field_buf, sizeof(field_buf))) {
                         field_buf[0] = '\0';
                     }
-                    size_t flen = strlen(field_buf);
+                    size_t flen = runtime_strlen(field_buf);
                     while (flen > 0 && (field_buf[flen - 1] == '\r' || field_buf[flen - 1] == '\n')) {
                         field_buf[--flen] = '\0';
                     }
@@ -171,10 +177,10 @@ BppError stmt_mat_input_handler(VMContext *vm, LexerContext *lex) {
                 if (is_str) {
                     if (elem->type == VAL_STRING && elem->as.string) str_release(vm_get_str(vm), elem->as.string);
                     elem->type = VAL_STRING;
-                    elem->as.string = str_create(vm_get_str(vm), field_buf, strlen(field_buf));
+                    elem->as.string = str_create(vm_get_str(vm), field_buf, runtime_strlen(field_buf));
                 } else {
                     elem->type = VAL_NUMBER;
-                    elem->as.number = strtod(field_buf, NULL);
+                    elem->as.number = runtime_strtod(field_buf, NULL);
                 }
             }
         }
@@ -191,7 +197,7 @@ BppError stmt_mat_input_handler(VMContext *vm, LexerContext *lex) {
                         if (!vdev_gets(vdev, field_buf, sizeof(field_buf))) {
                             field_buf[0] = '\0';
                         }
-                        size_t flen = strlen(field_buf);
+                        size_t flen = runtime_strlen(field_buf);
                         while (flen > 0 && (field_buf[flen - 1] == '\r' || field_buf[flen - 1] == '\n')) {
                             field_buf[--flen] = '\0';
                         }
@@ -203,10 +209,10 @@ BppError stmt_mat_input_handler(VMContext *vm, LexerContext *lex) {
                     if (is_str) {
                         if (elem->type == VAL_STRING && elem->as.string) str_release(vm_get_str(vm), elem->as.string);
                         elem->type = VAL_STRING;
-                        elem->as.string = str_create(vm_get_str(vm), field_buf, strlen(field_buf));
+                        elem->as.string = str_create(vm_get_str(vm), field_buf, runtime_strlen(field_buf));
                     } else {
                         elem->type = VAL_NUMBER;
-                        elem->as.number = strtod(field_buf, NULL);
+                        elem->as.number = runtime_strtod(field_buf, NULL);
                     }
                 }
             }

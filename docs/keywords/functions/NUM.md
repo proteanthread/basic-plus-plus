@@ -1,23 +1,71 @@
-# `NUM` String to Number Parsing Function
+<!--
+Title:        NUM
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/eval/type.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Function Definition
+# `NUM` Keyword Reference
 
-The `NUM` (or `VAL`) function parses a numeric string and returns its double-precision floating-point value.
+## Source Header
 
-### Syntax Signatures:
-```basic
-numeric_val# = NUM(string_expression$)
+```c
+// FILENAME: type.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libengine (type.h)
+// Provides core logic and interface definitions for type within BASIC++.
+//
+// ---- Includes ----
 ```
 
-### Operational Rules:
-- Reads leading numeric digits, decimal points, and scientific notation exponents (`1.23E4`).
-- Returns 0 if string contains no leading numeric characters.
+## 1. Description & Usage
+
+Extracts or counts the numeric elements in expression or collection.
+
+## 2. Syntax
+
+```basic
+NUM(expr)
+```
+
+## 3. Code Example
+
+```basic
+10 Val = NUM(e10pr)
+20 PRINT "Result: "; Val
+```
+
+## 4. Error Conditions
+
+Error 13: Type Mismatch
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Introspection & Conversion
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_PURE
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 S$ = "123.45"
-20 PRINT NUM(S$) * 2 : REM Outputs 246.9
-```
+| Field | Value |
+|---|---|
+| Name | NUM |
+| Category | Introspection & Conversion |
+| Syntax | NUM(expr) |
+| Description | Extracts or counts the numeric elements in expression or collection. |
+| Error Summary | Error 13: Type Mismatch |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_PURE |
+| Feature Type | FEATURE_FUNCTION |
+| Delimiter Mask | none |
+| Compatibility | BASIC++ Standard |
+| Since Version | 6.0.0 |
+| Source File | engine/src/eval/type.c |

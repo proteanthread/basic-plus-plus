@@ -14,12 +14,13 @@
 #include "eval/eval.h"
 #include "runtime/strings.h"
 #include "runtime/variables.h"
-
-#include <string.h>
+#include "runtime/language_descriptor.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
 
 BppError stmt_nil_unpack_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BppToken tok = lex_peek(lex);
     if (tok.type == TOK_PERIOD) {
@@ -27,7 +28,7 @@ BppError stmt_nil_unpack_handler(VMContext *vm, LexerContext *lex) {
         tok = lex_peek(lex);
     }
     if (tok.type == TOK_IDENT || tok.type == TOK_KEYWORD) {
-        if (tok.length == 6 && strncasecmp(tok.start, "UNPACK", 6) == 0) {
+        if (tok.length == 6 && runtime_strncasecmp(tok.start, "UNPACK", 6) == 0) {
             lex_next(lex);
         }
     }
@@ -57,7 +58,7 @@ BppError stmt_nil_unpack_handler(VMContext *vm, LexerContext *lex) {
 
     char var_name[64];
     size_t nlen = var_tok.length < sizeof(var_name) - 1 ? var_tok.length : sizeof(var_name) - 1;
-    memcpy(var_name, var_tok.start, nlen);
+    runtime_memcpy(var_name, var_tok.start, nlen);
     var_name[nlen] = '\0';
 
     const uint8_t *data = (const uint8_t *)str_data(pkt_val.as.string);
@@ -72,6 +73,17 @@ BppError stmt_nil_unpack_handler(VMContext *vm, LexerContext *lex) {
     return err;
 }
 
+static const LangDesc g_nil_unpack_desc = {
+    .name = "NET.UNPACK",
+    .category = "Hardware & Network",
+    .syntax = "NET.UNPACK packet$, dest_var",
+    .description = "Deserializes an RFC 51 compact bead byte stream into a destination variable.",
+    .error_summary = "Error 2: Expected destination variable, Error 13: Type mismatch",
+    .subsystem = SUBSYSTEM_SERVER,
+    .safety = SAFETY_IO,
+    .type = FEATURE_STATEMENT
+};
+
 void stmt_nil_unpack_register(void) {
-    // Registered in VM dispatch
+    lang_desc_register(&g_nil_unpack_desc);
 }

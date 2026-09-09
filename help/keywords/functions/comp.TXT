@@ -1,25 +1,70 @@
-COMP String Comparison Function
-======================================================================
+TITLE: COMP
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/functions/math/linear_algebra/comp.c
+GENERATED: no, hand-written
+STATUS: current
 
-The COMP function performs a three-way lexical comparison between two
-strings.
+==============================================================================
+COMP KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: comp.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (math_fn.c)
+    // NEEDS: libcore (math.h, language_descriptor.h, string.h)
+    // NEEDS: libengine (comp.h, math.c, string.c)
+    // Provides runtime implementation for the COMP built-in function in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Compares two numeric expressions a and b; returns -1 if a < b, 0 if a == b,
+and 1 if a > b.
 
-    res% = COMP(str1$, str2$)
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    COMP(a, b)
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = COMP(a, b)
+    20 PRINT "Result: "; Val
 
-OPERATIONAL RULES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 13: Type Mismatch (COMP expects two numeric arguments)
 
-  - Returns -1 if str1 < str2.
-  - Returns  0 if str1 = str2.
-  - Returns +1 if str1 > str2.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Math Functions
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_PURE
 
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 PRINT COMP("A", "B")   : REM Outputs -1
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  COMP
+Category              Math Functions
+Syntax                COMP(a, b)
+Description           Compares two numeric expressions a and b; returns -...
+Error Summary         Error 13: Type Mismatch (COMP expects two numeric a...
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_PURE
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/eval/functions/math/linear_algebra/comp.c

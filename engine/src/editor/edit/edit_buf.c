@@ -8,6 +8,9 @@
 // ---- Includes ----
 
 #include "editor/edit_internal.h"
+#include "runtime/format/snprintf.h"
+#include "runtime/string/strops.h"
+#include "runtime/string/memops.h"
 
 EditLine *g_edit_text_buffer = NULL;
 int g_edit_text_buffer_capacity = 0;

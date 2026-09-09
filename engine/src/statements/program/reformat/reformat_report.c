@@ -8,6 +8,21 @@
 // ---- Includes ----
 
 #include "statements/program/reformat_internal.h"
+#include "runtime/language_descriptor.h"
+#include "runtime/format/snprintf.h"
+#include "runtime/string/strops.h"
+#include "platform/platform.h"
+
+static const LangDesc g_reformat_engine_desc = {
+    .name = "REFORMAT ENGINE",
+    .category = "Code Formatting",
+    .syntax = "REFORMAT [line_start[-line_end]]",
+    .description = "Reformats source code lines according to BASIC++ style and layout rules.",
+    .error_summary = "Error 8: Undefined Line Number",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SAFE,
+    .type = FEATURE_STATEMENT
+};
 
 //
 // ---- Check Report and Diff Preview Renderer ----
@@ -67,11 +82,11 @@ void reformat_render_check_report(VMContext *vm, const ReformatPlan *plan, bool 
         int is = line_indent * spaces_per;
         if (is < 0) is = 0;
         if (is > 128) is = 128;
-        snprintf(new_buf, sizeof(new_buf), "%*s%.1024s", is, "", body_text);
+        runtime_snprintf(new_buf, sizeof(new_buf), "%*s%.1024s", is, "", body_text);
 
-        if (strcmp(orig_text, new_buf) != 0) {
+        if (runtime_strcmp(orig_text, new_buf) != 0) {
             char buf[4200];
-            snprintf(buf, sizeof(buf), "  Line %lld: [BEFORE] %lld %.1024s\n           [AFTER ] %lld %.1024s\n",
+            runtime_snprintf(buf, sizeof(buf), "  Line %lld: [BEFORE] %lld %.1024s\n           [AFTER ] %lld %.1024s\n",
                      (long long)line_num, (long long)line_num, orig_text, (long long)line_num, new_buf);
             vdev_puts(vd, buf);
             diff_shown++;
@@ -94,23 +109,23 @@ void reformat_render_check_report(VMContext *vm, const ReformatPlan *plan, bool 
             const ReformatDiagnostic *diag = &plan->diagnostics[d];
             const char *sev_str = (diag->severity == DIAG_ERROR) ? "ERROR" : "WARNING";
             char header[512];
-            snprintf(header, sizeof(header), "  [%-7s] Line %lld: %s\n", sev_str, (long long)diag->line, diag->what);
+            runtime_snprintf(header, sizeof(header), "  [%-7s] Line %lld: %s\n", sev_str, (long long)diag->line, diag->what);
             vdev_puts(vd, header);
 
             char detail[1024];
-            snprintf(detail, sizeof(detail), "            WHAT: %s\n            WHY:  %s\n            HOW:  %s\n\n",
+            runtime_snprintf(detail, sizeof(detail), "            WHAT: %s\n            WHY:  %s\n            HOW:  %s\n\n",
                      diag->what, diag->why, diag->how);
             vdev_puts(vd, detail);
         }
         char count_buf[128];
-        snprintf(count_buf, sizeof(count_buf), "  %d ERROR(s), %d WARNING(s)\n", plan->error_count, plan->warning_count);
+        runtime_snprintf(count_buf, sizeof(count_buf), "  %d ERROR(s), %d WARNING(s)\n", plan->error_count, plan->warning_count);
         vdev_puts(vd, count_buf);
     }
     vdev_puts(vd, "\n");
 
     vdev_puts(vd, "=== SUMMARY ===\n");
     char sum_buf[512];
-    snprintf(sum_buf, sizeof(sum_buf),
+    runtime_snprintf(sum_buf, sizeof(sum_buf),
              "  Total lines:              %d\n"
              "  Lines to change:           %d\n"
              "  Lines unchanged:           %d\n"
@@ -125,11 +140,11 @@ void reformat_render_check_report(VMContext *vm, const ReformatPlan *plan, bool 
     if (plan->error_count == 0 && plan->warning_count == 0) {
         vdev_puts(vd, "  STRICT mode ready:  YES\n  Recommend: REFORMAT ");
         char rec[32];
-        snprintf(rec, sizeof(rec), "%d\n\n", plan->spaces_per_indent);
+        runtime_snprintf(rec, sizeof(rec), "%d\n\n", plan->spaces_per_indent);
         vdev_puts(vd, rec);
     } else {
         char strict_buf[256];
-        snprintf(strict_buf, sizeof(strict_buf),
+        runtime_snprintf(strict_buf, sizeof(strict_buf),
                  "  STRICT mode ready:  NO\n"
                  "    %d error(s) and %d warning(s) must be resolved before STRICT will proceed.\n"
                  "    Tip: Fix the issues listed in DIAGNOSTICS, then run REFORMAT STRICT.\n\n",
@@ -137,29 +152,29 @@ void reformat_render_check_report(VMContext *vm, const ReformatPlan *plan, bool 
         vdev_puts(vd, strict_buf);
     }
 
-    if (plan->has_filename && strlen(plan->filename) > 0) {
+    if (plan->has_filename && runtime_strlen(plan->filename) > 0) {
         char chk_name[260];
-        snprintf(chk_name, sizeof(chk_name), "%s", plan->filename);
-        char *dot = strrchr(chk_name, '.');
+        runtime_snprintf(chk_name, sizeof(chk_name), "%s", plan->filename);
+        char *dot = runtime_strrchr(chk_name, '.');
         if (dot) *dot = '\0';
-        strncat(chk_name, ".CHK", sizeof(chk_name) - strlen(chk_name) - 1);
+        runtime_strncat(chk_name, ".CHK", sizeof(chk_name) - runtime_strlen(chk_name) - 1);
 
-        FILE *f = fopen(chk_name, "w");
+        void *f = platform_file_open(chk_name, "w");
         if (f) {
-            fprintf(f, "REFORMAT CHECK Report for %s\n\n", plan->filename);
-            fprintf(f, "Total Lines: %d, Diagnostics: %d Errors, %d Warnings\n",
+            platform_file_printf(f, "REFORMAT CHECK Report for %s\n\n", plan->filename);
+            platform_file_printf(f, "Total Lines: %d, Diagnostics: %d Errors, %d Warnings\n",
                     plan->total_lines, plan->error_count, plan->warning_count);
-            fprintf(f, "STRICT Ready: %s\n\n", (plan->error_count == 0 && plan->warning_count == 0) ? "YES" : "NO");
+            platform_file_printf(f, "STRICT Ready: %s\n\n", (plan->error_count == 0 && plan->warning_count == 0) ? "YES" : "NO");
             for (int d = 0; d < plan->diag_count; d++) {
-                fprintf(f, "[%s] Line %lld: %s\n  WHAT: %s\n  WHY:  %s\n  HOW:  %s\n\n",
+                platform_file_printf(f, "[%s] Line %lld: %s\n  WHAT: %s\n  WHY:  %s\n  HOW:  %s\n\n",
                         plan->diagnostics[d].severity == DIAG_ERROR ? "ERROR" : "WARNING",
                         (long long)plan->diagnostics[d].line,
                         plan->diagnostics[d].what, plan->diagnostics[d].what,
                         plan->diagnostics[d].why, plan->diagnostics[d].how);
             }
-            fclose(f);
+            platform_file_close(f);
             char report_msg[300];
-            snprintf(report_msg, sizeof(report_msg), "  Report saved to: %s\n", chk_name);
+            runtime_snprintf(report_msg, sizeof(report_msg), "  Report saved to: %s\n", chk_name);
             vdev_puts(vd, report_msg);
         } else {
             vdev_puts(vd, "  Report NOT saved (failed to open .CHK file for writing).\n");
@@ -181,22 +196,15 @@ void reformat_render_suggestions_summary(VMContext *vm, const ReformatPlan *plan
     for (int s = 0; s < plan->suggestion_count; s++) {
         const ReformatSuggestion *sug = &plan->suggestions[s];
         char buf[1024];
-        snprintf(buf, sizeof(buf), "  %d. Line %lld: %s\n     -> %s\n",
+        runtime_snprintf(buf, sizeof(buf), "  %d. Line %lld: %s\n     -> %s\n",
                  s + 1, (long long)sug->line, sug->text, sug->reason);
         vdev_puts(vd, buf);
     }
     char count_buf[128];
-    snprintf(count_buf, sizeof(count_buf), "\n  %d suggestion(s) for manual review.\n\n", plan->suggestion_count);
+    runtime_snprintf(count_buf, sizeof(count_buf), "\n  %d suggestion(s) for manual review.\n\n", plan->suggestion_count);
     vdev_puts(vd, count_buf);
 }
 
 void stmt_reformat_engine_register(void) {
-    MicroLibMetadata meta = {
-        .name = "REFORMAT ENGINE",
-        .category = "Code Formatting",
-        .syntax = "REFORMAT [line_start[-line_end]]",
-        .help_text = "Reformats source code lines according to BASIC++ style and layout rules.",
-        .error_codes = "Error 8: Undefined Line Number"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_reformat_engine_desc);
 }

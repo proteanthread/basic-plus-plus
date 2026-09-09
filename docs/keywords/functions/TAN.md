@@ -1,23 +1,72 @@
-# `TAN` Tangent Trigonometric Function
+<!--
+Title:        TAN
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/eval/functions/math/trig/tan.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Function Definition
+# `TAN` Keyword Reference
 
-The `TAN` function computes the trigonometric tangent of an angle expressed in radians.
+## Source Header
 
-### Syntax Signatures:
-```basic
-result# = TAN(angle_radians)
+```c
+// FILENAME: runtime_tan.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine (math_fn.c)
+// NEEDS: libcore (math.h, language_descriptor.h, string.h)
+// NEEDS: libengine (math.c, string.c, runtime_tan.h)
+// Provides runtime implementation for the TAN built-in function in BASIC++.
+//
+// ---- Includes ----
 ```
 
-### Operational Rules:
-- Evaluates $\sin(\theta)/\cos(\theta)$.
-- Singularities near $(2k+1)\pi/2$ trigger Error 6 (`ERR_OVERFLOW`).
+## 1. Description & Usage
+
+Returns the trigonometric tangent of an angle (radians by default, degrees or grads if DEGREE/GRAD mode).
+
+## 2. Syntax
+
+```basic
+TAN(angle)
+```
+
+## 3. Code Example
+
+```basic
+10 Val = TAN(angle)
+20 PRINT "Result: "; Val
+```
+
+## 4. Error Conditions
+
+Error 13: Type Mismatch (TAN expects one numeric argument)
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Math Functions
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_PURE
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 PRINT TAN(0)                 : REM Outputs 0
-20 PRINT TAN(0.785398163397448) : REM Outputs 1 (approx PI/4)
-```
+| Field | Value |
+|---|---|
+| Name | TAN |
+| Category | Math Functions |
+| Syntax | TAN(angle) |
+| Description | Returns the trigonometric tangent of an angle (radians by default, degrees or grads if DEGREE/GRAD mode). |
+| Error Summary | Error 13: Type Mismatch (TAN expects one numeric argument) |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_PURE |
+| Feature Type | FEATURE_FUNCTION |
+| Delimiter Mask | none |
+| Compatibility | none |
+| Since Version | none |
+| Source File | engine/src/eval/functions/math/trig/tan.c |

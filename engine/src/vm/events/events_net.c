@@ -17,19 +17,19 @@ static NetEventsContext g_net_events = {0};
 
 void vm_set_net_trap(VMContext *vm, BppLineNumber line, int state) {
     (void)vm;
-    g_net_events.net_line = line;
+    if (line > 0) g_net_events.net_line = line;
     g_net_events.net_state = state;
 }
 
 void vm_set_peer_trap(VMContext *vm, BppLineNumber line, int state) {
     (void)vm;
-    g_net_events.peer_line = line;
+    if (line > 0) g_net_events.peer_line = line;
     g_net_events.peer_state = state;
 }
 
 void vm_set_sniff_trap(VMContext *vm, BppLineNumber line, int state) {
     (void)vm;
-    g_net_events.sniff_line = line;
+    if (line > 0) g_net_events.sniff_line = line;
     g_net_events.sniff_state = state;
 }
 
@@ -37,7 +37,7 @@ void vm_set_port_trap(VMContext *vm, int port, BppLineNumber line, int state) {
     (void)vm;
     for (int i = 0; i < g_net_events.port_count; ++i) {
         if (g_net_events.ports[i].port == port) {
-            g_net_events.ports[i].target_line = line;
+            if (line > 0) g_net_events.ports[i].target_line = line;
             g_net_events.ports[i].state = state;
             return;
         }

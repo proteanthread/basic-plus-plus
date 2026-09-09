@@ -1,33 +1,68 @@
-PEEKB Read Banked Memory Byte Function
-======================================================================
+TITLE: PEEKB
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/runtime/memory/alloc.c
+GENERATED: no, hand-written
+STATUS: current
 
-The PEEKB function reads an 8-bit byte value (0 to 255) from an explicit
-64KB memory bank and offset.
+==============================================================================
+PEEKB KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: alloc.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libboot, libcore, libengine, libkernel
+    // NEEDS: libcore (alloc.h, memops.h, memops.c)
+    // Freestanding allocator bridge implementation.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Reads an unsigned 8-bit byte from physical or virtual memory address.
 
-    byte_val% = PEEKB(bank_number%, offset_address)
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    PEEKB(address)
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = PEEKB(address)
+    20 PRINT "Result: "; Val
 
-OPERATIONAL RULES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 5: Illegal Function Call, Error 70: Permission Denied
 
-  - Reads directly from specified bank without modifying BANK register.
-  - Returns integer in range 0..255.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Hardware & Memory
+Subsystem:     SUBSYSTEM_PLATFORM
+Safety Level:  SAFETY_UNSAFE
 
-
-ERROR CODES
-----------------------------------------------------------------------
-
-  Error Code  Name                  Condition
-  ----------  --------------------  ----------------------------------
-  5           ERR_ILLEGAL_FUNCTION  Bank or offset out of range
-  70          ERR_PERMISSION_DENIED Memory access restricted
-
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 PRINT PEEKB(2, &H2000)
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  PEEKB
+Category              Hardware & Memory
+Syntax                PEEKB(address)
+Description           Reads an unsigned 8-bit byte from physical or virtu...
+Error Summary         Error 5: Illegal Function Call, Error 70: Permissio...
+Subsystem             SUBSYSTEM_PLATFORM
+Safety Level          SAFETY_UNSAFE
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         BASIC++ Standard
+Since Version         6.0.0
+Source File           engine/src/runtime/memory/alloc.c

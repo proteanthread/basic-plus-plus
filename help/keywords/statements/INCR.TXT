@@ -1,0 +1,68 @@
+TITLE: INCR
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/variables/assignment/incr.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+INCR KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: incr.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (common_reg_stmts.c)
+    // NEEDS: libcore (arrays.h, language_descriptor.h, strings.h, variables.h)
+    // NEEDS: libengine (eval.h, incr.h, lexer.h, vm.h)
+    // Provides runtime implementation for the INCR statement in BASIC++.
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Increments the numeric variable or array element by step (default 1).
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    INCR variable [, step]
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM INCR Demonstration
+    20 PRINT "INCR executed successfully."
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error, Error 9: Subscript out of range, Error 13: Type
+Mismatch
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Variables & Memory
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_PURE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  INCR
+Category              Variables & Memory
+Syntax                INCR variable [, step]
+Description           Increments the numeric variable or array element by...
+Error Summary         Error 2: Syntax Error, Error 9: Subscript out of ra...
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_PURE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/variables/assignment/incr.c

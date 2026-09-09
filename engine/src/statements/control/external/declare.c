@@ -2,7 +2,7 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libengine (declare.h, lexer.h, lexer.c, string.c, vm.h)
 // Provides runtime implementation for the DECLARE statement in BASIC++.
 //
@@ -11,12 +11,24 @@
 #include "statements/control/external/declare.h"
 #include "vm/vm.h"
 #include "lexer/lexer.h"
-#include "runtime/micro_lib_metadata.h"
-#include <string.h>
+#include "runtime/language_descriptor.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_declare_desc = {
+    .name = "DECLARE",
+    .category = "Control Flow",
+    .syntax = "DECLARE {SUB | FUNCTION} name [ALIAS \"aliasname\"] [(params)]",
+    .description = "Declares a SUB or FUNCTION procedure prototype in QuickBASIC and ECMA-116 standard BASIC.",
+    .error_summary = "Error 2: Syntax Error",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SAFE,
+    .type = FEATURE_STATEMENT
+};
 
 BppError stmt_declare_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     if (!vm || !lex) {
         err.code = 5; err.message = "Null VM or lexer context";
@@ -38,8 +50,8 @@ BppError stmt_declare_handler(VMContext *vm, LexerContext *lex) {
     // Check for CDECL or PASCAL modifiers
     BppToken next_tok = lex_peek(lex);
     if (next_tok.type == TOK_IDENT) {
-        if ((next_tok.length == 5 && _strnicmp(next_tok.start, "CDECL", 5) == 0) ||
-            (next_tok.length == 6 && _strnicmp(next_tok.start, "PASCAL", 6) == 0)) {
+        if ((next_tok.length == 5 && runtime_strncasecmp(next_tok.start, "CDECL", 5) == 0) ||
+            (next_tok.length == 6 && runtime_strncasecmp(next_tok.start, "PASCAL", 6) == 0)) {
             lex_next(lex);
             next_tok = lex_peek(lex);
         }
@@ -47,7 +59,7 @@ BppError stmt_declare_handler(VMContext *vm, LexerContext *lex) {
 
     // Check for ALIAS "symbol_name"
     if ((next_tok.type == TOK_KEYWORD && next_tok.as.keyword == KW_ALIAS) ||
-        (next_tok.type == TOK_IDENT && next_tok.length == 5 && _strnicmp(next_tok.start, "ALIAS", 5) == 0)) {
+        (next_tok.type == TOK_IDENT && next_tok.length == 5 && runtime_strncasecmp(next_tok.start, "ALIAS", 5) == 0)) {
         lex_next(lex); // Consume ALIAS
         BppToken alias_str = lex_next(lex);
         if (alias_str.type != TOK_STRING) {
@@ -71,7 +83,7 @@ BppError stmt_declare_handler(VMContext *vm, LexerContext *lex) {
     // Check for trailing AS type (e.g. AS INTEGER)
     next_tok = lex_peek(lex);
     if ((next_tok.type == TOK_KEYWORD && next_tok.as.keyword == KW_AS) ||
-        (next_tok.type == TOK_IDENT && next_tok.length == 2 && _strnicmp(next_tok.start, "AS", 2) == 0)) {
+        (next_tok.type == TOK_IDENT && next_tok.length == 2 && runtime_strncasecmp(next_tok.start, "AS", 2) == 0)) {
         lex_next(lex); // Consume AS
         if (lex_peek(lex).type != TOK_EOF && lex_peek(lex).type != TOK_EOL) {
             lex_next(lex); // Consume type identifier/keyword
@@ -82,12 +94,5 @@ BppError stmt_declare_handler(VMContext *vm, LexerContext *lex) {
 }
 
 void stmt_declare_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "DECLARE",
-        .category = "Control Flow",
-        .syntax = "DECLARE SUB|FUNCTION name [CDECL|PASCAL] [ALIAS \"sym\"] [( [BYVAL|SEG] param [AS type], ... )] [AS type]",
-        .help_text = "Declares a SUB or FUNCTION procedure prototype in QuickBASIC and ECMA-116 standard BASIC.",
-        .error_codes = "Error 2: Syntax Error"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_declare_desc);
 }

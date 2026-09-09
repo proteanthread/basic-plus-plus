@@ -2,40 +2,31 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (conversion_fn.c)
-// NEEDS: libcore (funcreg.h, funcreg.c, memory.h, memory.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, spec.h, spec.c)
-// NEEDS: libcore (string.h, strings.h, strings.c)
-// NEEDS: libengine (category.h, help_data.h, string.c)
-// Provides runtime implementation for the CATEGORY built-in function in BASIC++.
-//
-// ---- Includes ----
+// NEEDS: libcore (funcreg.h, language_descriptor.h, spec.h, string.h, strings.h)
+// Provides runtime implementation for the CATEGORY$ built-in function in BASIC++.
 
 #include "eval/functions/system/environment/category.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/strings.h"
 #include "runtime/funcreg.h"
 #include "runtime/spec.h"
-typedef struct {
-    const char *name;
-    const char *category;
-    const char *syntax;
-    const char *desc;
-} BuiltinHelpEntry;
-
-#include "statements/dialect/meta/help_data.h"
-
-
 #include "runtime/string.h"
 #include "runtime/memory.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_category_desc = {
+    .name = "CATEGORY$",
+    .category = "Introspection",
+    .syntax = "CATEGORY$(keyword$)",
+    .description = "Returns the category name of the specified keyword, or empty string if not found.",
+    .error_summary = "Error 13: Type Mismatch (expects one string argument)",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_PURE,
+    .type = FEATURE_FUNCTION
+};
+
 void func_category_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "CATEGORY$",
-        .category = "Introspection",
-        .syntax = "CATEGORY$(keyword$)",
-        .help_text = "Returns the category name of the specified keyword, or empty string if not found.",
-        .error_codes = "Error 13: Type Mismatch (expects one string argument)"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_category_desc);
 }
 
 BValue func_category_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err) {
@@ -54,23 +45,13 @@ BValue func_category_eval(VMContext *vm, const char *uname, int arg_count, BValu
     const char *target = str_data(sr);
     const char *cat = NULL;
 
-    // 1. Try MicroLib Metadata
-    const MicroLibMetadata *meta = microlib_find(target);
-    if (meta && meta->category && meta->category[0] != '\0') {
-        cat = meta->category;
+    // 1. Query LanguageDescriptor Registry
+    const LanguageDescriptor *desc = lang_desc_find(target);
+    if (desc && desc->category && desc->category[0] != '\0') {
+        cat = desc->category;
     }
 
-    // 2. Try Built-in Static Help
-    if (!cat) {
-        for (size_t i = 0; i < sizeof(g_builtin_help) / sizeof(g_builtin_help[0]); i++) {
-            if (runtime_strcasecmp(target, g_builtin_help[i].name) == 0) {
-                cat = g_builtin_help[i].category;
-                break;
-            }
-        }
-    }
-
-    // 3. Try Dynamic Keyword Spec
+    // 2. Try Dynamic Keyword Spec
     if (!cat) {
         SpecObject *spec = spec_find_by_name(target);
         if (spec) {
@@ -78,7 +59,7 @@ BValue func_category_eval(VMContext *vm, const char *uname, int arg_count, BValu
         }
     }
 
-    // 4. Try Function Registry
+    // 3. Try Function Registry
     if (!cat) {
         const FunctionEntry *entry = funcreg_find_by_name(target);
         if (entry) {

@@ -2,24 +2,29 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (sys_fn.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c)
+// NEEDS: libcore (language_descriptor.h)
 // NEEDS: libengine (shl.h)
 // Provides runtime implementation for the SHL built-in function in BASIC++.
 //
 // ---- Includes ----
 
 #include "eval/functions/bits/shift/shl.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_shl_desc = {
+    .name = "SHL",
+    .category = "Bitwise & Logical Functions",
+    .syntax = "SHL(val, count) or val SHL count",
+    .description = "Shifts an integer value left by the specified bit count.",
+    .error_summary = "Error 13: Type Mismatch",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_PURE,
+    .type = FEATURE_FUNCTION
+};
 
 void func_shl_register(void) {
-    MicroLibMetadata meta = {
-        .name = "SHL",
-        .category = "Bitwise & Logical Functions",
-        .syntax = "SHL(val, count) or val SHL count",
-        .help_text = "Shifts an integer value left by the specified bit count.",
-        .error_codes = "Error 13: Type Mismatch"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_shl_desc);
 }
 
 BValue func_shl_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err) {

@@ -15,14 +15,15 @@
 #include "runtime/arrays.h"
 #include "runtime/variables.h"
 #include "runtime/funcreg.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include "runtime/format/snprintf.h"
+#include "runtime/memory/alloc.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
 
 // Statement handler: ARRAY MAP A() TO B() USING FN_DOUBLE or GOSUB or expr
 BppError arrayext_execute_map(VMContext *vm, const char *src_arr, const char *dst_arr, const char *fn_name, const char *label_name, const char *expr_str) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     ArrayContext *arr = vm_get_arr(vm);
     if (!arr_exists(arr, src_arr)) {
@@ -88,7 +89,7 @@ BppError arrayext_execute_map(VMContext *vm, const char *src_arr, const char *ds
 
 static BValue array_agg_func(VMContext *vm, BValue *args, int argc, int agg_type) {
     BValue res;
-    memset(&res, 0, sizeof(res));
+    runtime_memset(&res, 0, sizeof(res));
     if (args[0].type != VAL_ARRAY_REF || !args[0].as.string) {
         return res;
     }
@@ -119,23 +120,23 @@ static BValue array_sum_func(BValue *args, int argc, void *rt) { return array_ag
 
 static BValue array_map_func_impl(BValue *args, int argc, void *rt) {
     BValue res;
-    memset(&res, 0, sizeof(res));
+    runtime_memset(&res, 0, sizeof(res));
     return res;
 }
 static BValue array_filter_func_impl(BValue *args, int argc, void *rt) {
     BValue res;
-    memset(&res, 0, sizeof(res));
+    runtime_memset(&res, 0, sizeof(res));
     return res;
 }
 static BValue array_reduce_func_impl(BValue *args, int argc, void *rt) {
     BValue res;
-    memset(&res, 0, sizeof(res));
+    runtime_memset(&res, 0, sizeof(res));
     return res;
 }
 
 void register_arrayext_functions(void) {
     FunctionEntry fe;
-    memset(&fe, 0, sizeof(fe));
+    runtime_memset(&fe, 0, sizeof(fe));
     fe.module_name = "arrayext";
     fe.overridable = 1;
     fe.category = FCAT_MATH;

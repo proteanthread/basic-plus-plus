@@ -1,32 +1,71 @@
-SEEK File Seek Position Statement and Function
-==============================================
+TITLE: SEEK
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/filesystem/file_ops/seek.c
+GENERATED: no, hand-written
+STATUS: current
 
-Sets or returns the absolute byte or record position in an open file channel.
+==============================================================================
+SEEK KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: seek.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libengine (eval.h, eval.c, lexer.h, lexer.c, seek.h, string.c, vm.h)
+    // NEEDS: libkernel (security.h, security.c, vdev.h, vdev.c)
+    // Provides runtime implementation for the SEEK statement in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Sets the byte offset position for the next read or write operation on an open
+file.
 
-    SEEK [#]filenum%, position_bytes&
-    current_seek& = SEEK(filenum%)
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    SEEK [#]file_num, position
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM SEEK Demonstration
+    20 PRINT "SEEK executed successfully."
 
-ERROR CONDITIONS
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error, Error 52: Bad File Number, Error 63: Bad Record Number
 
-  - Error 52 (ERR_BAD_FILE_NUMBER): File channel is not open.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Filesystem I/O
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_IO
 
-
-OPERATIONAL NOTES
-----------------------------------------------------------------------
-
-  1-based byte offset for binary files; record number for random files.
-
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 OPEN "B", #1, "DATA.BIN"
-    20 SEEK #1, 256 : REM Seek to byte offset 256
-    30 PRINT "Seek position: "; SEEK(1)
-    40 CLOSE #1
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  SEEK
+Category              Filesystem I/O
+Syntax                SEEK [#]file_num, position
+Description           Sets the byte offset position for the next read or ...
+Error Summary         Error 2: Syntax Error, Error 52: Bad File Number, E...
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_IO
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/filesystem/file_ops/seek.c

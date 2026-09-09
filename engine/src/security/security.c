@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libboot, libcore, libengine, libkernel
 // NEEDS: libcore (ctype.h, ctype.c, hal.h, memops.h, memops.c)
-// NEEDS: libcore (snprintf.h, snprintf.c, strops.h, strops.c)
+// NEEDS: libcore (runtime_snprintf.h, runtime_snprintf.c, strops.h, strops.c)
 // NEEDS: libkernel (security.h)
 // NEEDS: libplatform (platform.h)
 // Provides core logic and interface definitions for security within BASIC++.

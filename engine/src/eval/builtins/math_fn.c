@@ -12,12 +12,18 @@
 #include "eval/functions/math/algebra/abs.h"
 #include "eval/functions/math/trig/acos.h"
 #include "eval/functions/math/trig/angle.h"
+#include "eval/functions/math/trig/arg.h"
 #include "eval/functions/math/trig/asin.h"
 #include "eval/functions/math/trig/atan2.h"
 #include "eval/functions/math/trig/atn.h"
+#include "eval/functions/math/algebra/dp.h"
+#include "eval/functions/math/algebra/xp.h"
+#include "eval/functions/math/algebra/ipt.h"
 #include "eval/functions/math/algebra/ceil.h"
 #include "eval/functions/math/algebra/clamp.h"
 #include "eval/functions/math/linear_algebra/comp.h"
+#include "eval/functions/math/algebra/avg.h"
+#include "eval/functions/math/algebra/math_sum.h"
 #include "eval/functions/math/linear_algebra/complex_fn.h"
 #include "eval/functions/math/trig/cos.h"
 #include "eval/functions/math/trig/cosh.h"
@@ -32,6 +38,7 @@
 #include "eval/functions/math/algebra/fix.h"
 #include "eval/functions/math/algebra/floor.h"
 #include "eval/functions/math/algebra/fpt.h"
+#include "eval/functions/math/trig/grad.h"
 #include "eval/functions/math/trig/hypot.h"
 #include "eval/functions/math/algebra/inf.h"
 #include "eval/functions/math/algebra/int.h"
@@ -45,7 +52,9 @@
 #include "eval/functions/math/algebra/min.h"
 #include "eval/functions/math/algebra/mod.h"
 #include "eval/functions/math/algebra/pdif.h"
+#include "eval/functions/math/arithmetic/func_neg.h"
 #include "eval/functions/math/trig/pi.h"
+#include "eval/functions/math/trig/pol_rec.h"
 #include "eval/functions/math/trig/radians.h"
 #include "eval/functions/math/algebra/remainder.h"
 #include "eval/functions/math/random/rnd.h"
@@ -58,6 +67,7 @@
 #include "eval/functions/math/trig/tan.h"
 #include "eval/functions/math/trig/tanh.h"
 #include "eval/functions/math/algebra/truncate.h"
+#include "runtime/string/strops.h"
 
 
 //
@@ -69,6 +79,10 @@ bool eval_builtin_math(VMContext *vm, const char *uname, int arg_count, BValue *
 
     if (runtime_strcmp(uname, "RND") == 0) {
         *out_res = func_rnd_eval(vm, uname, arg_count, args, err);
+        return true;
+    }
+    if (runtime_strcmp(uname, "NEG") == 0) {
+        *out_res = func_neg_eval(vm, uname, arg_count, args, err);
         return true;
     }
     if (runtime_strcmp(uname, "INT") == 0) {
@@ -175,7 +189,8 @@ bool eval_builtin_math(VMContext *vm, const char *uname, int arg_count, BValue *
         *out_res = func_floor_eval(vm, uname, arg_count, args, err);
         return true;
     }
-    if (runtime_strcmp(uname, "_ROUND") == 0 || runtime_strcmp(uname, "ROUND") == 0 || runtime_strcmp(uname, "MATH.ROUND") == 0) {
+    if (runtime_strcmp(uname, "_ROUND") == 0 || runtime_strcmp(uname, "ROUND") == 0 || runtime_strcmp(uname, "MATH.ROUND") == 0 ||
+        runtime_strcmp(uname, "BANKER_ROUND") == 0 || runtime_strcmp(uname, "BANKROUND") == 0 || runtime_strcmp(uname, "ROUND_BANK") == 0) {
         *out_res = func_round_eval(vm, uname, arg_count, args, err);
         return true;
     }
@@ -199,16 +214,28 @@ bool eval_builtin_math(VMContext *vm, const char *uname, int arg_count, BValue *
         *out_res = func_inf_eval(vm, uname, arg_count, args, err);
         return true;
     }
+    if (runtime_strcmp(uname, "POL") == 0) {
+        *out_res = func_pol_eval(vm, uname, arg_count, args, err);
+        return true;
+    }
+    if (runtime_strcmp(uname, "REC") == 0) {
+        *out_res = func_rec_eval(vm, uname, arg_count, args, err);
+        return true;
+    }
     if (runtime_strcmp(uname, "MAXNUM") == 0 || runtime_strcmp(uname, "_MAXNUM") == 0 || runtime_strcmp(uname, "MATH.MAXNUM") == 0) {
         *out_res = func_maxnum_eval(vm, uname, arg_count, args, err);
         return true;
     }
-    if (runtime_strcmp(uname, "DEGREES") == 0 || runtime_strcmp(uname, "_DEGREES") == 0 || runtime_strcmp(uname, "MATH.DEGREES") == 0 || runtime_strcmp(uname, "DEG") == 0) {
+    if (runtime_strcmp(uname, "DEGREES") == 0 || runtime_strcmp(uname, "_DEGREES") == 0 || runtime_strcmp(uname, "MATH.DEGREES") == 0 || runtime_strcmp(uname, "DEG") == 0 || runtime_strcmp(uname, "DEGREE") == 0) {
         *out_res = func_degrees_eval(vm, uname, arg_count, args, err);
         return true;
     }
-    if (runtime_strcmp(uname, "RADIANS") == 0 || runtime_strcmp(uname, "_RADIANS") == 0 || runtime_strcmp(uname, "MATH.RADIANS") == 0 || runtime_strcmp(uname, "RAD") == 0) {
+    if (runtime_strcmp(uname, "RADIANS") == 0 || runtime_strcmp(uname, "_RADIANS") == 0 || runtime_strcmp(uname, "MATH.RADIANS") == 0 || runtime_strcmp(uname, "RAD") == 0 || runtime_strcmp(uname, "RADIAN") == 0) {
         *out_res = func_radians_eval(vm, uname, arg_count, args, err);
+        return true;
+    }
+    if (runtime_strcmp(uname, "GRAD") == 0 || runtime_strcmp(uname, "GRADS") == 0 || runtime_strcmp(uname, "_GRAD") == 0 || runtime_strcmp(uname, "MATH.GRAD") == 0) {
+        *out_res = func_grad_eval(vm, uname, arg_count, args, err);
         return true;
     }
     if (runtime_strcmp(uname, "REMAINDER") == 0 || runtime_strcmp(uname, "_REMAINDER") == 0 || runtime_strcmp(uname, "MATH.REMAINDER") == 0) {
@@ -219,17 +246,32 @@ bool eval_builtin_math(VMContext *vm, const char *uname, int arg_count, BValue *
         *out_res = func_angle_eval(vm, uname, arg_count, args, err);
         return true;
     }
+    if (runtime_strcmp(uname, "ARG") == 0 || runtime_strcmp(uname, "_ARG") == 0 || runtime_strcmp(uname, "MATH.ARG") == 0) {
+        *out_res = func_arg_eval(vm, uname, arg_count, args, err);
+        return true;
+    }
     if (runtime_strcmp(uname, "TRUNCATE") == 0 || runtime_strcmp(uname, "_TRUNCATE") == 0 || runtime_strcmp(uname, "MATH.TRUNCATE") == 0 ||
         runtime_strcmp(uname, "TRUNC") == 0 || runtime_strcmp(uname, "_TRUNC") == 0) {
         *out_res = func_truncate_eval(vm, uname, arg_count, args, err);
         return true;
     }
-    if (runtime_strcmp(uname, "FPT") == 0 || runtime_strcmp(uname, "_FPT") == 0 || runtime_strcmp(uname, "MATH.FPT") == 0) {
+    if (runtime_strcmp(uname, "FPT") == 0 || runtime_strcmp(uname, "_FPT") == 0 || runtime_strcmp(uname, "MATH.FPT") == 0 ||
+        runtime_strcmp(uname, "FP") == 0 || runtime_strcmp(uname, "_FP") == 0 || runtime_strcmp(uname, "MATH.FP") == 0 ||
+        runtime_strcmp(uname, "FRAC") == 0 || runtime_strcmp(uname, "_FRAC") == 0 || runtime_strcmp(uname, "MATH.FRAC") == 0) {
         *out_res = func_fpt_eval(vm, uname, arg_count, args, err);
         return true;
     }
-    if (runtime_strcmp(uname, "IPT") == 0 || runtime_strcmp(uname, "_IPT") == 0 || runtime_strcmp(uname, "MATH.IPT") == 0) {
+    if (runtime_strcmp(uname, "IPT") == 0 || runtime_strcmp(uname, "_IPT") == 0 || runtime_strcmp(uname, "MATH.IPT") == 0 ||
+        runtime_strcmp(uname, "IP") == 0 || runtime_strcmp(uname, "_IP") == 0 || runtime_strcmp(uname, "MATH.IP") == 0) {
         *out_res = func_ipt_eval(vm, uname, arg_count, args, err);
+        return true;
+    }
+    if (runtime_strcmp(uname, "DP") == 0 || runtime_strcmp(uname, "_DP") == 0 || runtime_strcmp(uname, "MATH.DP") == 0) {
+        *out_res = func_dp_eval(vm, uname, arg_count, args, err);
+        return true;
+    }
+    if (runtime_strcmp(uname, "XP") == 0 || runtime_strcmp(uname, "_XP") == 0 || runtime_strcmp(uname, "MATH.XP") == 0) {
+        *out_res = func_xp_eval(vm, uname, arg_count, args, err);
         return true;
     }
     if (runtime_strcmp(uname, "MAG") == 0 || runtime_strcmp(uname, "_MAG") == 0 || runtime_strcmp(uname, "MATH.MAG") == 0) {
@@ -242,6 +284,15 @@ bool eval_builtin_math(VMContext *vm, const char *uname, int arg_count, BValue *
     }
     if (runtime_strcmp(uname, "MAX") == 0 || runtime_strcmp(uname, "_MAX") == 0 || runtime_strcmp(uname, "MATH.MAX") == 0) {
         *out_res = func_max_eval(vm, uname, arg_count, args, err);
+        return true;
+    }
+    if (runtime_strcmp(uname, "SUM") == 0 || runtime_strcmp(uname, "_SUM") == 0 || runtime_strcmp(uname, "MATH.SUM") == 0) {
+        *out_res = func_math_sum_eval(vm, uname, arg_count, args, err);
+        return true;
+    }
+    if (runtime_strcmp(uname, "AVG") == 0 || runtime_strcmp(uname, "_AVG") == 0 || runtime_strcmp(uname, "MATH.AVG") == 0 ||
+        runtime_strcmp(uname, "MEAN") == 0 || runtime_strcmp(uname, "_MEAN") == 0 || runtime_strcmp(uname, "MATH.MEAN") == 0) {
+        *out_res = func_avg_eval(vm, uname, arg_count, args, err);
         return true;
     }
     if (runtime_strcmp(uname, "HYPOT") == 0 || runtime_strcmp(uname, "_HYPOT") == 0 || runtime_strcmp(uname, "MATH.HYPOT") == 0) {

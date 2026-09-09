@@ -1,108 +1,112 @@
-# BASIC++ v6.5.2 Virtual Devices
+<!--
+Title:        Virtual_Devices
+Tier:         2
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/device/bus.c, engine/src/device/vdev.c, engine/src/device/vcon.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. THE VIRTUAL DEVICE BUS
+# BASIC++ Virtual Devices & Bus Architecture
 
-All I/O operations in BASIC++ are virtualized through the VDev (Virtual Device) layer. Statement handlers never call raw C library functions (printf, fopen, socket) directly. Instead, they call VDev API functions, which route the operation through the device bus to the appropriate device driver.
+The technical specification and architectural manual for the Virtual Device (VDev) subsystem, bus routing, platform console drivers, and device aliasing in BASIC++.
 
-The device bus is implemented in engine/src/device/bus.c and the VDev manager in engine/src/device/vdev.c. The bus provides a uniform interface for device registration, discovery, and dispatch.
+---
 
-## 2. DEVICE TYPES
+## 1. The Virtual Device Bus
 
-BASIC++ defines several device categories:
+All I/O operations in BASIC++ are virtualized through the Virtual Device (VDev) layer. Statement handlers never invoke raw host C library functions (`printf`, `fopen`, `socket`) directly. Instead, they call VDev API functions, which route the operation through the device bus to the appropriate device driver.
 
-**VCon (Virtual Console)** — The primary text output and input device. Manages cursor position, color attributes, screen dimensions, scrolling, and key input. Implemented in engine/src/device/vcon.c.
+The device bus is implemented in `engine/src/device/bus.c` and the VDev manager in `engine/src/device/vdev.c`. The bus provides a uniform interface for device registration, discovery, configuration, and I/O dispatch.
 
-**File Devices** — Managed through the FileContext and routed via the platform filesystem abstraction (plat_fs.c).
+---
 
-**VNet (Virtual Network)** — TCP and UDP socket operations. Implemented in engine/src/runtime/vnet.c.
+## 2. Device Types and Drivers
 
-**VFS (Virtual Filesystem)** — Abstraction layer over the host filesystem that provides path normalization, virtual mount points, and security filtering. Implemented in engine/src/runtime/vfs.c.
+BASIC++ defines standard virtual device categories:
 
-**Graphics Devices** — SDL2-based graphics output for SCREEN modes. Implemented in engine/src/device/gfx.c.
+1. **VCon (Virtual Console)**: The primary text output and input device (`engine/src/device/vcon.c`). Manages cursor coordinates, screen color attributes, dimensions, scrolling, and keystroke queuing.
+2. **File Devices**: Managed through `FileContext` and routed via the platform filesystem abstraction (`engine/src/platform/plat_fs.c`).
+3. **VNet (Virtual Network)**: Non-blocking TCP and UDP socket operations (`engine/src/runtime/vnet.c`).
+4. **VFS (Virtual Filesystem)**: Abstraction layer providing path normalization, virtual mount points, and security sandboxing (`engine/src/runtime/vfs.c`).
+5. **Graphics Devices**: SDL2-based graphics output for `SCREEN` modes (`engine/src/device/gfx.c`).
+6. **BGI Devices**: The BASIC++ Graphics Interface rasterizer for pixel-level graphics (`engine/src/device/bgi/`).
+7. **BIOS Devices**: PC BIOS emulation for INT 10h (video), INT 13h (disk), INT 16h (keyboard), and INT 1Ah (time) in `engine/src/bios/`.
+8. **FujiNet Device**: Emulation of the FujiNet network adapter for retro-computing peripheral networking (`engine/src/device/fujinet.c`).
 
-**BGI Devices** — The BASIC++ Graphics Interface rasterizer for pixel-level graphics. Implemented in engine/src/device/bgi/.
+---
 
-**BIOS Devices** — PC BIOS emulation for INT 10h (video), INT 13h (disk), INT 16h (keyboard), and INT 1Ah (time). Implemented in engine/src/bios/.
-
-**FujiNet Device** — Emulation of the FujiNet network adapter for Atari-compatible networking. Implemented in engine/src/device/fujinet.c.
-
-## 3. DEVICE REGISTRATION
+## 3. Device Registration & Driver Lifecycle
 
 Each device type registers with the bus by providing a device descriptor containing:
-- A unique device name
-- A device type identifier
-- Function pointers for init, shutdown, read, write, status, and control operations
+- A unique device name and type identifier
+- Function pointers for `init`, `shutdown`, `read`, `write`, `status`, and `control` operations
 - A private context pointer for device-specific state
 
-Custom devices can be registered at runtime through the module system.
+Devices are initialized during the boot sequence (`libboot`). The boot controller calls each device's initialization function in dependency order. Devices that depend on other subsystems (such as BGI depending on VCon for text window coordinate clipping) are initialized after their prerequisites.
 
-## 4. DEVICE COMMANDS
+Device shutdown occurs in reverse order during interpreter exit. Each device's shutdown function releases allocated memory buffers, flushes pending I/O queues, and closes active network connections.
 
-DEVICES lists all registered virtual devices:
+---
+
+## 4. Device Aliasing, Mounting & Path Redirection
+
+Device aliases allow programs written for different platforms to run without source modifications by mapping standard shorthand identifiers to concrete targets.
+
+### Standard Shorthand Names
+
+| Device Name | Target Subsystem | Description |
+|:---|:---|:---|
+| `CON:` | Virtual Console (VCon) | Stdin / stdout; reading accepts keyboard input, writing outputs to screen. |
+| `NUL:` | Null Device | Discards all output; reading returns immediate end-of-file (EOF). |
+| `SCRN:` | VCon Display | Screen output only; identical to `CON:` for output, cannot be read. |
+| `KYBD:` | VCon Keyboard | Keyboard input only; identical to `CON:` for input, cannot be written. |
+| `LPT1:` | Line Printer 1 | Default parallel line printer channel. |
+| `COM1:` | Serial Port 1 | First asynchronous serial communication port. |
+
+### Drive Letter Aliases (`MOUNT` and `UMOUNT`)
+
+On operating systems without physical drive letters (Linux, macOS), the VFS mount system provides drive letter emulation:
 
 ```basic
-> DEVICES
-Slot  Type      Name          Status
-----  --------  -----------   ------
-  0   VCon      Console       Active
-  1   File      FileSystem    Active
-  2   VNet      Network       Active
-  3   VFS       VirtFS        Active
-  4   BGI       Graphics      Idle
-  5   BIOS      PCBios        Active
+10 MOUNT "A:" TO "/home/user/basic/floppy_a"
+20 MOUNT "C:" TO "/home/user/basic"
+30 OPEN "A:MYFILE.BAS" FOR INPUT AS #1
+40 UMOUNT "A:"
 ```
 
-DEVMAP displays the current device slot mapping, showing which device type is assigned to each slot.
+### Output Stream Redirection (`REDIRECT`)
 
-## 5. CONSOLE DEVICE (VCon)
+The `REDIRECT` statement temporarily redirects standard device streams to a file or alternate device:
 
-The VCon device manages all text-mode console operations. It maintains:
+```basic
+10 REDIRECT SCRN: TO "output.txt"
+20 PRINT "This text is redirected to the file"
+30 REDIRECT SCRN: TO CON:
+40 PRINT "This text returns to the console screen"
+```
 
-- **Cursor position** — Row and column, updated by LOCATE and character output.
-- **Color attributes** — Foreground and background colors, updated by COLOR.
-- **Screen dimensions** — Rows and columns, updated by WIDTH and window resizing.
-- **Scroll region** — Defines the scrollable area of the screen.
-- **Key buffer** — Queues keystrokes for INKEY$ and INPUT.
+---
 
-All PRINT output goes through VCon. The VCon implementation calls platform-specific console functions (plat_console.c) for the actual terminal interaction, ensuring the same BASIC++ program produces identical output on Windows (Console API), Linux (termios/ncurses), and FreeDOS (INT 10h).
+## 5. Virtual Printer & PDF Devices
 
-## 6. WHY VIRTUAL DEVICES
-
-The device virtualization layer provides three critical benefits:
-
-1. **Portability** — The same BASIC++ program works on Windows, Linux, FreeDOS, and embedded platforms without source changes. The platform layer adapts device operations to the host OS.
-
-2. **Testability** — Virtual devices can be replaced with mock implementations for automated testing. A mock VCon captures output without requiring a real terminal.
-
-3. **Security** — Device access can be denied based on the security level. At PARANOID level, all devices except the basic console are disabled. The security check happens at the device bus level, so no statement handler needs individual security logic.
-
-## 7. DEVICE INITIALIZATION
-
-Devices are initialized during the boot sequence (libboot). The boot controller calls each device's init function in dependency order. Devices that depend on other devices (e.g., BGI depends on VCon for text window rendering) are initialized after their dependencies.
-
-Device shutdown occurs in reverse order during interpreter exit. Each device's shutdown function releases resources, flushes buffers, and closes connections.
-
-## 8. VIRTUAL PRINTER & PDF DEVICES
-
-BASIC++ provides a freestanding, zero-dependency text-to-PDF pseudo-printer driver registered across multiple standard device prefixes:
-
+BASIC++ includes a freestanding, zero-dependency text-to-PDF pseudo-printer driver registered across standard printer device prefixes:
 - **Line Printers**: `LPT:`, `LPT1:` through `LPT8:`
 - **Standard Printers**: `PRN:`, `PRN1:` through `PRN8:`
 - **CP/M Listing Devices**: `LST:`, `LST1:` through `LST8:`
 - **Direct PDF Devices**: `PDF:`, `PDF1:` through `PDF8:`
 
-### Syntax & Filename Specifications:
-You can specify custom output filenames directly after the device prefix:
+### Features and Usage:
+
 ```basic
-OPEN "LPT1:invoice.pdf" FOR OUTPUT AS #1
-OPEN "PRN:quarterly_report" FOR OUTPUT AS #2   : REM Automatically appends .pdf
-OPEN "PDF:reports/summary.pdf" FOR OUTPUT AS #3 : REM Supports relative paths/subdirectories
-OPEN "LPT1:" FOR OUTPUT AS #4                   : REM Defaults to <program_name>.pdf or OUTPUT.PDF
+10 OPEN "LPT1:invoice.pdf" FOR OUTPUT AS #1
+20 PRINT #1, "INVOICE #1042"
+30 PRINT #1, "Date: 2026-09-08"
+40 PRINT #1, CHR$(12)   : REM Form Feed creates a new page
+50 PRINT #1, "Page 2 - Line Items"
+60 CLOSE #1
 ```
 
-### Features:
-1. **Zero External Dependencies**: PostScript/PDF Type 1 Courier font rendering without host print spoolers or external font files.
-2. **Automatic PDF Extension**: `.pdf` is appended automatically if omitted in the filename.
-3. **Multi-Channel Scoping**: Each open channel operates an isolated PDF document, serializing upon `CLOSE #n`.
-4. **Form Feed Pagination**: Form Feed (`CHR$(12)` / `\f`) automatically splits document content across multiple PDF pages.
-
+- **Zero External Dependencies**: Direct PostScript Type 1 Courier font metric calculation and PDF 1.4 stream serialization without external libraries.
+- **Automatic Extension**: Appends `.pdf` automatically if omitted in the filename.
+- **Form Feed Pagination**: Form Feed (`CHR$(12)` / ``) automatically splits document content across multiple PDF pages.

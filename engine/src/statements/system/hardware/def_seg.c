@@ -2,7 +2,7 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libcore (strings.h, strings.c)
 // NEEDS: libengine (def_seg.h, eval.h, eval.c, string.c)
 // Provides runtime implementation for the DEF_SEG statement in BASIC++.
@@ -12,8 +12,23 @@
 #include "statements/system/hardware/def_seg.h"
 #include "eval/eval.h"
 #include "runtime/strings.h"
-#include "runtime/micro_lib_metadata.h"
-#include <string.h>
+#include "runtime/language_descriptor.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#ifndef BASIC_LITE_BUILD
+#include "memory/segmented_mem.h"
+#endif
+
+static const LangDesc g_def_seg_desc = {
+    .name = "DEF SEG",
+    .category = "System & Memory",
+    .syntax = "DEF SEG [= address%]",
+    .description = "Defines the current 16-bit memory segment for PEEK, POKE, BLOAD, and BSAVE.",
+    .error_summary = "Error 2: Syntax Error, Error 5: Illegal Function Call",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SYSTEM,
+    .type = FEATURE_STATEMENT
+};
 
 static uint16_t g_current_def_seg = 0x0000;
 
@@ -22,23 +37,19 @@ uint16_t runtime_get_def_seg(void) {
 }
 
 void stmt_def_seg_register(void) {
-    MicroLibMetadata meta = {
-        .name = "DEF SEG",
-        .category = "System & Memory",
-        .syntax = "DEF SEG [= address%]",
-        .help_text = "Defines the current 16-bit memory segment for PEEK, POKE, BLOAD, and BSAVE.",
-        .error_codes = "Error 2: Syntax Error, Error 5: Illegal Function Call"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_def_seg_desc);
 }
 
 BppError stmt_def_seg_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BppToken tok = lex_peek(lex);
     if (tok.type == TOK_EOL || tok.type == TOK_EOF) {
         g_current_def_seg = 0x0000; // Reset to default
+#ifndef BASIC_LITE_BUILD
+        if (vm_get_vmem(vm)) vmem_set_def_seg(vm_get_vmem(vm), 0);
+#endif
         return err;
     }
 
@@ -64,5 +75,8 @@ BppError stmt_def_seg_handler(VMContext *vm, LexerContext *lex) {
     }
 
     g_current_def_seg = (uint16_t)seg;
+#ifndef BASIC_LITE_BUILD
+    if (vm_get_vmem(vm)) vmem_set_def_seg(vm_get_vmem(vm), (uint16_t)seg);
+#endif
     return err;
 }

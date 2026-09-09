@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
 // NEEDS: libcore (funcreg.h, funcreg.c, hal.h, memops.h, memops.c)
-// NEEDS: libcore (snprintf.h, snprintf.c, strings.h, strings.c)
+// NEEDS: libcore (runtime_snprintf.h, runtime_snprintf.c, strings.h, strings.c)
 // NEEDS: libcore (strops.h, strops.c)
 // NEEDS: libengine (vm.h)
 // Provides core logic and interface definitions for crypto within BASIC++.

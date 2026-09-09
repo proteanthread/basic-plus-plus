@@ -8,6 +8,8 @@
 // ---- Includes ----
 
 #include "eval/dispatch_internal.h"
+#include "runtime/string/strops.h"
+#include "runtime/ctype/ctype.h"
 
 //
 // ---- Name Normalization ----
@@ -38,6 +40,12 @@ void normalize_func_name(const char *in, char *out, size_t max_len) {
             runtime_strcmp(test_name, "SPACE$") == 0 ||
             runtime_strcmp(test_name, "STRING$") == 0 ||
             runtime_strcmp(test_name, "REMOVE$") == 0 ||
+            runtime_strcmp(test_name, "DELETE$") == 0 ||
+            runtime_strcmp(test_name, "INSERT$") == 0 ||
+            runtime_strcmp(test_name, "OVERLAY$") == 0 ||
+            runtime_strcmp(test_name, "FORMAT$") == 0 ||
+            runtime_strcmp(test_name, "SHELL$") == 0 ||
+            runtime_strcmp(test_name, "EXEC$") == 0 ||
             runtime_strcmp(test_name, "REPLACE$") == 0 ||
             runtime_strcmp(test_name, "HEX$") == 0 ||
             runtime_strcmp(test_name, "OCT$") == 0 ||
@@ -53,7 +61,6 @@ void normalize_func_name(const char *in, char *out, size_t max_len) {
             runtime_strcmp(test_name, "SEG$") == 0 ||
             runtime_strcmp(test_name, "ERT$") == 0 ||
             runtime_strcmp(test_name, "UPS$") == 0 ||
-            runtime_strcmp(test_name, "SUM$") == 0 ||
             runtime_strcmp(test_name, "DIF$") == 0 ||
             runtime_strcmp(test_name, "PROD$") == 0 ||
             runtime_strcmp(test_name, "QUO$") == 0 ||
@@ -63,10 +70,13 @@ void normalize_func_name(const char *in, char *out, size_t max_len) {
             runtime_strcmp(test_name, "HOSTNAME$") == 0 ||
             runtime_strcmp(test_name, "USERNAME$") == 0 ||
             runtime_strcmp(test_name, "PATH$") == 0 ||
+            runtime_strcmp(test_name, "WORKDIR$") == 0 ||
+            runtime_strcmp(test_name, "MEMMAP$") == 0 ||
             runtime_strcmp(test_name, "FILEMOD$") == 0 ||
             runtime_strcmp(test_name, "PACK$") == 0 ||
             runtime_strcmp(test_name, "MICROPLEX$") == 0 ||
             runtime_strcmp(test_name, "COMMAND$") == 0 ||
+            runtime_strcmp(test_name, "DYNARRAY$") == 0 ||
             runtime_strcmp(test_name, "INPUTBOX$") == 0 ||
             runtime_strcmp(test_name, "MKSMBF$") == 0 ||
             runtime_strcmp(test_name, "MKDMBF$") == 0 ||
@@ -76,6 +86,7 @@ void normalize_func_name(const char *in, char *out, size_t max_len) {
             runtime_strcmp(test_name, "PREFIX$") == 0 ||
             runtime_strcmp(test_name, "DIR$") == 0 ||
             runtime_strcmp(test_name, "VER$") == 0 ||
+            runtime_strcmp(test_name, "VERSION$") == 0 ||
             runtime_strcmp(test_name, "ERR$") == 0) {
             runtime_strncpy(out, test_name, max_len - 1);
             out[max_len - 1] = '\0';
@@ -117,18 +128,55 @@ bool eval_is_builtin_function(const char *name) {
         runtime_strcmp(uname, "UBOUND") == 0 || runtime_strcmp(uname, "DAY") == 0 ||
         runtime_strcmp(uname, "MONTH") == 0 || runtime_strcmp(uname, "YEAR") == 0 ||
         runtime_strcmp(uname, "DAY$") == 0 || runtime_strcmp(uname, "MONTH$") == 0 ||
-        runtime_strcmp(uname, "HOURS") == 0 || runtime_strcmp(uname, "HRS") == 0 ||
-        runtime_strcmp(uname, "MINUTES") == 0 || runtime_strcmp(uname, "SECONDS") == 0 ||
+        runtime_strcmp(uname, "YEAR$") == 0 ||
+        runtime_strcmp(uname, "HOURS") == 0 || runtime_strcmp(uname, "HOUR") == 0 || runtime_strcmp(uname, "HOUR$") == 0 ||
+        runtime_strcmp(uname, "MINUTES") == 0 || runtime_strcmp(uname, "MINUTE") == 0 || runtime_strcmp(uname, "MINUTE$") == 0 ||
+        runtime_strcmp(uname, "SECONDS") == 0 || runtime_strcmp(uname, "SECOND") == 0 || runtime_strcmp(uname, "SECOND$") == 0 ||
         runtime_strcmp(uname, "JULIAN") == 0 || runtime_strcmp(uname, "JULIAN$") == 0 ||
         runtime_strcmp(uname, "DAT") == 0 || runtime_strcmp(uname, "JIFFIES") == 0 ||
-        runtime_strcmp(uname, "TICKS") == 0 || runtime_strcmp(uname, "HOSTNAME$") == 0 ||
+        runtime_strcmp(uname, "TICKS") == 0 || runtime_strcmp(uname, "TICKS_MS") == 0 ||
+        runtime_strcmp(uname, "TICKS_US") == 0 ||
+        runtime_strcmp(uname, "HOSTNAME$") == 0 ||
         runtime_strcmp(uname, "USERNAME$") == 0 || runtime_strcmp(uname, "BASEDIR$") == 0 ||
         runtime_strcmp(uname, "BASEPATH$") == 0 || runtime_strcmp(uname, "BASENAME$") == 0 ||
-        runtime_strcmp(uname, "PATH$") == 0 || runtime_strcmp(uname, "COMMAND$") == 0 ||
+        runtime_strcmp(uname, "WORKDIR$") == 0 || runtime_strcmp(uname, "PATH$") == 0 ||
+        runtime_strcmp(uname, "PATH") == 0 || runtime_strcmp(uname, "COMSPEC") == 0 ||
+        runtime_strcmp(uname, "COMSPEC$") == 0 || runtime_strcmp(uname, "LOGNAME") == 0 ||
+        runtime_strcmp(uname, "LOGNAME$") == 0 || runtime_strcmp(uname, "HOMEPATH") == 0 ||
+        runtime_strcmp(uname, "HOMEPATH$") == 0 || runtime_strcmp(uname, "HOMEDRIVE") == 0 ||
+        runtime_strcmp(uname, "HOMEDRIVE$") == 0 || runtime_strcmp(uname, "USERPATH") == 0 ||
+        runtime_strcmp(uname, "USERPATH$") == 0 || runtime_strcmp(uname, "COMPUTERNAME") == 0 ||
+        runtime_strcmp(uname, "COMPUTERNAME$") == 0 || runtime_strcmp(uname, "TOTALMEM") == 0 ||
+        runtime_strcmp(uname, "AVAILMEM") == 0 || runtime_strcmp(uname, "UPTIME") == 0 ||
+        runtime_strcmp(uname, "UPTIME$") == 0 || runtime_strcmp(uname, "EPOCH") == 0 ||
+        runtime_strcmp(uname, "UNIXTIME") == 0 ||
+        runtime_strcmp(uname, "IP$") == 0 || runtime_strcmp(uname, "IP") == 0 ||
+        runtime_strcmp(uname, "MEMMAP$") == 0 ||
+        runtime_strcmp(uname, "COMMAND$") == 0 ||
         runtime_strcmp(uname, "COMMAND") == 0 || runtime_strcmp(uname, "DOEVENTS") == 0 ||
-        runtime_strcmp(uname, "VER") == 0 || runtime_strcmp(uname, "MEM") == 0 ||
-        runtime_strcmp(uname, "FRE") == 0 || runtime_strcmp(uname, "SIZE") == 0 ||
-        runtime_strcmp(uname, "PLAY") == 0) return true;
+        runtime_strcmp(uname, "VER") == 0 || runtime_strcmp(uname, "VERSION") == 0 ||
+        runtime_strcmp(uname, "VER$") == 0 || runtime_strcmp(uname, "VERSION$") == 0 ||
+        runtime_strcmp(uname, "TIME_PART") == 0 || runtime_strcmp(uname, "TIMEPART") == 0 ||
+        runtime_strcmp(uname, "MEM") == 0 || runtime_strcmp(uname, "FRE") == 0 ||
+        runtime_strcmp(uname, "BAUD") == 0 || runtime_strcmp(uname, "CPUSPEED") == 0 ||
+        runtime_strcmp(uname, "CPUSPEED$") == 0 || runtime_strcmp(uname, "CLOCKS") == 0 ||
+        runtime_strcmp(uname, "CLOCKS$") == 0 || runtime_strcmp(uname, "SYS.CPUSPEED") == 0 ||
+        runtime_strcmp(uname, "SYS.CPUSPEED$") == 0 || runtime_strcmp(uname, "SYS.CLOCKS") == 0 ||
+        runtime_strcmp(uname, "SYS.CLOCKS$") == 0 ||
+        runtime_strcmp(uname, "STICK") == 0 ||
+        runtime_strcmp(uname, "STRIG") == 0 || runtime_strcmp(uname, "PADDLE") == 0 ||
+        runtime_strcmp(uname, "PTRIG") == 0 || runtime_strcmp(uname, "ATTR") == 0 ||
+        runtime_strcmp(uname, "STARDATE") == 0 || runtime_strcmp(uname, "STARDATE$") == 0 ||
+        runtime_strcmp(uname, "STATUS") == 0 || runtime_strcmp(uname, "DS") == 0 ||
+        runtime_strcmp(uname, "DS$") == 0 || runtime_strcmp(uname, "SPEED%") == 0 ||
+        runtime_strcmp(uname, "SPEED&") == 0 || runtime_strcmp(uname, "UTC$") == 0 ||
+        runtime_strcmp(uname, "CLK$") == 0 || runtime_strcmp(uname, "CLK") == 0 ||
+        runtime_strncasecmp(uname, "REG.", 4) == 0 || runtime_strncasecmp(uname, "CPU86.", 6) == 0 ||
+        runtime_strcmp(uname, "PAGE") == 0 || runtime_strcmp(uname, "VBL") == 0 ||
+        runtime_strcmp(uname, "PPN$") == 0 || runtime_strcmp(uname, "SYS$") == 0 ||
+        runtime_strcmp(uname, "LINE") == 0 || runtime_strcmp(uname, "FRAMES") == 0 ||
+        runtime_strcmp(uname, "VCOUNT") == 0 ||
+        runtime_strcmp(uname, "SIZE") == 0 || runtime_strcmp(uname, "PLAY") == 0) return true;
 
     // Math Built-in Functions
     if (runtime_strcmp(uname, "SQR") == 0 || runtime_strcmp(uname, "ABS") == 0 ||
@@ -150,6 +198,9 @@ bool eval_is_builtin_function(const char *name) {
         runtime_strcmp(uname, "CEIL") == 0 || runtime_strcmp(uname, "_CEIL") == 0 ||
         runtime_strcmp(uname, "FLOOR") == 0 || runtime_strcmp(uname, "_FLOOR") == 0 ||
         runtime_strcmp(uname, "ROUND") == 0 || runtime_strcmp(uname, "_ROUND") == 0 ||
+        runtime_strcmp(uname, "BANKER_ROUND") == 0 || runtime_strcmp(uname, "BANKROUND") == 0 ||
+        runtime_strcmp(uname, "ROUND_BANK") == 0 || runtime_strcmp(uname, "FRAC") == 0 ||
+        runtime_strcmp(uname, "_FRAC") == 0 || runtime_strcmp(uname, "MATH.FRAC") == 0 ||
         runtime_strcmp(uname, "CLAMP") == 0 || runtime_strcmp(uname, "_CLAMP") == 0 ||
         runtime_strcmp(uname, "LERP") == 0 || runtime_strcmp(uname, "_LERP") == 0 ||
         runtime_strcmp(uname, "ACOS") == 0 || runtime_strcmp(uname, "_ACOS") == 0 ||
@@ -163,19 +214,32 @@ bool eval_is_builtin_function(const char *name) {
         runtime_strcmp(uname, "XOR") == 0 || runtime_strcmp(uname, "IMP") == 0 ||
         runtime_strcmp(uname, "EQV") == 0 || runtime_strcmp(uname, "NOT") == 0 ||
         runtime_strcmp(uname, "READBIT") == 0 || runtime_strcmp(uname, "_READBIT") == 0 ||
+        runtime_strcmp(uname, "BIT") == 0 || runtime_strcmp(uname, "_BIT") == 0 ||
         runtime_strcmp(uname, "SETBIT") == 0 || runtime_strcmp(uname, "_SETBIT") == 0 ||
         runtime_strcmp(uname, "RESETBIT") == 0 || runtime_strcmp(uname, "_RESETBIT") == 0 ||
+        runtime_strcmp(uname, "CLRBIT") == 0 || runtime_strcmp(uname, "_CLRBIT") == 0 ||
         runtime_strcmp(uname, "TOGGLEBIT") == 0 || runtime_strcmp(uname, "_TOGGLEBIT") == 0 ||
         runtime_strcmp(uname, "BITCOUNT") == 0 || runtime_strcmp(uname, "_BITCOUNT") == 0 ||
-        runtime_strcmp(uname, "RND") == 0) return true;
+        runtime_strcmp(uname, "ROL") == 0 || runtime_strcmp(uname, "_ROL") == 0 ||
+        runtime_strcmp(uname, "ROR") == 0 || runtime_strcmp(uname, "_ROR") == 0 ||
+        runtime_strcmp(uname, "BITFIELD") == 0 || runtime_strcmp(uname, "_BITFIELD") == 0 ||
+        runtime_strcmp(uname, "SUM") == 0 || runtime_strcmp(uname, "_SUM") == 0 ||
+        runtime_strcmp(uname, "AVG") == 0 || runtime_strcmp(uname, "_AVG") == 0 ||
+        runtime_strcmp(uname, "MEAN") == 0 || runtime_strcmp(uname, "_MEAN") == 0 ||
+        runtime_strcmp(uname, "RND") == 0 || runtime_strcmp(uname, "NEG") == 0) return true;
 
     // String & Conversion Built-ins
-    if (runtime_strcmp(uname, "LEN") == 0 || runtime_strcmp(uname, "ASC") == 0 ||
+    if (runtime_strcmp(uname, "LEN") == 0 || runtime_strcmp(uname, "MAXLEN") == 0 ||
+        runtime_strcmp(uname, "ASC") == 0 ||
         runtime_strcmp(uname, "CHR$") == 0 || runtime_strcmp(uname, "CINT") == 0 ||
+        runtime_strcmp(uname, "CLNG") == 0 ||
+        runtime_strcmp(uname, "CBOOL") == 0 || runtime_strcmp(uname, "CBYTE") == 0 ||
+        runtime_strcmp(uname, "CCUR") == 0 || runtime_strcmp(uname, "CSTR") == 0 ||
         runtime_strcmp(uname, "CSNG") == 0 || runtime_strcmp(uname, "CDBL") == 0 ||
         runtime_strcmp(uname, "VAL") == 0 || runtime_strcmp(uname, "STR$") == 0 ||
         runtime_strcmp(uname, "LEFT$") == 0 || runtime_strcmp(uname, "RIGHT$") == 0 ||
         runtime_strcmp(uname, "MID$") == 0 || runtime_strcmp(uname, "INSTR") == 0 ||
+        runtime_strcmp(uname, "RINSTR") == 0 || runtime_strcmp(uname, "RINSTR$") == 0 ||
         runtime_strcmp(uname, "UCASE$") == 0 || runtime_strcmp(uname, "LCASE$") == 0 ||
         runtime_strcmp(uname, "LTRIM$") == 0 || runtime_strcmp(uname, "RTRIM$") == 0 ||
         runtime_strcmp(uname, "TRIM$") == 0 || runtime_strcmp(uname, "SPACE$") == 0 ||
@@ -186,13 +250,27 @@ bool eval_is_builtin_function(const char *name) {
         runtime_strcmp(uname, "NUM$") == 0 || runtime_strcmp(uname, "TCASE$") == 0 ||
         runtime_strcmp(uname, "ICASE$") == 0 || runtime_strcmp(uname, "REVERSE$") == 0 ||
         runtime_strcmp(uname, "REMOVE$") == 0 || runtime_strcmp(uname, "REMOVE") == 0 ||
+        runtime_strcmp(uname, "DELETE$") == 0 || runtime_strcmp(uname, "DELETE") == 0 ||
+        runtime_strcmp(uname, "INSERT$") == 0 || runtime_strcmp(uname, "INSERT") == 0 ||
+        runtime_strcmp(uname, "OVERLAY$") == 0 || runtime_strcmp(uname, "OVERLAY") == 0 ||
+        runtime_strcmp(uname, "FORMAT$") == 0 || runtime_strcmp(uname, "FORMAT") == 0 ||
+        runtime_strcmp(uname, "SHELL$") == 0 || runtime_strcmp(uname, "EXEC$") == 0 ||
+        runtime_strcmp(uname, "INDEX") == 0 || runtime_strcmp(uname, "INDEX$") == 0 ||
+        runtime_strcmp(uname, "COUNT") == 0 || runtime_strcmp(uname, "COUNT$") == 0 ||
+        runtime_strcmp(uname, "DEGREE") == 0 || runtime_strcmp(uname, "RADIAN") == 0 ||
+        runtime_strcmp(uname, "GRAD") == 0 ||
+        runtime_strcmp(uname, "POL") == 0 || runtime_strcmp(uname, "REC") == 0 ||
+        runtime_strcmp(uname, "TRANSLATE") == 0 || runtime_strcmp(uname, "TRANSLATE$") == 0 ||
+        runtime_strcmp(uname, "WBYTE") == 0 || runtime_strcmp(uname, "RBYTE") == 0 ||
         runtime_strcmp(uname, "HASH") == 0 || runtime_strcmp(uname, "SEEK") == 0 ||
         runtime_strcmp(uname, "HELP") == 0 || runtime_strcmp(uname, "HELP$") == 0 ||
         runtime_strcmp(uname, "CATEGORY") == 0 || runtime_strcmp(uname, "CATEGORY$") == 0 ||
         runtime_strcmp(uname, "CATEGORIES") == 0 || runtime_strcmp(uname, "CATEGORIES$") == 0 ||
         runtime_strcmp(uname, "INPUT$") == 0 || runtime_strcmp(uname, "SCREEN") == 0 ||
         runtime_strcmp(uname, "IOCTL$") == 0 || runtime_strcmp(uname, "TXNSTATUS") == 0 ||
-        runtime_strcmp(uname, "FILEATTR") == 0 || runtime_strcmp(uname, "MKI$") == 0 ||
+        runtime_strcmp(uname, "FILEATTR") == 0 ||
+        runtime_strcmp(uname, "ISNUMERIC") == 0 || runtime_strcmp(uname, "ISARRAY") == 0 ||
+        runtime_strcmp(uname, "MKI$") == 0 ||
         runtime_strcmp(uname, "MKS$") == 0 || runtime_strcmp(uname, "MKD$") == 0 ||
         runtime_strcmp(uname, "MKSMBF$") == 0 || runtime_strcmp(uname, "MKDMBF$") == 0 ||
         runtime_strcmp(uname, "CVI") == 0 || runtime_strcmp(uname, "CVS") == 0 ||
@@ -205,7 +283,9 @@ bool eval_is_builtin_function(const char *name) {
         runtime_strcmp(uname, "FILEOPENBOX$") == 0 || runtime_strcmp(uname, "FILESAVEBOX$") == 0 ||
         runtime_strcmp(uname, "DATESERIAL") == 0 || runtime_strcmp(uname, "TIMESERIAL") == 0 ||
         runtime_strcmp(uname, "DATEVALUE") == 0 || runtime_strcmp(uname, "TIMEVALUE") == 0 ||
-        runtime_strcmp(uname, "WEEKDAY") == 0 || runtime_strcmp(uname, "HOUR") == 0 ||
+        runtime_strcmp(uname, "WEEKDAY") == 0 || runtime_strcmp(uname, "WEEK") == 0 ||
+        runtime_strcmp(uname, "WEEK$") == 0 || runtime_strcmp(uname, "TODAY") == 0 ||
+        runtime_strcmp(uname, "TODAY$") == 0 || runtime_strcmp(uname, "HOUR") == 0 ||
         runtime_strcmp(uname, "MINUTE") == 0 || runtime_strcmp(uname, "SECOND") == 0 ||
         runtime_strcmp(uname, "UNIXTIME") == 0 || runtime_strcmp(uname, "EPOCHDATE") == 0 ||
         runtime_strcmp(uname, "DIR$") == 0 || runtime_strcmp(uname, "DIR") == 0 ||
@@ -221,7 +301,11 @@ bool eval_is_builtin_function(const char *name) {
         runtime_strcmp(uname, "_RECOUNT") == 0 || runtime_strcmp(uname, "STATUS") == 0 ||
         runtime_strcmp(uname, "_STATUS") == 0 || runtime_strcmp(uname, "DEVICECOUNT") == 0 ||
         runtime_strcmp(uname, "DEVICE$") == 0 || runtime_strcmp(uname, "DEVICECLASS$") == 0 ||
-        runtime_strcmp(uname, "DEVICEINFO$") == 0 || runtime_strcmp(uname, "POLL") == 0) return true;
+        runtime_strcmp(uname, "DEVICEINFO$") == 0 || runtime_strcmp(uname, "POLL") == 0 ||
+        runtime_strcmp(uname, "RENAME") == 0 || runtime_strcmp(uname, "CHECK") == 0 ||
+        runtime_strcmp(uname, "VERIFY") == 0 || runtime_strcmp(uname, "REFORMAT") == 0 ||
+        runtime_strcmp(uname, "RENUM") == 0 || runtime_strcmp(uname, "PROGRAM$") == 0 ||
+        runtime_strcmp(uname, "PROGRAM") == 0) return true;
 
     // SIO / BIO / Data Structures / Metaprogramming
     if (runtime_strcmp(uname, "SIOREAD$") == 0 || runtime_strcmp(uname, "SIOREADLN$") == 0 ||
@@ -232,6 +316,7 @@ bool eval_is_builtin_function(const char *name) {
         runtime_strcmp(uname, "BIOFILL") == 0 || runtime_strcmp(uname, "BIOSTATUS") == 0 ||
         runtime_strcmp(uname, "BIOSIZE") == 0 || runtime_strcmp(uname, "BIOCHECKSUM") == 0 ||
         runtime_strcmp(uname, "BIOCOMPARE") == 0 || runtime_strcmp(uname, "PEEK") == 0 ||
+        runtime_strcmp(uname, "EXAM") == 0 ||
         runtime_strcmp(uname, "MAP") == 0 || runtime_strcmp(uname, "MAP_NEW") == 0 ||
         runtime_strcmp(uname, "MAP_SET") == 0 || runtime_strcmp(uname, "MAP_GET") == 0 ||
         runtime_strcmp(uname, "MAP_GET$") == 0 || runtime_strcmp(uname, "MAP_REMOVE") == 0 ||
@@ -240,8 +325,11 @@ bool eval_is_builtin_function(const char *name) {
         runtime_strcmp(uname, "JSON_STRINGIFY$") == 0 || runtime_strcmp(uname, "XML_PARSE") == 0 ||
         runtime_strcmp(uname, "XML_STRINGIFY$") == 0 || runtime_strcmp(uname, "YAML_PARSE") == 0 ||
         runtime_strcmp(uname, "YAML_STRINGIFY$") == 0 || runtime_strcmp(uname, "INI_PARSE") == 0 ||
-        runtime_strcmp(uname, "INI_STRINGIFY$") == 0 || runtime_strcmp(uname, "DCOUNT") == 0 ||
+        runtime_strcmp(uname, "INI_STRINGIFY$") == 0 ||
         runtime_strcmp(uname, "FIELD") == 0 || runtime_strcmp(uname, "EXTRACT") == 0 ||
+        runtime_strcmp(uname, "DYNARRAY") == 0 || runtime_strcmp(uname, "DYNARRAY$") == 0 ||
+        runtime_strcmp(uname, "PARSE_DYNARRAY") == 0 || runtime_strcmp(uname, "GROUP_MAP") == 0 ||
+        runtime_strcmp(uname, "GROUP.MAP") == 0 ||
         runtime_strcmp(uname, "COUNT") == 0 || runtime_strcmp(uname, "INS") == 0 ||
         runtime_strcmp(uname, "DEL") == 0 || runtime_strcmp(uname, "REPLACE") == 0 ||
         runtime_strcmp(uname, "FID") == 0 || runtime_strcmp(uname, "FID$") == 0 ||
@@ -250,9 +338,11 @@ bool eval_is_builtin_function(const char *name) {
         runtime_strcmp(uname, "ATH$") == 0 || runtime_strcmp(uname, "HEXIN") == 0 ||
         runtime_strcmp(uname, "HEXIN$") == 0 || runtime_strcmp(uname, "HEXOUT") == 0 ||
         runtime_strcmp(uname, "HEXOUT$") == 0 || runtime_strcmp(uname, "TEK") == 0 ||
-        runtime_strcmp(uname, "TEK$") == 0 || runtime_strcmp(uname, "VEC") == 0 ||
-        runtime_strcmp(uname, "VEC$") == 0 || runtime_strcmp(uname, "FPT") == 0 ||
-        runtime_strcmp(uname, "IPT") == 0 || runtime_strcmp(uname, "KEYIN") == 0 ||
+        runtime_strcmp(uname, "TEK$") == 0 || runtime_strcmp(uname, "VEC$") == 0 ||
+        runtime_strcmp(uname, "FPT") == 0 ||
+        runtime_strcmp(uname, "FP") == 0 || runtime_strcmp(uname, "IPT") == 0 ||
+        runtime_strcmp(uname, "IP") == 0 || runtime_strcmp(uname, "DP") == 0 ||
+        runtime_strcmp(uname, "XP") == 0 || runtime_strcmp(uname, "KEYIN") == 0 ||
         runtime_strcmp(uname, "KEYIN$") == 0 || runtime_strcmp(uname, "MSGBOX") == 0 ||
         runtime_strcmp(uname, "MSGBOX$") == 0 || runtime_strcmp(uname, "INPUTBOX") == 0 ||
         runtime_strcmp(uname, "INPUTBOX$") == 0 || runtime_strcmp(uname, "ENVIRON$") == 0 ||
@@ -283,6 +373,20 @@ bool eval_is_builtin_function(const char *name) {
         runtime_strcmp(uname, "MATH.SEC") == 0 || runtime_strcmp(uname, "CSC") == 0 ||
         runtime_strcmp(uname, "_CSC") == 0 || runtime_strcmp(uname, "MATH.CSC") == 0 ||
         runtime_strcmp(uname, "RAD") == 0 || runtime_strcmp(uname, "DEG") == 0 ||
+        runtime_strcmp(uname, "DEGREE") == 0 || runtime_strcmp(uname, "RADIAN") == 0 ||
+        runtime_strcmp(uname, "GRAD") == 0 ||
+        runtime_strcmp(uname, "READU") == 0 || runtime_strcmp(uname, "READU$") == 0 ||
+        runtime_strcmp(uname, "WRITEU") == 0 || runtime_strcmp(uname, "RELEASE") == 0 ||
+        runtime_strcmp(uname, "LOCKED") == 0 || runtime_strcmp(uname, "KEY$") == 0 ||
+        runtime_strcmp(uname, "KEYCOUNT") == 0 || runtime_strcmp(uname, "ISAM") == 0 ||
+        runtime_strcmp(uname, "KEYED") == 0 || runtime_strcmp(uname, "CBYTE") == 0 ||
+        runtime_strcmp(uname, "BYTE") == 0 || runtime_strcmp(uname, "CWORD") == 0 ||
+        runtime_strcmp(uname, "WORD") == 0 || runtime_strcmp(uname, "CDWORD") == 0 ||
+        runtime_strcmp(uname, "DWORD") == 0 || runtime_strcmp(uname, "PTR") == 0 ||
+        runtime_strcmp(uname, "POINTER") == 0 || runtime_strcmp(uname, "DEREF") == 0 ||
+        runtime_strcmp(uname, "MASK") == 0 || runtime_strcmp(uname, "SET_BITFIELD") == 0 ||
+        runtime_strcmp(uname, "MUTEX") == 0 || runtime_strcmp(uname, "MUTEX_LOCK") == 0 ||
+        runtime_strcmp(uname, "MUTEX_UNLOCK") == 0 ||
         runtime_strcmp(uname, "COMP") == 0 || runtime_strcmp(uname, "_COMP") == 0 ||
         runtime_strcmp(uname, "MATH.COMP") == 0 || runtime_strcmp(uname, "PDIF") == 0 ||
         runtime_strcmp(uname, "_PDIF") == 0 || runtime_strcmp(uname, "MATH.PDIF") == 0 ||
@@ -308,7 +412,10 @@ bool eval_is_builtin_function(const char *name) {
         runtime_strcmp(uname, "SALT$") == 0 || runtime_strcmp(uname, "AUDITCRACK") == 0 ||
         runtime_strcmp(uname, "AUDITCRACK$") == 0 || runtime_strcmp(uname, "SANDBOXAUDIT") == 0 ||
         runtime_strcmp(uname, "VMCHECK") == 0 || runtime_strcmp(uname, "NETHOST$") == 0 ||
-        runtime_strcmp(uname, "NETIP$") == 0) return true;
+        runtime_strcmp(uname, "NETIP$") == 0 ||
+        runtime_strcmp(uname, "CPUSPEED") == 0 || runtime_strcmp(uname, "CPUSPEED$") == 0 ||
+        runtime_strcmp(uname, "CLOCKS") == 0 || runtime_strcmp(uname, "CLOCKS$") == 0 ||
+        runtime_strcmp(uname, "SYS.CPUSPEED") == 0 || runtime_strcmp(uname, "SYS.CLOCKS") == 0) return true;
 
 #ifndef BASIC_LITE_BUILD
     if (runtime_strcmp(uname, "VARPTR") == 0 || runtime_strcmp(uname, "VARPTR$") == 0 ||
@@ -345,6 +452,16 @@ bool eval_is_builtin_function(const char *name) {
         runtime_strcmp(uname, "CRYPTO.ENCRYPT$") == 0 || runtime_strcmp(uname, "CRYPTO.DECRYPT$") == 0 ||
         runtime_strcmp(uname, "CRYPTO.HASH$") == 0 || runtime_strcmp(uname, "CRYPTO.HMAC$") == 0 ||
         runtime_strcmp(uname, "CRYPTO.KEY$") == 0 ||
+        runtime_strcmp(uname, "DEVINFO$") == 0 || runtime_strcmp(uname, "DEVINFO") == 0 ||
+        runtime_strcmp(uname, "DEVCAPS%") == 0 || runtime_strcmp(uname, "DEVCAPS") == 0 ||
+        runtime_strcmp(uname, "DEVCTL$") == 0 || runtime_strcmp(uname, "DEVCTL") == 0 ||
+        runtime_strcmp(uname, "DEVCTL%") == 0 || runtime_strcmp(uname, "MESG$") == 0 ||
+        runtime_strcmp(uname, "MESG") == 0 ||
+        runtime_strcmp(uname, "RECEIVE$") == 0 || runtime_strcmp(uname, "RECEIVE") == 0 ||
+        runtime_strcmp(uname, "MSGRECV$") == 0 || runtime_strcmp(uname, "MSGRECV") == 0 ||
+        runtime_strcmp(uname, "UPNP.EXTERNALIP$") == 0 || runtime_strcmp(uname, "UPNP.EXTERNALIP") == 0 ||
+        runtime_strcmp(uname, "UPNP.STATUS") == 0 || runtime_strcmp(uname, "UPNP.STATUS$") == 0 ||
+        runtime_strcmp(uname, "UPNP.STATUS%") == 0 || runtime_strcmp(uname, "EXTERNALIP$") == 0 ||
         runtime_strcmp(uname, "PYTHON") == 0) return true;
 
     if (funcreg_find_by_name(uname) != NULL) {

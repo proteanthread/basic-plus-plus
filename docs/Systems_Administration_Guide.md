@@ -1,0 +1,264 @@
+<!--
+Title:        Systems_Administration_Guide
+Tier:         1
+Applies to:   BASIC++ v6.5.2, hosted targets
+Authority:    engine/lib/platform/plat_net.c, plat_serial.c,
+              engine/src/runtime/vnet.c, sock_engine.c, packet_sniff.c,
+              crypto.c, crypto_engine.c, engine/iot/src/iot_net.c,
+              engine/include/security/security.h, engine/src/debug/logger.c
+Generated:    no, hand-written
+Status:       current
+-->
+
+# Systems Administration Guide
+
+For people who run systems: scripting, automation, diagnostics, file handling
+and security. What BASIC++ is genuinely useful for in that role, and what it
+is not.
+
+---
+
+## 1. What is real and what is simulated
+
+Read this before planning anything, because the split is not where you would
+guess.
+
+**Real, and usable today:**
+
+| Capability | Keywords |
+|---|---|
+| Shell execution | `SHELL`, `EXEC$` |
+| Environment | `ENVIRON$`, `SYSTEM` |
+| File and directory operations | `FILES`, `KILL`, `NAME`, `MKDIR`, `RMDIR`, `CHDIR`, `DIR$`, `CURDIR$` |
+| File metadata | `FILESIZE`, `FILEMOD$`, `EXISTS`, `LOC`, `LOF`, `EOF` |
+| File locking | `LOCK`, `UNLOCK`, `LOCKED` |
+| Hashing | `CRYPTO.HASH$`, `CRYPTO.HMAC$` — real SHA-256 and HMAC-SHA256 |
+| Identifiers | `GUID$` |
+| Logging | `LOGGER`, `LOGTRACE` through `LOGERROR`, six levels |
+| Scheduling | `EVERY`, `ON TIMER`, `TIMERCONTROL` |
+| Concurrency | `TASK`, `YIELD`, `SUSPEND`, `PRIORITY`, `MUTEX` |
+| IPC | `PIPE`, `MSGSEND`, `MSGRECV$`, `PUBLISH`, `SUBSCRIBE` |
+| Users and sessions | `LOGIN`, `USERNAME`, `WHO`, `HOSTNAME`, `WALL`, `MESG` |
+| Introspection | `MEMMAP`, `CPU`, `DEVICES`, `MOUNTS`, `VERSION`, `FRE`, `TOTALMEM`, `AVAILMEM`, `UPTIME`, `COMSPEC`, `HOMEPATH` |
+| Serial ports | `OPEN "COM1:"`, `BAUD`, and the `plat_serial.c` layer — real `termios` and `SetCommState` hardware access |
+| Instrument bus | GPIB / IEEE-488 statements |
+| Indexed records | `CREATEINDEX`, `DELETEINDEX`, `SETINDEX` — in-memory ISAM, no on-disk B-tree |
+
+**Simulated, and not usable for real work:**
+
+| Apparent capability | Reality |
+|---|---|
+| `SOCK.*` sockets | A handle table. No OS socket is created — **though a real socket layer exists elsewhere in the project; see below** |
+| `SNIFF`, `PACKET.*` | Returns one hardcoded fake packet on every call |
+| `GEMINI.*`, `GOPHER.*` | Return fixed pages; the URL is ignored |
+| `HTTP.GET$` | Returns `{"status":"ok","code":200}` regardless of URL |
+| `TNFS.*` | `tnfs_mount` sets a hardcoded session id and opens no socket |
+| `WIFI`, `MQTT`, `ESPNOW`, `BT`, `WEBREPL` | All of `iot_net.c`. Flags and invented strings |
+| `MOUSE`, `HMOUSE`, `VMOUSE` | All six handlers are empty. Registered, parse nothing, do nothing |
+| TLS | Does not exist anywhere in the project |
+| `CRYPTO.ENCRYPT$`, `CRYPTO.DECRYPT$` | **Repeating-key XOR.** Not encryption |
+| `CRYPTO.KEY$` | **Deterministic.** No entropy. See below |
+
+### The socket split, which is the thing to understand first
+
+BASIC++ has a real, working socket implementation in
+`engine/lib/platform/plat_net.c` — Berkeley sockets on POSIX, Winsock on
+Windows, with `getaddrinfo`, non-blocking mode and `select`, and `ws2_32`
+linked in the build. `engine/src/runtime/vnet.c` runs sixteen TCP and UDP
+channels on top of it, client and server.
+
+The `SOCK.*` keywords do not use it. They call `sock_engine.c`, which is a
+static array of handles. So a BASIC program that opens a socket, binds it and
+reports success has connected to nothing, while the code that would have
+connected sits one directory away.
+
+Practically: **do not use `SOCK.*` or the radio keywords for real work yet.**
+Until they are redirected, reach the network from a C host that owns it, via
+`basicpp.h` or the `vnet_*` API directly. `Networking_Reference` sections 1
+and 8 have the evidence and the fix.
+
+### The crypto warning, stated plainly
+
+Two of these are dangerous to trust and you must not use them for anything
+real.
+
+`CRYPTO.ENCRYPT$` and `CRYPTO.DECRYPT$` are implemented in
+`engine/src/runtime/crypto_engine.c` as `crypto_encrypt_sim` and
+`crypto_decrypt_sim`. The `_sim` suffix is accurate: the algorithm is a
+byte-wise XOR against a repeating key. That is a Vigenere cipher, breakable by
+hand, and it provides no confidentiality against anyone.
+
+`CRYPTO.KEY$` is worse. `crypto_keygen` computes each byte as
+`(i * 37 + 101) ^ (bytes * 13)`. There is no entropy source of any kind, so
+the same call returns the same "key" on every machine, every time. Anyone can
+compute it.
+
+`CRYPTO.HASH$` and `CRYPTO.HMAC$` are different: `crypto_sha256` is a genuine
+SHA-256 with the correct initial hash values, and `crypto_hmac_sha256_hex` is
+a real HMAC. Use those for integrity checking with confidence. Note that some
+hash paths in `crypto.c` fall back to FNV-64 for unrecognised algorithm names,
+which is a fast hash and not a cryptographic one; pass `"SHA256"` explicitly.
+
+---
+
+## 2. Scripting and automation
+
+`bs` is the script runner: no REPL, no editor, reads a file, runs it, exits
+with a status. That is what a cron job or a pipeline wants.
+
+```basic
+10 ' audit.bas -- hash every file in a directory
+20 DIM F$
+30 F$ = DIR$("*.conf")
+40 WHILE LEN(F$) > 0
+50   PRINT F$; " "; CRYPTO.HASH$(F$, "SHA256")
+60   F$ = DIR$("")
+70 WEND
+```
+
+```
+bs audit.bas > manifest.txt
+```
+
+`SHELL` and `EXEC$` reach the host. `EXEC$` captures output as a string, which
+is usually what you want in a script:
+
+```basic
+10 Result$ = EXEC$("systemctl is-active nginx")
+20 IF INSTR(Result$, "active") = 0 THEN LOGERROR "nginx down"
+```
+
+Note that `SHELL` and `EXEC$` are gated by the safety level; see section 4.
+
+---
+
+## 3. Logging that reaches your infrastructure
+
+Six levels, and from a C host you can route them into whatever you already
+run:
+
+```c
+void syslog_sink(BppLogLevel level, const char *tag, const char *message,
+                 const char *timestamp, void *userdata) {
+    syslog(map_level(level), "%s: %s", tag, message);
+}
+bpp_log_add_sink(ctx, syslog_sink, BPP_LOG_INFO, NULL);
+```
+
+The `min_level` filter runs at the source, so installing a sink at `INFO`
+costs nothing for `TRACE` and `DEBUG` calls.
+
+From BASIC, `LOGGER message$, level` writes a timestamped entry to `USER0:`
+or the system sink.
+
+---
+
+## 4. The security model
+
+BASIC++ has a real capability and safety model, and it is enforced rather
+than advisory.
+
+**Safety levels** classify every keyword, declared in its
+`LanguageDescriptor`:
+
+| Level | Meaning | Examples |
+|---|---|---|
+| `SAFETY_PURE` | No side effects, deterministic | `SIN`, `COS`, `LEN` |
+| `SAFETY_SAFE` | Managed state only | `LEFT$`, `MID$`, `CLS` |
+| `SAFETY_IO` | File or console I/O | `PRINT`, `INPUT`, `OPEN` |
+| `SAFETY_SYSTEM` | System resources | `PEEK`, `POKE`, `SHELL` |
+| `SAFETY_UNSAFE` | Privileged hardware access | Direct port and memory access |
+
+**Module capabilities** are a bitmask declared per module and checked at
+activation: `CAP_MATH`, `CAP_STRING`, `CAP_IO`, `CAP_FILE`, `CAP_SYSTEM`,
+`CAP_GRAPHICS`, `CAP_SOUND`, `CAP_NETWORK`, `CAP_GPIO`, `CAP_I2C`, `CAP_SPI`,
+`CAP_SENSOR`, `CAP_CAMERA`, `CAP_BLUETOOTH`, `CAP_USB`. A module that does not
+declare `CAP_FILE` cannot touch files.
+
+**Path sandboxing** runs through the virtual filesystem: `MOUNT`, `UMOUNT`,
+`VPATH` control what a program can reach, and a program confined to a mount
+cannot escape it by path traversal.
+
+This combination is what makes running an untrusted BASIC program a reasonable
+proposition. Set the safety level, declare the capabilities, mount only what
+the program needs.
+
+See `Security` and `Secure_Coding`.
+
+---
+
+## 5. Running BASIC++ as a service
+
+`bs` plus `TASK` gives you cooperative concurrency in one process:
+
+```basic
+10 TASK "collector", 100
+20 TASK "reporter", 200
+30 ' main loop
+40 DO
+50   YIELD
+60 LOOP
+```
+
+`PRIORITY` sets scheduling weight, `SUSPEND` pauses a task, `MUTEX` guards
+shared state, and `EVERY` schedules periodic work.
+
+What this is not, from BASIC: a network service. Section 1 explains why. A
+daemon that watches files, processes them and reports is entirely buildable;
+one that listens on a port is not, until `SOCK.*` is redirected at the real
+socket layer. From a C host the same daemon can listen, because `vnet_*` and
+`platform_socket_*` work today.
+
+---
+
+## 6. Diagnostics on a machine you are responsible for
+
+```basic
+10 PRINT "Engine:   "; VERSION
+20 PRINT "CPU:      "; CPU
+30 PRINT "Free mem: "; FRE(0)
+40 MEMMAP
+50 DEVICES
+60 MOUNTS
+70 SELFTEST
+```
+
+`MEMMAP` prints the memory layout, `DEVICES` the registered virtual devices,
+`MOUNTS` the filesystem mounts, and `SELFTEST` runs the engine's internal
+diagnostic suite across the lexer, memory manager, string heap, variables and
+arrays.
+
+`SELFTEST` is the one to run when behaviour is inexplicable: if it fails, the
+problem is beneath your program.
+
+---
+
+## 7. Honest limits
+
+State these to anyone evaluating BASIC++ for operational work:
+
+- The `SOCK.*` keywords do not reach the network, so no network services and no
+  remote monitoring from BASIC. The underlying socket layer is real; the
+  keywords are not connected to it.
+- No TLS, so nothing authenticated or encrypted in transit.
+- No real encryption and no secure key generation. See section 1.
+- No packet capture, so no traffic analysis.
+- No client drivers for an external database. `CREATEINDEX` and its siblings
+  are an in-memory ISAM over your own records, not a connection to a DBMS.
+- No HTTP server framework.
+- No USB, CD-ROM, CD audio or DVD access. Serial ports and GPIB are the
+  physical buses that do work.
+- Cooperative concurrency only; a blocking operation blocks everything.
+
+What it is good at: file-oriented automation, hashing and integrity checking
+with SHA-256 and HMAC, scripted diagnostics, serial-port and instrument work,
+scheduled local work, and being embedded in a larger C program that owns the
+risky parts.
+
+## See also
+
+- `Networking_Reference` for the network layer and its evidence
+- `Security` and `Secure_Coding` for the safety model
+- `Debugging_And_Testing` for diagnostics
+- `Virtual_Filesystem` for mounts and sandboxing
+- `C_Programmers_Guide` for embedding

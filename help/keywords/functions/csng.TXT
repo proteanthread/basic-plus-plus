@@ -1,32 +1,68 @@
-CSNG Convert to Single-Precision Float
-======================================================================
+TITLE: CSNG
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/type.c
+GENERATED: no, hand-written
+STATUS: current
 
-The CSNG function converts a numeric expression to a 32-bit
-single-precision floating-point value.
+==============================================================================
+CSNG KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: type.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libengine (type.h)
+    // Provides core logic and interface definitions for type within BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Converts numeric expression to single-precision 32-bit floating-point value.
 
-    result! = CSNG(expression)
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    CSNG(expr)
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = CSNG(e10pr)
+    20 PRINT "Result: "; Val
 
-OPERATIONAL RULES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 6: Overflow, Error 13: Type Mismatch
 
-  - Truncates precision to 32-bit single float (~6-7 decimal digits).
-  - Converts integer, double, or numeric string.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       GW-BASIC, QBASIC, BASIC++ Standard
+Since Version: 6.0.0
+Category:      Type Conversion
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_PURE
 
-
-ERROR CODES
-----------------------------------------------------------------------
-
-  Error Code  Name                  Condition
-  ----------  --------------------  ----------------------------------
-  13          ERR_TYPE_MISMATCH     Invalid non-numeric string
-
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 PRINT CSNG(1.234567890123)
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  CSNG
+Category              Type Conversion
+Syntax                CSNG(expr)
+Description           Converts numeric expression to single-precision 32-...
+Error Summary         Error 6: Overflow, Error 13: Type Mismatch
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_PURE
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         GW-BASIC, QBASIC, BASIC++ Standard
+Since Version         6.0.0
+Source File           engine/src/eval/type.c

@@ -1,34 +1,71 @@
-DEFSNG Define Single-Precision Default Type
-======================================================================
+TITLE: DEFSNG
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/variables/declaration/defsng.c
+GENERATED: no, hand-written
+STATUS: current
 
-The DEFSNG statement declares that all variable identifiers beginning
-with the specified letter(s) or ranges default to single-precision float.
+==============================================================================
+DEFSNG KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: defsng.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (ctype.h, ctype.c, language_descriptor.h)
+    // NEEDS: libcore (string.h, variables.h, variables.c)
+    // NEEDS: libengine (defsng.h, string.c)
+    // Provides runtime implementation for the DEFSNG statement in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Sets default type of variables beginning with specified letters to
+single-precision float.
 
-    DEFSNG letter_range [, letter_range2, ...]
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    DEFSNG letter_range [, letter_range...]
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM DEFSNG Demonstration
+    20 PRINT "DEFSNG executed successfully."
 
-OPERATIONAL RULES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error
 
-  - Declares single-precision float for matching variable names.
-  - Overridden by explicit suffixes (%, #, $).
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Variables & Types
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SAFE
 
-
-ERROR CODES
-----------------------------------------------------------------------
-
-  Error Code  Name                  Condition
-  ----------  --------------------  ----------------------------------
-  2           ERR_SYNTAX_ERROR      Invalid letter range syntax
-
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 DEFSNG A-Z
-    20 X = 1.2345
-    30 PRINT X
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  DEFSNG
+Category              Variables & Types
+Syntax                DEFSNG letter_range [, letter_range...]
+Description           Sets default type of variables beginning with speci...
+Error Summary         Error 2: Syntax Error
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/variables/declaration/defsng.c

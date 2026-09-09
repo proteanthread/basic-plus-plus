@@ -58,7 +58,8 @@
 #endif
 
 #if !defined(_WIN32)
-static char *g_fallback_clipboard = NULL;
+static char g_fallback_clipboard[65536];
+static bool g_has_fallback_clipboard = false;
 #endif
 
 char *platform_clipboard_get(void) {
@@ -74,23 +75,30 @@ char *platform_clipboard_get(void) {
         CloseClipboard();
         return NULL;
     }
-    char *result = (char *)calloc(1, strlen(pszText) + 1);
-    if (result) {
-        strcpy(result, pszText);
-    }
+    static char s_clip_result[65536];
+    size_t len = strlen(pszText);
+    if (len >= sizeof(s_clip_result)) len = sizeof(s_clip_result) - 1;
+    memcpy(s_clip_result, pszText, len);
+    s_clip_result[len] = '\0';
     GlobalUnlock(hData);
     CloseClipboard();
-    return result;
+    return s_clip_result;
 #else
-    if (g_fallback_clipboard) {
-        char *result = (char *)calloc(1, strlen(g_fallback_clipboard) + 1);
-        if (result) {
-            strcpy(result, g_fallback_clipboard);
-        }
-        return result;
+    if (g_has_fallback_clipboard) {
+        static char s_clip_result[65536];
+        size_t len = strlen(g_fallback_clipboard);
+        if (len >= sizeof(s_clip_result)) len = sizeof(s_clip_result) - 1;
+        memcpy(s_clip_result, g_fallback_clipboard, len);
+        s_clip_result[len] = '\0';
+        return s_clip_result;
     }
     return NULL;
 #endif
+}
+
+void platform_clipboard_free(char *text) {
+    // Model 1 static buffer: no free required
+    (void)text;
 }
 
 void platform_clipboard_set(const char *text) {
@@ -114,16 +122,16 @@ void platform_clipboard_set(const char *text) {
     }
     CloseClipboard();
 #else
-    if (g_fallback_clipboard) {
-        free(g_fallback_clipboard);
-        g_fallback_clipboard = NULL;
+    if (!text) {
+        g_has_fallback_clipboard = false;
+        g_fallback_clipboard[0] = '\0';
+        return;
     }
-    if (text) {
-        g_fallback_clipboard = (char *)calloc(1, strlen(text) + 1);
-        if (g_fallback_clipboard) {
-            strcpy(g_fallback_clipboard, text);
-        }
-    }
+    size_t len = strlen(text);
+    if (len >= sizeof(g_fallback_clipboard)) len = sizeof(g_fallback_clipboard) - 1;
+    memcpy(g_fallback_clipboard, text, len);
+    g_fallback_clipboard[len] = '\0';
+    g_has_fallback_clipboard = true;
 #endif
 }
 

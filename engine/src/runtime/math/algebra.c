@@ -37,7 +37,7 @@ double runtime_sqrt(double x) {
     y = y * (1.5 - xhalf * y * y);
     y = y * (1.5 - xhalf * y * y);
 
-    // Multiply reciprocal root by x to get sqrt(x)
+    // Multiply reciprocal root by x to get runtime_sqrt(x)
     double res = x * y;
     // One final standard Newton step for exact precision: res = 0.5 * (res + x / res)
     res = 0.5 * (res + x / res);
@@ -75,12 +75,12 @@ double runtime_exp(double x) {
     if (x < -708.3964185322641) return 0.0;
     if (x == 0.0) return 1.0;
 
-    // e^x = 2^k * e^r, where k = round(x / ln2), r = x - k * ln2
+    // e^x = 2^k * e^r, where k = runtime_round(x / ln2), r = x - k * ln2
     double k = runtime_round(x * RUNTIME_LOG2E);
     int ik = (int)k;
     double r = (x - k * 0.69314718055994528623) - k * 2.3190468138462995584e-17;
 
-    // Horner's evaluation of Taylor series for exp(r) on [-ln2/2, ln2/2]
+    // Horner's evaluation of Taylor series for runtime_exp(r) on [-ln2/2, ln2/2]
     double sum = 1.0 / 87178291200.0; // 1/14!
     sum = sum * r + 1.0 / 6227020800.0; // 1/13!
     sum = sum * r + 1.0 / 479001600.0;  // 1/12!
@@ -107,19 +107,19 @@ double runtime_log(double x) {
     if (runtime_isnan(x)) return x;
     if (x == 1.0) return 0.0;
 
-    int exp;
-    double m = runtime_frexp(x, &exp);
-    // m is in [0.5, 1.0). Scale so m is in [1/sqrt(2), sqrt(2)) ~ [0.70710678, 1.41421356)
+    int runtime_exp;
+    double m = runtime_frexp(x, &runtime_exp);
+    // m is in [0.5, 1.0). Scale so m is in [1/runtime_sqrt(2), runtime_sqrt(2)) ~ [0.70710678, 1.41421356)
     if (m < RUNTIME_SQRT1_2) {
         m *= 2.0;
-        exp -= 1;
+        runtime_exp -= 1;
     }
 
     // z = (m - 1) / (m + 1), |z| < 0.171572875
     double z = (m - 1.0) / (m + 1.0);
     double z2 = z * z;
 
-    // Series: log(m) = 2z * (1 + z^2/3 + z^4/5 + z^6/7 + z^8/9 + z^10/11 + z^12/13 + z^14/15 + z^16/17 + z^18/19 + z^20/21)
+    // Series: runtime_log(m) = 2z * (1 + z^2/3 + z^4/5 + z^6/7 + z^8/9 + z^10/11 + z^12/13 + z^14/15 + z^16/17 + z^18/19 + z^20/21)
     double poly = z2 * (1.0 / 21.0);
     poly = (poly + 1.0 / 19.0) * z2;
     poly = (poly + 1.0 / 17.0) * z2;
@@ -133,7 +133,7 @@ double runtime_log(double x) {
     poly = poly + 1.0;
 
     double log_m = 2.0 * z * poly;
-    return (double)exp * RUNTIME_LN2 + log_m;
+    return (double)runtime_exp * RUNTIME_LN2 + log_m;
 }
 
 
@@ -145,18 +145,18 @@ double runtime_log2(double x) {
     return runtime_log(x) * RUNTIME_LOG2E;
 }
 
-double runtime_pow(double base, double exp) {
-    if (runtime_isnan(base) || runtime_isnan(exp)) return RUNTIME_NAN;
-    if (exp == 0.0) return 1.0;
+double runtime_pow(double base, double exponent) {
+    if (runtime_isnan(base) || runtime_isnan(exponent)) return RUNTIME_NAN;
+    if (exponent == 0.0) return 1.0;
     if (base == 1.0) return 1.0;
     if (base == 0.0) {
-        if (exp > 0.0) return 0.0;
+        if (exponent > 0.0) return 0.0;
         return RUNTIME_INFINITY;
     }
 
     // Integer exponent fast path
-    if (exp == (double)(int64_t)exp) {
-        int64_t iexp = (int64_t)exp;
+    if (exponent == (double)(int64_t)exponent) {
+        int64_t iexp = (int64_t)exponent;
         bool neg = (iexp < 0);
         uint64_t uexp = neg ? (uint64_t)(-iexp) : (uint64_t)iexp;
 
@@ -177,5 +177,5 @@ double runtime_pow(double base, double exp) {
         return RUNTIME_NAN;
     }
 
-    return runtime_exp(exp * runtime_log(base));
+    return runtime_exp(exponent * runtime_log(base));
 }

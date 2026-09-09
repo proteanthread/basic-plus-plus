@@ -2,7 +2,7 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
-// NEEDS: libcore (file.h, file.c, micro_lib_metadata.h, micro_lib_metadata.c)
+// NEEDS: libcore (file.h, file.c, language_descriptor.h)
 // NEEDS: libcore (string.h)
 // NEEDS: libengine (eval.h, eval.c, string.c, text.h)
 // NEEDS: libkernel (errors.h)
@@ -13,24 +13,29 @@
 #include "statements/filesystem/binary_ops/text.h"
 #include "eval/eval.h"
 #include "runtime/file.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "types/errors.h"
-#include <string.h>
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_text_desc = {
+    .name = "TEXT",
+    .category = "Filesystem I/O",
+    .syntax = "TEXT #channel, \"encoding_spec\"",
+    .description = "Opens a file channel in sequential text output mode (SDS 940 / DEC PDP-10 Super BASIC).",
+    .error_summary = "Error 2: Syntax Error, Error 52: Bad File Number, Error 55: File Already Open, Error 70: Permission Denied",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_STATEMENT
+};
 
 void stmt_text_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "TEXT",
-        .category = "Filesystem I/O",
-        .syntax = "TEXT [#]channel, \"filespec\"",
-        .help_text = "Opens a file channel in sequential text output mode (SDS 940 / DEC PDP-10 Super BASIC).",
-        .error_codes = "Error 2: Syntax Error, Error 52: Bad File Number, Error 55: File Already Open, Error 70: Permission Denied"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_text_desc);
 }
 
 BppError stmt_text_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BppToken tok = lex_peek(lex);
     if (tok.type == TOK_KEYWORD && tok.as.keyword == KW_TEXT) {

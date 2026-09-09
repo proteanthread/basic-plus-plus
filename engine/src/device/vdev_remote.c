@@ -12,16 +12,17 @@
 #include "device/vdev_remote.h"
 #include "runtime/nil_transport.h"
 
-#include <stdio.h>
-#include <string.h>
+#include "runtime/format/snprintf.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
 
 static int remote_vdev_read(VDev *d, void *buf, int len) {
     (void)d;
     if (!buf || len <= 0) return 0;
     const char *sim_resp = "OK\n";
-    size_t slen = strlen(sim_resp);
+    size_t slen = runtime_strlen(sim_resp);
     size_t cpy = (size_t)len < slen ? (size_t)len : slen;
-    memcpy(buf, sim_resp, cpy);
+    runtime_memcpy(buf, sim_resp, cpy);
     return (int)cpy;
 }
 
@@ -38,7 +39,7 @@ static int remote_vdev_close(VDev *d) {
 
 VDev vdev_remote_create(const char *name) {
     VDev dev;
-    memset(&dev, 0, sizeof(VDev));
+    runtime_memset(&dev, 0, sizeof(VDev));
 
     dev.name = name ? name : "REMOTE:";
     dev.dev_class = VDCLASS_NETWORK;

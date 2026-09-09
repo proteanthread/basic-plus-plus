@@ -2,7 +2,7 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c)
+// NEEDS: libcore (language_descriptor.h)
 // NEEDS: libcore (segmented_mem.h, segmented_mem.c, string.h)
 // NEEDS: libengine (defseg.h, eval.h, eval.c, lexer.h, lexer.c, string.c, vm.h)
 // Provides runtime implementation for the DEFSEG statement in BASIC++.
@@ -14,16 +14,28 @@
 #include "lexer/lexer.h"
 #include "eval/eval.h"
 #include "memory/segmented_mem.h"
-#include "runtime/micro_lib_metadata.h"
-#include <string.h>
+#include "runtime/language_descriptor.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_def_seg_desc = {
+    .name = "DEF SEG",
+    .category = "Memory Management",
+    .syntax = "DEF SEG [= address]",
+    .description = "Sets the current segment address for PEEK, POKE, BLOAD, BSAVE, and CALL.",
+    .error_summary = "Error 5: Illegal Function Call, Error 13: Type Mismatch",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SYSTEM,
+    .type = FEATURE_STATEMENT
+};
 
 BppError stmt_defseg_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BppToken tok = lex_peek(lex);
     // Check for optional 'SEG' identifier if invoked from DEF
-    if (tok.type == TOK_IDENT && tok.length == 3 && strncasecmp(tok.start, "SEG", 3) == 0) {
+    if (tok.type == TOK_IDENT && tok.length == 3 && runtime_strncasecmp(tok.start, "SEG", 3) == 0) {
         lex_next(lex);
         tok = lex_peek(lex);
     }
@@ -64,12 +76,5 @@ BppError stmt_defseg_handler(VMContext *vm, LexerContext *lex) {
 }
 
 void stmt_defseg_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "DEF SEG",
-        .category = "Memory Management",
-        .syntax = "DEF SEG [= address]",
-        .help_text = "Sets the current segment address for PEEK, POKE, BLOAD, BSAVE, and CALL.",
-        .error_codes = "Error 5: Illegal Function Call, Error 13: Type Mismatch"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_def_seg_desc);
 }

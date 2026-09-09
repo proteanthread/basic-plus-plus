@@ -2,25 +2,31 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (math_fn.c)
-// NEEDS: libcore (math.h, micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (math.h, language_descriptor.h, string.h)
 // NEEDS: libengine (math.c, sec.h, string.c)
 // Provides runtime implementation for the SEC built-in function in BASIC++.
 //
 // ---- Includes ----
 
 #include "eval/functions/math/trig/sec.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/math.h"
 #include "runtime/string.h"
+#include "runtime/string/strops.h"
+#include "runtime/math/math.h"
+
+static const LangDesc g_sec_desc = {
+    .name = "SEC",
+    .category = "Math & Trigonometry",
+    .syntax = "SEC(x)",
+    .description = "Returns the secant of angle x in radians (1 / runtime_cos(x)).",
+    .error_summary = "Error 11: Division by Zero (runtime_cos(x) == 0), Error 13: Type Mismatch",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_PURE,
+    .type = FEATURE_FUNCTION
+};
 void func_sec_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "SEC",
-        .category = "Math & Trigonometry",
-        .syntax = "SEC(x)",
-        .help_text = "Returns the secant of angle x in radians (1 / runtime_cos(x)).",
-        .error_codes = "Error 11: Division by Zero (runtime_cos(x) == 0), Error 13: Type Mismatch"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_sec_desc);
 }
 
 BValue func_sec_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err) {

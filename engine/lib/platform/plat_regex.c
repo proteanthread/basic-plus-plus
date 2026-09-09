@@ -135,10 +135,9 @@ int platform_regex_match(const char *text, const char *pattern) {
 char *platform_regex_replace(const char *text, const char *pattern, const char *replacement) {
     if (!text || !pattern || !replacement) return NULL;
     
-    size_t out_cap = strlen(text) * 2 + strlen(replacement) + 256;
-    char *out = (char *)calloc(1, out_cap);
-    if (!out) return NULL;
-    
+    static char s_regex_replace_buf[65536];
+    size_t out_cap = sizeof(s_regex_replace_buf);
+    char *out = s_regex_replace_buf;
     size_t out_len = 0;
     const char *p = text;
     
@@ -148,48 +147,42 @@ char *platform_regex_replace(const char *text, const char *pattern, const char *
         if (idx < 0) {
             size_t rem = strlen(p);
             if (out_len + rem >= out_cap) {
-                out_cap = out_len + rem + 256;
-                char *new_out = realloc(out, out_cap);
-                if (!new_out) { free(out); return NULL; }
-                out = new_out;
+                rem = (out_cap > out_len + 1) ? (out_cap - 1 - out_len) : 0;
             }
-            memcpy(out + out_len, p, rem);
-            out_len += rem;
+            if (rem > 0) {
+                memcpy(out + out_len, p, rem);
+                out_len += rem;
+            }
             break;
         }
         
         if (idx > 0) {
-            if (out_len + idx >= out_cap) {
-                out_cap = out_len + idx + 256;
-                char *new_out = realloc(out, out_cap);
-                if (!new_out) { free(out); return NULL; }
-                out = new_out;
+            size_t take = (size_t)idx;
+            if (out_len + take >= out_cap) {
+                take = (out_cap > out_len + 1) ? (out_cap - 1 - out_len) : 0;
             }
-            memcpy(out + out_len, p, idx);
-            out_len += idx;
+            if (take > 0) {
+                memcpy(out + out_len, p, take);
+                out_len += take;
+            }
         }
         
         size_t rep_len = strlen(replacement);
         if (out_len + rep_len >= out_cap) {
-            out_cap = out_len + rep_len + 256;
-            char *new_out = realloc(out, out_cap);
-            if (!new_out) { free(out); return NULL; }
-            out = new_out;
+            rep_len = (out_cap > out_len + 1) ? (out_cap - 1 - out_len) : 0;
         }
-        memcpy(out + out_len, replacement, rep_len);
-        out_len += rep_len;
+        if (rep_len > 0) {
+            memcpy(out + out_len, replacement, rep_len);
+            out_len += rep_len;
+        }
         
         p += idx + match_len;
         
         if (match_len == 0) {
             if (*p != '\0') {
-                if (out_len + 1 >= out_cap) {
-                    out_cap += 256;
-                    char *new_out = realloc(out, out_cap);
-                    if (!new_out) { free(out); return NULL; }
-                    out = new_out;
+                if (out_len + 1 < out_cap) {
+                    out[out_len++] = *p;
                 }
-                out[out_len++] = *p;
                 p++;
             }
         }

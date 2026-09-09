@@ -4,7 +4,7 @@
 // NEEDED BY: libengine (func_gemini.c, func_gemini_meta.c, stmt_gemini.c)
 // NEEDED BY: libengine (stmt_gemini_browse.c)
 // NEEDED BY: libkernel (fujinet.c)
-// NEEDS: libcore (gemini.h, hal.h, memops.h, memops.c, snprintf.h, snprintf.c)
+// NEEDS: libcore (gemini.h, hal.h, memops.h, memops.c, runtime_snprintf.h, runtime_snprintf.c)
 // NEEDS: libkernel (errors.h, types.h)
 // Provides core logic and interface definitions for gemini within BASIC++.
 //

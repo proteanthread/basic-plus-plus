@@ -14,6 +14,7 @@
 
 bool is_postfix_exempt_keyword(BppKeywordId kw) {
     switch (kw) {
+        case KW_ON:
         case KW_IF:
         case KW_THEN:
         case KW_ELSE:

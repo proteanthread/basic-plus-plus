@@ -1,115 +1,67 @@
-======================================================================
-  BASIC++ V6.5.2 BINARY FORMATS
-======================================================================
+==============================================================================
+Title:        Binary_Formats
+Tier:         2
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot, bppc, detok)
+Authority:    engine/src/statements/file/stmt_save.c, tools/detok.c
+Generated:    no, hand-written
+Status:       current
+==============================================================================
+
+BASIC++ v6.5.2 BINARY FORMATS SPECIFICATION
+
+The technical reference for program storage formats, tokenized GW-BASIC
+binary files, compiled bytecode structures, and VM state persistence
+in BASIC++.
 
 
-======================================================================
-  1. OVERVIEW
-======================================================================
+1. ASCII PROGRAM SOURCE FILES (.BAS, .BPP)
 
-BASIC++ works with several binary file formats for program storage, data exchange, and legacy compatibility. This document describes each format and the tools that read and write them.
-
-
-======================================================================
-  2. ASCII PROGRAM FILES (.BAS, .BPP)
-======================================================================
-
-The default program file format is plain ASCII text. Each line begins with a line number followed by a space and the statement text. Lines are terminated by CR+LF (Windows) or LF (Unix). The file encoding is UTF-8 on modern builds and ASCII on FreeDOS builds.
-
-SAVE "PROGRAM.BAS" writes the current program in ASCII format. SAVE "PROGRAM.BAS", A explicitly requests ASCII format. LOAD "PROGRAM.BAS" reads it back.
-
-The .bpp extension is used for BASIC++ extended programs that use features beyond GW-BASIC compatibility. The file format is identical to .bas.
+The standard program format is plain ASCII text:
+- Each line starts with an optional line number followed by statement text.
+- Lines terminate with standard CRLF (Windows) or LF (Unix).
+- Encoding is UTF-8 on modern platforms and 7-bit ASCII on FreeDOS builds.
+- SAVE "FILE.BAS", A writes source text in plain ASCII. LOAD "FILE.BAS" loads
+  it back.
+- The .bpp extension designates extended BASIC++ programs utilizing modern
+  language features.
 
 
-======================================================================
-  3. PROTECTED PROGRAM FILES
-======================================================================
+2. PROTECTED PROGRAM FILES (SAVE ..., P)
 
-SAVE "PROGRAM.BAS", P saves the program in a protected format. Protected programs are obfuscated: the source text is XOR-encrypted with a simple key. LIST and EDIT are disabled for protected programs. This provides casual copy protection, not cryptographic security.
-
-LOAD reads protected files transparently. The interpreter decrypts the source internally.
-
-
-======================================================================
-  4. TOKENIZED PROGRAM FILES (GW-BASIC BINARY FORMAT)
-======================================================================
-
-GW-BASIC stored programs in a binary tokenized format where keywords were replaced by single-byte or two-byte token codes. This format is compact but not human-readable.
-
-BASIC++ can read GW-BASIC tokenized files through the detok (detokenizer) tool:
-
-```bash
-detok GWPROG.BAS > PROGRAM.TXT
-
-The detok executable (engine build target) reads the binary token stream, maps each token back to its keyword text, and outputs a plain text program file. The output can then be loaded by BASIC++.
+SAVE "PROGRAM.BAS", P saves programs in an obfuscated binary format:
+- The source text is encrypted with a reversible bitwise mask.
+- LIST and EDIT commands are disabled on protected files.
+- LOAD decrypts protected files transparently into execution memory.
 
 
-======================================================================
-  5. BYTECODE FORMAT
-======================================================================
+3. TOKENIZED GW-BASIC BINARIES & DETOK TOOL
 
-The bppc compiler generates bytecode files that contain a compact binary representation of the program's operations. The bytecode format consists of:
+Historical Microsoft GW-BASIC stored programs as tokenized binary files where
+keywords were replaced by single-byte or two-byte token IDs (beginning with
+0xFF).
 
-1. A file header with magic number, version, and metadata.
-2. A constant pool containing string literals and numeric constants.
-3. A bytecode section containing the opcode stream (BppOpcode values from engine/include/types/types.h).
+BASIC++ reads tokenized legacy files via the standalone detok utility:
 
-Bytecode files are loaded by the VM stub and executed through the bytecode execution loop, bypassing the tokenizer and parser for faster startup.
+    detok LEGACY.BAS > CLEAN.BAS
 
-
-======================================================================
-  6. TRANSPILED C17 OUTPUT
-======================================================================
-
-The bppc compiler can also produce C17 source code that, when compiled with a C17 compiler, produces a standalone native executable. The generated C includes:
-
-- A VM stub with the execution loop.
-- Embedded string constants.
-- Compiled statement representations.
-- Required runtime library functions.
-
-The generated C file compiles with any C17-compliant compiler (GCC, Clang, MSVC).
+detok maps binary token codes back to standard keyword text, emitting clean
+ASCII source loadable by any BASIC++ executable.
 
 
-======================================================================
-  7. STATE SAVE/RESTORE FORMAT
-======================================================================
+4. BYTECODE & COMPILED C17 FORMATS
 
-STATESAVE "filename" writes the complete VM state to a binary file. STATELOAD "filename" restores it. The state file contains:
-
-- All variable values and types.
-- All array contents.
-- The string heap.
-- The program text.
-- Stack states (FOR, GOSUB, DO, WHILE, SELECT, SUB, TRY).
-- The current execution position.
-- Open file channel states.
-- Event trap configurations.
-
-State save files are version-specific and may not be compatible across BASIC++ versions.
+The native compiler (bppc) emits two distinct binary representations:
+1. Compact Bytecode (.bpc): Contains file magic header, version, constant
+   pool (strings, numbers), and opcode stream (BppOpcode from
+   engine/include/types/types.h). Executed directly via the VM stub.
+2. Freestanding C17 Source (.c): Emits strictly conforming freestanding ISO
+   C17 code containing compiled AST dispatch tables, static string arenas,
+   and VM execution stubs.
 
 
-======================================================================
-  8. RANDOM ACCESS DATA FILES
-======================================================================
+5. VM STATE PERSISTENCE (STATESAVE / STATELOAD)
 
-Programs that use OPEN FOR RANDOM create binary data files with fixed-length records. The record structure is defined by FIELD statements or by TYPE variable sizes. These files can be read by any program that knows the record layout.
-
-
-======================================================================
-  9. BINARY DATA FILES
-======================================================================
-
-Programs that use OPEN FOR BINARY and BGET/BPUT create raw binary data files with no record structure. The program is responsible for interpreting the byte layout.
-
-
-======================================================================
-  10. FILE FORMAT DETECTION
-======================================================================
-
-When LOAD encounters a file, it examines the first byte to determine the format:
-
-- 0xFF: GW-BASIC tokenized format ? passed to the detokenizer.
-- 0xFE: GW-BASIC protected format ? passed to the decryptor.
-- 0x42 ('B'): BASIC++ bytecode format ? loaded by the bytecode loader.
-- Other: Treated as ASCII text ? loaded line by line.
+- STATESAVE "state.bin": Serializes complete VM execution state to disk
+  (variable tables, arrays, string descriptors, GOSUB/FOR stacks).
+- STATELOAD "state.bin": Restores the VM context to the exact snapshot point,
+  resuming execution seamlessly.

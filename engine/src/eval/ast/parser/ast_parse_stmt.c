@@ -15,30 +15,34 @@
 #include "platform/platform.h"
 #include "runtime/strings.h"
 #include "vm/vm.h"
+#include "runtime/string/strops.h"
+#include "runtime/string/memops.h"
 
 //
 // ---- Single Statement Parser ----
 
-// parses a single statement from a lexer token stream into an AST node
-EvalAstNode *parse_single_statement(LexerContext *lex) {
+// parses an explicit LET or implicit variable assignment
+static EvalAstNode *parse_assignment(LexerContext *lex) {
     BppToken tok = lex_peek(lex);
     if (is_tok_kw(tok, KW_LET, "LET", 3)) {
         lex_next(lex);
         tok = lex_peek(lex);
     }
-    if (tok.type == TOK_IDENT) {
+    if (tok.type == TOK_IDENT || tok.type == TOK_KEYWORD) {
         char var_name[64];
         size_t nlen = (tok.length < sizeof(var_name) - 1) ? tok.length : sizeof(var_name) - 1;
         runtime_memcpy(var_name, tok.start, nlen);
         var_name[nlen] = '\0';
         lex_next(lex);
 
-        if (lex_peek(lex).type == TOK_PERIOD) {
+        while (lex_peek(lex).type == TOK_PERIOD) {
             lex_next(lex);
             BppToken ftok = lex_peek(lex);
-            if (ftok.type == TOK_IDENT) {
+            if (ftok.type == TOK_IDENT || ftok.type == TOK_KEYWORD) {
                 lex_next(lex);
-                size_t flen = (ftok.length < sizeof(var_name) - runtime_strlen(var_name) - 2) ? ftok.length : (sizeof(var_name) - runtime_strlen(var_name) - 2);
+                size_t cur_len = runtime_strlen(var_name);
+                size_t avail = (cur_len + 2 < sizeof(var_name)) ? sizeof(var_name) - cur_len - 2 : 0;
+                size_t flen = (ftok.length < avail) ? ftok.length : avail;
                 runtime_strcat(var_name, ".");
                 runtime_strncat(var_name, ftok.start, flen);
             }
@@ -49,7 +53,6 @@ EvalAstNode *parse_single_statement(LexerContext *lex) {
             runtime_strncasecmp(var_name, "Clipboard.", 10) == 0) {
             return NULL;
         }
-
 
         if (lex_peek(lex).type == TOK_EQ) {
             lex_next(lex);
@@ -94,7 +97,19 @@ EvalAstNode *parse_single_statement(LexerContext *lex) {
             if (idx2_expr) eval_ast_free_tree(idx2_expr);
             return NULL;
         }
-        return NULL;
+    }
+    return NULL;
+}
+
+// parses a single statement from a lexer token stream into an AST node
+EvalAstNode *parse_single_statement(LexerContext *lex) {
+    BppToken tok = lex_peek(lex);
+    if (tok.type == TOK_NUMBER) {
+        lex_next(lex);
+        return eval_ast_create_goto(NULL, tok.as.number);
+    }
+    if (is_tok_kw(tok, KW_LET, "LET", 3)) {
+        return parse_assignment(lex);
     }
     if (is_tok_kw(tok, KW_IF, "IF", 2)) {
         lex_next(lex);
@@ -246,8 +261,30 @@ EvalAstNode *parse_single_statement(LexerContext *lex) {
             }
             if (is_tok_kw(lex_peek(lex), KW_NEXT, "NEXT", 4)) {
                 lex_next(lex);
-                if (lex_peek(lex).type == TOK_IDENT) {
+                if (lex_peek(lex).type == TOK_IDENT || lex_peek(lex).type == TOK_KEYWORD) {
                     lex_next(lex);
+                }
+                while (lex_peek(lex).type == TOK_COMMA) {
+                    lex_next(lex);
+                    if (lex_peek(lex).type == TOK_IDENT || lex_peek(lex).type == TOK_KEYWORD) {
+                        lex_next(lex);
+                    }
+                }
+                EvalAstNode *chk = body_head;
+                bool has_jump = false;
+                while (chk) {
+                    if (chk->type == AST_NODE_GOTO || chk->type == AST_NODE_GOSUB) {
+                        has_jump = true;
+                        break;
+                    }
+                    chk = chk->next;
+                }
+                if (has_jump) {
+                    eval_ast_free_tree(start_expr);
+                    eval_ast_free_tree(end_expr);
+                    if (step_expr) eval_ast_free_tree(step_expr);
+                    if (body_head) eval_ast_free_tree(body_head);
+                    return NULL;
                 }
                 return eval_ast_create_for_loop(NULL, var_name, start_expr, end_expr, step_expr, body_head);
             }
@@ -291,6 +328,20 @@ EvalAstNode *parse_single_statement(LexerContext *lex) {
             }
             if (is_tok_kw(lex_peek(lex), KW_WEND, "WEND", 4)) {
                 lex_next(lex);
+                EvalAstNode *chk = body_head;
+                bool has_jump = false;
+                while (chk) {
+                    if (chk->type == AST_NODE_GOTO || chk->type == AST_NODE_GOSUB) {
+                        has_jump = true;
+                        break;
+                    }
+                    chk = chk->next;
+                }
+                if (has_jump) {
+                    eval_ast_free_tree(cond);
+                    if (body_head) eval_ast_free_tree(body_head);
+                    return NULL;
+                }
                 return eval_ast_create_while_loop(NULL, cond, body_head);
             }
             EvalAstNode *b_stmt = parse_single_statement(lex);
@@ -325,12 +376,21 @@ EvalAstNode *parse_single_statement(LexerContext *lex) {
             eval_ast_free_tree(addr);
             return NULL;
         }
-        return eval_ast_create_poke(NULL, addr, val);
+        EvalAstNode *node = eval_ast_create_poke(NULL, addr, val);
+        if (node && lex_peek(lex).type == TOK_COMMA) {
+            lex_next(lex);
+            EvalAstNode *width_expr = eval_ast_parse_expression(lex);
+            if (width_expr) {
+                node->condition = width_expr;
+            }
+        }
+        return node;
     }
     if (is_tok_kw(tok, KW_LINE, "LINE", 4)) {
+        const char *saved_pos = lex_get_pos(lex);
         lex_next(lex);
         if (is_tok_kw(lex_peek(lex), KW_INPUT, "INPUT", 5)) {
-            lex_next(lex);
+            lex_next(lex); // consume INPUT
             int ch = 0;
             if (lex_peek(lex).type == TOK_HASH) {
                 lex_next(lex);
@@ -354,8 +414,9 @@ EvalAstNode *parse_single_statement(LexerContext *lex) {
                 lex_next(lex);
                 return eval_ast_create_line_input(NULL, ch, vname);
             }
+            return NULL;
         }
-        return NULL;
+        lex_set_pos(lex, saved_pos);
     }
     if (is_tok_kw(tok, KW_PRINT, "PRINT", 5)) {
         lex_next(lex);
@@ -382,6 +443,13 @@ EvalAstNode *parse_single_statement(LexerContext *lex) {
         EvalAstNode *tail_p = NULL;
 
         while (lex_peek(lex).type != TOK_EOF && lex_peek(lex).type != TOK_EOL && !(lex_peek(lex).type == TOK_EOL && *lex_peek(lex).start == ':')) {
+            BppToken ptok = lex_peek(lex);
+            if ((ptok.type == TOK_KEYWORD && (ptok.as.keyword == KW_AT || ptok.as.keyword == KW_USING)) ||
+                (ptok.type == TOK_IDENT && ptok.length == 2 && (ptok.start[0] == 'A' || ptok.start[0] == 'a') && (ptok.start[1] == 'T' || ptok.start[1] == 't')) ||
+                ptok.type == TOK_AT || ptok.type == TOK_RPN_LITERAL || ptok.type == TOK_LBRACE) {
+                if (head_p) eval_ast_free_tree(head_p);
+                return NULL;
+            }
             EvalAstNode *expr = eval_ast_parse_expression(lex);
             if (!expr) {
                 if (head_p) eval_ast_free_tree(head_p);
@@ -412,7 +480,107 @@ EvalAstNode *parse_single_statement(LexerContext *lex) {
         }
         return head_p;
     }
-    return NULL;
+    if (is_tok_kw(tok, KW_DIM, "DIM", 3)) {
+        lex_next(lex);
+        BppToken vtok = lex_peek(lex);
+        if (vtok.type != TOK_IDENT) return NULL;
+        char name[64];
+        size_t nlen = (vtok.length < sizeof(name) - 1) ? vtok.length : sizeof(name) - 1;
+        runtime_memcpy(name, vtok.start, nlen);
+        name[nlen] = '\0';
+        lex_next(lex);
+        if (lex_peek(lex).type != TOK_LPAREN) return NULL;
+        lex_next(lex);
+        EvalAstNode *d1 = eval_ast_parse_expression(lex);
+        if (!d1) return NULL;
+        EvalAstNode *d2 = NULL;
+        int dims = 1;
+        if (lex_peek(lex).type == TOK_COMMA) {
+            lex_next(lex);
+            d2 = eval_ast_parse_expression(lex);
+            if (!d2) { eval_ast_free_tree(d1); return NULL; }
+            dims = 2;
+        }
+        if (lex_peek(lex).type != TOK_RPAREN) {
+            eval_ast_free_tree(d1);
+            if (d2) eval_ast_free_tree(d2);
+            return NULL;
+        }
+        lex_next(lex);
+        return eval_ast_create_dim(NULL, name, dims, d1, d2);
+    }
+    if (is_tok_kw(tok, KW_OPEN, "OPEN", 4)) {
+        lex_next(lex);
+        EvalAstNode *fn_expr = eval_ast_parse_expression(lex);
+        if (!fn_expr) return NULL;
+        BppToken ftok = lex_peek(lex);
+        if (!is_tok_kw(ftok, KW_FOR, "FOR", 3)) { eval_ast_free_tree(fn_expr); return NULL; }
+        lex_next(lex);
+        BppToken mtok = lex_peek(lex);
+        int mode = 1;
+        if (mtok.length == 6 && runtime_strncasecmp(mtok.start, "OUTPUT", 6) == 0) mode = 1;
+        else if (is_tok_kw(mtok, KW_INPUT, "INPUT", 5)) mode = 2;
+        else if (mtok.length == 6 && runtime_strncasecmp(mtok.start, "APPEND", 6) == 0) mode = 3;
+        else if (mtok.length == 6 && runtime_strncasecmp(mtok.start, "BINARY", 6) == 0) mode = 4;
+        else if (mtok.length == 6 && runtime_strncasecmp(mtok.start, "RANDOM", 6) == 0) mode = 5;
+        else { eval_ast_free_tree(fn_expr); return NULL; }
+        lex_next(lex);
+        BppToken as_tok = lex_peek(lex);
+        if (!is_tok_kw(as_tok, KW_AS, "AS", 2)) { eval_ast_free_tree(fn_expr); return NULL; }
+        lex_next(lex);
+        if (lex_peek(lex).type == TOK_HASH) lex_next(lex);
+        BppToken ctok = lex_peek(lex);
+        int ch = 1;
+        if (ctok.type == TOK_NUMBER) {
+            ch = (int)ctok.as.number;
+            lex_next(lex);
+        } else {
+            eval_ast_free_tree(fn_expr);
+            return NULL;
+        }
+        return eval_ast_create_file_open(NULL, fn_expr, mode, ch);
+    }
+    if (is_tok_kw(tok, KW_CLOSE, "CLOSE", 5)) {
+        lex_next(lex);
+        int ch = 0;
+        if (lex_peek(lex).type == TOK_HASH) lex_next(lex);
+        if (lex_peek(lex).type == TOK_NUMBER) {
+            ch = (int)lex_peek(lex).as.number;
+            lex_next(lex);
+        }
+        return eval_ast_create_file_close(NULL, ch);
+    }
+    if (is_tok_kw(tok, KW_KILL, "KILL", 4)) {
+        lex_next(lex);
+        EvalAstNode *fn_expr = eval_ast_parse_expression(lex);
+        if (!fn_expr) return NULL;
+        return eval_ast_create_file_kill(NULL, fn_expr);
+    }
+    if (is_tok_kw(tok, KW_END, "END", 3) || is_tok_kw(tok, KW_STOP, "STOP", 4)) {
+        lex_next(lex);
+        return eval_ast_create_end(NULL);
+    }
+    if (is_tok_kw(tok, KW_SWAP, "SWAP", 4)) {
+        lex_next(lex);
+        BppToken v1 = lex_peek(lex);
+        if (v1.type != TOK_IDENT) return NULL;
+        char n1[64];
+        size_t l1 = (v1.length < sizeof(n1) - 1) ? v1.length : sizeof(n1) - 1;
+        runtime_memcpy(n1, v1.start, l1);
+        n1[l1] = '\0';
+        lex_next(lex);
+        if (lex_peek(lex).type != TOK_COMMA) return NULL;
+        lex_next(lex);
+        BppToken v2 = lex_peek(lex);
+        if (v2.type != TOK_IDENT) return NULL;
+        char n2[64];
+        size_t l2 = (v2.length < sizeof(n2) - 1) ? v2.length : sizeof(n2) - 1;
+        runtime_memcpy(n2, v2.start, l2);
+        n2[l2] = '\0';
+        lex_next(lex);
+        return eval_ast_create_swap(NULL, n1, n2);
+    }
+    return parse_assignment(lex);
 }
 
 // parses a full line into a chain of AST statement nodes
@@ -420,7 +588,8 @@ EvalAstNode *eval_ast_try_parse_line(VMContext *vm, const char *source) {
     if (!vm || !source) return NULL;
     source = skip_line_number_and_spaces(source);
     if (!*source) return NULL;
-    if (runtime_strchr(source, '[') != NULL || runtime_strchr(source, ']') != NULL) {
+    if (runtime_strchr(source, '[') != NULL || runtime_strchr(source, ']') != NULL ||
+        runtime_strchr(source, '{') != NULL || runtime_strchr(source, '}') != NULL) {
         return NULL;
     }
 
@@ -437,6 +606,7 @@ EvalAstNode *eval_ast_try_parse_line(VMContext *vm, const char *source) {
     while (lex_peek(lex).type != TOK_EOF && lex_peek(lex).type != TOK_EOL) {
         BppToken tok_start = lex_peek(lex);
         EvalAstNode *stmt = parse_single_statement(lex);
+        BppToken sep = lex_peek(lex);
         if (!stmt) {
             eval_ast_free_tree(head);
             lex_shutdown(lex);
@@ -451,8 +621,7 @@ EvalAstNode *eval_ast_try_parse_line(VMContext *vm, const char *source) {
         while (stmt->next) stmt = stmt->next;
         tail = stmt;
 
-        BppToken sep = lex_peek(lex);
-        if (sep.type == TOK_EOL && *sep.start == ':') {
+        if (sep.type == TOK_EOL && sep.start && *sep.start == ':') {
             lex_next(lex);
         } else if (sep.type == TOK_BACKSLASH) {
             lex_next(lex);

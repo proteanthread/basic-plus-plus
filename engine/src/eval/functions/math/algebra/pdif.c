@@ -2,25 +2,30 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (math_fn.c)
-// NEEDS: libcore (math.h, micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (math.h, language_descriptor.h, string.h)
 // NEEDS: libengine (math.c, pdif.h, string.c)
 // Provides runtime implementation for the PDIF built-in function in BASIC++.
 //
 // ---- Includes ----
 
 #include "eval/functions/math/algebra/pdif.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/math.h"
 #include "runtime/string.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_pdif_desc = {
+    .name = "PDIF",
+    .category = "Math Functions",
+    .syntax = "PDIF(a, b)",
+    .description = "Returns the positive difference of a and b (a - b if a > b, else 0).",
+    .error_summary = "Error 13: Type Mismatch (PDIF expects two numeric arguments)",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_PURE,
+    .type = FEATURE_FUNCTION
+};
 void func_pdif_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "PDIF",
-        .category = "Math Functions",
-        .syntax = "PDIF(a, b)",
-        .help_text = "Returns the positive difference of a and b (a - b if a > b, else 0).",
-        .error_codes = "Error 13: Type Mismatch (PDIF expects two numeric arguments)"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_pdif_desc);
 }
 
 BValue func_pdif_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err) {

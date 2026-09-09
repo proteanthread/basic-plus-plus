@@ -3,16 +3,27 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
 // NEEDS: libcore (funcreg.h, funcreg.c, iot_sensors.h, iot_sensors.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c)
+// NEEDS: libcore (language_descriptor.h)
 // NEEDS: libengine (vm.h)
 // Implements the TOUCH.READ built-in function for capacitive touch pin sensing.
 //
 // ---- Includes ----
 
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/funcreg.h"
 #include "vm/vm.h"
 #include "iot_sensors.h"
+
+static const LangDesc g_touch_desc = {
+    .name = "TOUCH",
+    .category = "Hardware & IoT",
+    .syntax = "TOUCH(pin) | TOUCH.READ(pin)",
+    .description = "Reads capacitive touch sensor threshold from microcontroller pin.",
+    .error_summary = "Error 13: Type Mismatch",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_FUNCTION
+};
 
 BValue func_touch_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err) {
     (void)vm;
@@ -33,14 +44,7 @@ BValue func_touch_eval(VMContext *vm, const char *uname, int arg_count, BValue *
 }
 
 void func_touch_register(void) {
-    MicroLibMetadata meta = {
-        .name = "TOUCH",
-        .category = "Hardware & IoT",
-        .syntax = "TOUCH(pin) | TOUCH.READ(pin)",
-        .help_text = "Reads capacitive touch sensor threshold from microcontroller pin.",
-        .error_codes = "Error 13: Type Mismatch"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_touch_desc);
 
     FunctionEntry entry = {
         .name = "TOUCH",

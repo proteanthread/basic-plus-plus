@@ -1,0 +1,69 @@
+TITLE: RELEASE
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/filesystem/file_ops/release.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+RELEASE KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: release.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (exec_dispatch.c)
+    // NEEDS: libengine (eval.h, lexer.h, release.h, vm.h)
+    // Provides runtime implementation for the RELEASE statement in BASIC++.
+    //
+    // ---- Includes ----
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Releases record locks across all channels, a specific channel, or an
+individual record.
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    RELEASE | RELEASE [#]ch | RELEASE [#]ch, id | RELEASE[ch, id]
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM RELEASE Demonstration
+    20 PRINT "RELEASE executed successfully."
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 52: Bad File Number
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Pick & Business BASIC
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_IO
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  RELEASE
+Category              Pick & Business BASIC
+Syntax                RELEASE | RELEASE [#]ch | RELEASE [#]ch, id | RELEA...
+Description           Releases record locks across all channels, a specif...
+Error Summary         Error 52: Bad File Number
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_IO
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/filesystem/file_ops/release.c

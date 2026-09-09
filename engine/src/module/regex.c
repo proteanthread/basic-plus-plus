@@ -65,8 +65,6 @@ static BValue regex_replace_func(BValue *args, int argc, void *rt) {
     char *replaced = platform_regex_replace(text, pattern, replacement);
     if (replaced) {
         res.as.string = str_create(vm_get_str(vm), replaced, runtime_strlen(replaced));
-        HalContext *hal = hal_get();
-        if (hal && hal->mem.free) hal->mem.free(replaced);
     } else {
         res.as.string = str_create(vm_get_str(vm), text, runtime_strlen(text));
     }

@@ -1,93 +1,79 @@
-# BASIC++ v6.5.2 Systems Programming
+<!--
+Title:        Systems_Programming
+Tier:         1
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot, bppc, trans, detok)
+Authority:    engine/src/bios/, engine/src/statements/system/
+Generated:    no, manual system specification
+Status:       current
+-->
 
-## 1. OVERVIEW
+# BASIC++ v6.5.2 Systems Programming Reference
 
-BASIC++ provides systems-level access through virtual device interfaces, memory manipulation statements, BIOS emulation, and direct hardware interaction. These facilities allow BASIC++ programs to perform tasks traditionally reserved for C or assembly language, while maintaining the interpreter's safety guarantees through the virtual device and security layers.
+The comprehensive guide to systems-level programming in BASIC++, covering virtual BIOS emulation, memory manipulation statements (`PEEK`, `POKE`), I/O port virtualization (`INP`, `OUT`), interrupt hooks, and machine language interfaces.
 
-## 2. POKE AND PEEK
+---
 
-POKE address, value writes a byte (0-255) to the specified address in the BIOS emulation memory space. PEEK(address) reads a byte from that address:
+## 1. Overview of Systems Architecture
+
+BASIC++ provides systems-level programming capabilities through virtual device interfaces, memory manipulation statements, BIOS emulation, and direct hardware virtualization. These facilities allow BASIC++ programs to perform low-level tasks traditionally reserved for C or assembly language, while maintaining the engine's security guarantees through the virtual device and security layers.
+
+---
+
+## 2. Memory Manipulation: `PEEK` and `POKE`
+
+`POKE address, value` writes a single byte (0-255) to the specified address in the virtual BIOS emulation memory space. `PEEK(address)` reads a byte from that address:
 
 ```basic
-10 POKE &H0449, 3       ' Set BIOS video mode to 3 (80x25 text)
-20 Mode = PEEK(&H0449)  ' Read current video mode
+10 POKE &H0449, 3       ' Set BIOS video mode to 3 (80x25 text mode)
+20 Mode = PEEK(&H0449)  ' Read current video mode from BIOS Data Area
 30 PRINT "Video mode:"; Mode
 ```
 
-The BIOS memory space mirrors the IBM PC memory layout. Key addresses include the BIOS Data Area (0x0400-0x04FF), video RAM (0xB8000 for text mode, 0xA0000 for graphics mode), and the interrupt vector table (0x0000-0x03FF).
+The BIOS memory space mirrors the standard IBM PC memory layout:
+- **0x0000 - 0x03FF**: Interrupt Vector Table (IVT).
+- **0x0400 - 0x04FF**: BIOS Data Area (BDA).
+- **0xA0000 - 0xAFFFF**: Enhanced Graphics Video RAM (EGA/VGA).
+- **0xB8000 - 0xBFFFF**: Color Text Mode Video RAM (CGA/VGA).
 
-POKE and PEEK operate on the virtual BIOS memory, not on the host system's physical memory. They are safe to use and cannot corrupt the host operating system.
+In hosted executables (`baspp`, `bpp`, `bs`), `POKE` and `PEEK` operate inside a safe virtualized memory sandbox (`libhardware`/`vmem`) and cannot corrupt the host operating system. In standalone systems compilation (`bppc --freestanding`), physical memory operations emit volatile pointer dereferences with compiler memory barriers.
 
-## 3. INP AND OUT
+---
 
-INP(port) reads a byte from a virtual I/O port. OUT port, value writes a byte to a virtual I/O port. These emulate the x86 IN and OUT instructions for accessing hardware registers:
+## 3. Virtual Hardware I/O Ports: `INP` and `OUT`
+
+`INP(port)` reads a byte from a virtualized hardware I/O port. `OUT port, value` writes a byte to the specified port:
 
 ```basic
-10 OUT &H3D4, 14         ' CRT controller: cursor high byte register
+10 OUT &H3D4, 14         ' CRT controller: select cursor high byte register
 20 OUT &H3D5, 0          ' Set cursor high byte to 0
-30 OUT &H3D4, 15         ' CRT controller: cursor low byte register
-40 OUT &H3D5, 80         ' Set cursor low byte to 80 (position 80)
+30 OUT &H3D4, 15         ' CRT controller: select cursor low byte register
+40 OUT &H3D5, 80         ' Set cursor low byte to 80 (screen offset)
 ```
 
-Like POKE/PEEK, INP/OUT operate on virtualized ports and do not access real hardware.
+Virtual I/O ports are routed through the VHAL bus to simulated peripherals (CRT controller, PIT timer 8253, PIC interrupt controller 8259A).
 
-## 4. BIOS INTERRUPT CALLS
+---
 
-The BIOS emulation subsystem (engine/src/bios/) provides virtual implementations of IBM PC BIOS interrupts:
+## 4. BIOS Interrupt Emulation Services
 
-- **INT 10h** — Video services (mode setting, cursor, character output, scrolling).
-- **INT 13h** — Disk services (read/write sectors, disk parameters).
-- **INT 16h** — Keyboard services (read key, check buffer, shift state).
-- **INT 1Ah** — Time services (read/set clock, read date).
+The BIOS emulation subsystem (`engine/src/bios/`) provides virtual implementations of classic IBM PC interrupts:
+- **INT 10h**: Video services (mode selection, cursor positioning, scroll regions).
+- **INT 13h**: Disk sector read/write services.
+- **INT 16h**: Keyboard input and buffer polling.
+- **INT 1Ah**: Real-time clock and timer services.
 
-Programs that use POKE/PEEK to manipulate BIOS data area registers trigger the appropriate BIOS service routines through the BiosVRAMObserver callback mechanism. Writing to video RAM addresses (0xB8000-0xBFFFF for text, 0xA0000-0xAFFFF for graphics) updates the virtual display.
+---
 
-## 5. SYS AND USR
+## 5. Machine Language Invocation: `SYS` and `USR`
 
-SYS address calls a machine-language subroutine at the specified address in the BIOS emulation space. This is used for PC-compatible programs that expect to call ROM routines.
+`SYS address` transfers execution to a virtual machine subroutine at the specified memory address.
 
-USR(n) calls a user-defined machine language function registered at slot n. USR functions receive a single numeric argument and return a numeric result. On modern builds, USR functions are implemented as C callbacks registered through the host interop layer.
+`USR(n)` invokes a user-defined machine language callback registered at slot `n`. USR callbacks receive a single numeric parameter and return a numeric result. In modern builds, USR functions are registered as C callbacks via the host interop layer.
 
-## 6. VARPTR AND VARPTR$
+---
 
-VARPTR(variable) returns the internal address of a variable in the variable table. VARPTR$(variable) returns a string representation of the variable's internal descriptor.
+## 6. Variable Pointers: `VARPTR` and `VARPTR$`
 
-These functions are primarily used for passing variable addresses to machine-language routines and for debugging the variable system. They do not return host memory addresses — the addresses are internal to the BASIC++ variable manager.
+`VARPTR(variable)` returns the internal memory address of a variable's storage descriptor.
 
-## 7. MEMORY MANAGEMENT
-
-CLEAR resets all variables to their default values (zero for numeric, empty string for strings) and optionally sets the string heap size:
-
-```basic
-10 CLEAR               ' Reset all variables
-20 CLEAR , 50000        ' Reset and set string heap to 50000 bytes
-```
-
-FRE(0) returns the free string heap space. FRE(-1) returns the largest contiguous free block. FRE(-2) returns free variable space. FRE("") forces a garbage collection pass on the string heap and returns the free space after collection.
-
-## 8. PROCESS CONTROL
-
-SYSTEM exits the interpreter and returns to the operating system. SYSTEM n sets the exit code. BYE is an alias for SYSTEM.
-
-SHELL "command" spawns a child process to execute the command. SHELL with no argument opens an interactive shell.
-
-ENVIRON "VAR=VALUE" sets an environment variable. ENVIRON$("VAR") reads one.
-
-HOSTNAME$ returns the machine's hostname. USERNAME$ returns the current user's login name. PATH$ returns the system PATH.
-
-## 9. DATE AND TIME
-
-DATE$ returns the current date as "MM-DD-YYYY". TIME$ returns the current time as "HH:MM:SS". CLOCK$ returns a full timestamp. TIMER returns seconds since midnight as a double-precision value. TICKS returns the system tick count.
-
-DATE$ and TIME$ can be assigned to set the system clock (on platforms that allow it and at security levels that permit it):
-
-```basic
-10 DATE$ = "12-25-2026"
-20 TIME$ = "00:00:00"
-```
-
-## 10. RANDOM NUMBER GENERATION
-
-RANDOMIZE seeds the pseudo-random number generator. RANDOMIZE TIMER uses the current time as a seed. RANDOMIZE n uses a specific seed for reproducible sequences. RND returns the next pseudo-random number between 0 (inclusive) and 1 (exclusive).
-
-The RNG uses a linear congruential generator compatible with GW-BASIC's algorithm. RND(0) repeats the last random number. RND(n) where n < 0 seeds the generator and returns the first value.
+`VARPTR$(variable)` returns a three-byte string encoding the type descriptor and internal offset, preserving vintage QuickBASIC binary format compatibility.

@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (conversion_fn.c)
 // NEEDS: libcore (hal.h, memory.h, memory.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libcore (strings.h, strings.c)
 // NEEDS: libengine (date.h, string.c)
 // NEEDS: libplatform (platform.h)
@@ -13,20 +13,27 @@
 
 #include "eval/functions/system/time/date.h"
 #include "platform/platform.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/strings.h"
 #include "runtime/string.h"
 #include "runtime/memory.h"
 #include "hal/hal.h"
+#include "runtime/format/snprintf.h"
+#include "runtime/string/strops.h"
+#include "runtime/ctype/ctype.h"
+
+static const LangDesc g_date_desc = {
+    .name = "DATE$",
+    .category = "System Functions",
+    .syntax = "DATE$ | DATE$(day_num)",
+    .description = "Returns the current system date string, or formats a numeric day number into DD-Mon-YY (DEC BASIC-PLUS).",
+    .error_summary = "Error 13: Type Mismatch",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_FUNCTION
+};
 void func_date_register(void) {
-    MicroLibMetadata meta = {
-        .name = "DATE$",
-        .category = "System Functions",
-        .syntax = "DATE$ | DATE$(day_num)",
-        .help_text = "Returns the current system date string, or formats a numeric day number into DD-Mon-YY (DEC BASIC-PLUS).",
-        .error_codes = "Error 13: Type Mismatch"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_date_desc);
 }
 
 BValue func_date_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err) {
@@ -88,6 +95,13 @@ BValue func_date_eval(VMContext *vm, const char *uname, int arg_count, BValue *a
         if (lt) {
             strftime(buf, sizeof(buf), "%b", lt);
             for (char *p = buf; *p; p++) *p = (char)runtime_toupper((unsigned char)*p);
+        }
+        res.type = VAL_STRING;
+        res.as.string = str_create(vm_get_str(vm), buf, runtime_strlen(buf));
+    } else if (runtime_strcmp(uname, "YEAR$") == 0) {
+        char buf[32] = "";
+        if (lt) {
+            runtime_snprintf(buf, sizeof(buf), "%04d AD", lt->tm_year + 1900);
         }
         res.type = VAL_STRING;
         res.as.string = str_create(vm_get_str(vm), buf, runtime_strlen(buf));

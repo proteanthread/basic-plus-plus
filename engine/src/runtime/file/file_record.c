@@ -31,9 +31,9 @@ long file_lof(FileContext *ctx, int channel) {
     } else if (chan->vdev) {
         VDev *d = chan->vdev;
         if (d->dev_seek) {
-            long current = d->dev_seek(d, 0, SEEK_CUR);
-            long size = d->dev_seek(d, 0, SEEK_END);
-            d->dev_seek(d, current, SEEK_SET);
+            long current = d->dev_seek(d, 0, IO_SEEK_CUR);
+            long size = d->dev_seek(d, 0, IO_SEEK_END);
+            d->dev_seek(d, current, IO_SEEK_SET);
             return size;
         }
     }
@@ -57,7 +57,7 @@ long file_loc(FileContext *ctx, int channel) {
     } else if (chan->vdev) {
         VDev *d = chan->vdev;
         if (d->dev_seek) {
-            return d->dev_seek(d, 0, SEEK_CUR);
+            return d->dev_seek(d, 0, IO_SEEK_CUR);
         }
     }
     return 0;
@@ -125,7 +125,7 @@ void file_seek(FileContext *ctx, int channel, long position) {
         if (d->dev_seek) {
             long byte_pos = position - 1;
             if (byte_pos < 0) byte_pos = 0;
-            d->dev_seek(d, byte_pos, SEEK_SET);
+            d->dev_seek(d, byte_pos, IO_SEEK_SET);
         }
     }
 }

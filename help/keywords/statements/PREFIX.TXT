@@ -1,0 +1,70 @@
+TITLE: PREFIX
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/filesystem/binary_ops/prefix.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+PREFIX KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: prefix.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libengine (chdir.h, chdir.c, prefix.h, string.c)
+    // Provides runtime implementation for the PREFIX statement in BASIC++.
+    //
+    // ---- Includes ----
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Apple /// Business BASIC alias for CHDIR. Sets the default SOS directory
+prefix.
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    PREFIX dir_path$
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM PREFIX Demonstration
+    20 PRINT "PREFIX executed successfully."
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error, Error 13: Type Mismatch, Error 76: Path Not Found
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Filesystem
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_IO
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  PREFIX
+Category              Filesystem
+Syntax                PREFIX dir_path$
+Description           Apple /// Business BASIC alias for CHDIR. Sets the ...
+Error Summary         Error 2: Syntax Error, Error 13: Type Mismatch, Err...
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_IO
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/filesystem/binary_ops/prefix.c

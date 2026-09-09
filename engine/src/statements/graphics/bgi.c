@@ -2,7 +2,7 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libcore, libengine, libhardware, libkernel
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libcore (strings.h, strings.c)
 // NEEDS: libengine (bgi.h, eval.h, eval.c, stmt.h, string.c, vm.h)
 // Provides runtime implementation for the BGI statement in BASIC++.
@@ -10,26 +10,44 @@
 // ---- Includes ----
 
 #include "stmt/stmt.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
+
+static const LangDesc g_bgi_desc = {
+    .name = "BGI",
+    .category = "Graphics Interface",
+    .syntax = "SET GRAPHICS width, height [, bpp]",
+    .description = "Configures custom screen resolution and BGI graphics mode settings.",
+    .error_summary = "Error 5: Illegal Function Call (invalid graphics dimensions)",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SAFE,
+    .type = FEATURE_STATEMENT
+};
+
 #include "eval/eval.h"
 #include "vm/vm.h"
 #include "runtime/strings.h"
-#include <string.h>
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
 
 #ifdef BASIC_LITE_BUILD
 
-BppError stmt_initgraph_handler(VMContext *vm, LexerContext *lex) { (void)vm; (void)lex; BppError e; memset(&e, 0, sizeof(e)); e.code = 5; e.message = "BGI graphics not supported in Lite edition"; return e; }
-BppError stmt_closegraph_handler(VMContext *vm, LexerContext *lex) { (void)vm; (void)lex; BppError e; memset(&e, 0, sizeof(e)); e.code = 5; e.message = "BGI graphics not supported in Lite edition"; return e; }
-BppError stmt_putpixel_handler(VMContext *vm, LexerContext *lex) { (void)vm; (void)lex; BppError e; memset(&e, 0, sizeof(e)); e.code = 5; e.message = "BGI graphics not supported in Lite edition"; return e; }
-BppError stmt_bar_handler(VMContext *vm, LexerContext *lex) { (void)vm; (void)lex; BppError e; memset(&e, 0, sizeof(e)); e.code = 5; e.message = "BGI graphics not supported in Lite edition"; return e; }
-BppError stmt_ellipse_handler(VMContext *vm, LexerContext *lex) { (void)vm; (void)lex; BppError e; memset(&e, 0, sizeof(e)); e.code = 5; e.message = "BGI graphics not supported in Lite edition"; return e; }
-BppError stmt_rectangle_handler(VMContext *vm, LexerContext *lex) { (void)vm; (void)lex; BppError e; memset(&e, 0, sizeof(e)); e.code = 5; e.message = "BGI graphics not supported in Lite edition"; return e; }
-BppError stmt_outtextxy_handler(VMContext *vm, LexerContext *lex) { (void)vm; (void)lex; BppError e; memset(&e, 0, sizeof(e)); e.code = 5; e.message = "BGI graphics not supported in Lite edition"; return e; }
-BppError stmt_setpalette_handler(VMContext *vm, LexerContext *lex) { (void)vm; (void)lex; BppError e; memset(&e, 0, sizeof(e)); e.code = 5; e.message = "BGI graphics not supported in Lite edition"; return e; }
+BppError stmt_initgraph_handler(VMContext *vm, LexerContext *lex) { (void)vm; (void)lex; BppError e; runtime_memset(&e, 0, sizeof(e)); e.code = 5; e.message = "BGI graphics not supported in Lite edition"; return e; }
+BppError stmt_closegraph_handler(VMContext *vm, LexerContext *lex) { (void)vm; (void)lex; BppError e; runtime_memset(&e, 0, sizeof(e)); e.code = 5; e.message = "BGI graphics not supported in Lite edition"; return e; }
+BppError stmt_putpixel_handler(VMContext *vm, LexerContext *lex) { (void)vm; (void)lex; BppError e; runtime_memset(&e, 0, sizeof(e)); e.code = 5; e.message = "BGI graphics not supported in Lite edition"; return e; }
+BppError stmt_bar_handler(VMContext *vm, LexerContext *lex) { (void)vm; (void)lex; BppError e; runtime_memset(&e, 0, sizeof(e)); e.code = 5; e.message = "BGI graphics not supported in Lite edition"; return e; }
+BppError stmt_ellipse_handler(VMContext *vm, LexerContext *lex) { (void)vm; (void)lex; BppError e; runtime_memset(&e, 0, sizeof(e)); e.code = 5; e.message = "BGI graphics not supported in Lite edition"; return e; }
+BppError stmt_rectangle_handler(VMContext *vm, LexerContext *lex) { (void)vm; (void)lex; BppError e; runtime_memset(&e, 0, sizeof(e)); e.code = 5; e.message = "BGI graphics not supported in Lite edition"; return e; }
+BppError stmt_outtextxy_handler(VMContext *vm, LexerContext *lex) { (void)vm; (void)lex; BppError e; runtime_memset(&e, 0, sizeof(e)); e.code = 5; e.message = "BGI graphics not supported in Lite edition"; return e; }
+BppError stmt_setpalette_handler(VMContext *vm, LexerContext *lex) { (void)vm; (void)lex; BppError e; runtime_memset(&e, 0, sizeof(e)); e.code = 5; e.message = "BGI graphics not supported in Lite edition"; return e; }
 
 #else // !BASIC_LITE_BUILD
 
 #include "device/bgi.h"
+
+
+
+
+
 
 // ======================================================================
 // INITGRAPH mode_id
@@ -38,7 +56,7 @@ BppError stmt_setpalette_handler(VMContext *vm, LexerContext *lex) { (void)vm; (
 // ======================================================================
 BppError stmt_initgraph_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     (void)vm;
 
     BValue mode_val = eval_expression(vm, lex, &err);
@@ -66,7 +84,7 @@ BppError stmt_initgraph_handler(VMContext *vm, LexerContext *lex) {
 // ======================================================================
 BppError stmt_closegraph_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     (void)vm;
     (void)lex;
 
@@ -82,7 +100,7 @@ BppError stmt_closegraph_handler(VMContext *vm, LexerContext *lex) {
 // ======================================================================
 BppError stmt_putpixel_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BValue x_val = eval_expression(vm, lex, &err);
     if (err.code != 0) return err;
@@ -126,7 +144,7 @@ BppError stmt_putpixel_handler(VMContext *vm, LexerContext *lex) {
 // ======================================================================
 BppError stmt_bar_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BValue x1_val = eval_expression(vm, lex, &err);
     if (err.code != 0) return err;
@@ -170,7 +188,7 @@ BppError stmt_bar_handler(VMContext *vm, LexerContext *lex) {
 // ======================================================================
 BppError stmt_ellipse_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     double args[6];
     for (int i = 0; i < 6; ++i) {
@@ -207,7 +225,7 @@ BppError stmt_ellipse_handler(VMContext *vm, LexerContext *lex) {
 // ======================================================================
 BppError stmt_rectangle_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     double args[4];
     for (int i = 0; i < 4; ++i) {
@@ -244,7 +262,7 @@ BppError stmt_rectangle_handler(VMContext *vm, LexerContext *lex) {
 // ======================================================================
 BppError stmt_outtextxy_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BValue x_val = eval_expression(vm, lex, &err);
     if (err.code != 0) return err;
@@ -288,7 +306,7 @@ BppError stmt_outtextxy_handler(VMContext *vm, LexerContext *lex) {
 // ======================================================================
 BppError stmt_bgi_palette_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BGI_Context *ctx = BGI_get_global_context();
     if (!ctx->initialized) {
@@ -320,7 +338,7 @@ BppError stmt_bgi_palette_handler(VMContext *vm, LexerContext *lex) {
         }
         char arr_name[256];
         size_t clen = (name_tok.length < 255) ? name_tok.length : 255;
-        memcpy(arr_name, name_tok.start, clen);
+        runtime_memcpy(arr_name, name_tok.start, clen);
         arr_name[clen] = '\0';
 
         // check for optional parenthesis
@@ -410,12 +428,5 @@ BppError stmt_bgi_palette_handler(VMContext *vm, LexerContext *lex) {
 #endif // !BASIC_LITE_BUILD
 
 void stmt_bgi_register(void) {
-    MicroLibMetadata meta = {
-        .name = "BGI",
-        .category = "Graphics Interface",
-        .syntax = "SET GRAPHICS width, height [, bpp]",
-        .help_text = "Configures custom screen resolution and BGI graphics mode settings.",
-        .error_codes = "Error 5: Illegal Function Call (invalid graphics dimensions)"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_bgi_desc);
 }

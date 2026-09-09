@@ -19,14 +19,14 @@
 #include "types/version.h"
 
 #ifdef _WIN32
-  #ifndef strcasecmp
-    #define strcasecmp _stricmp
+  #ifndef runtime_strcasecmp
+    #define runtime_strcasecmp runtime_strcasecmp
   #endif
-  #ifndef strncasecmp
-    #define strncasecmp _strnicmp
+  #ifndef runtime_strncasecmp
+    #define runtime_strncasecmp runtime_strncasecmp
   #endif
 #else
-  #include <strings.h>
+  #include "runtime/string/strops.h"
 #endif
 
 // Name and identity strings based on build targets

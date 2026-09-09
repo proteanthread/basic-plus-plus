@@ -9,7 +9,8 @@
 // ---- Includes ----
 
 #include "runtime/nil_compress.h"
-#include <string.h>
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
 
 // COMSTRING Token constants per RFC 51 Section 2.8.2
 #define NIL_ESC_CHAR     0x1B

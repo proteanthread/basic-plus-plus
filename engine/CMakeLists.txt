@@ -130,6 +130,8 @@ add_library(libplatform STATIC
     lib/platform/plat_net.c
     lib/platform/plat_regex.c
     lib/platform/plat_clipboard.c
+    lib/platform/plat_serial.c
+    lib/platform/plat_hw_speed.c
 )
 target_include_directories(libplatform PUBLIC ${ENGINE_INCLUDE_DIR})
 target_link_libraries(libplatform PUBLIC libboot)
@@ -166,6 +168,23 @@ add_library(libkernel STATIC
     src/device/vdev_esp32.c
     src/device/pdf_writer.c
     src/device/vprinter.c
+    src/device/dev_serial.c
+    src/device/dev_atari.c
+    src/device/dev_cpm.c
+    src/device/dev_net_transport.c
+    src/device/dev_pseudo.c
+    src/device/dev_loopback.c
+    src/device/dev_user.c
+    src/device/dev_tape.c
+    src/device/dev_tandy.c
+    src/device/dev_kbd_map.c
+    src/device/dev_framebuffer.c
+    src/device/dev_log.c
+    src/device/dev_upnp.c
+    src/device/msg_broker.c
+    src/device/dev_msg_bus.c
+    src/device/dev_ipc.c
+    src/device/color_map.c
     src/device/bgi_bridge.c
     src/device/bgi_text.c
     src/device/bgi/bgi_palette.c
@@ -181,6 +200,10 @@ add_library(libkernel STATIC
     src/runtime/arrays/arr_access.c
     src/runtime/arrays/arr_persist.c
     src/runtime/map.c
+    src/runtime/set/set_core.c
+    src/runtime/set/set_ops.c
+    src/runtime/set/set_pick.c
+    src/runtime/set/set_unify.c
     src/runtime/metadata.c
     src/security/security.c
     src/vm/context.c
@@ -198,12 +221,25 @@ add_library(libkernel STATIC
 target_include_directories(libkernel PUBLIC ${ENGINE_INCLUDE_DIR})
 target_link_libraries(libkernel PUBLIC libplatform libiot)
 
+# --- 3b. Universal Register Subsystem Library: libreg ---
+add_library(libreg STATIC
+    src/reg/reg_hw.c
+    src/reg/reg_udx.c
+    src/reg/reg_buffer.c
+)
+target_include_directories(libreg PUBLIC ${ENGINE_INCLUDE_DIR})
+target_link_libraries(libreg PUBLIC libkernel)
+
 # --- 4. Language Runtime Engine Subsystem Library: libengine ---
 add_library(libengine STATIC
     src/eval/ast.c
     src/eval/ast/ast_create.c
     src/eval/ast/ast_eval_expr.c
+    src/eval/ast/ast_eval_expr_num.c
+    src/eval/ast/ast_eval_expr_str.c
     src/eval/ast/ast_eval_stmt.c
+    src/eval/ast/ast_eval_stmt_assign.c
+    src/eval/ast/ast_eval_stmt_ctrl.c
     src/eval/ast/ast_parser.c
     src/eval/ast/parser/ast_parse_block.c
     src/eval/ast/parser/ast_parse_expr.c
@@ -214,9 +250,11 @@ add_library(libengine STATIC
     src/eval/dispatch/dispatch_special.c
     src/eval/eval.c
     src/eval/expression/eval_ident.c
+    src/eval/expression/eval_ident_builtin.c
     src/eval/expression/eval_array.c
     src/eval/expression/eval_op.c
     src/eval/expression/eval_new.c
+    src/eval/expression/eval_set.c
     src/eval/eval_builtins.c
     src/eval/builtins/math_fn.c
     src/eval/builtins/string_fn.c
@@ -226,6 +264,8 @@ add_library(libengine STATIC
     src/eval/microplex.c
     src/eval/ops.c
     src/eval/rpn.c
+    src/eval/rpn_mirror.c
+    src/eval/pn.c
     src/eval/stack.c
     src/eval/type.c
     src/module/arrayext.c
@@ -236,13 +276,109 @@ add_library(libengine STATIC
     src/runtime/funcreg.c
     src/runtime/keyword_props.c
     src/runtime/map_serialize.c
-    src/runtime/micro_lib_metadata.c
+    src/runtime/descriptors/language_descriptor.c
+    src/runtime/descriptors/system_var_descriptors.c
+    src/runtime/descriptors/builtin_descriptors.c
     src/runtime/mux.c
     src/runtime/num_format.c
     src/runtime/override.c
-    src/eval/functions/datetime/pds_datetime.c
-    src/eval/functions/system/environment/pds_sys.c
+    src/eval/functions/datetime/dateserial.c
+    src/eval/functions/datetime/timeserial.c
+    src/eval/functions/datetime/datevalue.c
+    src/eval/functions/datetime/timevalue.c
+    src/eval/functions/datetime/day.c
+    src/eval/functions/datetime/month.c
+    src/eval/functions/datetime/year.c
+    src/eval/functions/datetime/weekday.c
+    src/eval/functions/datetime/hour.c
+    src/eval/functions/datetime/minute.c
+    src/eval/functions/datetime/second.c
+    src/eval/functions/datetime/unixtime.c
+    src/eval/functions/datetime/epochdate.c
+    src/eval/functions/datetime/utc.c
+    src/eval/functions/datetime/hebrew.c
+    src/eval/functions/datetime/time_part.c
+    src/eval/functions/system/environment/func_exepath.c
+    src/eval/functions/system/environment/func_scriptpath.c
+    src/eval/functions/system/environment/func_workdir.c
+    src/eval/functions/system/environment/func_program.c
+    src/eval/functions/system/environment/func_tempdir.c
+    src/eval/functions/system/environment/func_userpath.c
+    src/eval/functions/system/environment/func_ver.c
+    src/eval/functions/system/hardware/func_vintage_vars.c
+    src/eval/functions/network/func_net_telemetry.c
+    src/eval/functions/system/time/func_tim.c
+    src/eval/functions/system/hardware/func_baud.c
+    src/eval/functions/system/hardware/stick.c
+    src/eval/functions/system/hardware/strig.c
+    src/eval/functions/system/hardware/paddle.c
+    src/eval/functions/system/hardware/ptrig.c
+    src/eval/functions/system/hardware/attr.c
+    src/statements/system/hardware/stmt_baud.c
+    src/statements/system/hardware/stmt_speed.c
+    src/statements/system/hardware/stmt_cpuspeed.c
+    src/eval/functions/system/hardware/func_cpuspeed.c
+    src/eval/functions/system/hardware/func_clocks.c
+    src/statements/system/stmt_unpublish.c
+    src/statements/variables/data/stmt_shuffle.c
+    src/eval/functions/datetime/func_week.c
+    src/eval/functions/math/arithmetic/func_neg.c
+    src/eval/functions/system/environment/dir_fn.c
+    src/eval/functions/system/environment/curdir.c
+    src/eval/functions/system/environment/setmem.c
+    src/eval/functions/system/environment/sseg.c
     src/eval/functions/system/environment/fre.c
+    src/eval/functions/string/conversion/cvsmbf.c
+    src/eval/functions/string/conversion/cvdmbf.c
+    src/eval/functions/string/conversion/mksmbf.c
+    src/eval/functions/string/conversion/mkdmbf.c
+    src/eval/functions/math/financial/pv.c
+    src/eval/functions/math/financial/fv.c
+    src/eval/functions/math/financial/pmt.c
+    src/eval/functions/math/financial/ipmt.c
+    src/eval/functions/math/financial/ppmt.c
+    src/eval/functions/math/financial/nper.c
+    src/eval/functions/math/financial/rate.c
+    src/eval/functions/math/financial/npv.c
+    src/eval/functions/math/financial/irr.c
+    src/eval/functions/math/algebra/dp.c
+    src/eval/functions/math/algebra/xp.c
+    src/eval/functions/math/algebra/ipt.c
+    src/eval/functions/math/random/rnd.c
+    src/eval/functions/string/conversion/hta.c
+    src/eval/functions/string/manipulation/sum.c
+    src/eval/functions/string/manipulation/dif.c
+    src/eval/functions/string/manipulation/prod.c
+    src/eval/functions/string/manipulation/quo.c
+    src/eval/functions/string/manipulation/place.c
+    src/statements/system/environment/login.c
+    src/statements/system/environment/who.c
+    src/statements/system/environment/tty.c
+    src/statements/system/environment/priority.c
+    src/statements/variables/assignment/incr.c
+    src/statements/variables/assignment/decr.c
+    src/statements/ui/widgets/button.c
+    src/statements/ui/widgets/menu.c
+    src/statements/ui/widgets/textbox.c
+    src/statements/ui/widgets/listbox.c
+    src/statements/ui/widgets/checkbox.c
+    src/statements/ui/widgets/optionbutton.c
+    src/statements/ui/widgets/label.c
+    src/statements/ui/widgets/frame.c
+    src/statements/ui/widgets/combobox.c
+    src/statements/ui/widgets/hscrollbar.c
+    src/statements/ui/widgets/vscrollbar.c
+    src/statements/ui/widgets/drivelistbox.c
+    src/statements/ui/widgets/dirlistbox.c
+    src/statements/ui/widgets/filelistbox.c
+    src/statements/ui/widgets/timercontrol.c
+    src/eval/functions/ui/dialogs/fileopenbox.c
+    src/eval/functions/ui/dialogs/filesavebox.c
+    src/eval/functions/ui/dialogs/func_msgbox.c
+    src/eval/functions/ui/dialogs/inputbox.c
+    src/eval/functions/ui/dialogs/func_doevents.c
+    src/eval/functions/network/func_upnp.c
+    src/statements/network/stmt_upnp.c
     src/runtime/print_using.c
     src/runtime/spec.c
     src/runtime/state.c
@@ -261,9 +397,19 @@ add_library(libengine STATIC
     src/vm/exec/control/exec_postfix.c
     src/vm/exec/control/exec_stmt.c
     src/vm/exec/exec_interrupt.c
+    src/vm/jit/jit_compile.c
+    src/vm/jit/jit_vm.c
+    src/vm/jit/jit_native.c
+    src/vm/jit/jit_manager.c
+    src/statements/program/stmt_compile.c
+    src/statements/program/stmt_jit.c
+    src/statements/program/stmt_rename.c
+    src/statements/program/stmt_revert.c
+    src/statements/program/modernize/semantic_harvester.c
+    src/statements/program/reformat/reformat_unpack.c
 )
 target_include_directories(libengine PUBLIC ${ENGINE_INCLUDE_DIR})
-target_link_libraries(libengine PUBLIC libkernel)
+target_link_libraries(libengine PUBLIC libreg libkernel)
 
 # --- 5. Hardware Subsystem Library: libhardware ---
 add_library(libhardware STATIC
@@ -276,6 +422,8 @@ add_library(libhardware STATIC
     src/device/fujinet.c
     src/memory/segmented_mem.c
     src/runtime/microplex.c
+    src/hardware/speed_db.c
+    src/hardware/speed_emulate.c
 )
 target_include_directories(libhardware PUBLIC ${ENGINE_INCLUDE_DIR})
 target_link_libraries(libhardware PUBLIC libengine)
@@ -289,6 +437,7 @@ add_library(libserver STATIC
     src/runtime/task.c
     src/runtime/vfs.c
     src/runtime/vnet.c
+    src/runtime/vnet_nat.c
     src/module/regex.c
 )
 target_include_directories(libserver PUBLIC ${ENGINE_INCLUDE_DIR})
@@ -308,10 +457,10 @@ target_link_libraries(libscript PUBLIC libserver)
 # --- 8. Core REPL & Introspection Subsystem Library: libcore ---
 add_library(libcore STATIC
     src/docgen/docgen.c
-    src/statements/dialect/meta/category.c
-    src/statements/dialect/meta/help.c
-    src/statements/dialect/meta/introspection.c
-    src/statements/dialect/meta/selftest.c
+    src/statements/introspection/category.c
+    src/statements/introspection/help.c
+    src/statements/introspection/introspection.c
+    src/statements/introspection/selftest.c
     src/eval/functions/system/environment/category.c
 )
 
@@ -320,11 +469,11 @@ target_link_libraries(libcore PUBLIC libscript)
 
 # --- 9. Dynamic Metaprogramming & Flex Subsystem Library: libflex ---
 add_library(libflex STATIC
-    src/statements/dialect/meta/alias.c
-    src/statements/dialect/meta/keyword.c
-    src/statements/dialect/meta/override.c
-    src/statements/dialect/meta/remove.c
-    src/statements/dialect/meta/scope.c
+    src/statements/introspection/alias.c
+    src/statements/introspection/keyword.c
+    src/statements/introspection/override.c
+    src/statements/introspection/remove.c
+    src/statements/introspection/scope.c
 )
 target_include_directories(libflex PUBLIC ${ENGINE_INCLUDE_DIR})
 target_link_libraries(libflex PUBLIC libcore)
@@ -436,9 +585,15 @@ target_include_directories(plat_regex PUBLIC ${ENGINE_INCLUDE_DIR})
 add_library(plat_clipboard STATIC lib/platform/plat_clipboard.c)
 target_include_directories(plat_clipboard PUBLIC ${ENGINE_INCLUDE_DIR})
 
+add_library(plat_serial STATIC lib/platform/plat_serial.c)
+target_include_directories(plat_serial PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(plat_hw_speed STATIC lib/platform/plat_hw_speed.c)
+target_include_directories(plat_hw_speed PUBLIC ${ENGINE_INCLUDE_DIR})
+
 if(UNIX)
     set(PLAT_TARGETS plat_console plat_fs plat_sys plat_time
-        plat_thread plat_dl plat_net plat_regex plat_clipboard)
+        plat_thread plat_dl plat_net plat_regex plat_clipboard plat_serial plat_hw_speed)
     foreach(tgt ${PLAT_TARGETS})
         target_compile_definitions(${tgt} PRIVATE
             _POSIX_C_SOURCE=200809L _XOPEN_SOURCE=700 _GNU_SOURCE)
@@ -459,6 +614,10 @@ add_library(vm_exec STATIC
     src/vm/exec/control/exec_postfix.c
     src/vm/exec/control/exec_stmt.c
     src/vm/exec/exec_interrupt.c
+    src/vm/jit/jit_compile.c
+    src/vm/jit/jit_vm.c
+    src/vm/jit/jit_native.c
+    src/vm/jit/jit_manager.c
 )
 target_include_directories(vm_exec PUBLIC ${ENGINE_INCLUDE_DIR})
 
@@ -524,6 +683,21 @@ target_include_directories(shl PUBLIC ${ENGINE_INCLUDE_DIR})
 
 add_library(shr OBJECT src/eval/functions/bits/shift/shr.c)
 target_include_directories(shr PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(rol OBJECT src/eval/functions/bits/shift/rol.c)
+target_include_directories(rol PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(ror OBJECT src/eval/functions/bits/shift/ror.c)
+target_include_directories(ror PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(bitfield OBJECT src/eval/functions/bits/manipulation/bitfield.c)
+target_include_directories(bitfield PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_avg OBJECT src/eval/functions/math/algebra/avg.c)
+target_include_directories(func_avg PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_math_sum OBJECT src/eval/functions/math/algebra/math_sum.c)
+target_include_directories(func_math_sum PUBLIC ${ENGINE_INCLUDE_DIR})
 
 add_library(togglebit OBJECT src/eval/functions/bits/manipulation/togglebit.c)
 target_include_directories(togglebit PUBLIC ${ENGINE_INCLUDE_DIR})
@@ -687,6 +861,9 @@ target_include_directories(hex PUBLIC ${ENGINE_INCLUDE_DIR})
 add_library(instr OBJECT src/eval/functions/string/search/instr.c)
 target_include_directories(instr PUBLIC ${ENGINE_INCLUDE_DIR})
 
+add_library(rinstr OBJECT src/eval/functions/string/search/rinstr.c)
+target_include_directories(rinstr PUBLIC ${ENGINE_INCLUDE_DIR})
+
 add_library(lcase OBJECT src/eval/functions/string/manipulation/lcase.c)
 target_include_directories(lcase PUBLIC ${ENGINE_INCLUDE_DIR})
 
@@ -739,6 +916,30 @@ target_include_directories(unpack PUBLIC ${ENGINE_INCLUDE_DIR})
 add_library(val OBJECT src/eval/functions/string/conversion/val.c)
 target_include_directories(val PUBLIC ${ENGINE_INCLUDE_DIR})
 
+add_library(func_delete_str OBJECT src/eval/functions/string/manipulation/func_delete_str.c)
+target_include_directories(func_delete_str PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_remove OBJECT src/eval/functions/string/manipulation/func_remove.c)
+target_include_directories(func_remove PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_insert OBJECT src/eval/functions/string/manipulation/func_insert.c)
+target_include_directories(func_insert PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_overlay OBJECT src/eval/functions/string/manipulation/func_overlay.c)
+target_include_directories(func_overlay PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_replace OBJECT src/eval/functions/string/manipulation/func_replace.c)
+target_include_directories(func_replace PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_format OBJECT src/eval/functions/string/conversion/func_format.c)
+target_include_directories(func_format PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_shell OBJECT src/eval/functions/system/environment/func_shell.c)
+target_include_directories(func_shell PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_exec OBJECT src/eval/functions/system/environment/func_exec.c)
+target_include_directories(func_exec PUBLIC ${ENGINE_INCLUDE_DIR})
+
 add_library(clock_num OBJECT src/eval/functions/system/time/clock_num.c)
 target_include_directories(clock_num PUBLIC ${ENGINE_INCLUDE_DIR})
 
@@ -765,6 +966,12 @@ target_include_directories(peek PUBLIC ${ENGINE_INCLUDE_DIR})
 
 add_library(ticks OBJECT src/eval/functions/system/time/ticks.c)
 target_include_directories(ticks PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(jiffies OBJECT src/eval/functions/system/time/jiffies.c)
+target_include_directories(jiffies PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(ti OBJECT src/eval/functions/system/time/ti.c)
+target_include_directories(ti PUBLIC ${ENGINE_INCLUDE_DIR})
 
 add_library(time OBJECT src/eval/functions/system/time/time.c)
 target_include_directories(time PUBLIC ${ENGINE_INCLUDE_DIR})
@@ -817,7 +1024,10 @@ target_include_directories(stmt_if PUBLIC ${ENGINE_INCLUDE_DIR})
 add_library(stmt_input OBJECT src/statements/core/io/input.c)
 target_include_directories(stmt_input PUBLIC ${ENGINE_INCLUDE_DIR})
 
-add_library(stmt_print OBJECT src/statements/core/io/print.c)
+add_library(stmt_print OBJECT
+    src/statements/core/io/print.c
+    src/statements/core/io/print_pos.c
+)
 target_include_directories(stmt_print PUBLIC ${ENGINE_INCLUDE_DIR})
 
 add_library(stmt_randomize OBJECT src/statements/core/program/randomize.c)
@@ -922,6 +1132,12 @@ target_include_directories(stmt_renum PUBLIC ${ENGINE_INCLUDE_DIR})
 
 add_library(stmt_auto OBJECT src/statements/program/auto.c)
 target_include_directories(stmt_auto PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(stmt_compile OBJECT src/statements/program/stmt_compile.c)
+target_include_directories(stmt_compile PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(stmt_jit OBJECT src/statements/program/stmt_jit.c)
+target_include_directories(stmt_jit PUBLIC ${ENGINE_INCLUDE_DIR})
 
 add_library(stmt_array_ext OBJECT src/statements/variables/assignment/array_ext.c)
 target_include_directories(stmt_array_ext PUBLIC ${ENGINE_INCLUDE_DIR})
@@ -1048,6 +1264,30 @@ target_include_directories(stmt_voice PUBLIC ${ENGINE_INCLUDE_DIR})
 add_library(stmt_bgi OBJECT src/statements/graphics/bgi.c)
 target_include_directories(stmt_bgi PUBLIC ${ENGINE_INCLUDE_DIR})
 
+add_library(stmt_udx OBJECT src/statements/system/stmt_udx.c)
+target_include_directories(stmt_udx PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(stmt_stack OBJECT src/statements/system/stmt_stack.c)
+target_include_directories(stmt_stack PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(stmt_pragma OBJECT src/statements/system/stmt_pragma.c)
+target_include_directories(stmt_pragma PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_udx OBJECT src/functions/system/func_udx.c)
+target_include_directories(func_udx PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_pn OBJECT src/functions/eval/func_pn.c)
+target_include_directories(func_pn PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_rpn OBJECT src/functions/eval/func_rpn.c)
+target_include_directories(func_rpn PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_cpu86 OBJECT src/functions/hardware/func_cpu86.c)
+target_include_directories(func_cpu86 PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_bios OBJECT src/functions/hardware/func_bios.c)
+target_include_directories(func_bios PUBLIC ${ENGINE_INCLUDE_DIR})
+
 add_library(stmt_circle OBJECT src/statements/graphics/draw/circle.c)
 target_include_directories(stmt_circle PUBLIC ${ENGINE_INCLUDE_DIR})
 
@@ -1130,8 +1370,32 @@ target_include_directories(stmt_msgbox PUBLIC ${ENGINE_INCLUDE_DIR})
 add_library(func_command OBJECT src/eval/functions/system/environment/command_fn.c)
 target_include_directories(func_command PUBLIC ${ENGINE_INCLUDE_DIR})
 
-add_library(func_vbdos OBJECT src/eval/functions/ui/dialogs/vbdos_fn.c)
-target_include_directories(func_vbdos PUBLIC ${ENGINE_INCLUDE_DIR})
+add_library(func_msgbox OBJECT src/eval/functions/ui/dialogs/func_msgbox.c)
+target_include_directories(func_msgbox PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_inputbox OBJECT src/eval/functions/ui/dialogs/inputbox.c)
+target_include_directories(func_inputbox PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_doevents OBJECT src/eval/functions/ui/dialogs/func_doevents.c)
+target_include_directories(func_doevents PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_input_str OBJECT src/eval/functions/io/func_input_str.c)
+target_include_directories(func_input_str PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_screen_fn OBJECT src/eval/functions/system/hardware/func_screen_fn.c)
+target_include_directories(func_screen_fn PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(stmt_qsave OBJECT src/statements/filesystem/binary_ops/stmt_qsave.c)
+target_include_directories(stmt_qsave PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(stmt_qload OBJECT src/statements/filesystem/binary_ops/stmt_qload.c)
+target_include_directories(stmt_qload PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(qheader OBJECT src/statements/filesystem/binary_ops/qheader.c)
+target_include_directories(qheader PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(stmt_qrun OBJECT src/statements/filesystem/binary_ops/stmt_qrun.c)
+target_include_directories(stmt_qrun PUBLIC ${ENGINE_INCLUDE_DIR})
 
 add_library(stmt_declare OBJECT src/statements/control/external/declare.c)
 target_include_directories(stmt_declare PUBLIC ${ENGINE_INCLUDE_DIR})
@@ -1414,35 +1678,101 @@ target_include_directories(func_packet PUBLIC ${ENGINE_INCLUDE_DIR})
 add_library(func_crypto OBJECT src/eval/functions/system/security/func_crypto.c)
 target_include_directories(func_crypto PUBLIC ${ENGINE_INCLUDE_DIR})
 
-add_library(stmt_help OBJECT src/statements/dialect/meta/help.c)
+add_library(stmt_device OBJECT src/statements/io/device/stmt_device.c)
+target_include_directories(stmt_device PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(stmt_xio OBJECT src/statements/io/device/stmt_xio.c)
+target_include_directories(stmt_xio PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(stmt_slot_io OBJECT src/statements/io/device/stmt_slot_io.c)
+target_include_directories(stmt_slot_io PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(stmt_devctl OBJECT src/statements/io/device/stmt_devctl.c)
+target_include_directories(stmt_devctl PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(stmt_user_ipc OBJECT src/statements/system/stmt_user_ipc.c)
+target_include_directories(stmt_user_ipc PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(stmt_log OBJECT src/statements/system/stmt_log.c)
+target_include_directories(stmt_log PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(stmt_send OBJECT src/statements/system/stmt_send.c)
+target_include_directories(stmt_send PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(stmt_publish OBJECT src/statements/system/stmt_publish.c)
+target_include_directories(stmt_publish PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(stmt_subscribe OBJECT src/statements/system/stmt_subscribe.c)
+target_include_directories(stmt_subscribe PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(stmt_unsubscribe OBJECT src/statements/system/stmt_unsubscribe.c)
+target_include_directories(stmt_unsubscribe PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(stmt_signal OBJECT src/statements/system/stmt_signal.c)
+target_include_directories(stmt_signal PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_receive OBJECT src/eval/functions/system/ipc/func_receive.c)
+target_include_directories(func_receive PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_devinfo OBJECT src/eval/functions/system/hardware/func_devinfo.c)
+target_include_directories(func_devinfo PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_devctl OBJECT src/eval/functions/system/hardware/func_devctl.c)
+target_include_directories(func_devctl PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(stmt_pipe OBJECT src/statements/filesystem/file_ops/stmt_pipe.c)
+target_include_directories(stmt_pipe PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(stmt_extern OBJECT src/statements/control/external/stmt_extern.c)
+target_include_directories(stmt_extern PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(stmt_yield OBJECT src/statements/control/flow/stmt_yield.c)
+target_include_directories(stmt_yield PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(stmt_baud OBJECT src/statements/system/hardware/stmt_baud.c)
+target_include_directories(stmt_baud PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(stmt_speed OBJECT src/statements/system/hardware/stmt_speed.c)
+target_include_directories(stmt_speed PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(stmt_cpuspeed OBJECT src/statements/system/hardware/stmt_cpuspeed.c)
+target_include_directories(stmt_cpuspeed PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_cpuspeed OBJECT src/eval/functions/system/hardware/func_cpuspeed.c)
+target_include_directories(func_cpuspeed PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_clocks OBJECT src/eval/functions/system/hardware/func_clocks.c)
+target_include_directories(func_clocks PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(stmt_help OBJECT src/statements/introspection/help.c)
 target_include_directories(stmt_help PUBLIC ${ENGINE_INCLUDE_DIR})
 
-add_library(stmt_category OBJECT src/statements/dialect/meta/category.c)
+add_library(stmt_category OBJECT src/statements/introspection/category.c)
 target_include_directories(stmt_category PUBLIC ${ENGINE_INCLUDE_DIR})
 
 add_library(func_category OBJECT src/eval/functions/system/environment/category.c)
 target_include_directories(func_category PUBLIC ${ENGINE_INCLUDE_DIR})
 
-add_library(stmt_introspection OBJECT src/statements/dialect/meta/introspection.c)
+add_library(stmt_introspection OBJECT src/statements/introspection/introspection.c)
 
 target_include_directories(stmt_introspection PUBLIC ${ENGINE_INCLUDE_DIR})
 
-add_library(stmt_alias OBJECT src/statements/dialect/meta/alias.c)
+add_library(stmt_alias OBJECT src/statements/introspection/alias.c)
 target_include_directories(stmt_alias PUBLIC ${ENGINE_INCLUDE_DIR})
 
-add_library(stmt_scope OBJECT src/statements/dialect/meta/scope.c)
+add_library(stmt_scope OBJECT src/statements/introspection/scope.c)
 target_include_directories(stmt_scope PUBLIC ${ENGINE_INCLUDE_DIR})
 
-add_library(stmt_keyword OBJECT src/statements/dialect/meta/keyword.c)
+add_library(stmt_keyword OBJECT src/statements/introspection/keyword.c)
 target_include_directories(stmt_keyword PUBLIC ${ENGINE_INCLUDE_DIR})
 
-add_library(stmt_override OBJECT src/statements/dialect/meta/override.c)
+add_library(stmt_override OBJECT src/statements/introspection/override.c)
 target_include_directories(stmt_override PUBLIC ${ENGINE_INCLUDE_DIR})
 
-add_library(stmt_remove OBJECT src/statements/dialect/meta/remove.c)
+add_library(stmt_remove OBJECT src/statements/introspection/remove.c)
 target_include_directories(stmt_remove PUBLIC ${ENGINE_INCLUDE_DIR})
 
-add_library(stmt_selftest OBJECT src/statements/dialect/meta/selftest.c)
+add_library(stmt_selftest OBJECT src/statements/introspection/selftest.c)
 target_include_directories(stmt_selftest PUBLIC ${ENGINE_INCLUDE_DIR})
 
 add_library(mod_module OBJECT src/module/module.c)
@@ -1459,6 +1789,30 @@ target_include_directories(microplex PUBLIC ${ENGINE_INCLUDE_DIR})
 
 add_library(stmt_change OBJECT src/statements/variables/assignment/change.c)
 target_include_directories(stmt_change PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(stmt_pick_locate OBJECT src/statements/variables/data/pick_locate.c)
+target_include_directories(stmt_pick_locate PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(stmt_collate OBJECT src/statements/extended/collate.c)
+target_include_directories(stmt_collate PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(stmt_angle OBJECT src/statements/extended/stmt_angle.c)
+target_include_directories(stmt_angle PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(stmt_gpib OBJECT src/statements/io/gpib.c)
+target_include_directories(stmt_gpib PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(stmt_translate OBJECT src/statements/extended/stmt_translate.c)
+target_include_directories(stmt_translate PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_pol_rec OBJECT src/eval/functions/math/trig/pol_rec.c)
+target_include_directories(func_pol_rec PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_grad OBJECT src/eval/functions/math/trig/grad.c)
+target_include_directories(func_grad PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_translate OBJECT src/eval/functions/string/manipulation/translate.c)
+target_include_directories(func_translate PUBLIC ${ENGINE_INCLUDE_DIR})
 
 add_library(stmt_margin OBJECT src/statements/io/margin.c)
 target_include_directories(stmt_margin PUBLIC ${ENGINE_INCLUDE_DIR})
@@ -1553,6 +1907,12 @@ target_include_directories(func_sys PUBLIC ${ENGINE_INCLUDE_DIR})
 add_library(func_time_fn OBJECT src/eval/functions/system/time/time_fn.c)
 target_include_directories(func_time_fn PUBLIC ${ENGINE_INCLUDE_DIR})
 
+add_library(func_tim OBJECT src/eval/functions/system/time/func_tim.c)
+target_include_directories(func_tim PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_time_part OBJECT src/eval/functions/datetime/time_part.c)
+target_include_directories(func_time_part PUBLIC ${ENGINE_INCLUDE_DIR})
+
 add_library(func_seg OBJECT src/eval/functions/string/manipulation/seg.c)
 target_include_directories(func_seg PUBLIC ${ENGINE_INCLUDE_DIR})
 
@@ -1568,8 +1928,20 @@ target_include_directories(func_ups PUBLIC ${ENGINE_INCLUDE_DIR})
 add_library(func_index_fn OBJECT src/eval/functions/string/search/index_fn.c)
 target_include_directories(func_index_fn PUBLIC ${ENGINE_INCLUDE_DIR})
 
-add_library(func_str_math OBJECT src/eval/functions/string/manipulation/str_math.c)
-target_include_directories(func_str_math PUBLIC ${ENGINE_INCLUDE_DIR})
+add_library(func_sum OBJECT src/eval/functions/string/manipulation/sum.c)
+target_include_directories(func_sum PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_dif OBJECT src/eval/functions/string/manipulation/dif.c)
+target_include_directories(func_dif PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_prod OBJECT src/eval/functions/string/manipulation/prod.c)
+target_include_directories(func_prod PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_quo OBJECT src/eval/functions/string/manipulation/quo.c)
+target_include_directories(func_quo PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_place OBJECT src/eval/functions/string/manipulation/place.c)
+target_include_directories(func_place PUBLIC ${ENGINE_INCLUDE_DIR})
 
 add_library(func_spec_fn OBJECT src/eval/functions/system/environment/spec_fn.c)
 target_include_directories(func_spec_fn PUBLIC ${ENGINE_INCLUDE_DIR})
@@ -1592,8 +1964,17 @@ target_include_directories(func_verify PUBLIC ${ENGINE_INCLUDE_DIR})
 add_library(rt_session OBJECT src/runtime/session.c)
 target_include_directories(rt_session PUBLIC ${ENGINE_INCLUDE_DIR})
 
-add_library(stmt_session OBJECT src/statements/system/environment/session_stmts.c)
-target_include_directories(stmt_session PUBLIC ${ENGINE_INCLUDE_DIR})
+add_library(stmt_login OBJECT src/statements/system/environment/login.c)
+target_include_directories(stmt_login PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(stmt_who OBJECT src/statements/system/environment/who.c)
+target_include_directories(stmt_who PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(stmt_tty OBJECT src/statements/system/environment/tty.c)
+target_include_directories(stmt_tty PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(stmt_priority OBJECT src/statements/system/environment/priority.c)
+target_include_directories(stmt_priority PUBLIC ${ENGINE_INCLUDE_DIR})
 
 add_library(stmt_page OBJECT src/statements/io/page.c)
 target_include_directories(stmt_page PUBLIC ${ENGINE_INCLUDE_DIR})
@@ -1616,20 +1997,62 @@ target_include_directories(func_fid PUBLIC ${ENGINE_INCLUDE_DIR})
 add_library(func_ath OBJECT src/eval/functions/string/conversion/ath.c)
 target_include_directories(func_ath PUBLIC ${ENGINE_INCLUDE_DIR})
 
+add_library(func_hta OBJECT src/eval/functions/string/conversion/hta.c)
+target_include_directories(func_hta PUBLIC ${ENGINE_INCLUDE_DIR})
+
 add_library(func_tek OBJECT src/eval/functions/string/format/tek.c)
 target_include_directories(func_tek PUBLIC ${ENGINE_INCLUDE_DIR})
 
 add_library(func_fpt OBJECT src/eval/functions/math/algebra/fpt.c)
 target_include_directories(func_fpt PUBLIC ${ENGINE_INCLUDE_DIR})
 
-add_library(func_mbf OBJECT src/eval/functions/string/conversion/mbf.c)
-target_include_directories(func_mbf PUBLIC ${ENGINE_INCLUDE_DIR})
+add_library(func_ipt OBJECT src/eval/functions/math/algebra/ipt.c)
+target_include_directories(func_ipt PUBLIC ${ENGINE_INCLUDE_DIR})
 
-add_library(func_financial OBJECT src/eval/functions/math/financial/financial.c)
-target_include_directories(func_financial PUBLIC ${ENGINE_INCLUDE_DIR})
+add_library(func_cvsmbf OBJECT src/eval/functions/string/conversion/cvsmbf.c)
+target_include_directories(func_cvsmbf PUBLIC ${ENGINE_INCLUDE_DIR})
 
-add_library(func_vbdos_filebox OBJECT src/eval/functions/ui/dialogs/vbdos_filebox.c)
-target_include_directories(func_vbdos_filebox PUBLIC ${ENGINE_INCLUDE_DIR})
+add_library(func_cvdmbf OBJECT src/eval/functions/string/conversion/cvdmbf.c)
+target_include_directories(func_cvdmbf PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_mksmbf OBJECT src/eval/functions/string/conversion/mksmbf.c)
+target_include_directories(func_mksmbf PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_mkdmbf OBJECT src/eval/functions/string/conversion/mkdmbf.c)
+target_include_directories(func_mkdmbf PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_pv OBJECT src/eval/functions/math/financial/pv.c)
+target_include_directories(func_pv PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_fv OBJECT src/eval/functions/math/financial/fv.c)
+target_include_directories(func_fv PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_pmt OBJECT src/eval/functions/math/financial/pmt.c)
+target_include_directories(func_pmt PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_ipmt OBJECT src/eval/functions/math/financial/ipmt.c)
+target_include_directories(func_ipmt PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_ppmt OBJECT src/eval/functions/math/financial/ppmt.c)
+target_include_directories(func_ppmt PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_nper OBJECT src/eval/functions/math/financial/nper.c)
+target_include_directories(func_nper PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_rate OBJECT src/eval/functions/math/financial/rate.c)
+target_include_directories(func_rate PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_npv OBJECT src/eval/functions/math/financial/npv.c)
+target_include_directories(func_npv PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_irr OBJECT src/eval/functions/math/financial/irr.c)
+target_include_directories(func_irr PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_fileopenbox OBJECT src/eval/functions/ui/dialogs/fileopenbox.c)
+target_include_directories(func_fileopenbox PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_filesavebox OBJECT src/eval/functions/ui/dialogs/filesavebox.c)
+target_include_directories(func_filesavebox PUBLIC ${ENGINE_INCLUDE_DIR})
 
 add_library(func_typ OBJECT src/eval/functions/filesystem/descriptors/typ.c)
 target_include_directories(func_typ PUBLIC ${ENGINE_INCLUDE_DIR})
@@ -1640,17 +2063,143 @@ target_include_directories(func_moddir PUBLIC ${ENGINE_INCLUDE_DIR})
 add_library(stmt_isam OBJECT src/statements/db/isam/isam.c)
 target_include_directories(stmt_isam PUBLIC ${ENGINE_INCLUDE_DIR})
 
-add_library(stmt_vbdos_widgets OBJECT src/statements/ui/widgets/vbdos_widgets.c)
-target_include_directories(stmt_vbdos_widgets PUBLIC ${ENGINE_INCLUDE_DIR})
+add_library(stmt_button OBJECT src/statements/ui/widgets/button.c)
+target_include_directories(stmt_button PUBLIC ${ENGINE_INCLUDE_DIR})
 
-add_library(func_pds_datetime OBJECT src/eval/functions/datetime/pds_datetime.c)
-target_include_directories(func_pds_datetime PUBLIC ${ENGINE_INCLUDE_DIR})
+add_library(stmt_menu OBJECT src/statements/ui/widgets/menu.c)
+target_include_directories(stmt_menu PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(stmt_textbox OBJECT src/statements/ui/widgets/textbox.c)
+target_include_directories(stmt_textbox PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(stmt_listbox OBJECT src/statements/ui/widgets/listbox.c)
+target_include_directories(stmt_listbox PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_dateserial OBJECT src/eval/functions/datetime/dateserial.c)
+target_include_directories(func_dateserial PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_timeserial OBJECT src/eval/functions/datetime/timeserial.c)
+target_include_directories(func_timeserial PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_datevalue OBJECT src/eval/functions/datetime/datevalue.c)
+target_include_directories(func_datevalue PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_timevalue OBJECT src/eval/functions/datetime/timevalue.c)
+target_include_directories(func_timevalue PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_day OBJECT src/eval/functions/datetime/day.c)
+target_include_directories(func_day PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_month OBJECT src/eval/functions/datetime/month.c)
+target_include_directories(func_month PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_year OBJECT src/eval/functions/datetime/year.c)
+target_include_directories(func_year PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_weekday OBJECT src/eval/functions/datetime/weekday.c)
+target_include_directories(func_weekday PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_hour OBJECT src/eval/functions/datetime/hour.c)
+target_include_directories(func_hour PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_minute OBJECT src/eval/functions/datetime/minute.c)
+target_include_directories(func_minute PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_second OBJECT src/eval/functions/datetime/second.c)
+target_include_directories(func_second PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_clk OBJECT src/eval/functions/datetime/clk.c)
+target_include_directories(func_clk PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_unixtime OBJECT src/eval/functions/datetime/unixtime.c)
+target_include_directories(func_unixtime PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_epochdate OBJECT src/eval/functions/datetime/epochdate.c)
+target_include_directories(func_epochdate PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_utc OBJECT src/eval/functions/datetime/utc.c)
+target_include_directories(func_utc PUBLIC ${ENGINE_INCLUDE_DIR})
 
 add_library(stmt_interrupt OBJECT src/statements/system/hardware/interrupt.c)
 target_include_directories(stmt_interrupt PUBLIC ${ENGINE_INCLUDE_DIR})
 
-add_library(stmt_vbdos_controls OBJECT src/statements/ui/widgets/vbdos_controls.c)
-target_include_directories(stmt_vbdos_controls PUBLIC ${ENGINE_INCLUDE_DIR})
+add_library(func_dp OBJECT src/eval/functions/math/algebra/dp.c)
+target_include_directories(func_dp PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_xp OBJECT src/eval/functions/math/algebra/xp.c)
+target_include_directories(func_xp PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_dir_fn OBJECT src/eval/functions/system/environment/dir_fn.c)
+target_include_directories(func_dir_fn PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_curdir OBJECT src/eval/functions/system/environment/curdir.c)
+target_include_directories(func_curdir PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_setmem OBJECT src/eval/functions/system/environment/setmem.c)
+target_include_directories(func_setmem PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_sseg OBJECT src/eval/functions/system/environment/sseg.c)
+target_include_directories(func_sseg PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_stick OBJECT src/eval/functions/system/hardware/stick.c)
+target_include_directories(func_stick PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_strig OBJECT src/eval/functions/system/hardware/strig.c)
+target_include_directories(func_strig PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_paddle OBJECT src/eval/functions/system/hardware/paddle.c)
+target_include_directories(func_paddle PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_ptrig OBJECT src/eval/functions/system/hardware/ptrig.c)
+target_include_directories(func_ptrig PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_attr OBJECT src/eval/functions/system/hardware/attr.c)
+target_include_directories(func_attr PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(stmt_shuffle OBJECT src/statements/variables/data/stmt_shuffle.c)
+target_include_directories(stmt_shuffle PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(stmt_decr OBJECT src/statements/variables/assignment/decr.c)
+target_include_directories(stmt_decr PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_arg OBJECT src/eval/functions/math/trig/arg.c)
+target_include_directories(func_arg PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(stmt_demand OBJECT src/statements/io/input/demand.c)
+target_include_directories(stmt_demand PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(stmt_checkbox OBJECT src/statements/ui/widgets/checkbox.c)
+target_include_directories(stmt_checkbox PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(stmt_optionbutton OBJECT src/statements/ui/widgets/optionbutton.c)
+target_include_directories(stmt_optionbutton PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(stmt_label OBJECT src/statements/ui/widgets/label.c)
+target_include_directories(stmt_label PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(stmt_frame OBJECT src/statements/ui/widgets/frame.c)
+target_include_directories(stmt_frame PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(stmt_combobox OBJECT src/statements/ui/widgets/combobox.c)
+target_include_directories(stmt_combobox PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(stmt_hscrollbar OBJECT src/statements/ui/widgets/hscrollbar.c)
+target_include_directories(stmt_hscrollbar PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(stmt_vscrollbar OBJECT src/statements/ui/widgets/vscrollbar.c)
+target_include_directories(stmt_vscrollbar PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(stmt_drivelistbox OBJECT src/statements/ui/widgets/drivelistbox.c)
+target_include_directories(stmt_drivelistbox PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(stmt_dirlistbox OBJECT src/statements/ui/widgets/dirlistbox.c)
+target_include_directories(stmt_dirlistbox PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(stmt_filelistbox OBJECT src/statements/ui/widgets/filelistbox.c)
+target_include_directories(stmt_filelistbox PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(stmt_timercontrol OBJECT src/statements/ui/widgets/timercontrol.c)
+target_include_directories(stmt_timercontrol PUBLIC ${ENGINE_INCLUDE_DIR})
 
 add_library(stmt_const OBJECT src/statements/variables/declaration/const.c)
 target_include_directories(stmt_const PUBLIC ${ENGINE_INCLUDE_DIR})
@@ -1766,10 +2315,43 @@ target_include_directories(func_lbound PUBLIC ${ENGINE_INCLUDE_DIR})
 add_library(func_ubound OBJECT src/eval/functions/math/linear_algebra/ubound.c)
 target_include_directories(func_ubound PUBLIC ${ENGINE_INCLUDE_DIR})
 
+add_library(func_ip OBJECT src/eval/functions/network/func_ip.c)
+target_include_directories(func_ip PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(isnumeric OBJECT src/eval/functions/types/isnumeric.c)
+target_include_directories(isnumeric PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(isarray OBJECT src/eval/functions/types/isarray.c)
+target_include_directories(isarray PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(record_lock OBJECT src/statements/filesystem/file_ops/record_lock.c)
+target_include_directories(record_lock PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(stmt_readu OBJECT src/statements/filesystem/file_ops/readu.c)
+target_include_directories(stmt_readu PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(stmt_writeu OBJECT src/statements/filesystem/file_ops/writeu.c)
+target_include_directories(stmt_writeu PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(stmt_release OBJECT src/statements/filesystem/file_ops/release.c)
+target_include_directories(stmt_release PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(stmt_mutex OBJECT src/statements/system/stmt_mutex.c)
+target_include_directories(stmt_mutex PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_record_lock OBJECT src/eval/functions/filesystem/func_record_lock.c)
+target_include_directories(func_record_lock PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_isam_fn OBJECT src/eval/functions/filesystem/func_isam_fn.c)
+target_include_directories(func_isam_fn PUBLIC ${ENGINE_INCLUDE_DIR})
+
+add_library(func_systems_types OBJECT src/eval/functions/system/func_systems_types.c)
+target_include_directories(func_systems_types PUBLIC ${ENGINE_INCLUDE_DIR})
+
 # Link Micro-Libraries into Core Libraries
 # =====================================================================
 set(ALL_PLAT_LIBS plat_console plat_fs plat_sys plat_time
-    plat_thread plat_dl plat_net plat_regex plat_clipboard)
+    plat_thread plat_dl plat_net plat_regex plat_clipboard plat_hw_speed)
 
 set(ALL_VM_LIBS vm_context vm_exec vm_data vm_error vm_control vm_events vm_math)
 
@@ -1832,6 +2414,9 @@ set(SET_HEADLESS_LIBS
     inkey
     inp
     instr
+    rinstr
+    isnumeric
+    isarray
     int
     lcase
     left
@@ -1861,6 +2446,8 @@ set(SET_HEADLESS_LIBS
     string
     tan
     ticks
+    jiffies
+    ti
     time
     timer
     togglebit
@@ -1871,6 +2458,19 @@ set(SET_HEADLESS_LIBS
     func_eqv
     func_not
     func_min
+    func_avg
+    func_math_sum
+    rol
+    ror
+    bitfield
+    func_delete_str
+    func_remove
+    func_insert
+    func_overlay
+    func_replace
+    func_format
+    func_shell
+    func_exec
     func_max
     func_hypot
     func_mod
@@ -1903,6 +2503,9 @@ set(SET_HEADLESS_LIBS
     func_point_fn
     func_lbound
     func_ubound
+    func_ip
+    isnumeric
+    isarray
 
     stmt_array_ext
     stmt_auto
@@ -1927,7 +2530,11 @@ set(SET_HEADLESS_LIBS
     stmt_pause
     stmt_sys
     stmt_bsave
+    stmt_qsave
+    stmt_qload
     stmt_brun
+    stmt_qrun
+    qheader
     stmt_chdir
     stmt_rmdir
     stmt_lprint
@@ -1987,6 +2594,7 @@ set(SET_HEADLESS_LIBS
     stmt_version
     func_varptr
     stmt_load
+    stmt_merge
     stmt_lock
     stmt_loop
     stmt_lset
@@ -2031,6 +2639,8 @@ set(SET_HEADLESS_LIBS
     stmt_resume
     stmt_return
     stmt_run
+    stmt_compile
+    stmt_jit
     stmt_save
     stmt_screen
     stmt_security
@@ -2073,6 +2683,14 @@ set(SET_HEADLESS_LIBS
     stmt_vdim
     stmt_whenever
     stmt_change
+    stmt_pick_locate
+    stmt_collate
+    stmt_angle
+    stmt_gpib
+    stmt_translate
+    func_pol_rec
+    func_grad
+    func_translate
     stmt_margin
     stmt_zone
     stmt_append
@@ -2089,6 +2707,7 @@ set(SET_HEADLESS_LIBS
     stmt_clr
     stmt_void
     stmt_arrayfill
+    stmt_shuffle
     stmt_sleep
     stmt_suspend
     stmt_key
@@ -2106,12 +2725,17 @@ set(SET_HEADLESS_LIBS
     func_ascii_fn
     func_ups
     func_index_fn
-    func_str_math
+    func_sum
+    func_dif
+    func_prod
+    func_quo
+    func_place
     func_spec_fn
     func_magtape
     func_mag
     func_sys
     func_time_fn
+    func_tim
     mod_module
     rt_task
     rt_gemini
@@ -2121,7 +2745,10 @@ set(SET_HEADLESS_LIBS
     stmt_complex
     func_verify
     rt_session
-    stmt_session
+    stmt_login
+    stmt_who
+    stmt_tty
+    stmt_priority
     stmt_page
     stmt_rewind
     stmt_backspace
@@ -2129,20 +2756,78 @@ set(SET_HEADLESS_LIBS
     func_pick
     func_fid
     func_ath
+    func_hta
     func_tek
     func_fpt
+    func_ipt
+    func_dp
+    func_xp
+    func_dir_fn
+    func_curdir
+    func_setmem
+    func_sseg
+    func_stick
+    func_strig
+    func_paddle
+    func_ptrig
+    func_attr
+    stmt_decr
+    func_arg
+    stmt_demand
     stmt_doevents
     stmt_msgbox
     func_command
-    func_vbdos
-    func_mbf
-    func_financial
-    func_vbdos_filebox
+    func_inputbox
+    func_input_str
+    func_screen_fn
+    func_doevents
+    func_cvsmbf
+    func_cvdmbf
+    func_mksmbf
+    func_mkdmbf
+    func_pv
+    func_fv
+    func_pmt
+    func_ipmt
+    func_ppmt
+    func_nper
+    func_rate
+    func_npv
+    func_irr
+    func_fileopenbox
+    func_filesavebox
     stmt_isam
-    stmt_vbdos_widgets
-    func_pds_datetime
+    stmt_button
+    stmt_menu
+    stmt_textbox
+    stmt_listbox
+    func_dateserial
+    func_timeserial
+    func_datevalue
+    func_timevalue
+    func_day
+    func_month
+    func_year
+    func_weekday
+    func_hour
+    func_minute
+    func_second
+    func_clk
+    func_unixtime
+    func_epochdate
+    func_utc
     stmt_interrupt
-    stmt_vbdos_controls
+    stmt_checkbox
+    stmt_optionbutton
+    stmt_label
+    stmt_frame
+    stmt_combobox
+    stmt_hscrollbar
+    stmt_vscrollbar
+    stmt_drivelistbox
+    stmt_dirlistbox
+    stmt_filelistbox
+    stmt_timercontrol
     stmt_exchange
     stmt_perform
     stmt_invoke
@@ -2215,6 +2900,42 @@ set(SET_HEADLESS_LIBS
     func_sock
     func_packet
     func_crypto
+    stmt_device
+    stmt_xio
+    stmt_slot_io
+    stmt_devctl
+    stmt_user_ipc
+    stmt_log
+    stmt_send
+    stmt_publish
+    stmt_subscribe
+    stmt_unsubscribe
+    stmt_signal
+    func_receive
+    func_devinfo
+    func_devctl
+    stmt_pipe
+    stmt_extern
+    stmt_yield
+    stmt_udx
+    stmt_stack
+    stmt_pragma
+    func_udx
+    func_pn
+    func_rpn
+    func_cpu86
+    func_bios
+    stmt_cpuspeed
+    func_cpuspeed
+    func_clocks
+    record_lock
+    stmt_readu
+    stmt_writeu
+    stmt_release
+    stmt_mutex
+    func_record_lock
+    func_isam_fn
+    func_systems_types
     PARENT_SCOPE
 )
 
@@ -2250,6 +2971,9 @@ set(SET_FULL_STANDARD_LIBS
     inkey
     inp
     instr
+    rinstr
+    isnumeric
+    isarray
     int
     lcase
     left
@@ -2279,6 +3003,8 @@ set(SET_FULL_STANDARD_LIBS
     string
     tan
     ticks
+    jiffies
+    ti
     time
     timer
     togglebit
@@ -2289,6 +3015,19 @@ set(SET_FULL_STANDARD_LIBS
     func_eqv
     func_not
     func_min
+    func_avg
+    func_math_sum
+    rol
+    ror
+    bitfield
+    func_delete_str
+    func_remove
+    func_insert
+    func_overlay
+    func_replace
+    func_format
+    func_shell
+    func_exec
     func_max
     func_hypot
     func_mod
@@ -2321,6 +3060,7 @@ set(SET_FULL_STANDARD_LIBS
     func_point_fn
     func_lbound
     func_ubound
+    func_ip
 
     stmt_array_ext
     stmt_auto
@@ -2345,7 +3085,11 @@ set(SET_FULL_STANDARD_LIBS
     stmt_pause
     stmt_sys
     stmt_bsave
+    stmt_qsave
+    stmt_qload
     stmt_brun
+    stmt_qrun
+    qheader
     stmt_chdir
     stmt_rmdir
     stmt_lprint
@@ -2405,6 +3149,7 @@ set(SET_FULL_STANDARD_LIBS
     stmt_version
     func_varptr
     stmt_load
+    stmt_merge
     stmt_lock
     stmt_loop
     stmt_lset
@@ -2449,6 +3194,8 @@ set(SET_FULL_STANDARD_LIBS
     stmt_resume
     stmt_return
     stmt_run
+    stmt_compile
+    stmt_jit
     stmt_save
     stmt_screen
     stmt_security
@@ -2503,6 +3250,14 @@ set(SET_FULL_STANDARD_LIBS
     stmt_vdim
     stmt_whenever
     stmt_change
+    stmt_pick_locate
+    stmt_collate
+    stmt_angle
+    stmt_gpib
+    stmt_translate
+    func_pol_rec
+    func_grad
+    func_translate
     stmt_margin
     stmt_zone
     stmt_append
@@ -2536,12 +3291,17 @@ set(SET_FULL_STANDARD_LIBS
     func_ascii_fn
     func_ups
     func_index_fn
-    func_str_math
+    func_sum
+    func_dif
+    func_prod
+    func_quo
+    func_place
     func_spec_fn
     func_magtape
     func_mag
     func_sys
     func_time_fn
+    func_tim
     mod_module
     rt_task
     rt_gemini
@@ -2551,7 +3311,10 @@ set(SET_FULL_STANDARD_LIBS
     stmt_complex
     func_verify
     rt_session
-    stmt_session
+    stmt_login
+    stmt_who
+    stmt_tty
+    stmt_priority
     stmt_page
     stmt_rewind
     stmt_backspace
@@ -2559,20 +3322,78 @@ set(SET_FULL_STANDARD_LIBS
     func_pick
     func_fid
     func_ath
+    func_hta
     func_tek
     func_fpt
+    func_ipt
+    func_dp
+    func_xp
+    func_dir_fn
+    func_curdir
+    func_setmem
+    func_sseg
+    func_stick
+    func_strig
+    func_paddle
+    func_ptrig
+    func_attr
+    stmt_decr
+    func_arg
+    stmt_demand
     stmt_doevents
     stmt_msgbox
     func_command
-    func_vbdos
-    func_mbf
-    func_financial
-    func_vbdos_filebox
+    func_inputbox
+    func_input_str
+    func_screen_fn
+    func_doevents
+    func_cvsmbf
+    func_cvdmbf
+    func_mksmbf
+    func_mkdmbf
+    func_pv
+    func_fv
+    func_pmt
+    func_ipmt
+    func_ppmt
+    func_nper
+    func_rate
+    func_npv
+    func_irr
+    func_fileopenbox
+    func_filesavebox
     stmt_isam
-    stmt_vbdos_widgets
-    func_pds_datetime
+    stmt_button
+    stmt_menu
+    stmt_textbox
+    stmt_listbox
+    func_dateserial
+    func_timeserial
+    func_datevalue
+    func_timevalue
+    func_day
+    func_month
+    func_year
+    func_weekday
+    func_hour
+    func_minute
+    func_second
+    func_clk
+    func_unixtime
+    func_epochdate
+    func_utc
     stmt_interrupt
-    stmt_vbdos_controls
+    stmt_checkbox
+    stmt_optionbutton
+    stmt_label
+    stmt_frame
+    stmt_combobox
+    stmt_hscrollbar
+    stmt_vscrollbar
+    stmt_drivelistbox
+    stmt_dirlistbox
+    stmt_filelistbox
+    stmt_timercontrol
     func_dread
     func_aread
     func_touch
@@ -2633,6 +3454,42 @@ set(SET_FULL_STANDARD_LIBS
     func_sock
     func_packet
     func_crypto
+    stmt_device
+    stmt_xio
+    stmt_slot_io
+    stmt_devctl
+    stmt_user_ipc
+    stmt_log
+    stmt_send
+    stmt_publish
+    stmt_subscribe
+    stmt_unsubscribe
+    stmt_signal
+    func_receive
+    func_devinfo
+    func_devctl
+    stmt_pipe
+    stmt_extern
+    stmt_yield
+    stmt_udx
+    stmt_stack
+    stmt_pragma
+    func_udx
+    func_pn
+    func_rpn
+    func_cpu86
+    func_bios
+    stmt_cpuspeed
+    func_cpuspeed
+    func_clocks
+    record_lock
+    stmt_readu
+    stmt_writeu
+    stmt_release
+    stmt_mutex
+    func_record_lock
+    func_isam_fn
+    func_systems_types
     PARENT_SCOPE
 )
 

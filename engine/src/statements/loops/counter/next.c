@@ -10,35 +10,41 @@
 #include "statements/loops/counter/next.h"
 #include "vm/vm.h"
 #include "lexer/lexer.h"
+#include "lexer/lexer_internal.h"
 #include "eval/eval.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/variables.h"
 #include "device/vdev.h"
 #include "security/security.h"
 #include "platform/platform.h"
 #include "memory/memory.h"
-#include <string.h>
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_next_desc = {
+    .name = "NEXT",
+    .category = "Looping / Control Flow",
+    .syntax = "NEXT [var1[, var2...]] | NEXT [var1 [var2...]]",
+    .description = "Increments the FOR loop counter variable(s) and loops back if target bound has not been exceeded.",
+    .error_summary = "Error 1: NEXT Without FOR, Error 2: Syntax Error",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SAFE,
+    .type = FEATURE_STATEMENT
+};
 
 #ifdef _WIN32
-#define strcasecmp _stricmp
+#define runtime_strcasecmp runtime_strcasecmp
 #endif
 
 void stmt_next_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "NEXT",
-        .category = "Looping / Control Flow",
-        .syntax = "NEXT [var1[, var2...]] | NEXT [var1 [var2...]]",
-        .help_text = "Increments the FOR loop counter variable(s) and loops back if target bound has not been exceeded.",
-        .error_codes = "Error 1: NEXT Without FOR, Error 2: Syntax Error"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_next_desc);
 }
 
 static bool is_same_frame_var(const BppForFrame *frame, const char *name) {
     if (!frame || !name) return false;
-    if (strcasecmp(frame->var_name, name) == 0) return true;
+    if (runtime_strcasecmp(frame->var_name, name) == 0) return true;
     for (int k = 0; k < frame->var_count - 1 && k < 7; k++) {
-        if (strcasecmp(frame->extra_vars[k], name) == 0) return true;
+        if (runtime_strcasecmp(frame->extra_vars[k], name) == 0) return true;
     }
     return false;
 }
@@ -47,18 +53,17 @@ static void consume_same_frame_vars(VMContext *vm, LexerContext *lex, const BppF
     while (true) {
         BppToken nxt = lex_peek(lex);
         if (nxt.type == TOK_COMMA) {
-            LexerContext *look_lex = lex_init(vm_get_mem(vm), lex_get_pos(lex));
-            if (!look_lex) break;
-            lex_next(look_lex); // Consume comma
-            BppToken var_tok = lex_next(look_lex);
+            LexerContext look_lex;
+            lex_init_stack(&look_lex, vm_get_mem(vm), lex_get_pos(lex));
+            lex_next(&look_lex); // Consume comma
+            BppToken var_tok = lex_next(&look_lex);
             bool same = false;
             if (var_tok.type == TOK_IDENT || var_tok.type == TOK_KEYWORD) {
                 char nvar[64] = {0};
                 size_t nvlen = (var_tok.length < sizeof(nvar) - 1) ? var_tok.length : sizeof(nvar) - 1;
-                memcpy(nvar, var_tok.start, nvlen);
+                runtime_memcpy(nvar, var_tok.start, nvlen);
                 same = is_same_frame_var(frame, nvar);
             }
-            lex_shutdown(look_lex);
             if (same) {
                 lex_next(lex); // Consume comma
                 lex_next(lex); // Consume identifier
@@ -68,7 +73,7 @@ static void consume_same_frame_vars(VMContext *vm, LexerContext *lex, const BppF
         } else if (nxt.type == TOK_IDENT || nxt.type == TOK_KEYWORD) {
             char nvar[64] = {0};
             size_t nvlen = (nxt.length < sizeof(nvar) - 1) ? nxt.length : sizeof(nvar) - 1;
-            memcpy(nvar, nxt.start, nvlen);
+            runtime_memcpy(nvar, nxt.start, nvlen);
             if (is_same_frame_var(frame, nvar)) {
                 lex_next(lex); // Consume space-separated identifier
             } else {
@@ -82,7 +87,7 @@ static void consume_same_frame_vars(VMContext *vm, LexerContext *lex, const BppF
 
 BppError stmt_next_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     if (!vm || !lex) {
         err.code = 5; err.message = "Null VM or lexer context";
@@ -95,7 +100,7 @@ BppError stmt_next_handler(VMContext *vm, LexerContext *lex) {
         if (tok.type == TOK_IDENT || tok.type == TOK_KEYWORD) {
             lex_next(lex);
             size_t tlen = (tok.length < sizeof(target_var) - 1) ? tok.length : sizeof(target_var) - 1;
-            memcpy(target_var, tok.start, tlen);
+            runtime_memcpy(target_var, tok.start, tlen);
         }
 
         BppForFrame frame;

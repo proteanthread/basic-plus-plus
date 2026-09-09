@@ -1,16 +1,69 @@
-TCASE$ Title Case String Transformation Function
-======================================================================
+TITLE: TCASE$
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/runtime/string/strops.c
+GENERATED: no, hand-written
+STATUS: current
 
-The TCASE$ function formats words in a string into Title Case.
+==============================================================================
+TCASE$ KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: strops.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libboot, libcore, libengine, libhardware, libkernel, libserver, 
+    // NEEDS: libcore (ctype.h, ctype.c, memops.h, memops.c, strops.h)
+    // Freestanding string search and manipulation implementation.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Converts string str$ to Title Case following standard publication casing
+rules.
 
-    res$ = TCASE$(string_expression$)
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    TCASE$(str$)
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = TCASE$(str$)
+    20 PRINT "Result: "; Val
 
-CODE EXAMPLES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 14: Out of String Space
 
-    10 PRINT TCASE$("a tale of two cities")
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      String Functions
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_PURE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  TCASE$
+Category              String Functions
+Syntax                TCASE$(str$)
+Description           Converts string str$ to Title Case following standa...
+Error Summary         Error 14: Out of String Space
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_PURE
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         BASIC++ Standard
+Since Version         6.0.0
+Source File           engine/src/runtime/string/strops.c

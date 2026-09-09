@@ -10,53 +10,28 @@
 // ---- Includes ----
 
 #include "aalib.h"
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
-
-#if defined(_WIN32)
-#include <windows.h>
-#else
-#include <sys/ioctl.h>
-#include <unistd.h>
-#endif
+#include "platform/platform.h"
+#include "runtime/memory/alloc.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "runtime/format/snprintf.h"
 
 struct aa_hardware_params aa_defparams = { 0 };
 struct aa_renderparams aa_defrenderparams = { 0 };
 
 static int query_terminal_width(void) {
-#if defined(_WIN32)
-    CONSOLE_SCREEN_BUFFER_INFO csbi;
-    if (GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi)) {
-        return csbi.srWindow.Right - csbi.srWindow.Left + 1;
-    }
-#else
-    struct winsize w;
-    if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &w) == 0) {
-        return w.ws_col;
-    }
-#endif
-    return 80;
+    int w = platform_console_width();
+    return (w > 0) ? w : 80;
 }
 
 static int query_terminal_height(void) {
-#if defined(_WIN32)
-    CONSOLE_SCREEN_BUFFER_INFO csbi;
-    if (GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi)) {
-        return csbi.srWindow.Bottom - csbi.srWindow.Top + 1;
-    }
-#else
-    struct winsize w;
-    if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &w) == 0) {
-        return w.ws_row;
-    }
-#endif
-    return 25;
+    int h = platform_console_height();
+    return (h > 0) ? h : 25;
 }
 
 aa_context *aa_autoinit(const struct aa_hardware_params *params) {
     (void)params;
-    aa_context *ctx = (aa_context *)calloc(1, sizeof(aa_context));
+    aa_context *ctx = (aa_context *)runtime_calloc(1, sizeof(aa_context));
     if (!ctx) return NULL;
 
     int term_w = query_terminal_width();
@@ -68,25 +43,25 @@ aa_context *aa_autoinit(const struct aa_hardware_params *params) {
     ctx->img_width = ctx->scr_width * 2;
     ctx->img_height = ctx->scr_height * 2;
 
-    ctx->img_buffer = (uint8_t *)calloc(ctx->img_width * ctx->img_height, sizeof(uint8_t));
-    ctx->char_buffer = (char *)calloc(ctx->scr_width * ctx->scr_height, sizeof(char));
+    ctx->img_buffer = (uint8_t *)runtime_calloc(ctx->img_width * ctx->img_height, sizeof(uint8_t));
+    ctx->char_buffer = (char *)runtime_calloc(ctx->scr_width * ctx->scr_height, sizeof(char));
 
     if (!ctx->img_buffer || !ctx->char_buffer) {
         aa_close(ctx);
         return NULL;
     }
 
-    memset(ctx->img_buffer, 0, ctx->img_width * ctx->img_height);
-    memset(ctx->char_buffer, ' ', ctx->scr_width * ctx->scr_height);
+    runtime_memset(ctx->img_buffer, 0, ctx->img_width * ctx->img_height);
+    runtime_memset(ctx->char_buffer, ' ', ctx->scr_width * ctx->scr_height);
 
     return ctx;
 }
 
 void aa_close(aa_context *ctx) {
     if (!ctx) return;
-    if (ctx->img_buffer) free(ctx->img_buffer);
-    if (ctx->char_buffer) free(ctx->char_buffer);
-    free(ctx);
+    if (ctx->img_buffer) runtime_free(ctx->img_buffer);
+    if (ctx->char_buffer) runtime_free(ctx->char_buffer);
+    runtime_free(ctx);
 }
 
 int aa_scrwidth(aa_context *ctx) { return ctx ? ctx->scr_width : 0; }
@@ -125,10 +100,12 @@ int aa_render(aa_context *ctx, const struct aa_renderparams *params, int x1, int
 void aa_flush(aa_context *ctx) {
     if (!ctx || !ctx->char_buffer) return;
 
-    printf("\033[H");
+    platform_console_puts("\033[H");
     for (int y = 0; y < ctx->scr_height; y++) {
-        fwrite(&ctx->char_buffer[y * ctx->scr_width], sizeof(char), ctx->scr_width, stdout);
-        putchar('\n');
+        for (int x = 0; x < ctx->scr_width; x++) {
+            platform_console_putchar(ctx->char_buffer[y * ctx->scr_width + x]);
+        }
+        platform_console_putchar('\n');
     }
-    fflush(stdout);
+    platform_console_flush();
 }

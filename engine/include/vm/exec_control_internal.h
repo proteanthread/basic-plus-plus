@@ -11,13 +11,14 @@
 #ifndef EXEC_CONTROL_INTERNAL_H
 #define EXEC_CONTROL_INTERNAL_H
 
-#include <ctype.h>
+#include "runtime/ctype/ctype.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include "runtime/format/snprintf.h"
+#include "runtime/memory/alloc.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
 
 #include "device/vprinter.h"
 #include "eval/eval.h"

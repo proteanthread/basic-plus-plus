@@ -1,25 +1,71 @@
-FRE Free Memory Query Function
-======================================================================
+TITLE: FRE
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/functions/system/environment/fre.c
+GENERATED: no, hand-written
+STATUS: current
 
-The FRE function returns the number of bytes of available free memory
-or compacts string memory.
+==============================================================================
+FRE KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: fre.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (sys_fn.c)
+    // NEEDS: libcore (memory.h, memory.c)
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libcore (strings.h, strings.c)
+    // NEEDS: libengine (fre.h, string.c)
+    // Provides runtime implementation for the FRE built-in function in BASIC++.
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Returns available memory bytes for subsystem pools (-1: vars, -2: strings, -3:
+stack, -4: files, -5: disk, -6: vdev, -7: vram, -8: net, -9: audio, 0: heap,
+1..64: 1MB RAMBanks).
 
-    free_bytes& = FRE(0)
-    free_bytes& = FRE("")
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    FRE([pool_code])
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = FRE([pool_code])
+    20 PRINT "Result: "; Val
 
-OPERATIONAL RULES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 13: Type Mismatch
 
-  - FRE(0): Available heap memory for variables and arrays.
-  - FRE(""): Compacts string pool and returns available string space.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      System Functions
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_IO
 
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 PRINT "Free RAM: "; FRE(0); " bytes"
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  FRE
+Category              System Functions
+Syntax                FRE([pool_code])
+Description           Returns available memory bytes for subsystem pools ...
+Error Summary         Error 13: Type Mismatch
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_IO
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/eval/functions/system/environment/fre.c

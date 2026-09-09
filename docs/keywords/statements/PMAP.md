@@ -1,27 +1,71 @@
-# `PMAP` Coordinate Viewport Mapping Function
+<!--
+Title:        PMAP
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/device/gfx.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Keyword Definition
+# `PMAP` Keyword Reference
 
-Translates coordinates between physical screen pixel coordinates and logical WINDOW Cartesian coordinates.
+## Source Header
 
-### Syntax Signatures:
-```basic
-physical_coord = PMAP(window_coord, mode%)
-window_coord = PMAP(physical_coord, mode%)
+```c
+// FILENAME: gfx.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore, libengine, libkernel, libplatform
+// Implements virtual device and graphics rendering logic for gfx.
+//
+// ---- Includes ----
 ```
 
-### Error Handling & Boundary Conditions:
-- **Error 5 (ERR_ILLEGAL_FUNCTION_CALL)**: Mode outside range (0..3).
+## 1. Description & Usage
 
-### Operational Notes:
-- Modes: 0 (Window X -> Phys X), 1 (Window Y -> Phys Y), 2 (Phys X -> Window X), 3 (Phys Y -> Window Y).
+Maps coordinate between physical window viewport space and mathematical world coordinates.
+
+## 2. Syntax
+
+```basic
+PMAP(coord, map_type)
+```
+
+## 3. Code Example
+
+```basic
+10 Val = PMAP(coord, map_type)
+20 PRINT "Result: "; Val
+```
+
+## 4. Error Conditions
+
+Error 5: Illegal Function Call
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: QuickBASIC, QBASIC, BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Graphics & Display
+- **Subsystem**: SUBSYSTEM_ADVANCED
+- **Safety Level**: SAFETY_SAFE
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 SCREEN 12
-20 WINDOW (-10, -10)-(10, 10)
-30 PRINT "Physical X for Window X=0: "; PMAP(0, 0)
-```
+| Field | Value |
+|---|---|
+| Name | PMAP |
+| Category | Graphics & Display |
+| Syntax | PMAP(coord, map_type) |
+| Description | Maps coordinate between physical window viewport space and mathematical world coordinates. |
+| Error Summary | Error 5: Illegal Function Call |
+| Subsystem | SUBSYSTEM_ADVANCED |
+| Safety Level | SAFETY_SAFE |
+| Feature Type | FEATURE_STATEMENT |
+| Delimiter Mask | none |
+| Compatibility | QuickBASIC, QBASIC, BASIC++ Standard |
+| Since Version | 6.0.0 |
+| Source File | engine/src/device/gfx.c |

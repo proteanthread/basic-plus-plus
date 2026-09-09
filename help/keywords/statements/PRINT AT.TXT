@@ -1,0 +1,69 @@
+TITLE: PRINT AT
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/core/io/print_pos.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+PRINT AT KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: print_pos.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (print.c)
+    // NEEDS: libcore (snprintf.h, strops.h, memops.h)
+    // NEEDS: libengine (eval.h, stmt.h, print_pos.h)
+    // Implements 2D grid and 1D buffer cursor positioning for PRINT AT and PRINT 
+    //
+    // ---- Includes ----
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Positions cursor at 2D grid coordinates or 1D buffer offset before printing.
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    PRINT AT(x, y) [expr] | PRINT @pos [expr] | PRINT AT{x: col, y: row} [expr]
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = PRINT AT(10, y) [e10pr] | PRINT @pos [e10pr] | PRINT AT{10: col, y: row} [e10pr]
+    20 PRINT "Result: "; Val
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error, Error 5: Illegal Function Call
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Console and Terminal I/O
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SAFE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  PRINT AT
+Category              Console and Terminal I/O
+Syntax                PRINT AT(x, y) [expr] | PRINT @pos [expr] | PRINT A...
+Description           Positions cursor at 2D grid coordinates or 1D buffe...
+Error Summary         Error 2: Syntax Error, Error 5: Illegal Function Call
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/core/io/print_pos.c

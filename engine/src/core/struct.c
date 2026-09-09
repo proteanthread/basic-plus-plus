@@ -7,7 +7,7 @@
 // NEEDED BY: libengine (exec_internal.h, isam.c, ops.c, rpn.c, sub_internal.h)
 // NEEDED BY: libengine (type.c, vm_internal.h)
 // NEEDS: libcore (ctype.h, ctype.c, hal.h, memops.h, memops.c)
-// NEEDS: libcore (snprintf.h, snprintf.c, strings.h, strings.c)
+// NEEDS: libcore (runtime_snprintf.h, runtime_snprintf.c, strings.h, strings.c)
 // NEEDS: libcore (strops.h, strops.c, struct.h)
 // NEEDS: libengine (map.h, map.c, vm.h)
 // Provides core logic and interface definitions for struct within BASIC++.

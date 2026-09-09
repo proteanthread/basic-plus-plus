@@ -1,0 +1,71 @@
+TITLE: SNIFF
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/network/stmt_sniff.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+SNIFF KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: stmt_sniff.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (memops.h, memops.c)
+    // NEEDS: libcore (language_descriptor.h)
+    // NEEDS: libcore (packet_sniff.h, packet_sniff.c, strops.h, strops.c)
+    // NEEDS: libengine (eval.h, eval.c, stmt_sniff.h)
+    // Implements SNIFF statement handler for promiscuous packet capture.
+    //
+    // ---- Includes ----
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Controls promiscuous network packet capture and filtering.
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    SNIFF [ch] [, filter$] | SNIFF ON|OFF|STOP
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM SNIFF Demonstration
+    20 PRINT "SNIFF executed successfully."
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+None
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Hardware & Network
+Subsystem:     SUBSYSTEM_HARDWARE
+Safety Level:  SAFETY_IO
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  SNIFF
+Category              Hardware & Network
+Syntax                SNIFF [ch] [, filter$] | SNIFF ON|OFF|STOP
+Description           Controls promiscuous network packet capture and fil...
+Error Summary         None
+Subsystem             SUBSYSTEM_HARDWARE
+Safety Level          SAFETY_IO
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/network/stmt_sniff.c

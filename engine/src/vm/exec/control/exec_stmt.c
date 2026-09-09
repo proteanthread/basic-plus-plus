@@ -8,13 +8,23 @@
 // ---- Includes ----
 
 #include "vm/exec_control_internal.h"
+#include "lexer/lexer_internal.h"
+#include "runtime/format/snprintf.h"
+#include "runtime/string/strops.h"
+#include "runtime/string/memops.h"
+#include "runtime/memory/alloc.h"
+#include "platform/platform.h"
+#include "runtime/num_format.h"
+#include "device/vdev.h"
+#include "statements/system/stmt_pragma.h"
+#include "hardware/speed_emulate.h"
 
 //
 // ---- Subroutine Hook Dispatcher ----
 
 BppError dispatch_gosub_target(VMContext *vm, LexerContext *lex, BppLineNumber line) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     if (!mem_program_get(vm_get_mem(vm), line)) {
         err.code = 8;
         err.message = "Undefined line number in GOSUB hook/override";
@@ -34,7 +44,7 @@ BppError dispatch_gosub_target(VMContext *vm, LexerContext *lex, BppLineNumber l
 
 BppError execute_single_statement(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BppToken tok = lex_peek(lex);
     vm->current_stmt_pos = tok.start;
@@ -50,7 +60,7 @@ BppError execute_single_statement(VMContext *vm, LexerContext *lex) {
     if (tok.type == TOK_IDENT || tok.type == TOK_KEYWORD) {
         char word_buf[64];
         size_t w_len = (tok.length < 63) ? tok.length : 63;
-        memcpy(word_buf, tok.start, w_len);
+        runtime_memcpy(word_buf, tok.start, w_len);
         word_buf[w_len] = '\0';
 
         const char *expansion = vm_lookup_alias(vm, word_buf);
@@ -58,13 +68,13 @@ BppError execute_single_statement(VMContext *vm, LexerContext *lex) {
             lex_next(lex);
             const char *rest = lex_get_pos(lex);
 
-            char *expanded = (char *)mem_scratch_alloc(vm_get_mem(vm), strlen(expansion) + strlen(rest) + 2);
+            char *expanded = (char *)mem_scratch_alloc(vm_get_mem(vm), runtime_strlen(expansion) + runtime_strlen(rest) + 2);
             if (!expanded) {
                 err.code = 14;
                 err.message = "Scratch memory exhausted during alias expansion";
                 return err;
             }
-            snprintf(expanded, strlen(expansion) + strlen(rest) + 2, "%s %s", expansion, rest);
+            runtime_snprintf(expanded, runtime_strlen(expansion) + runtime_strlen(rest) + 2, "%s %s", expansion, rest);
 
             while (tok.type != TOK_EOF && tok.type != TOK_EOL) {
                 lex_next(lex);
@@ -83,38 +93,55 @@ BppError execute_single_statement(VMContext *vm, LexerContext *lex) {
     if (!vm_check_watchdog(vm, &err)) {
         return err;
     }
+    speed_emulate_pace_statement();
 
-    if (tok.type == TOK_DIRECTIVE) {
+    if (tok.type == TOK_PRAGMA) {
         lex_next(lex);
-        char dir_name[64];
+        char pragma_name[64];
         size_t len = (tok.length < 63) ? tok.length : 63;
-        memcpy(dir_name, tok.as.string, len);
-        dir_name[len] = '\0';
+        runtime_memcpy(pragma_name, tok.as.string, len);
+        pragma_name[len] = '\0';
 
-        if (strcasecmp(dir_name, "KEYWORD") == 0 || strcasecmp(dir_name, "SCOPE") == 0 || strcasecmp(dir_name, "ALIAS") == 0 || strcasecmp(dir_name, "OPTION") == 0) {
-            err = skip_metadata_block(vm, lex, dir_name);
+        if (runtime_strcasecmp(pragma_name, "KEYWORD") == 0 || runtime_strcasecmp(pragma_name, "SCOPE") == 0 || runtime_strcasecmp(pragma_name, "ALIAS") == 0) {
+            err = skip_metadata_block(vm, lex, pragma_name);
             return err;
         }
 
+        err = execute_pragma(vm, lex, tok);
+        return err;
+    }
+
+    if (tok.type == TOK_DIRECTIVE) {
+        lex_next(lex);
         err = execute_directive(vm, lex, tok);
+        if (err.code != 0) {
+            return err;
+        }
+        char dir_name[64];
+        size_t len = (tok.length < 63) ? tok.length : 63;
+        runtime_memcpy(dir_name, tok.as.string, len);
+        dir_name[len] = '\0';
+
+        if (runtime_strcasecmp(dir_name, "KEYWORD") == 0 || runtime_strcasecmp(dir_name, "SCOPE") == 0 || runtime_strcasecmp(dir_name, "ALIAS") == 0) {
+            err = skip_metadata_block(vm, lex, dir_name);
+            return err;
+        }
         return err;
     }
 
     if (tok.type == TOK_PERIOD && vm_with_stack_peek(vm) != NULL) {
         bool is_method_call = false;
-        LexerContext *temp_lex = lex_init(vm_get_mem(vm), lex_get_pos(lex));
-        if (temp_lex) {
-            lex_next(temp_lex);
-            BppToken sub = lex_next(temp_lex);
-            (void)sub;
-            while (lex_peek(temp_lex).type == TOK_PERIOD) {
-                lex_next(temp_lex);
-                lex_next(temp_lex);
-            }
-            if (lex_peek(temp_lex).type == TOK_LPAREN) {
-                is_method_call = true;
-            }
-            lex_shutdown(temp_lex);
+        LexerContext temp_lex;
+        lex_init_stack(&temp_lex, vm_get_mem(vm), lex_get_pos(lex));
+        lex_next(&temp_lex);
+        BppToken sub = lex_next(&temp_lex);
+        (void)sub;
+        while (lex_peek(&temp_lex).type == TOK_PERIOD) {
+            lex_next(&temp_lex);
+            lex_next(&temp_lex);
+        }
+        if (lex_peek(&temp_lex).type == TOK_LPAREN) {
+            is_method_call = true;
         }
 
         if (is_method_call) {
@@ -139,39 +166,38 @@ BppError execute_single_statement(VMContext *vm, LexerContext *lex) {
             kw != KW_ON && kw != KW_DEF && kw != KW_FOR && kw != KW_NEXT &&
             kw != KW_GOTO && kw != KW_GOSUB && kw != KW_DIM && kw != KW_REDIM &&
             kw != KW_INPUT && kw != KW_READ && kw != KW_DATA && kw != KW_REM &&
-            kw != KW_VIEWPORT && kw != KW_WINDOW && kw != KW_SCREEN && kw != KW_COLOR) {
-            LexerContext *temp_lex = lex_init(vm_get_mem(vm), lex_get_pos(lex));
-            if (temp_lex) {
-                lex_next(temp_lex);
-                bool has_dot = false;
-                while (lex_peek(temp_lex).type == TOK_PERIOD) {
-                    has_dot = true;
-                    lex_next(temp_lex);
-                    lex_next(temp_lex);
-                }
-                BppToken next_tok = lex_peek(temp_lex);
-                if (next_tok.type == TOK_LPAREN) {
-                    if (has_dot) is_method_call = true;
-                    int p_depth = 0;
-                    while (next_tok.type != TOK_EOF && next_tok.type != TOK_EOL) {
-                        if (next_tok.type == TOK_LPAREN) p_depth++;
-                        else if (next_tok.type == TOK_RPAREN) {
-                            p_depth--;
-                            if (p_depth == 0) {
-                                lex_next(temp_lex);
-                                break;
-                            }
+            kw != KW_VIEWPORT && kw != KW_WINDOW && kw != KW_SCREEN && kw != KW_COLOR &&
+            kw != KW_SPEED && kw != KW_BAUD && kw != KW_CPUSPEED) {
+            LexerContext temp_lex;
+            lex_init_stack(&temp_lex, vm_get_mem(vm), lex_get_pos(lex));
+            lex_next(&temp_lex);
+            bool has_dot = false;
+            while (lex_peek(&temp_lex).type == TOK_PERIOD) {
+                has_dot = true;
+                lex_next(&temp_lex);
+                lex_next(&temp_lex);
+            }
+            BppToken next_tok = lex_peek(&temp_lex);
+            if (next_tok.type == TOK_LPAREN) {
+                if (has_dot) is_method_call = true;
+                int p_depth = 0;
+                while (next_tok.type != TOK_EOF && next_tok.type != TOK_EOL) {
+                    if (next_tok.type == TOK_LPAREN) p_depth++;
+                    else if (next_tok.type == TOK_RPAREN) {
+                        p_depth--;
+                        if (p_depth == 0) {
+                            lex_next(&temp_lex);
+                            break;
                         }
-                        lex_next(temp_lex);
-                        next_tok = lex_peek(temp_lex);
                     }
-                    next_tok = lex_peek(temp_lex);
+                    lex_next(&temp_lex);
+                    next_tok = lex_peek(&temp_lex);
                 }
-                if (next_tok.type == TOK_EQ) {
-                    is_assignment = true;
-                    is_method_call = false;
-                }
-                lex_shutdown(temp_lex);
+                next_tok = lex_peek(&temp_lex);
+            }
+            if (next_tok.type == TOK_EQ) {
+                is_assignment = true;
+                is_method_call = false;
             }
         }
 
@@ -193,15 +219,23 @@ BppError execute_single_statement(VMContext *vm, LexerContext *lex) {
             lex_next(lex);
         }
     } else if (tok.type == TOK_IDENT) {
-        bool is_method_call = false;
-        if (memchr(tok.start, '.', tok.length) != NULL) {
-            LexerContext *temp_lex = lex_init(vm_get_mem(vm), lex_get_pos(lex));
-            if (temp_lex) {
-                lex_next(temp_lex);
-                BppToken next_tok = lex_next(temp_lex);
-                if (next_tok.type == TOK_LPAREN) is_method_call = true;
-                lex_shutdown(temp_lex);
+        if ((tok.length == 4 && platform_strncasecmp(tok.start, "MID$", 4) == 0) ||
+            (tok.length == 3 && platform_strncasecmp(tok.start, "MID", 3) == 0)) {
+            LexerContext temp_lex;
+            lex_init_stack(&temp_lex, vm_get_mem(vm), lex_get_pos(lex));
+            lex_next(&temp_lex); // Consume MID$
+            if (lex_peek(&temp_lex).type == TOK_LPAREN) {
+                return stmt_mid_stmt_handler(vm, lex);
             }
+        }
+
+        bool is_method_call = false;
+        if (runtime_memchr(tok.start, '.', tok.length) != NULL) {
+            LexerContext temp_lex;
+            lex_init_stack(&temp_lex, vm_get_mem(vm), lex_get_pos(lex));
+            lex_next(&temp_lex);
+            BppToken next_tok = lex_next(&temp_lex);
+            if (next_tok.type == TOK_LPAREN) is_method_call = true;
         }
 
         if (is_method_call) {
@@ -217,34 +251,32 @@ BppError execute_single_statement(VMContext *vm, LexerContext *lex) {
         }
 
         bool is_assign = false;
-        LexerContext *temp_lex = lex_init(vm_get_mem(vm), lex_get_pos(lex));
-        if (temp_lex) {
-            lex_next(temp_lex);
-            while (lex_peek(temp_lex).type == TOK_PERIOD) {
-                lex_next(temp_lex);
-                lex_next(temp_lex);
-            }
-            BppToken next_tok = lex_peek(temp_lex);
-            if (next_tok.type == TOK_LPAREN) {
-                int p_depth = 0;
-                while (next_tok.type != TOK_EOF && next_tok.type != TOK_EOL) {
-                    if (next_tok.type == TOK_LPAREN) p_depth++;
-                    else if (next_tok.type == TOK_RPAREN) {
-                        p_depth--;
-                        if (p_depth == 0) {
-                            lex_next(temp_lex);
-                            break;
-                        }
+        LexerContext temp_lex;
+        lex_init_stack(&temp_lex, vm_get_mem(vm), lex_get_pos(lex));
+        lex_next(&temp_lex);
+        while (lex_peek(&temp_lex).type == TOK_PERIOD) {
+            lex_next(&temp_lex);
+            lex_next(&temp_lex);
+        }
+        BppToken next_tok = lex_peek(&temp_lex);
+        if (next_tok.type == TOK_LPAREN) {
+            int p_depth = 0;
+            while (next_tok.type != TOK_EOF && next_tok.type != TOK_EOL) {
+                if (next_tok.type == TOK_LPAREN) p_depth++;
+                else if (next_tok.type == TOK_RPAREN) {
+                    p_depth--;
+                    if (p_depth == 0) {
+                        lex_next(&temp_lex);
+                        break;
                     }
-                    lex_next(temp_lex);
-                    next_tok = lex_peek(temp_lex);
                 }
-                next_tok = lex_peek(temp_lex);
+                lex_next(&temp_lex);
+                next_tok = lex_peek(&temp_lex);
             }
-            if (next_tok.type == TOK_EQ) {
-                is_assign = true;
-            }
-            lex_shutdown(temp_lex);
+            next_tok = lex_peek(&temp_lex);
+        }
+        if (next_tok.type == TOK_EQ) {
+            is_assign = true;
         }
 
         if (is_assign) {
@@ -252,9 +284,13 @@ BppError execute_single_statement(VMContext *vm, LexerContext *lex) {
         } else {
             char sub_name[256];
             size_t slen = (tok.length < sizeof(sub_name) - 1) ? tok.length : sizeof(sub_name) - 1;
-            memcpy(sub_name, tok.start, slen);
+            runtime_memcpy(sub_name, tok.start, slen);
             sub_name[slen] = '\0';
-            if (find_procedure(vm, sub_name, KW_SUB, NULL, NULL)) {
+            BppKeywordId ident_kw = lex_find_keyword_by_name(sub_name);
+            if (ident_kw != KW_NONE && stmt_lookup(vm->stmt_reg, ident_kw) != NULL) {
+                kw = ident_kw;
+                lex_next(lex);
+            } else if (find_procedure(vm, sub_name, KW_SUB, NULL, NULL)) {
                 kw = KW_CALL;
             } else {
                 kw = KW_LET;
@@ -288,13 +324,13 @@ BppError execute_single_statement(VMContext *vm, LexerContext *lex) {
         }
 
         size_t inner_len = (inner_end >= inner_start) ? (size_t)(inner_end - inner_start) : 0;
-        char *inner_source = (char *)calloc(1, inner_len + 1);
+        char *inner_source = (char *)runtime_calloc(1, inner_len + 1);
         if (!inner_source) {
             err.code = 14; err.message = "Out of memory in statement block";
             return err;
         }
         if (inner_len > 0) {
-            memcpy(inner_source, inner_start, inner_len);
+            runtime_memcpy(inner_source, inner_start, inner_len);
             inner_source[inner_len] = '\0';
         }
 
@@ -304,7 +340,7 @@ BppError execute_single_statement(VMContext *vm, LexerContext *lex) {
             BppToken fvar_tok = lex_next(lex);
             char fvar_name[64] = {0};
             size_t nlen = (fvar_tok.length < 63) ? fvar_tok.length : 63;
-            memcpy(fvar_name, fvar_tok.start, nlen);
+            runtime_memcpy(fvar_name, fvar_tok.start, nlen);
             fvar_name[nlen] = '\0';
             lex_next(lex);
             BValue fstart = eval_expression(vm, lex, &err);
@@ -333,10 +369,10 @@ BppError execute_single_statement(VMContext *vm, LexerContext *lex) {
             while ((fstep >= 0.0 ? cur_val <= fend.as.number : cur_val >= fend.as.number) && iter < max_iter) {
                 var_assign(vc, fvar_name, (BValue){.type = VAL_NUMBER, .as.number = cur_val});
                 if (cond_pos) {
-                    LexerContext *cond_lex = lex_init(vm_get_mem(vm), cond_pos);
-                    lex_next(cond_lex);
-                    BValue cval = eval_expression(vm, cond_lex, &err);
-                    lex_shutdown(cond_lex);
+                    LexerContext cond_lex;
+                    lex_init_stack(&cond_lex, vm_get_mem(vm), cond_pos);
+                    lex_next(&cond_lex);
+                    BValue cval = eval_expression(vm, &cond_lex, &err);
                     bool truth = (cval.as.number != 0.0);
                     if ((cond_kw == KW_IF && !truth) || (cond_kw == KW_UNLESS && truth)) {
                         cur_val += fstep;
@@ -394,11 +430,34 @@ BppError execute_single_statement(VMContext *vm, LexerContext *lex) {
             err = vm_execute_line(vm, inner_source);
         }
 
-        free(inner_source);
+        runtime_free(inner_source);
         return err;
     } else if (tok.type == TOK_EOL || tok.type == TOK_EOF) {
         return err;
     } else {
+        BppError eval_err;
+        runtime_memset(&eval_err, 0, sizeof(eval_err));
+        BValue eval_res = eval_expression(vm, lex, &eval_err);
+        if (eval_err.code == 0) {
+            if (!vm_is_running(vm)) {
+                VDevContext *vdev = vm_get_vdev(vm);
+                if (eval_res.type == VAL_STRING && eval_res.as.string) {
+                    vdev_puts(vdev, str_data(eval_res.as.string));
+                    vdev_puts(vdev, "\n");
+                } else if (eval_res.type == VAL_NUMBER || eval_res.type == VAL_INTEGER) {
+                    char nbuf[64];
+                    num_format_display(nbuf, sizeof(nbuf), eval_res.as.number, false, true);
+                    vdev_puts(vdev, nbuf);
+                    vdev_puts(vdev, "\n");
+                }
+            }
+            if (eval_res.type == VAL_STRING && eval_res.as.string) {
+                str_release(vm_get_str(vm), eval_res.as.string);
+            } else if (eval_res.type == VAL_MAP && eval_res.as.map) {
+                map_release(vm_get_str(vm), eval_res.as.map);
+            }
+            return eval_err;
+        }
         err.code = 2;
         err.message = "Expected statement keyword or assignment";
         return err;
@@ -549,7 +608,7 @@ BppError execute_single_statement(VMContext *vm, LexerContext *lex) {
         lex_next(for_lex);
         BppToken fvar_tok = lex_next(for_lex);
         char fvar_name[64] = {0};
-        memcpy(fvar_name, fvar_tok.start, fvar_tok.length < 63 ? fvar_tok.length : 63);
+        runtime_memcpy(fvar_name, fvar_tok.start, fvar_tok.length < 63 ? fvar_tok.length : 63);
         lex_next(for_lex);
         BValue fstart = eval_expression(vm, for_lex, &err);
         lex_next(for_lex);

@@ -2,7 +2,7 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (goodbye.c, resume.c, suspend.c, system.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libengine (eval.h, eval.c, lexer.h, lexer.c, stmt.h, string.c, task.h)
 // NEEDS: libkernel (security.h, security.c, vdev.h, vdev.c)
 // Provides runtime implementation for the TASK statement in BASIC++.
@@ -15,13 +15,25 @@
 #include "eval/eval.h"
 #include "device/vdev.h"
 #include "security/security.h"
-#include "runtime/micro_lib_metadata.h"
-#include <stdio.h>
-#include <string.h>
+#include "runtime/language_descriptor.h"
+#include "runtime/format/snprintf.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_task_desc = {
+    .name = "TASK",
+    .category = "Control Flow",
+    .syntax = "TASK [filename_expr$ | ::label | LIST | WAIT task_id | KILL task_id]",
+    .description = "Manages concurrent background script tasks and thread execution.",
+    .error_summary = "Error 2: Syntax Error, Error 70: Permission Denied",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SAFE,
+    .type = FEATURE_STATEMENT
+};
 
 BppError stmt_task_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     // Security check: multitasking requires SECOP_SYSTEM privilege
     if (security_check(SECOP_SYSTEM, 0) != 0) {
@@ -86,7 +98,7 @@ BppError stmt_task_handler(VMContext *vm, LexerContext *lex) {
         lex_next(lex); // Consume label
         char label_name[64];
         int len = (int)(tok.length < sizeof(label_name) - 1 ? tok.length : sizeof(label_name) - 1);
-        memcpy(label_name, tok.as.string, len);
+        runtime_memcpy(label_name, tok.as.string, len);
         label_name[len] = '\0';
 
         const char *cur_file = vm_get_current_filename(vm);
@@ -118,13 +130,6 @@ BppError stmt_task_handler(VMContext *vm, LexerContext *lex) {
 }
 
 void stmt_task_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "TASK",
-        .category = "Control Flow",
-        .syntax = "TASK [filename_expr$ | ::label | LIST | WAIT task_id | KILL task_id]",
-        .help_text = "Manages concurrent background script tasks and thread execution.",
-        .error_codes = "Error 2: Syntax Error, Error 70: Permission Denied"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_task_desc);
 }
 

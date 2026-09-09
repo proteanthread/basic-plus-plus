@@ -1,16 +1,70 @@
-LOG2 Binary Logarithm (Base-2) Function
-======================================================================
+TITLE: LOG2
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/functions/math/algebra/log2.c
+GENERATED: no, hand-written
+STATUS: current
 
-The LOG2 function calculates the base-2 binary logarithm.
+==============================================================================
+LOG2 KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: log2.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (math_fn.c)
+    // NEEDS: libcore (math.h, language_descriptor.h, string.h)
+    // NEEDS: libengine (log2.h, math.c, string.c)
+    // Provides runtime implementation for the LOG2 built-in function in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Returns the base-2 logarithm of x (x > 0).
 
-    result# = LOG2(numeric_expression)
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    LOG2(x)
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = LOG2(10)
+    20 PRINT "Result: "; Val
 
-CODE EXAMPLES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 5: Illegal Function Call (x <= 0), Error 13: Type Mismatch (LOG2 expects
+one numeric argument)
 
-    10 PRINT LOG2(8)   : REM Outputs 3
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Math & Trigonometry
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_PURE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  LOG2
+Category              Math & Trigonometry
+Syntax                LOG2(x)
+Description           Returns the base-2 logarithm of x (x > 0).
+Error Summary         Error 5: Illegal Function Call (x <= 0), Error 13: ...
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_PURE
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/eval/functions/math/algebra/log2.c

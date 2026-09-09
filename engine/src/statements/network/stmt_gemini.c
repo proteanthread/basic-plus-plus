@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
 // NEEDS: libcore (gemini.h, gemini.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libcore (strops.h, strops.c)
 // NEEDS: libengine (eval.h, eval.c, lexer.h, lexer.c, stmt_gemini.h, string.c)
 // NEEDS: libengine (vm.h)
@@ -15,14 +15,25 @@
 #include "vm/vm.h"
 #include "lexer/lexer.h"
 #include "eval/eval.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/string/strops.h"
 #include "runtime/gemini.h"
-#include <string.h>
+#include "runtime/string/memops.h"
+
+static const LangDesc g_gemini_desc = {
+    .name = "GEMINI",
+    .category = "Network & Cloud",
+    .syntax = "GEMINI.SERVE [port] [, root_dir$] | GEMINI.GET$(url$)",
+    .description = "Hosts lightweight Gemini TLS capsules or fetches text/gemini documents.",
+    .error_summary = "Error 2: Syntax Error, Error 13: Type Mismatch",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SAFE,
+    .type = FEATURE_STATEMENT
+};
 
 BppError stmt_gemini_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     bool is_cert = false;
     bool is_tofu = false;
@@ -32,10 +43,10 @@ BppError stmt_gemini_handler(VMContext *vm, LexerContext *lex) {
         lex_next(lex);
         BppToken sub = lex_peek(lex);
         if (sub.type == TOK_IDENT || sub.type == TOK_KEYWORD) {
-            if (sub.length == 4 && strncasecmp(sub.start, "CERT", 4) == 0) {
+            if (sub.length == 4 && runtime_strncasecmp(sub.start, "CERT", 4) == 0) {
                 is_cert = true;
                 lex_next(lex);
-            } else if (sub.length == 4 && strncasecmp(sub.start, "TOFU", 4) == 0) {
+            } else if (sub.length == 4 && runtime_strncasecmp(sub.start, "TOFU", 4) == 0) {
                 is_tofu = true;
                 lex_next(lex);
             } else {
@@ -47,10 +58,10 @@ BppError stmt_gemini_handler(VMContext *vm, LexerContext *lex) {
     if (is_tofu) {
         BppToken opt = lex_peek(lex);
         if (opt.type == TOK_IDENT || opt.type == TOK_KEYWORD) {
-            if (opt.length == 2 && strncasecmp(opt.start, "ON", 2) == 0) {
+            if (opt.length == 2 && runtime_strncasecmp(opt.start, "ON", 2) == 0) {
                 net_gemini_set_tofu_enabled(true);
                 lex_next(lex);
-            } else if (opt.length == 3 && strncasecmp(opt.start, "OFF", 3) == 0) {
+            } else if (opt.length == 3 && runtime_strncasecmp(opt.start, "OFF", 3) == 0) {
                 net_gemini_set_tofu_enabled(false);
                 lex_next(lex);
             }
@@ -110,12 +121,5 @@ BppError stmt_gemini_handler(VMContext *vm, LexerContext *lex) {
 }
 
 void stmt_gemini_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "GEMINI",
-        .category = "Network & Cloud",
-        .syntax = "GEMINI.SERVE [port] [, root_dir$] | GEMINI.GET$(url$)",
-        .help_text = "Hosts lightweight Gemini TLS capsules or fetches text/gemini documents.",
-        .error_codes = "Error 2: Syntax Error, Error 13: Type Mismatch"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_gemini_desc);
 }

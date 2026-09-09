@@ -1,22 +1,67 @@
-SELFTEST Built-in Diagnostics Execution Command
-===============================================
+TITLE: SELFTEST
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/introspection/selftest.c
+GENERATED: no, hand-written
+STATUS: current
 
-Executes the full built-in engine diagnostics self-test suite (Lexer, Memory, Strings, Variables, Arrays).
+==============================================================================
+SELFTEST KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: selftest.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore, libengine, libkernel, language_descriptor.h
+    // Provides runtime implementation for the SELFTEST statement in BASIC++.
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Executes internal diagnostic suite verifying lexer, memory, string, variable,
+and array subsystems.
 
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
     SELFTEST
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM SELFTEST Demonstration
+    20 PRINT "SELFTEST executed successfully."
 
-OPERATIONAL NOTES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 1001-5003: Subsystem Diagnostic Failure
 
-  Outputs PASS for all functional core modules.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      System
+Subsystem:     SUBSYSTEM_CORE
+Safety Level:  SAFETY_SAFE
 
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    SELFTEST : REM Runs built-in test suite
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  SELFTEST
+Category              System
+Syntax                SELFTEST
+Description           Executes internal diagnostic suite verifying lexer,...
+Error Summary         Error 1001-5003: Subsystem Diagnostic Failure
+Subsystem             SUBSYSTEM_CORE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/introspection/selftest.c

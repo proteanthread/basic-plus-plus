@@ -8,6 +8,12 @@
 // ---- Includes ----
 
 #include "runtime/variables_internal.h"
+#include "runtime/format/snprintf.h"
+#include "runtime/string/strops.h"
+#include "runtime/string/memops.h"
+#include "runtime/ctype/ctype.h"
+#include "runtime/memory/alloc.h"
+#include "runtime/math/math.h"
 
 //
 // ---- Scopes and Namespaces ----
@@ -16,7 +22,7 @@ static void clear_scope_defs(VariableContext *ctx) {
     ScopeDefMapping *curr = ctx->scope_defs;
     while (curr) {
         ScopeDefMapping *next = curr->next;
-        free(curr);
+        runtime_free(curr);
         curr = next;
     }
     ctx->scope_defs = NULL;
@@ -28,7 +34,7 @@ void var_clear_scope(VariableContext *ctx, const char *prefix) {
     char norm_prefix[256];
     size_t plen = 0;
     while (prefix[plen] && plen < sizeof(norm_prefix) - 1) {
-        norm_prefix[plen] = (char)toupper((unsigned char)prefix[plen]);
+        norm_prefix[plen] = (char)runtime_toupper((unsigned char)prefix[plen]);
         plen++;
     }
     norm_prefix[plen] = '\0';
@@ -37,7 +43,7 @@ void var_clear_scope(VariableContext *ctx, const char *prefix) {
         VarEntry *prev = NULL;
         VarEntry *curr = ctx->buckets[i];
         while (curr) {
-            if (strncmp(curr->name, norm_prefix, plen) == 0) {
+            if (runtime_strncmp(curr->name, norm_prefix, plen) == 0) {
                 VarEntry *temp = curr;
                 if (prev) {
                     prev->next = curr->next;
@@ -50,29 +56,33 @@ void var_clear_scope(VariableContext *ctx, const char *prefix) {
                     str_release(ctx->str, temp->value.as.string);
                 } else if (temp->value.type == VAL_MAP && temp->value.as.map) {
                     map_release(ctx->str, temp->value.as.map);
+                } else if (temp->value.type == VAL_SET && temp->value.as.set) {
+                    set_release(ctx->str, temp->value.as.set);
+                } else if (temp->value.type == VAL_GROUP && temp->value.as.group) {
+                    group_release(ctx->str, temp->value.as.group);
                 }
-                free(temp->name);
-                free(temp);
+                runtime_free(temp->name);
+                runtime_free(temp);
             } else {
                 prev = curr;
                 curr = curr->next;
             }
         }
     }
-    memset(ctx->mru_cache, 0, sizeof(ctx->mru_cache));
-    ctx->mru_head = 0;
+    runtime_memset(ctx->direct_cache, 0, sizeof(ctx->direct_cache));
+    runtime_memset(ctx->fast_scalars_valid, 0, sizeof(ctx->fast_scalars_valid));
 }
 
 void var_set_scope(VariableContext *ctx, const char *scope) {
     if (!ctx) return;
     if (scope) {
-        strncpy(ctx->active_scope, scope, sizeof(ctx->active_scope) - 1);
+        runtime_strncpy(ctx->active_scope, scope, sizeof(ctx->active_scope) - 1);
         ctx->active_scope[sizeof(ctx->active_scope) - 1] = '\0';
     } else {
         ctx->active_scope[0] = '\0';
     }
-    memset(ctx->mru_cache, 0, sizeof(ctx->mru_cache));
-    ctx->mru_head = 0;
+    runtime_memset(ctx->direct_cache, 0, sizeof(ctx->direct_cache));
+    runtime_memset(ctx->fast_scalars_valid, 0, sizeof(ctx->fast_scalars_valid));
 }
 
 void var_set_shared(VariableContext *ctx, const char *name) {
@@ -86,7 +96,7 @@ void var_set_shared(VariableContext *ctx, const char *name) {
 void var_set_namespace(VariableContext *ctx, const char *ns) {
     if (!ctx) return;
     if (ns) {
-        strncpy(ctx->active_namespace, ns, sizeof(ctx->active_namespace) - 1);
+        runtime_strncpy(ctx->active_namespace, ns, sizeof(ctx->active_namespace) - 1);
         ctx->active_namespace[sizeof(ctx->active_namespace) - 1] = '\0';
     } else {
         ctx->active_namespace[0] = '\0';
@@ -113,19 +123,19 @@ void var_set_case_sensitive(VariableContext *ctx, bool enable) {
 // ---- Default Types (DEFINT, DEFSTR, etc.) ----
 
 static char get_base_letter(const char *name) {
-    const char *p = strchr(name, ':');
+    const char *p = runtime_strchr(name, ':');
     if (p) p++; else p = name;
-    const char *dot = strchr(p, '.');
+    const char *dot = runtime_strchr(p, '.');
     if (dot) p = dot + 1;
-    while (*p && !isalpha((unsigned char)*p)) p++;
-    if (*p) return (char)toupper((unsigned char)*p);
+    while (*p && !runtime_isalpha((unsigned char)*p)) p++;
+    if (*p) return (char)runtime_toupper((unsigned char)*p);
     return '\0';
 }
 
 void var_set_def_type(VariableContext *ctx, const char *scope, char start_letter, char end_letter, ValueType type) {
     if (!ctx) return;
-    char start = (char)toupper((unsigned char)start_letter);
-    char end = (char)toupper((unsigned char)end_letter);
+    char start = (char)runtime_toupper((unsigned char)start_letter);
+    char end = (char)runtime_toupper((unsigned char)end_letter);
     if (start < 'A' || start > 'Z') start = 'A';
     if (end < 'A' || end > 'Z') end = 'Z';
     if (start > end) {
@@ -137,15 +147,15 @@ void var_set_def_type(VariableContext *ctx, const char *scope, char start_letter
     if (scope && scope[0] != '\0') {
         ScopeDefMapping *curr = ctx->scope_defs;
         while (curr) {
-            if (strcmp(curr->scope_name, scope) == 0) {
+            if (runtime_strcmp(curr->scope_name, scope) == 0) {
                 break;
             }
             curr = curr->next;
         }
         if (!curr) {
-            curr = (ScopeDefMapping *)calloc(1, sizeof(ScopeDefMapping));
+            curr = (ScopeDefMapping *)runtime_calloc(1, sizeof(ScopeDefMapping));
             if (!curr) return;
-            strncpy(curr->scope_name, scope, sizeof(curr->scope_name) - 1);
+            runtime_strncpy(curr->scope_name, scope, sizeof(curr->scope_name) - 1);
             curr->scope_name[sizeof(curr->scope_name) - 1] = '\0';
             for (int i = 0; i < 26; ++i) {
                 curr->def_types[i] = ctx->global_def_types[i];
@@ -160,14 +170,23 @@ void var_set_def_type(VariableContext *ctx, const char *scope, char start_letter
         }
     } else {
         for (char c = start; c <= end; ++c) {
-            ctx->global_def_types[c - 'A'] = type;
+            int idx = c - 'A';
+            ctx->global_def_types[idx] = type;
+            ctx->fast_scalars_valid[idx] = false;
+            ctx->fast_scalars[idx].type = type;
+            if (type == VAL_INTEGER) {
+                ctx->fast_scalars[idx].as.number = (double)((int32_t)ctx->fast_scalars[idx].as.number);
+            }
+        }
+        for (int i = 0; i < DIRECT_VAR_CACHE_SIZE; ++i) {
+            ctx->direct_cache[i].valid = false;
         }
     }
 
     for (int b = 0; b < HASH_BUCKETS; ++b) {
         VarEntry *entry = ctx->buckets[b];
         while (entry) {
-            size_t nlen = strlen(entry->name);
+            size_t nlen = runtime_strlen(entry->name);
             if (nlen > 0) {
                 char last_ch = entry->name[nlen - 1];
                 if (last_ch != '$' && last_ch != '%' && last_ch != '&' && last_ch != '!' && last_ch != '#') {
@@ -187,14 +206,14 @@ void var_set_def_type(VariableContext *ctx, const char *scope, char start_letter
 
 ValueType var_get_def_type(VariableContext *ctx, const char *scope, char letter) {
     if (!ctx) return VAL_NUMBER;
-    char l = (char)toupper((unsigned char)letter);
+    char l = (char)runtime_toupper((unsigned char)letter);
     if (l < 'A' || l > 'Z') return VAL_NUMBER;
     int idx = l - 'A';
 
     if (scope && scope[0] != '\0') {
         ScopeDefMapping *curr = ctx->scope_defs;
         while (curr) {
-            if (strcmp(curr->scope_name, scope) == 0) {
+            if (runtime_strcmp(curr->scope_name, scope) == 0) {
                 return curr->def_types[idx];
             }
             curr = curr->next;
@@ -211,12 +230,12 @@ void var_mark_common(VariableContext *ctx, const char *name) {
     char norm[64];
     normalize_name(ctx, norm, name, sizeof(norm));
     for (int i = 0; i < ctx->common_count; ++i) {
-        if (strcmp(ctx->common_vars[i], norm) == 0) {
+        if (runtime_strcmp(ctx->common_vars[i], norm) == 0) {
             return;
         }
     }
     if (ctx->common_count < 128) {
-        snprintf(ctx->common_vars[ctx->common_count++], 64, "%s", norm);
+        runtime_snprintf(ctx->common_vars[ctx->common_count++], 64, "%s", norm);
     }
 }
 
@@ -225,19 +244,19 @@ bool var_is_common(VariableContext *ctx, const char *name) {
     char norm[64];
     normalize_name(ctx, norm, name, sizeof(norm));
 
-    const char *base = strchr(norm, ':');
+    const char *base = runtime_strchr(norm, ':');
     if (base) {
         base++;
     } else {
         base = norm;
     }
-    const char *dot = strchr(base, '.');
+    const char *dot = runtime_strchr(base, '.');
     if (dot) {
         base = dot + 1;
     }
 
     for (int i = 0; i < ctx->common_count; ++i) {
-        if (strcmp(ctx->common_vars[i], base) == 0) {
+        if (runtime_strcmp(ctx->common_vars[i], base) == 0) {
             return true;
         }
     }
@@ -259,13 +278,17 @@ void var_clear_for_chain(VariableContext *ctx) {
                 } else {
                     ctx->buckets[i] = next;
                 }
-                free(entry->name);
+                runtime_free(entry->name);
                 if ((entry->value.type == VAL_STRING || entry->value.type == VAL_ARRAY_REF) && entry->value.as.string) {
                     str_release(ctx->str, entry->value.as.string);
                 } else if (entry->value.type == VAL_MAP && entry->value.as.map) {
                     map_release(ctx->str, entry->value.as.map);
+                } else if (entry->value.type == VAL_SET && entry->value.as.set) {
+                    set_release(ctx->str, entry->value.as.set);
+                } else if (entry->value.type == VAL_GROUP && entry->value.as.group) {
+                    group_release(ctx->str, entry->value.as.group);
                 }
-                free(entry);
+                runtime_free(entry);
             }
             entry = next;
         }
@@ -276,8 +299,8 @@ void var_clear_for_chain(VariableContext *ctx) {
     for (int i = 0; i < 26; ++i) {
         ctx->global_def_types[i] = VAL_NUMBER;
     }
-    memset(ctx->mru_cache, 0, sizeof(ctx->mru_cache));
-    ctx->mru_head = 0;
+    runtime_memset(ctx->direct_cache, 0, sizeof(ctx->direct_cache));
+    runtime_memset(ctx->fast_scalars_valid, 0, sizeof(ctx->fast_scalars_valid));
 }
 
 //
@@ -301,23 +324,23 @@ void var_print_all(VariableContext *ctx, void *vdev_ptr) {
                 num_format_display(val_buf, sizeof(val_buf), entry->value.as.number, false, false);
             } else if (entry->value.type == VAL_STRING) {
                 if (entry->value.as.string) {
-                    snprintf(val_buf, sizeof(val_buf), "\"%s\"", str_data(entry->value.as.string));
+                    runtime_snprintf(val_buf, sizeof(val_buf), "\"%s\"", str_data(entry->value.as.string));
                 } else {
-                    snprintf(val_buf, sizeof(val_buf), "\"\"");
+                    runtime_snprintf(val_buf, sizeof(val_buf), "\"\"");
                 }
             } else if (entry->value.type == VAL_INTEGER) {
-                snprintf(val_buf, sizeof(val_buf), "%d", (int)entry->value.as.number);
+                runtime_snprintf(val_buf, sizeof(val_buf), "%d", (int)entry->value.as.number);
             } else if (entry->value.type == VAL_COMPLEX) {
                 char r_buf[64], i_buf[64];
                 num_format_display(r_buf, sizeof(r_buf), entry->value.as.complex_val.real, false, false);
-                num_format_display(i_buf, sizeof(i_buf), fabs(entry->value.as.complex_val.imag), false, false);
+                num_format_display(i_buf, sizeof(i_buf), runtime_fabs(entry->value.as.complex_val.imag), false, false);
                 if (entry->value.as.complex_val.imag < 0) {
-                    snprintf(val_buf, sizeof(val_buf), "%s-%sI", r_buf, i_buf);
+                    runtime_snprintf(val_buf, sizeof(val_buf), "%s-%sI", r_buf, i_buf);
                 } else {
-                    snprintf(val_buf, sizeof(val_buf), "%s+%sI", r_buf, i_buf);
+                    runtime_snprintf(val_buf, sizeof(val_buf), "%s+%sI", r_buf, i_buf);
                 }
             } else {
-                snprintf(val_buf, sizeof(val_buf), "<unhandled type>");
+                runtime_snprintf(val_buf, sizeof(val_buf), "<unhandled type>");
             }
 
             if (vdev) {
@@ -337,7 +360,6 @@ void var_print_all(VariableContext *ctx, void *vdev_ptr) {
 
 bool var_serialize(VariableContext *ctx, void *fp) {
     if (!ctx || !fp) return false;
-    FILE *f = (FILE *)fp;
 
     uint32_t count = 0;
     for (int i = 0; i < HASH_BUCKETS; i++) {
@@ -348,37 +370,37 @@ bool var_serialize(VariableContext *ctx, void *fp) {
         }
     }
 
-    fwrite(&count, sizeof(count), 1, f);
+    platform_file_write(fp, &count, sizeof(count));
 
     for (int i = 0; i < HASH_BUCKETS; i++) {
         VarEntry *entry = ctx->buckets[i];
         while (entry) {
-            uint32_t name_len = (uint32_t)strlen(entry->name);
-            fwrite(&name_len, sizeof(name_len), 1, f);
-            fwrite(entry->name, 1, name_len, f);
+            uint32_t name_len = (uint32_t)runtime_strlen(entry->name);
+            platform_file_write(fp, &name_len, sizeof(name_len));
+            platform_file_write(fp, entry->name, name_len);
 
             uint32_t type = (uint32_t)entry->value.type;
-            fwrite(&type, sizeof(type), 1, f);
+            platform_file_write(fp, &type, sizeof(type));
 
             if (entry->value.type == VAL_NUMBER || entry->value.type == VAL_INTEGER) {
-                fwrite(&entry->value.as.number, sizeof(double), 1, f);
+                platform_file_write(fp, &entry->value.as.number, sizeof(double));
             } else if (entry->value.type == VAL_STRING) {
                 const char *s = str_data(entry->value.as.string);
-                uint32_t s_len = s ? (uint32_t)strlen(s) : 0;
-                fwrite(&s_len, sizeof(s_len), 1, f);
+                uint32_t s_len = s ? (uint32_t)runtime_strlen(s) : 0;
+                platform_file_write(fp, &s_len, sizeof(s_len));
                 if (s_len > 0) {
-                    fwrite(s, 1, s_len, f);
+                    platform_file_write(fp, s, s_len);
                 }
             } else if (entry->value.type == VAL_ARRAY_REF) {
-                uint32_t a_len = entry->value.as.array_name ? (uint32_t)strlen(entry->value.as.array_name) : 0;
-                fwrite(&a_len, sizeof(a_len), 1, f);
+                uint32_t a_len = entry->value.as.array_name ? (uint32_t)runtime_strlen(entry->value.as.array_name) : 0;
+                platform_file_write(fp, &a_len, sizeof(a_len));
                 if (a_len > 0) {
-                    fwrite(entry->value.as.array_name, 1, a_len, f);
+                    platform_file_write(fp, entry->value.as.array_name, a_len);
                 }
             } else if (entry->value.type == VAL_FIELD_STRING) {
-                fwrite(&entry->value.as.field_str.channel, sizeof(int), 1, f);
-                fwrite(&entry->value.as.field_str.offset, sizeof(int), 1, f);
-                fwrite(&entry->value.as.field_str.length, sizeof(int), 1, f);
+                platform_file_write(fp, &entry->value.as.field_str.channel, sizeof(int));
+                platform_file_write(fp, &entry->value.as.field_str.offset, sizeof(int));
+                platform_file_write(fp, &entry->value.as.field_str.length, sizeof(int));
             }
             entry = entry->next;
         }
@@ -388,95 +410,94 @@ bool var_serialize(VariableContext *ctx, void *fp) {
 
 bool var_deserialize(VariableContext *ctx, void *fp) {
     if (!ctx || !fp) return false;
-    FILE *f = (FILE *)fp;
 
     var_clear_all(ctx);
 
     uint32_t count = 0;
-    if (fread(&count, sizeof(count), 1, f) != 1) return false;
+    if (platform_file_read(fp, &count, sizeof(count)) != sizeof(count)) return false;
 
     for (uint32_t i = 0; i < count; i++) {
         uint32_t name_len = 0;
-        if (fread(&name_len, sizeof(name_len), 1, f) != 1) return false;
+        if (platform_file_read(fp, &name_len, sizeof(name_len)) != sizeof(name_len)) return false;
         if (name_len == 0 || name_len > 1024) return false;
 
-        char *name = (char *)calloc(1, (size_t)name_len + 1);
+        char *name = (char *)runtime_calloc(1, (size_t)name_len + 1);
         if (!name) return false;
-        if (fread(name, 1, name_len, f) != name_len) {
-            free(name);
+        if (platform_file_read(fp, name, name_len) != name_len) {
+            runtime_free(name);
             return false;
         }
         name[name_len] = '\0';
 
         uint32_t type = 0;
-        if (fread(&type, sizeof(type), 1, f) != 1) {
-            free(name);
+        if (platform_file_read(fp, &type, sizeof(type)) != sizeof(type)) {
+            runtime_free(name);
             return false;
         }
 
         BValue val;
-        memset(&val, 0, sizeof(val));
+        runtime_memset(&val, 0, sizeof(val));
         val.type = (ValueType)type;
 
         if (val.type == VAL_NUMBER || val.type == VAL_INTEGER) {
-            if (fread(&val.as.number, sizeof(double), 1, f) != 1) {
-                free(name);
+            if (platform_file_read(fp, &val.as.number, sizeof(double)) != sizeof(double)) {
+                runtime_free(name);
                 return false;
             }
         } else if (val.type == VAL_STRING) {
             uint32_t s_len = 0;
-            if (fread(&s_len, sizeof(s_len), 1, f) != 1) {
-                free(name);
+            if (platform_file_read(fp, &s_len, sizeof(s_len)) != sizeof(s_len)) {
+                runtime_free(name);
                 return false;
             }
             if (s_len > 0) {
-                char *s_buf = (char *)calloc(1, s_len + 1);
-                if (!s_buf) { free(name); return false; }
-                if (fread(s_buf, 1, s_len, f) != s_len) {
-                    free(s_buf);
-                    free(name);
+                char *s_buf = (char *)runtime_calloc(1, s_len + 1);
+                if (!s_buf) { runtime_free(name); return false; }
+                if (platform_file_read(fp, s_buf, s_len) != s_len) {
+                    runtime_free(s_buf);
+                    runtime_free(name);
                     return false;
                 }
                 s_buf[s_len] = '\0';
                 val.as.string = str_create(ctx->str, s_buf, s_len);
-                free(s_buf);
+                runtime_free(s_buf);
             } else {
                 val.as.string = NULL;
             }
         } else if (val.type == VAL_ARRAY_REF) {
             uint32_t a_len = 0;
-            if (fread(&a_len, sizeof(a_len), 1, f) != 1) {
-                free(name);
+            if (platform_file_read(fp, &a_len, sizeof(a_len)) != sizeof(a_len)) {
+                runtime_free(name);
                 return false;
             }
             if (a_len > 0) {
-                char *a_buf = (char *)calloc(1, a_len + 1);
-                if (!a_buf) { free(name); return false; }
-                if (fread(a_buf, 1, a_len, f) != a_len) {
-                    free(a_buf);
-                    free(name);
+                char *a_buf = (char *)runtime_calloc(1, a_len + 1);
+                if (!a_buf) { runtime_free(name); return false; }
+                if (platform_file_read(fp, a_buf, a_len) != a_len) {
+                    runtime_free(a_buf);
+                    runtime_free(name);
                     return false;
                 }
                 a_buf[a_len] = '\0';
                 val.as.array_name = basic_strdup(a_buf);
-                free(a_buf);
+                runtime_free(a_buf);
             } else {
                 val.as.array_name = NULL;
             }
         } else if (val.type == VAL_FIELD_STRING) {
-            if (fread(&val.as.field_str.channel, sizeof(int), 1, f) != 1 ||
-                fread(&val.as.field_str.offset, sizeof(int), 1, f) != 1 ||
-                fread(&val.as.field_str.length, sizeof(int), 1, f) != 1) {
-                free(name);
+            if (platform_file_read(fp, &val.as.field_str.channel, sizeof(int)) != sizeof(int) ||
+                platform_file_read(fp, &val.as.field_str.offset, sizeof(int)) != sizeof(int) ||
+                platform_file_read(fp, &val.as.field_str.length, sizeof(int)) != sizeof(int)) {
+                runtime_free(name);
                 return false;
             }
         }
 
-        VarEntry *new_entry = (VarEntry *)calloc(1, sizeof(VarEntry));
+        VarEntry *new_entry = (VarEntry *)runtime_calloc(1, sizeof(VarEntry));
         if (!new_entry) {
-            if (val.type == VAL_ARRAY_REF && val.as.array_name) free((void *)val.as.array_name);
+            if (val.type == VAL_ARRAY_REF && val.as.array_name) runtime_free((void *)val.as.array_name);
             if (val.type == VAL_STRING && val.as.string) str_release(ctx->str, val.as.string);
-            free(name);
+            runtime_free(name);
             return false;
         }
         new_entry->name = name;

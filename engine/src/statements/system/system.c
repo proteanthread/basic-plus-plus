@@ -18,20 +18,29 @@
 #include "platform/platform.h"
 #include "memory/memory.h"
 #include "types/version.h"
-#include "runtime/micro_lib_metadata.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#if defined(_WIN32)
-#include <windows.h>
-#else
-#include <unistd.h>
-#endif
+#include "runtime/language_descriptor.h"
+
+static const LangDesc g_system_desc = {
+    .name = "SYSTEM",
+    .category = "System & Environ",
+    .syntax = "SYSTEM | BYE | SHELL [command_string$]",
+    .description = "Exits BASIC++ interpreter session or executes an operating system command.",
+    .error_summary = "Error 2: Syntax Error, Error 70: Permission Denied",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SYSTEM,
+    .type = FEATURE_STATEMENT
+};
+
+#include "runtime/format/snprintf.h"
+#include "runtime/memory/alloc.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+
 
 extern void platform_execute_shell(void);
 BppError stmt_bye_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     BppToken tok = lex_peek(lex);
     if (tok.type != TOK_EOF && tok.type != TOK_EOL && tok.type != TOK_BACKSLASH) {
         err.code = 2;
@@ -50,7 +59,7 @@ BppError stmt_bye_handler(VMContext *vm, LexerContext *lex) {
 
 BppError stmt_system_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BppToken tok = lex_peek(lex);
     if (tok.type == TOK_EOF || tok.type == TOK_EOL || tok.type == TOK_BACKSLASH) {
@@ -92,11 +101,7 @@ BppError stmt_system_handler(VMContext *vm, LexerContext *lex) {
         int code = (int)code_val.as.number;
         switch (code) {
             case 0:
-#if defined(_WIN32)
-                vdev_printf(vdev, "Process ID: %lu\n", (unsigned long)GetCurrentProcessId());
-#else
-                vdev_printf(vdev, "Process ID: %ld\n", (long)getpid());
-#endif
+                vdev_printf(vdev, "Process ID: %ld\n", platform_get_pid());
                 break;
             case 1:
                 vdev_printf(vdev, "Platform: %s (%s)\n", platform_name(), BASIC_PROFILE_NAME);
@@ -152,25 +157,25 @@ BppError stmt_system_handler(VMContext *vm, LexerContext *lex) {
         char query[256];
         const char *src = (tok.type == TOK_STRING) ? tok.as.string : tok.start;
         int len = (int)(tok.length < sizeof(query) - 1 ? tok.length : sizeof(query) - 1);
-        memcpy(query, src, len);
+        runtime_memcpy(query, src, len);
         query[len] = '\0';
 
         for (int i = 0; query[i]; i++) {
             if (query[i] >= 'a' && query[i] <= 'z') query[i] -= 32;
         }
 
-        if (strcmp(query, "PLATFORM") == 0) {
+        if (runtime_strcmp(query, "PLATFORM") == 0) {
             vdev_printf(vdev, "%s (%s)\n", platform_name(), BASIC_PROFILE_NAME);
-        } else if (strcmp(query, "VERSION") == 0) {
+        } else if (runtime_strcmp(query, "VERSION") == 0) {
             vdev_printf(vdev, "%s v%s \"%s\"\n", BASIC_NAME, BASIC_VERSION_STRING, BASIC_VERSION_CODENAME);
-        } else if (strcmp(query, "MEMORY") == 0) {
+        } else if (runtime_strcmp(query, "MEMORY") == 0) {
             size_t free_ram = mem_get_free_ram(vm_get_mem(vm));
             size_t total_ram = free_ram + mem_get_used_ram(vm_get_mem(vm));
             char free_buf[64], total_buf[64];
             mem_format_size(free_ram, free_buf, sizeof(free_buf));
             mem_format_size(total_ram, total_buf, sizeof(total_buf));
             vdev_printf(vdev, "Free RAM: %s / %s total\n", free_buf, total_buf);
-        } else if (strcmp(query, "COMPILER") == 0) {
+        } else if (runtime_strcmp(query, "COMPILER") == 0) {
 #if defined(_MSC_VER)
             vdev_printf(vdev, "MSVC %d\n", _MSC_VER);
 #elif defined(__GNUC__) && !defined(__clang__)
@@ -180,7 +185,7 @@ BppError stmt_system_handler(VMContext *vm, LexerContext *lex) {
 #else
             vdev_puts(vdev, "Unknown C17 Compiler\n");
 #endif
-        } else if (strcmp(query, "WORDSIZE") == 0) {
+        } else if (runtime_strcmp(query, "WORDSIZE") == 0) {
             vdev_printf(vdev, "%d-bit\n", (int)(sizeof(void*) * 8));
         } else {
             vdev_printf(vdev, "Unknown query '%s'. Use PLATFORM, VERSION, MEMORY, COMPILER, or WORDSIZE.\n", query);
@@ -194,42 +199,29 @@ BppError stmt_system_handler(VMContext *vm, LexerContext *lex) {
 }
 
 
-BppError stmt_devices_handler(VMContext *vm, LexerContext *lex) {
-    BppError err;
-    memset(&err, 0, sizeof(err));
-    (void)vm; (void)lex;
-    return err;
-}
 
 BppError stmt_nwrite_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     (void)vm; (void)lex;
     return err;
 }
 
 BppError stmt_statesave_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     (void)vm; (void)lex;
     return err;
 }
 
 BppError stmt_stateload_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     (void)vm; (void)lex;
     return err;
 }
 
 void stmt_system_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "SYSTEM",
-        .category = "System & Environ",
-        .syntax = "SYSTEM | BYE | SHELL [command_string$]",
-        .help_text = "Exits BASIC++ interpreter session or executes an operating system command.",
-        .error_codes = "Error 2: Syntax Error, Error 70: Permission Denied"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_system_desc);
 }
 

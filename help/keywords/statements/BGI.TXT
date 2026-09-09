@@ -1,0 +1,70 @@
+TITLE: BGI
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/graphics/bgi.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+BGI KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: bgi.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libcore, libengine, libhardware, libkernel
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libcore (strings.h, strings.c)
+    // NEEDS: libengine (bgi.h, eval.h, eval.c, stmt.h, string.c, vm.h)
+    // Provides runtime implementation for the BGI statement in BASIC++.
+    //
+    // ---- Includes ----
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Configures custom screen resolution and BGI graphics mode settings.
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    SET GRAPHICS width, height [, bpp]
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM BGI Demonstration
+    20 PRINT "BGI executed successfully."
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 5: Illegal Function Call (invalid graphics dimensions)
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Graphics Interface
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SAFE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  BGI
+Category              Graphics Interface
+Syntax                SET GRAPHICS width, height [, bpp]
+Description           Configures custom screen resolution and BGI graphic...
+Error Summary         Error 5: Illegal Function Call (invalid graphics di...
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/graphics/bgi.c

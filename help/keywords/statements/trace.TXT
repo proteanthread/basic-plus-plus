@@ -1,25 +1,71 @@
-TRACE Execution Tracing Statement
-=================================
+TITLE: TRACE
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/debug/logger.c
+GENERATED: no, hand-written
+STATUS: current
 
-Toggles line-by-line program execution tracing on the console.
+==============================================================================
+TRACE KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: logger.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: baspp.exe, bpp.exe, bs.exe, libboot, libcore, libengine, libkern
+    // NEEDS: libcore (alloc.h, alloc.c, hal.h, logger.h, memops.h, memops.c)
+    // NEEDS: libcore (runtime_snprintf.h, runtime_snprintf.c, strops.h, strops.c)
+    // NEEDS: libplatform (platform.h)
+    // Provides multi-level logging, circular ring buffer, and pluggable sink inte
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Configures execution line tracing, printing line numbers to console as they
+execute.
 
-    TRACE ON | OFF
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    TRACE {ON | OFF | line_num}
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM TRACE Demonstration
+    20 PRINT "TRACE executed successfully."
 
-OPERATIONAL NOTES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+None
 
-  Displays executed line numbers during runtime.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       Vintage BASIC, BASIC++ Standard
+Since Version: 6.0.0
+Category:      Debugging
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SAFE
 
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 TRACE ON
-    20 X = 10
-    30 Y = 20
-    40 TRACE OFF
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  TRACE
+Category              Debugging
+Syntax                TRACE {ON | OFF | line_num}
+Description           Configures execution line tracing, printing line nu...
+Error Summary         None
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         Vintage BASIC, BASIC++ Standard
+Since Version         6.0.0
+Source File           engine/src/debug/logger.c

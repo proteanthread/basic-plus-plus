@@ -15,6 +15,7 @@
 #include "hal/hal.h"
 #include "runtime/string/memops.h"
 #include "runtime/strings.h"
+#include "bios/bios.h"
 
 #define MAX_HANDLES 65536
 
@@ -126,7 +127,13 @@ int vmem_peek(VMemContext *ctx, uint16_t address, uint8_t *out_val) {
     BValue *val = vmem_resolve_handle(ctx, handle, &is_string_data);
     
     if (!val) {
-        // Not a registered handle. Could be mock BIOS or invalid memory
+        // Fallback: Real-mode 8086 physical segmented memory (IBM PC BIOS flat 1MB space)
+        extern BiosContext *g_bios_context;
+        if (g_bios_context) {
+            uint32_t phys_addr = (((uint32_t)ctx->def_seg << 4) + address) & 0xFFFFF;
+            *out_val = bios_peek(g_bios_context, phys_addr);
+            return 1;
+        }
         return 0;
     }
     
@@ -156,7 +163,13 @@ int vmem_poke(VMemContext *ctx, uint16_t address, uint8_t val_to_write) {
     BValue *val = vmem_resolve_handle(ctx, handle, &is_string_data);
     
     if (!val) {
-        // Unmapped memory block. Could be mock BIOS (not handled here) or invalid.
+        // Fallback: Real-mode 8086 physical segmented memory (IBM PC BIOS flat 1MB space)
+        extern BiosContext *g_bios_context;
+        if (g_bios_context) {
+            uint32_t phys_addr = (((uint32_t)ctx->def_seg << 4) + address) & 0xFFFFF;
+            bios_poke(g_bios_context, phys_addr, val_to_write);
+            return 1;
+        }
         return 0;
     }
     

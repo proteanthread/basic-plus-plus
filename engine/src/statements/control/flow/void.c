@@ -2,7 +2,7 @@
 // LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c)
+// NEEDS: libcore (language_descriptor.h)
 // NEEDS: libcore (strings.h, strings.c)
 // NEEDS: libengine (eval.h, eval.c, lexer.h, lexer.c, map.h, map.c, vm.h)
 // NEEDS: libengine (void.h)
@@ -16,17 +16,21 @@
 #include "eval/eval.h"
 #include "runtime/strings.h"
 #include "runtime/map.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
+
+static const LangDesc g_void_desc = {
+    .name = "VOID",
+    .category = "Control Flow",
+    .syntax = "VOID expression",
+    .description = "Evaluates an expression or function for side-effects and discards the return value.",
+    .error_summary = "Error 2: Syntax Error",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SAFE,
+    .type = FEATURE_STATEMENT
+};
 
 void stmt_void_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "VOID",
-        .category = "Control Flow",
-        .syntax = "VOID expression",
-        .help_text = "Evaluates an expression or function for side-effects and discards the return value.",
-        .error_codes = "Error 2: Syntax Error"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_void_desc);
 }
 
 BppError stmt_void_handler(VMContext *vm, LexerContext *lex) {

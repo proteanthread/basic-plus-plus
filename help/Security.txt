@@ -1,142 +1,103 @@
-======================================================================
-  BASIC++ V6.5.2 SECURITY SYSTEM
-======================================================================
+==============================================================================
+Title:        Security
+Tier:         1
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/security/security.c, engine/include/security/
+Generated:    no, hand-written
+Status:       current
+==============================================================================
+
+BASIC++ v6.5.2 SECURITY ARCHITECTURE & SECURE CODING PRACTICES
+
+The authoritative specification of the BASIC++ six-level virtual execution
+sandbox, access control enforcement mechanisms, command-line security flags,
+and defensive secure coding patterns for application developers.
 
 
-======================================================================
-  1. OVERVIEW
-======================================================================
+1. ARCHITECTURAL OVERVIEW & VIRTUAL DEVICE ENFORCEMENT
 
-BASIC++ implements a six-level security system that controls access to operating system resources, file operations, network connections, and system commands. The security system is enforced at the virtual device layer ? security checks occur in the VFS, VNet, and VDev subsystems before operations reach the platform layer. This means individual statement handlers do not need security logic; the device layer handles enforcement uniformly.
-
-The security system is implemented in engine/src/security/security.c and is part of the libkernel library.
-
-
-======================================================================
-  2. SECURITY LEVELS
-======================================================================
-
-| Level | Name | Description |
-|-------|------|-------------|
-| 0 | OPEN | No restrictions. All operations permitted. |
-| 1 | SAFE | Minor restrictions. File deletion limited to current directory. |
-| 2 | STANDARD | File write/create restricted to current directory. No SHELL. |
-| 3 | EDUCATIONAL | File read/write restricted to current directory. No file creation. No SHELL. |
-| 4 | RESTRICTED | No file access. No network. No SHELL. No POKE/OUT. |
-| 5 | PARANOID | Pure computation only. No I/O of any kind. |
+BASIC++ implements a unified six-level security sandbox
+(engine/src/security/security.c in libkernel). Rather than scattering
+ad-hoc security checks across hundreds of individual keyword handlers,
+security enforcement is anchored at the virtual hardware layer:
+- Virtual Filesystem (VFS): Intercepts path resolution, restricting
+  directory traversal and file write operations (engine/src/runtime/vfs.c).
+- Virtual Network (VNet): Blocks socket allocation and network listening
+  (engine/src/runtime/vnet.c).
+- Virtual Device Bus (VDev): Controls peripheral bindings, hardware port
+  access, and system calls (engine/src/device/vdev.c).
 
 
-======================================================================
-  3. SETTING THE SECURITY LEVEL
-======================================================================
+2. THE SIX SECURITY LEVELS
 
-From the command line:
+Level  Identifier       Name         Capabilities & Sandbox Boundary
+-----  ---------------  -----------  ---------------------------------------
+  0    SEC_OPEN         OPEN         Unrestricted host access. All allowed.
+  1    SEC_SAFE         SAFE         Safe dev. File deletion limited to CWD.
+  2    SEC_STANDARD     STANDARD     Sandboxed. Writes in CWD only. No SHELL.
+  3    SEC_EDUCATIONAL  EDUCATIONAL  Classroom. Read/write CWD. No create.
+  4    SEC_RESTRICTED   RESTRICTED   Isolated. No file I/O, net, POKE/OUT.
+  5    SEC_PARANOID     PARANOID     Pure computation. All I/O forbidden.
 
-```bash
-baspp --security=2              # Standard level
-bpp --security=4                # Restricted level
-bs --security=3 script.bas      # Educational level for script execution
+Host Command-Line Execution Flags:
 
-From within a program:
+    baspp --security=2              # Standard sandbox for desktop
+    bpp --security=4                # Restricted mode for terminal REPL
+    bs --security=3 student.bas     # Classroom sandbox for script
 
-10 SECURITY 3                   ' Set to Educational level
+Elevating Security from BASIC:
 
-The SECURITY statement can only raise the security level, never lower it. Once raised, the level cannot be reduced without restarting the interpreter. This prevents untrusted code from escalating its own privileges.
+    10 SECURITY 3                   ' Elevate sandbox to Educational level
 
-
-======================================================================
-  4. ACCESS CONTROL MATRIX
-======================================================================
-
-| Operation | L0 | L1 | L2 | L3 | L4 | L5 |
-|-----------|----|----|----|----|----|----|
-| PRINT to console | ? | ? | ? | ? | ? | ? |
-| INPUT from keyboard | ? | ? | ? | ? | ? | ? |
-| File read (any path) | ? | ? | ? | ? | ? | ? |
-| File read (CWD only) | ? | ? | ? | ? | ? | ? |
-| File write (any path) | ? | ? | ? | ? | ? | ? |
-| File write (CWD only) | ? | ? | ? | ? | ? | ? |
-| File create | ? | ? | ? | ? | ? | ? |
-| File delete | ? | ?* | ? | ? | ? | ? |
-| Network connect | ? | ? | ? | ? | ? | ? |
-| Network listen | ? | ? | ? | ? | ? | ? |
-| SHELL / EXEC | ? | ? | ? | ? | ? | ? |
-| POKE / OUT | ? | ? | ? | ? | ? | ? |
-| MODULE LOAD | ? | ? | ? | ? | ? | ? |
-| ENVIRON (set) | ? | ? | ? | ? | ? | ? |
-
-*L1 file delete is restricted to the current directory.
+The SECURITY statement can only raise the security level, never lower it.
+Once elevated, it cannot be reduced without restarting the process.
 
 
-======================================================================
-  5. DENIED OPERATIONS
-======================================================================
+3. ACCESS CONTROL ENFORCEMENT MATRIX
 
-When an operation is denied by the security system, Error 70 (Permission denied) is raised. The error message includes the security level and the type of operation attempted:
-
-Permission denied at security level 3: Cannot access file outside current directory
-
-Programs should use ON ERROR GOTO or TRY/CATCH to handle security denials gracefully.
-
-
-======================================================================
-  6. THE RESTRICT COMMAND
-======================================================================
-
-RESTRICT provides fine-grained control within a security level:
-
-10 RESTRICT FILE "*.bas"        ' Only allow access to .bas files
-20 RESTRICT NET "localhost"     ' Only allow connections to localhost
-30 RESTRICT PATH "/home/user/safe"  ' Only allow this directory
-
-RESTRICT rules are additive to the security level ? they can further limit access but cannot grant access that the security level denies.
+Operation Category          L0    L1    L2    L3    L4    L5
+--------------------------  ----  ----  ----  ----  ----  ----
+Console Output (PRINT)      Yes   Yes   Yes   Yes   Yes   No
+Keyboard Input (INPUT)      Yes   Yes   Yes   Yes   Yes   No
+File Read (System-Wide)     Yes   Yes   Yes   No    No    No
+File Read (CWD Only)        Yes   Yes   Yes   Yes   No    No
+File Write (System-Wide)    Yes   Yes   No    No    No    No
+File Write (CWD Only)       Yes   Yes   Yes   Yes   No    No
+File Creation               Yes   Yes   Yes   No    No    No
+File Deletion (KILL)        Yes   CWD   No    No    No    No
+Network Sockets (NET)       Yes   Yes   Yes   No    No    No
+Network Listen (LISTEN)     Yes   Yes   No    No    No    No
+Subprocess (SHELL)          Yes   Yes   No    No    No    No
+Memory/Port (POKE/OUT)      Yes   Yes   Yes   Yes   No    No
+Module Loading (MODULE)     Yes   Yes   Yes   No    No    No
 
 
-======================================================================
-  7. MODULE SECURITY PIPELINE
-======================================================================
+4. DEFENSIVE SECURE CODING PRACTICES
 
-When a module is loaded (MODULE LOAD), it passes through the security pipeline:
+Strict Input Validation & Length Bounds:
 
-1. **Validation** ? The module file is checked for integrity.
-2. **Capability Verification** ? The module's declared capabilities are compared against the security level. A module that requires network access cannot load at level 3+.
-3. **Sandbox Allocation** ? The module receives a sandboxed execution context.
-4. **Registration** ? Module-provided keywords and devices are registered.
-5. **Activation** ? The module is activated and its init function runs.
+    10 LINE INPUT "Enter Username (max 20 characters): "; U$
+    20 IF LEN(U$) = 0 OR LEN(U$) > 20 THEN
+    30   PRINT "Error: Username must be between 1 and 20 characters."
+    40   GOTO 10
+    50 END IF
 
-Modules cannot bypass the security system. They cannot directly modify VM instructions, execute host code, or corrupt internal stacks.
+Path Traversal Defense:
 
+    100 FUNCTION SanitizeFilename$(raw$)
+    110   clean$ = ""
+    120   FOR I = 1 TO LEN(raw$)
+    130     C$ = MID$(raw$, I, 1)
+    140     IF C$ <> "/" AND C$ <> "\" AND C$ <> ":" THEN
+    150       clean$ = clean$ + C$
+    160     END IF
+    170   NEXT I
+    180   SanitizeFilename$ = clean$
+    190 END FUNCTION
 
-======================================================================
-  8. SECURITY FOR BATCH SCRIPTS
-======================================================================
+Preventing Command Injection:
 
-The bs batch runner should use elevated security levels when executing untrusted scripts:
-
-```bash
-======================================================================
-  RUN A STUDENT'S HOMEWORK WITH EDUCATIONAL RESTRICTIONS
-======================================================================
-bs --security=3 homework.bas
-
-======================================================================
-  RUN A CGI SCRIPT WITH RESTRICTED ACCESS
-======================================================================
-bs --security=4 cgi_handler.bas
-
-
-======================================================================
-  9. SECURITY AND TASKS
-======================================================================
-
-The security level applies globally to all tasks. Background tasks cannot operate at a different security level than the main program. If the security level is raised while tasks are running, all tasks are immediately subject to the new restrictions.
-
-
-======================================================================
-  10. AUDIT LOGGING
-======================================================================
-
-When the --log flag is enabled, security denials are logged with full context: the operation type, the file or resource involved, the security level, and the line number. This log is invaluable for debugging permission issues:
-
-[SECURITY] DENY level=3 op=FILE_WRITE path="/etc/passwd" line=150
-[SECURITY] DENY level=2 op=SHELL cmd="rm -rf /" line=200
+    10 INPUT "Select Option [1-3]: "; Opt%
+    20 IF Opt% < 1 OR Opt% > 3 THEN PRINT "Invalid choice." : END
+    30 ' Pass strictly validated ordinal integers rather than raw input
+    40 SHELL "process_task --mode=" + STR$(Opt%)

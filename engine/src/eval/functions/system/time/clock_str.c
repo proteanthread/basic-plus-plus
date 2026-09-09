@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (conversion_fn.c)
 // NEEDS: libcore (hal.h, memory.h, memory.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libcore (strings.h, strings.c)
 // NEEDS: libengine (clock_str.h, string.c)
 // Provides runtime implementation for the CLOCK_STR built-in function in BASIC++.
@@ -11,20 +11,27 @@
 // ---- Includes ----
 
 #include "eval/functions/system/time/clock_str.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/strings.h"
 #include "runtime/string.h"
 #include "runtime/memory.h"
 #include "hal/hal.h"
+#include "runtime/format/snprintf.h"
+#include "runtime/string/strops.h"
+#include "platform/platform.h"
+
+static const LangDesc g_clock_desc = {
+    .name = "CLOCK$",
+    .category = "System Functions",
+    .syntax = "CLOCK$()",
+    .description = "Returns the current ISO 8601 formatted date/time string (YYYY-MM-DD HH:MM:SS).",
+    .error_summary = "Error 5: Illegal Function Call (CLOCK$ expects 0 arguments)",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_FUNCTION
+};
 void func_clock_str_register(void) {
-    MicroLibMetadata meta = {
-        .name = "CLOCK$",
-        .category = "System Functions",
-        .syntax = "CLOCK$()",
-        .help_text = "Returns the current ISO 8601 formatted date/time string (YYYY-MM-DD HH:MM:SS).",
-        .error_codes = "Error 5: Illegal Function Call (CLOCK$ expects 0 arguments)"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_clock_desc);
 }
 
 BValue func_clock_str_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err) {

@@ -1,27 +1,75 @@
-# `PUT` Random File Record Write or Graphics Blit Statement
+<!--
+Title:        PUT
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/statements/filesystem/file_ops/put.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Keyword Definition
+# `PUT` Keyword Reference
 
-Writes a record buffer to a random-access file, or blits a sprite image from an array onto the screen.
+## Source Header
 
-### Syntax Signatures:
-```basic
-PUT [#]filenum% [, record_number&]
-PUT (x1%, y1%), array% [, {PSET | PRESET | AND | OR | XOR}]
+```c
+// FILENAME: put.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore (arrays.h, arrays.c, file.h, file.c)
+// NEEDS: libcore (language_descriptor.h, string.h)
+// NEEDS: libengine (bgi.h, bgi.c, eval.h, eval.c, lexer.h, lexer.c)
+// NEEDS: libengine (map.h, map.c, put.h, string.c, vm.h)
+// NEEDS: libplatform (platform.h)
+// Provides runtime implementation for the PUT statement in BASIC++.
+//
+// ---- Includes ----
 ```
 
-### Error Handling & Boundary Conditions:
-- **Error 52 (ERR_BAD_FILE_NUMBER)**: File channel not open.
+## 1. Description & Usage
 
-### Operational Notes:
-- XOR blitting enables non-destructive sprite animation.
+Writes a record from the FIELD buffer into a random-access file or draws a memory array onto the screen.
+
+## 2. Syntax
+
+```basic
+PUT [#]file_num [, record_number] | PUT (x, y), array_name [, action]
+```
+
+## 3. Code Example
+
+```basic
+10 Val = PUT [#]file_num [, record_number] | PUT (10, y), array_name [, action]
+20 PRINT "Result: "; Val
+```
+
+## 4. Error Conditions
+
+Error 2: Syntax Error, Error 52: Bad File Number, Error 63: Bad Record Number
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Filesystem I/O & Graphics
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_IO
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 OPEN "R", #1, "DATA.DAT", 64
-20 PUT #1, 1 : REM Write record 1
-30 CLOSE #1
-```
+| Field | Value |
+|---|---|
+| Name | PUT |
+| Category | Filesystem I/O & Graphics |
+| Syntax | PUT [#]file_num [, record_number] \| PUT (x, y), array_name [, action] |
+| Description | Writes a record from the FIELD buffer into a random-access file or draws a memory array onto the screen. |
+| Error Summary | Error 2: Syntax Error, Error 52: Bad File Number, Error 63: Bad Record Number |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_IO |
+| Feature Type | FEATURE_STATEMENT |
+| Delimiter Mask | none |
+| Compatibility | none |
+| Since Version | none |
+| Source File | engine/src/statements/filesystem/file_ops/put.c |

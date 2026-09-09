@@ -1,26 +1,70 @@
-FOR Indexed Loop Initiation Statement
-=====================================
+TITLE: FOR
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/loops/counter/for.c
+GENERATED: no, hand-written
+STATUS: current
 
-Executes a block of code repeatedly while incrementing or decrementing a counter variable.
+==============================================================================
+FOR KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: for.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore, libengine, libkernel, libplatform
+    // Provides runtime implementation for the FOR statement in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Initiates a counter-controlled loop block executing statements until var
+reaches end.
 
-    FOR variable = start_val TO end_val [STEP increment_val]
-      [statements]
-    NEXT [variable]
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    FOR var = start TO end [STEP step]
 
-
-OPERATIONAL NOTES
-----------------------------------------------------------------------
-
-  Non-recursive loop stack maintained on VM heap.
-
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 FOR I = 1 TO 10 STEP 2
-    20   PRINT "I = "; I
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 FOR I = 1 TO 5
+    20   PRINT "Iteration: "; I
     30 NEXT I
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error, Error 13: Type Mismatch, Error 26: FOR Without NEXT
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Looping / Control Flow
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SAFE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  FOR
+Category              Looping / Control Flow
+Syntax                FOR var = start TO end [STEP step]
+Description           Initiates a counter-controlled loop block executing...
+Error Summary         Error 2: Syntax Error, Error 13: Type Mismatch, Err...
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/loops/counter/for.c

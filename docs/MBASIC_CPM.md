@@ -1,63 +1,54 @@
-# BASIC++ v6.5.2 MBASIC / CP/M BASIC Dialect
+<!--
+Title:        MBASIC_CPM
+Tier:         2
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/file/, engine/src/eval/
+Generated:    no, manual reference
+Status:       current
+-->
 
-## 1. HISTORY
+# BASIC++ v6.5.2 MBASIC / CP/M BASIC Compatibility Reference
 
-MBASIC (Microsoft BASIC for CP/M) was the dominant BASIC implementation on CP/M systems in the late 1970s and early 1980s. Written by Microsoft, MBASIC was the direct ancestor of BASICA and GW-BASIC for the IBM PC. Programs written for MBASIC are largely compatible with GW-BASIC, but there are differences in file I/O, memory management, and available functions.
+## 1. HISTORICAL CONTEXT
+
+Microsoft MBASIC (MBASIC-80 for CP/M-80) was the dominant microcomputer BASIC implementation of the late 1970s and early 1980s. Engineered by Microsoft for 8080 and Z80 microcomputers running Digital Research CP/M, MBASIC established the language foundation that Microsoft subsequently evolved into IBM PC BASICA and GW-BASIC 3.x.
 
 ## 2. MBASIC COMPATIBILITY IN BASIC++
 
-BASIC++ runs MBASIC programs through its GW-BASIC compatible dialect (GWBS, the default). Since GW-BASIC is a direct descendant of MBASIC, most MBASIC programs run without modification. The following sections document differences and adaptations.
+BASIC++ executes legacy MBASIC programs natively. Because GW-BASIC is a direct descendant of MBASIC, the majority of MBASIC software runs unmodified. This guide details syntax variants, architectural differences, and modernization considerations.
 
-## 3. FILE I/O DIFFERENCES
+## 3. FILE I/O SYNTAX PARITY
 
-MBASIC file I/O differs from GW-BASIC in syntax:
+MBASIC supported a short-form `OPEN` syntax that omitted the `#` symbol and `AS` keyword:
+- MBASIC Short Form: `OPEN "I", 1, "DATA.TXT"`
+- GW-BASIC Standard Form: `OPEN "DATA.TXT" FOR INPUT AS #1`
 
-MBASIC: `OPEN "I", 1, "DATA.TXT"` (mode letter, no # sign, no AS keyword)
-GW-BASIC: `OPEN "DATA.TXT" FOR INPUT AS #1`
+BASIC++ accepts both forms transparently. The mode letter in short-form `OPEN` maps directly:
+- `"I"`: Sequential input (`FOR INPUT`)
+- `"O"`: Sequential output (`FOR OUTPUT`)
+- `"A"`: Sequential append (`FOR APPEND`)
+- `"R"`: Random access (`FOR RANDOM`)
 
-BASIC++ accepts both forms. The MBASIC short form maps mode letters: "I" = INPUT, "O" = OUTPUT, "R" = RANDOM, "A" = APPEND.
+Output statements (`PRINT #1, Item$`, `WRITE #1, A, B`) operate identically across both conventions.
 
-MBASIC: `PRINT #1, Data$` (no AS keyword needed)
-GW-BASIC: `PRINT #1, Data$` (same syntax)
+## 4. MEMORY MANAGEMENT & PEEK/POKE
 
-Both styles work identically in BASIC++.
+MBASIC used `FRE("")` to trigger synchronous string garbage collection and `FRE(0)` to return remaining string arena memory. BASIC++ supports both syntax forms.
 
-## 4. MEMORY FUNCTIONS
+In MBASIC, `PEEK` and `POKE` addressed physical 16-bit Z80 address space (0x0000 to 0xFFFF), including CP/M BDOS entry points (0x0005) and the Transient Program Area (TPA at 0x0100). In BASIC++, `PEEK` and `POKE` access the virtualized BIOS sandbox buffer (`vmem`), protecting the host operating system while permitting authentic byte-level memory experimentation.
 
-MBASIC used FRE("") to force garbage collection and FRE(0) to report free memory. BASIC++ supports both. USR(n) for machine-language calls works the same way through the host callback interface.
+## 5. VARIABLE IDENTIFIER RESOLUTION
 
-PEEK and POKE in MBASIC accessed the CP/M address space (Z80 memory map at 0x0000-0xFFFF). In BASIC++, PEEK and POKE access the BIOS emulation space. CP/M-specific addresses (BDOS entry point at 0x0005, TPA start at 0x0100) are not meaningful in the BASIC++ context.
+MBASIC recognized only the first two characters of variable names (e.g., `COUNTER` and `CO` addressed the same storage cell). BASIC++ evaluates variable names to their full length. Legacy programs that relied on two-character truncation should be audited using `CHECK CONFLICTS` or updated using `RENAME`.
 
-## 5. LINE LENGTH
+## 6. PRINT ZONES & FORMATTING
 
-MBASIC supported line lengths up to 255 characters. BASIC++ has no practical line length limit on modern builds.
+MBASIC utilized 14-column print zones for comma-delimited output. BASIC++ maintains identical 14-column print zone boundaries by default, preserving table alignment in vintage reporting programs.
 
-## 6. VARIABLE NAME LENGTH
+## 7. STRING MANIPULATION FUNCTIONS
 
-MBASIC recognized only the first two characters of variable names: COUNTER and CO were the same variable. BASIC++ uses the full variable name. Programs that relied on two-character truncation may need review.
+MBASIC provided the standard core string functions: `LEFT$`, `RIGHT$`, `MID$`, `LEN`, `STR$`, `VAL`, `CHR$`, `ASC`, `INSTR`, `STRING$`, and `SPACE$`. All execute identically in BASIC++. Modern extensions (`UCASE$`, `LCASE$`, `TRIM$`, `LTRIM$`, `RTRIM$`) are also available when modernizing MBASIC scripts.
 
-## 7. PRINT ZONES
+## 8. ERROR HANDLING & TRAPPING
 
-MBASIC used 14-column print zones (same as GW-BASIC). BASIC++ maintains the same 14-column zone width for compatibility.
-
-## 8. STRING FUNCTIONS
-
-MBASIC supported the same core string functions as GW-BASIC: LEFT$, RIGHT$, MID$, LEN, STR$, VAL, CHR$, ASC, INSTR, STRING$, SPACE$. All are available in BASIC++.
-
-MBASIC did not have UCASE$, LCASE$, TRIM$, LTRIM$, or RTRIM$ — these are GW-BASIC and BASIC++ additions.
-
-## 9. ERROR HANDLING
-
-MBASIC supported ON ERROR GOTO and RESUME. ERR returned the error code and ERL returned the error line number. These work identically in BASIC++. The error code values are compatible.
-
-## 10. GRAPHICS AND SOUND
-
-MBASIC on CP/M had no built-in graphics or sound statements (CP/M did not define a standard graphics interface). Programs that used custom POKE sequences for terminal-specific graphics will need adaptation to BASIC++ SCREEN modes.
-
-## 11. MIGRATION TIPS
-
-1. Replace MBASIC short-form OPEN with the GW-BASIC long form for clarity.
-2. Check variable names — if two variables differ only after the second character, rename them.
-3. Replace any CP/M-specific PEEK/POKE addresses with BASIC++ VDev calls.
-4. Add SCREEN mode selection for any graphics output.
-5. CP/M file handling: MBASIC filenames were 8.3 format (e.g., "MYFILE.BAS"). BASIC++ supports long filenames on modern systems.
+MBASIC supported structured error handling via `ON ERROR GOTO line`, `RESUME`, `ERR`, and `ERL`. These constructs execute identically in BASIC++, maintaining numeric error code compatibility.

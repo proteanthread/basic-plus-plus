@@ -8,6 +8,8 @@
 // ---- Includes ----
 
 #include "editor/edit_internal.h"
+#include "runtime/string/strops.h"
+#include "runtime/string/memops.h"
 
 #define EDIT_NUM_BRIGHT_COLORS 6
 

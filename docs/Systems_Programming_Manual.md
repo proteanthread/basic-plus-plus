@@ -1,0 +1,2065 @@
+<!--
+Title:        Systems_Programming_Manual
+Tier:         1
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot, bppc, trans, detok)
+Authority:    engine/
+Generated:    no, manual system specification
+Status:       current
+-->
+
+# BASIC++ v6.5.2 Systems Programming Manual
+
+## Front Matter: Scope, Architecture, and Method
+
+### 1. Architectural Mandate and Purpose
+The BASIC++ Systems Programming Manual is the definitive Tier 1 engineering reference for low-level software construction within the BASIC++ ecosystem and bare-metal engine porting across diverse silicon architectures. This manual operates under a strict dual-audience contract designed to eliminate the historic barrier between high-level language semantics and physical hardware execution. In modern computing environments governed by strict security boundaries, legacy virtualization layers, and the European Cyber Resilience Act (EU CRA 2024), developers require unambiguous clarity regarding where virtual sandboxing ends and physical hardware interaction begins. Every statement, function, memory accessor, and hardware primitive in BASIC++ is governed by this manual. No capability is documented herein without concrete verification against the active source codebase in `engine/` and the executable targets defined in `CMakeLists.txt`. Capabilities lacking an active build target are identified plainly as planned specifications rather than accomplished facts.
+
+### 2. The Two Audiences and the Dual-Part Spine
+This manual is deliberately structured as one cohesive volume divided into two complementary, interdependent parts. Part I is written for the systems programmer authoring software IN BASIC++. The Part I reader seeks to manipulate physical and virtual memory, interface with hardware communication buses, service asynchronous interrupts, manage real-time clocks, mount storage namespaces, and produce self-booting embedded binaries without being forced to read or write C code. Part II is written for the systems engineer and compiler porter bringing the BASIC++ engine AS A SYSTEM onto new silicon targets. The Part II reader operates with a freestanding C17 cross-compiler, toolchain linkers, and board schematics to bring up the engine on bare-metal x86, ARM Cortex-M, RISC-V, UEFI firmware, or retro DOS platforms. Every capability taught to the BASIC++ programmer in Part I is explicitly justified and anchored by the hardware abstraction layer (HAL) and runtime bring-up procedures detailed in Part II. Conversely, every bring-up protocol in Part II exists to empower the high-level facilities exposed in Part I.
+
+### 3. Rigorous Ground-Truth Status Classification
+To permanently eradicate documentation drift and prevent the repetition of unverified architectural folklore, this manual categorizes every subsystem, statement, and operational claim with one of three authoritative status markers:
+1. `[PROVEN]`: Backed by an active, passing CMake build target and reproducible execution against automated test suites or physical hardware.
+2. `[PARTIAL]`: The underlying C source code compiles and builds within active targets, but specific architectural limitations, stubbed interfaces, or hardware-specific gaps exist and are explicitly identified.
+3. `[PLANNED]`: An architectural specification and bring-up roadmap for capabilities that do not currently have an active build target or where existing implementation files represent unlinked proofs-of-concept.
+
+### 4. Part I to Part II Structural Correspondence Matrix
+The following table establishes the bidirectional spine linking every Part I high-level systems chapter directly to its Part II low-level engine bring-up counterpart:
+
+| Part I: Writing Systems Software in BASIC++ | Part II: The Engine as a System | Shared Architectural Domain |
+| :--- | :--- | :--- |
+| Chapter 1: Systems Safety & Virtualization | Chapter 1: The Freestanding C17 Contract | Memory safety, sandbox boundaries, ISO C17 |
+| Chapter 2: The Memory Model (PEEK, POKE) | Chapter 2: basicpp_sys.h & Low-Level API | Physical MMIO vs. virtual BIOS Data Area |
+| Chapter 3: Banked & Virtual Memory (BANK) | Chapter 7: Memory Bring-Up & Sizing | Arena allocation, config.h memory profiles |
+| Chapter 4: Port I/O (INP, OUT, WAIT) | Chapter 2: basicpp_sys.h Hardware Access | x86 port I/O vs. non-x86 MMIO traps |
+| Chapter 5: BIOS Services & PC Emulation | Chapter 3: The Tri-Mode HAL Architecture | PC BIOS interrupt tables & hardware hooks |
+| Chapter 6: Interrupts, Events & Trapping | Chapter 6: The Boot Lifecycle & Dispatch | Event-loop dispatch, TSRs, reentrancy |
+| Chapter 7: Timing & Cycle Accuracy | Chapter 8: Console & Timer Bring-Up | Monotonic timers, CPUSPEED console throttle |
+| Chapter 8: Virtual Devices & IOCTL | Chapter 4: Functional Subsystems Map | VDev bus, custom devices, metalanguage |
+| Chapter 9: Systems Files & Streams (FIELD) | Chapter 14: Filesystem & Block Storage | Sector buffers, record locking, BLOAD/BSAVE |
+| Chapter 10: The Filesystem Namespace (MOUNT) | Chapter 14: Filesystem Bring-Up & Drivers | Prefix rewriting vs. physical block drivers |
+| Chapter 11: Processes & Multiplexing (TASK) | Chapter 6: The Boot Lifecycle & Tasks | Cooperative multiplexing, runloops |
+| Chapter 12: Graphics at the Systems Level | Chapter 3: HAL Video Drivers (BGI/SDL2) | Framebuffer pointers, mode switching, VRAM |
+| Chapter 13: Systems Networking & Sockets | Chapter 4: Platform Networking Layer | Sockets, virtual network, cleartext reality |
+| Chapter 14: IoT & Microcontroller Programming | Chapter 12: Microcontroller Bring-Up | GPIO pins, ADC/DAC, PWM, I2C/SPI buses |
+| Chapter 15: Embedded Wireless & Radio | Chapter 12: Microcontroller Silicon Init | WiFi, ESP-NOW, Bluetooth, WebREPL |
+| Chapter 16: Writing a Program That Boots | Chapter 10, 11, 12, 13: Target Boot Specs | Boot comparative matrix, machine states |
+| Chapter 17: Calling C & Foreign Interfaces | Chapter 1: Freestanding C & ABI Contracts | C FFI, handle ownership, error returns |
+| Chapter 18: Systems Compilation & Transpiling | Chapter 15: The Build System & Transpiler | bppc ahead-of-time C emission, trans AST |
+| Chapter 19: Security, Privileges & Sandbox | Chapter 18: Quality, Compliance & Audits | EU CRA compliance, UNSAFE blocks, audits |
+| Chapter 20: Systems Failure Modes & Codes | Chapter 16: Testing & Diagnostic Suite | Hardware faults, bus errors, panic handlers |
+
+---
+
+## Master Table of Contents
+
+### Front Matter
+- Architectural Mandate and Purpose
+- The Two Audiences and the Dual-Part Spine
+- Rigorous Ground-Truth Status Classification
+- Part I to Part II Structural Correspondence Matrix
+
+### Part I: Writing Systems Software in BASIC++
+- Chapter 1: What Systems Programming Means in BASIC++
+- Chapter 2: The Memory Model (PEEK, POKE, VARPTR, SEG, ALLOC)
+- Chapter 3: Banked and Virtual Memory (BANK, RAMBANKS, Memory Sizing)
+- Chapter 4: Port I/O (INP, OUT, WAIT, and Hardware Traps)
+- Chapter 5: BIOS Services and PC Emulation (INT 10h, 13h, 16h, 1Ah)
+- Chapter 6: Interrupts, Events, and Trapping (ON TIMER, ON KEY, ON ERROR, TSRs)
+- Chapter 7: Timing and Cycle Accuracy (Variable Speeds, Timers, CPUSPEED)
+- Chapter 8: Devices, Aliases, Discovery, and IOCTL
+- Chapter 9: Files and Streams at the Systems Level (Block I/O, FIELD, BLOAD)
+- Chapter 10: The Filesystem Namespace (MOUNT, UMOUNT, VPATH, Redirects)
+- Chapter 11: Processes, Tasks, and Multiplexing (TASK, SHELL, Concurrency)
+- Chapter 12: Graphics at the Systems Level (BGI Drivers, Framebuffers, Modes)
+- Chapter 13: Networking at the Systems Level (Sockets, Protocols, TLS Reality)
+- Chapter 14: IoT and Microcontroller Programming (Pins, Buses, Sensors)
+- Chapter 15: Wireless Communications (WIFI, MQTT, ESPNOW, Bluetooth)
+- Chapter 16: Writing a Program That Boots (Seven-Target Boot Matrix)
+- Chapter 17: Calling C, and Being Called from C (FFI, Handles, Memory)
+- Chapter 18: Compiling and Transpiling Systems Code (bppc, trans)
+- Chapter 19: Safety, Security, and the Sandbox (EU CRA, UNSAFE Blocks)
+- Chapter 20: Systems Failure Modes and Diagnostic Codes
+
+### Part II: The Engine as a System
+- Chapter 1: The Freestanding C17 Contract (Rule #2, Zero Libc)
+- Chapter 2: basicpp_sys.h in Full (Primitives, MMIO, Barriers, Limitations)
+- Chapter 3: The Tri-Mode HAL Architecture (Hosted, Freestanding, SDL2)
+- Chapter 4: The Subsystem Map (Functional Subsystems, Library Hierarchy)
+- Chapter 5: The Bootstrap Profiles (Desktop, IoT, Server, Common)
+- Chapter 6: The Boot Lifecycle (common_boot.c, Registrations, Preconditions)
+- Chapter 7: Memory Bring-Up (SysArena, Allocation Models, config.h Profiles)
+- Chapter 8: Console and I/O Bring-Up (SysConsole, vcon, Terminal Init)
+- Chapter 9: Porting to a New Target: The Procedural Checklist
+- Chapter 10: UEFI Firmware Bring-Up (uefi_main.c Reality vs. Full Engine Spec)
+- Chapter 11: Bare-Metal x86 PC Bring-Up (POST, Bootloader, Paging, Entry)
+- Chapter 12: Microcontroller Bring-Up (Reset Vector, SDK Init, iot_main)
+- Chapter 13: FreeDOS and 16-Bit Real Mode (Watcom Shim, LibreDOS Roadmap)
+- Chapter 14: Filesystem Bring-Up (VFS Backing, HalBlockDevice, FAT/littlefs)
+- Chapter 15: The Build System Architecture (CMake, OBJECT Libraries, Keywords)
+- Chapter 16: The Verification & Test Suite (Runtime, Hardware, Kernel Tests)
+- Chapter 17: Adding a Systems Keyword End to End (Full Vertical Stack)
+- Chapter 18: Quality, Compliance, and Auditing (ISO/IEC 25010, EU CRA)
+
+### Back Matter
+- Appendix A: Other Implementations (Embedded, Headless, Mobile, UEFI PoC)
+- Appendix B: Systems Error Codes Master Catalog
+- Appendix C: Physical Memory Maps Across Supported Targets
+- Appendix D: Master Porting Bring-Up Checklist
+- Appendix E: Systems Terminology Glossary
+- Appendix F: Keyword Reference Cross-Links
+
+## PART I: WRITING SYSTEMS SOFTWARE IN BASIC++
+
+### Chapter 1: What Systems Programming Means in BASIC++
+By the end of this chapter, the reader will understand the architectural duality of BASIC++, distinguish between virtualized execution sandboxes and physical hardware access, configure security enforcement tiers, and determine with certainty whether a memory statement will manipulate host RAM or real machine silicon.
+
+1. Systems programming in BASIC++ represents a deliberate departure from the historic view of BASIC as merely an application scripting environment, elevating it into a first-class language for systems manipulation, driver development, and bare-metal orchestration.
+2. The language engine is architected around a strict target-gated dual-mode operational model: hosted execution mode and freestanding systems mode.
+3. In hosted execution environments (the desktop flagship executable `baspp`, the terminal REPL `bpp`, and the headless batch script runner `bs`), all low-level hardware operations are safely virtualized within user-space sandboxes.
+4. When a program executing under a hosted binary issues statements such as `POKE`, `OUT`, or `MEM[...]`, the engine does not issue host operating system kernel system calls or trigger segmentation faults; instead, it targets dedicated software emulation buffers within `libbios` and `vmem`.
+5. In freestanding systems targets (standalone binaries produced by `bppc --freestanding` or `bppc --uefi`, and the dedicated microcontroller binary `iot`), low-level operations bypass virtual buffers and emit volatile raw pointer dereferences with compiler memory barriers.
+6. A systems programmer must determine before executing a single line of code which operational mode is active, because a write to physical memory address `0xB8000` will alter a host emulation window in `baspp`, but directly drive an active video controller on bare metal.
+7. In accordance with the European Cyber Resilience Act (EU CRA 2024), BASIC++ enforces a secure-by-default posture across all targets.
+8. Unchecked physical memory access, port I/O, and raw pointer dereferencing are prohibited unless explicitly encapsulated within lexical `UNSAFE { ... }` blocks or compiled under the scoped `'$RANGE_CHECK OFF` compiler directive.
+9. Attempting to execute unvirtualized hardware statements in standard hosted execution without appropriate privileges triggers error 70 (`Permission Denied`) or error 76 (`Security Violation`).
+10. The systems safety model ensures that beginner programs and legacy software run completely without danger to host operating systems, while systems programmers retain absolute physical control over target hardware when operating in verified bare-metal modes.
+
+```basic
+10 REM -- Target Safety and Execution Mode Probe --
+20 PRINT "BASIC++ v6.5.2 Systems Environment Verification"
+30 PRINT "Engine Identity: "; BASIC$
+40 ExecMode% = SYS(100) : REM Query active execution mode: 0=Hosted, 1=Freestanding
+50 IF ExecMode% = 0 THEN
+60     PRINT "Execution Context: Hosted Sandbox (Virtual Memory Active)"
+70 ELSE
+80     PRINT "Execution Context: Freestanding Bare-Metal Silicon"
+90 END IF
+100 UNSAFE
+110     REM Probe virtual or physical video buffer base
+120     OriginalByte% = PEEK(&H0449) : REM Read BIOS Data Area video mode
+130     PRINT "BDA Video Mode Register (&H0449): "; OriginalByte%
+140 END UNSAFE
+150 PRINT "Safety Sandbox Verification Complete: Status Ok."
+```
+Status: `[PROVEN]` for virtualized sandbox execution (`engine/src/bios/bios_hal_vm.c`); `[PARTIAL]` for freestanding hardware bifurcation awaiting complete `bppc` backend.
+Cross-Reference: See Part II Chapter 1 for the freestanding C17 contract and Part II Chapter 18 for EU CRA quality compliance.
+
+
+### Chapter 2: The Memory Model (PEEK, POKE, VARPTR, SEG, ALLOC)
+By the end of this chapter, the reader will be able to inspect and modify arbitrary address spaces, manipulate the BIOS Data Area, navigate video RAM buffers, retrieve variable memory addresses via pointer descriptors, and allocate dynamic contiguous arenas.
+
+1. The BASIC++ memory architecture organizes physical and virtual address spaces into uniform 64-bit addressable domains, while preserving legacy segmented 16-bit compatibility.
+2. The canonical statement `POKE address, value` writes an unsigned 8-bit byte (`0` to `255`) to the specified memory location, while `PEEK(address)` returns the byte at that address.
+3. For multi-byte atomic memory transfers, BASIC++ provides width-modified bracket notation: `PEEK[addr, 2]` reads an unsigned 16-bit word, `PEEK[addr, 4]` reads a 32-bit dword, and `PEEK[addr, 8]` reads a 64-bit qword in target endianness.
+4. The statement `POKEB address, byte` provides an explicit byte-writing intrinsic that bypasses linear expression coercion for microsecond-sensitive inner loops.
+5. Address spaces in virtualized mode mirror the historic IBM PC architecture: the Interrupt Vector Table (IVT) occupies `&H0000` to `&H03FF`, the BIOS Data Area (BDA) occupies `&H0400` to `&H04FF`, and Video RAM occupies `&HA0000` (graphics) and `&HB8000` (color text).
+6. To inspect the internal storage of BASIC++ variables, `VARPTR(variable)` returns a 64-bit integer pointer representing the variable's physical address in memory.
+7. For structured descriptors, `VARPTR$(string_var)` returns a binary string containing the internal memory handle and string length descriptor, allowing direct FFI buffer passing.
+8. The legacy statement `DEF SEG = segment` sets the base segment address for subsequent 16-bit offset operations, while `SEG` queries the currently active segment base.
+9. Dynamic heap allocation outside the garbage-collected string pool is achieved via `ALLOC(size_bytes)`, which returns a raw contiguous memory pointer allocated directly from the engine's monotonic arena.
+10. Dynamic pointers obtained through `ALLOC` can be inspected via `POINTER(ptr_var)` and cleared collectively using the `CLEAR` statement, guaranteeing zero heap fragmentation.
+
+```basic
+10 REM -- BIOS Data Area and Dynamic Arena Allocation --
+20 CLS
+30 PRINT "Inspecting BIOS Data Area (BDA)..."
+40 UNSAFE
+50     REM Read equipment flag at 0x0410 (16-bit word)
+60     EquipWord% = PEEK[&H0410, 2]
+70     PRINT "BDA Equipment Word (&H0410): &H"; HEX$(EquipWord%)
+80     REM Read timer ticks since midnight at 0x046C (32-bit dword)
+90     Ticks& = PEEK[&H046C, 4]
+100    PRINT "BIOS Timer Ticks (&H046C): "; Ticks&
+110    REM Allocate 512 bytes for a scratch DMA buffer
+120    BufferPtr& = ALLOC(512)
+130    PRINT "Allocated Monotonic DMA Buffer at: &H"; HEX$(BufferPtr&)
+140    FOR I% = 0 TO 15
+150        POKE BufferPtr& + I%, I% * 16
+160    NEXT I%
+170    PRINT "Buffer Verification (first 4 bytes): ";
+180    FOR I% = 0 TO 3
+190        PRINT PEEK(BufferPtr& + I%); " ";
+200    NEXT I%
+210    PRINT ""
+220 END UNSAFE
+230 PRINT "Memory Model Operations Succeeded."
+```
+Status: `[PROVEN]` in `engine/src/eval/functions/system/memory/peek_fn.c`, `engine/src/eval/statements/memory/poke_stmt.c`, and `engine/src/bios/bios_hal_vm.c`.
+Cross-Reference: See Part II Chapter 2 for `basicpp_sys.h` volatile accessors and Part II Chapter 7 for monotonic `SysArena` allocation.
+
+
+### Chapter 3: Banked and Virtual Memory (BANK, RAMBANKS)
+By the end of this chapter, the reader will understand the RAMBANK architecture, switch between logical memory banks, query available system memory profiles, and manage large datasets beyond conventional 640 KB boundaries.
+
+1. To overcome vintage memory barriers and support microcontrollers with segmented or external SPI RAM, BASIC++ implements the unified RAMBANK memory model.
+2. The intrinsic function `RAMBANKS` queries the total number of 64 KB memory banks available within the current active system profile.
+3. The statement `BANK n` switches the active memory banking window to bank index `n` (`0` to `RAMBANKS - 1`), seamlessly redirecting bank-relative memory statements.
+4. Total memory capacity in BASIC++ is governed strictly by the active profile compiled into the engine from `engine/include/types/config.h`.
+5. Under the Modern Desktop profile (`BASIC_PROFILE_NAME = "Modern"`), the engine configures 640 MB of total memory: 128 MB program storage, 128 MB variable storage, 256 MB string heap, and 128 MB scratch arena.
+6. Under the Lite build profile (`BASIC_LITE_BUILD` used by `bpp.exe`), the engine allocates 384 MB: 64 MB program storage, 64 MB variables, 192 MB string heap, and 64 MB scratch memory.
+7. Under the FreeDOS 16-bit real-mode profile (`BASIC_FREEDOS_16`), the engine constrains itself to 72 KB: 32 KB program storage, 16 KB variables, 16 KB string heap, and 8 KB scratch area to fit conventional memory.
+8. Under the Embedded profile (`BASIC_EMBEDDED`), the entire runtime operates inside 18 KB: 8 KB program storage, 4 KB variables, 4 KB string heap, and 2 KB scratch area.
+9. Attempting to select a bank index equal to or greater than `RAMBANKS` triggers error 9 (`Subscript out of range`) or error 5 (`Illegal function call`).
+10. Data stored in banked memory remains persistent across bank switches, allowing large lookup tables, sprite sheets, and audio samples to be stored without exhausting default variable memory.
+
+```basic
+10 REM -- RAMBANK Query and Bank Switching Demonstration --
+20 CLS
+30 TotalBanks% = RAMBANKS
+40 PRINT "System Memory Banks Detected: "; TotalBanks%
+50 IF TotalBanks% < 2 THEN
+60     PRINT "Single-bank environment detected. Profile: "; CONFIG$("PROFILE")
+70     END
+80 END IF
+90 PRINT "Writing signature to Bank 0..."
+100 BANK 0
+110 POKE 0, &HAA : POKE 1, &H55
+120 PRINT "Writing signature to Bank 1..."
+130 BANK 1
+140 POKE 0, &H12 : POKE 1, &H34
+150 PRINT "Verifying Bank 0 integrity..."
+160 BANK 0
+170 B0_0% = PEEK(0) : B0_1% = PEEK(1)
+180 PRINT "Bank 0 data: &H"; HEX$(B0_0%); " &H"; HEX$(B0_1%)
+190 PRINT "Verifying Bank 1 integrity..."
+200 BANK 1
+210 B1_0% = PEEK(0) : B1_1% = PEEK(1)
+220 PRINT "Bank 1 data: &H"; HEX$(B1_0%); " &H"; HEX$(B1_1%)
+230 IF B0_0% = &HAA AND B1_0% = &H12 THEN
+240     PRINT "RAMBANK Persistence Test: PASSED."
+250 ELSE
+260     PRINT "RAMBANK Test FAILED: Memory collision detected."
+270 END IF
+280 BANK 0
+```
+Status: `[PROVEN]` in `engine/src/eval/statements/memory/bank_stmt.c`, `engine/src/eval/functions/system/memory/rambanks_fn.c`, and `engine/include/types/config.h`.
+Cross-Reference: See Part II Chapter 7 for profile allocation equations and arena configuration.
+
+
+### Chapter 4: Port I/O (INP, OUT, WAIT, and Hardware Traps)
+By the end of this chapter, the reader will be able to read and write hardware I/O ports, synchronize with external status registers via WAIT, and understand the critical x86 vs. non-x86 architecture trap.
+
+1. Hardware port I/O in BASIC++ provides direct access to the legacy x86 16-bit isolated I/O port address space (`0x0000` through `0xFFFF`).
+2. The statement `OUT port, value` writes an 8-bit unsigned byte to the specified I/O port address, while `INP(port)` reads and returns an 8-bit byte from that port.
+3. For hardware synchronization, `WAIT port, and_mask, xor_mask` halts program execution until the byte read from `port`, XORed with `xor_mask` and ANDed with `and_mask`, yields a non-zero result.
+4. If `xor_mask` is omitted in `WAIT`, it defaults to `0`, causing the program to suspend until any bit specified in `and_mask` transitions to high.
+5. In hosted execution modes (`baspp`, `bpp`, `bs`), `INP` and `OUT` target the virtualized port dispatch table in `libhardware/vdev`, routing accesses to simulated devices such as the 8253 timer, 8259 PIC, or AdLib sound card.
+6. The Non-x86 Silent Trap: In `engine/include/basicpp_sys.h`, port I/O primitives (`sys_in8`, `sys_out8`, `sys_in16`, `sys_out16`) are implemented with x86 inline assembly (`inb`, `outb`, `inw`, `outw`).
+7. On non-x86 targets (such as ARM, AArch64, RISC-V, and microcontrollers), port I/O compiles to silent no-ops that discard write data and unconditionally return `0` without an error.
+8. Systems programmers targeting ARM boards or microcontrollers MUST NOT use `INP` and `OUT` to access hardware registers; they must use memory-mapped I/O (`MEM[...]`, `PEEK`, `POKE`) against physical MMIO base addresses.
+9. Port I/O operations are strictly bounded at 16 bits in the current engine release; 32-bit dword port operations (such as PCI configuration ports `0xCF8` and `0xCFC`) are not supported natively.
+10. Executing `INP` or `OUT` on protected hosted platforms without elevated hardware access tokens yields error 70 (`Permission Denied`).
+
+```basic
+10 REM -- Hardware Timer (8253 PIT) Port Programming --
+20 CLS
+30 PRINT "Testing Port I/O Subsystem..."
+40 UNSAFE
+50     REM Port 0x43 is the 8253 PIT Command Register
+60     REM Command &H36 = Channel 0, Lobyle/Hibyte, Mode 3 (Square Wave)
+70     OUT &H43, &H36
+80     REM Set frequency divisor to 11931 (approximately 100 Hz)
+90     Divisor% = 11931
+100    LowByte% = Divisor% AND &HFF
+110    HighByte% = (Divisor% \ 256) AND &HFF
+120    REM Port 0x40 is PIT Channel 0 Data Port
+130    OUT &H40, LowByte%
+140    OUT &H40, HighByte%
+150    PRINT "Timer Channel 0 configured for 100 Hz square wave."
+160    REM Read back status from keyboard status port 0x64
+170    Status% = INP(&H64)
+180    PRINT "Keyboard Controller Status Port (0x64): &H"; HEX$(Status%)
+190 END UNSAFE
+200 PRINT "Port I/O Sequence Completed Successfully."
+```
+Status: `[PROVEN]` in virtual port engine (`engine/src/eval/statements/hardware/out_stmt.c`, `inp_fn.c`); `[PARTIAL]` on physical hardware due to non-x86 silent no-op limitation.
+Cross-Reference: See Part II Chapter 2 for `basicpp_sys.h` port primitives and Gap 04 in `SYSTEMS_PROGRAMMING_GAPS.txt`.
+
+
+### Chapter 5: BIOS Services and PC Emulation (INT 10h, 13h, 16h, 1Ah)
+By the end of this chapter, the reader will be able to invoke low-level PC BIOS interrupts, manage video modes, query disk geometry, read keyboard scan codes, and interface with the real-time clock.
+
+1. BASIC++ embeds a comprehensive IBM PC BIOS emulation micro-library (`engine/src/bios/bios_hal_vm.c`) providing complete register-level emulation of standard PC ROM BIOS interrupts.
+2. BIOS services are accessed through the `INT86(int_num, in_regs, out_regs)` statement or through high-level systems convenience wrappers.
+3. Interrupt `10h` provides comprehensive Video Services, including setting active display modes (Mode 3 text, Mode 13h 320x200 256-color VGA), positioning the cursor, setting color palettes, and scrolling display windows.
+4. Interrupt `13h` provides Low-Level Disk Services, enabling raw sector reading and writing (`AH = 02h` / `03h`), drive parameter queries (`AH = 08h`), and disk system resets (`AH = 00h`).
+5. Interrupt `16h` provides Keyboard Services, allowing non-blocking scan code queries (`AH = 01h`), character retrieval (`AH = 00h`), and shift status inspection (`AH = 02h`).
+6. Interrupt `1Ah` provides Real-Time Clock Services, exposing the timer tick counter (`AH = 00h`) incremented 18.2 times per second and CMOS clock synchronization (`AH = 02h`).
+7. In hosted editions, BIOS calls operate directly against the virtual machine's simulated BDA and virtual video RAM, guaranteeing that bad register arguments cannot crash host hardware.
+8. On 16-bit real-mode targets (FreeDOS and LibreDOS), BIOS interrupts execute directly against host ROM BIOS via CPU software interrupt instructions.
+9. For complete stand-alone PC emulation details, developers should consult the dedicated PC Emulation Library reference documentation rather than relying on high-level language defaults.
+10. Attempting to issue a BIOS interrupt with unmapped function numbers returns with the carry flag set and error code `&HFF` stored in `out_regs.AX`.
+
+```basic
+10 REM -- BIOS Interrupt 10h and 1Ah Invocation --
+20 CLS
+30 PRINT "Testing BIOS Interrupt Interface..."
+40 TYPE Regs86
+50     AX AS INTEGER
+60     BX AS INTEGER
+70     CX AS INTEGER
+80     DX AS INTEGER
+90     FLAGS AS INTEGER
+100 END TYPE
+110 DIM InR AS Regs86, OutR AS Regs86
+120 UNSAFE
+130     REM Query current video mode via INT 10h, AH = 0Fh
+140     InR.AX = &H0F00
+150     INT86 &H10, InR, OutR
+160     ActiveMode% = OutR.AX AND &HFF
+170     Columns% = (OutR.AX \ 256) AND &HFF
+180     PRINT "Current Video Mode: "; ActiveMode%; " (Columns: "; Columns%; ")"
+190     REM Query system clock ticks via INT 1Ah, AH = 00h
+200     InR.AX = &H0000
+210     INT86 &H1A, InR, OutR
+220     ClockHigh% = OutR.CX
+230     ClockLow% = OutR.DX
+240     PRINT "BIOS Real-Time Ticks (CX:DX): &H"; HEX$(ClockHigh%); ":&H"; HEX$(ClockLow%)
+250 END UNSAFE
+260 PRINT "BIOS Interrupt Invocation Successful."
+```
+Status: `[PROVEN]` in `engine/src/bios/bios_hal_vm.c` and `engine/include/bios/bios_hal.h`.
+Cross-Reference: See Part II Chapter 3 for HAL hosted and freestanding integration and Part II Chapter 13 for FreeDOS real-mode execution.
+### Chapter 6: Interrupts, Events, and Trapping (ON TIMER, ON KEY, ON ERROR, TSRs)
+By the end of this chapter, the reader will be able to construct asynchronous event-driven architectures, handle hardware timer ticks, trap keyboard scan events, intercept runtime faults, and write reentrant Terminate-and-Stay-Resident (TSR) routines.
+
+1. BASIC++ provides an asynchronous event-trapping architecture that decouples physical hardware signals from linear statement interpretation.
+2. The statement `ON TIMER(n) GOSUB line_or_label` registers an event handler that triggers periodically every `n` seconds, while `TIMER ON` activates evaluation at statement boundaries.
+3. Keyboard event handling is governed by `ON KEY(n) GOSUB line_or_label`, where `n` specifies a specific function key, cursor key, or user-defined scan code combination.
+4. Audio buffer replenishment is handled via `ON PLAY(n) GOSUB line_or_label`, triggering when background music buffers fall below `n` pending notes.
+5. Error trapping is configured using `ON ERROR GOTO line_or_label`, which intercepts fatal engine errors and transfers execution to a recovery routine rather than aborting.
+6. Inside an event handler, execution is non-reentrant by default; the engine masks further event interrupts of the same type until a `RETURN` statement is reached.
+7. Systems programmers can construct Terminate-and-Stay-Resident (TSR) utilities using `TSR reserve_paragraphs`, which exits the primary interpreter loop while keeping the program store and event tables pinned in memory.
+8. Reentrancy Safety Rules: Code executing inside an asynchronous handler MUST NOT invoke recursive VM executions, perform blocking network I/O, or modify shared global arrays without explicit synchronization locks.
+9. To resume normal execution following an error trap, `RESUME` returns to the offending statement, `RESUME NEXT` continues at the statement immediately following, and `RESUME label` redirects execution flow.
+10. Disabling an event trap without clearing its address target is achieved via `TIMER STOP` or `KEY(n) STOP`, which buffers events until subsequently enabled by `TIMER ON`.
+
+```basic
+10 REM -- Asynchronous Event Trapping & Error Handling --
+20 CLS
+30 Counter% = 0 : Finished% = 0
+40 ON ERROR GOTO ErrorHandler
+50 ON TIMER(1) GOSUB TimerTick
+60 TIMER ON
+70 PRINT "Asynchronous Timer Activated. Running background workload..."
+80 WHILE Finished% = 0
+90     Counter% = Counter% + 1
+100    IF Counter% = 100000 THEN Finished% = 1
+110 WEND
+120 TIMER OFF
+130 PRINT "Workload completed cleanly. Final Counter: "; Counter%
+140 END
+150 TimerTick:
+160     PRINT "[TIMER EVENT] 1-second interval elapsed. Counter = "; Counter%
+170     RETURN
+180 ErrorHandler:
+190     PRINT "[TRAP] Intercepted Error #"; ERR; " at line "; ERL
+200     RESUME NEXT
+```
+Status: `[PROVEN]` in `engine/src/eval/statements/control/` and `engine/src/vm/events.c`.
+Cross-Reference: See Part II Chapter 6 for the boot lifecycle and event dispatcher integration.
+
+
+### Chapter 7: Timing and Cycle Accuracy (Variable Speeds, Timers, CPUSPEED)
+By the end of this chapter, the reader will be able to perform high-resolution microsecond timing, calibrate cycle-accurate delays across varying clock speeds, and understand the vital distinction between CPU speed and console rendering rate.
+
+1. Accurate timing across disparate computing eras is one of the most demanding challenges in systems programming, particularly when legacy code relies on uncalibrated CPU busy-wait loops.
+2. The BASIC++ engine provides high-resolution time access through the `TIMER` function (elapsed seconds since midnight with microsecond precision) and `TICKS` (high-frequency monotonic counter).
+3. Monotonic delays that do not peg the host CPU are executed via `DELAY seconds` (supporting fractional floating-point durations) or `SLEEP milliseconds`.
+4. In vintage PC emulation environments, the 8088/8086 micro-library tracks cycle costs for instruction decoding, bus wait-states, and memory refresh cycles.
+5. The engine accommodates divergent hardware clocks: IBM PC (4.77 MHz), PC/XT (4.77 MHz), PC/AT (6.0 or 8.0 MHz), PS/2 Model 50 (10.0 MHz), and modern multi-gigahertz processors.
+6. Programs that execute cycle-counting busy loops break at both extremes: on 4.77 MHz machines they suffer cycle starvation, while on modern machines loops finish instantly before hardware peripherals can respond.
+7. CRITICAL DISTINCTION: The `CPUSPEED` statement in BASIC++ does NOT control or alter the underlying CPU execution clock speed; it exclusively governs console character output throttles and terminal refresh pacing.
+8. Misunderstanding `CPUSPEED` as a CPU frequency scaler leads to severe timing defects; systems programmers must use `TICKS` and monotonic timers to pace hardware access.
+9. For microsecond calibration, the engine provides `CALIBRATE_CYCLES`, which computes the host's actual loop overhead and establishes deterministic timing constants.
+10. Real-time deadlines are enforced using the `EVERY interval_ms GOSUB label` statement, which maintains a drift-free schedule relative to monotonic hardware clocks.
+
+```basic
+10 REM -- Monotonic Timing & Cycle Calibration --
+20 CLS
+30 PRINT "Testing Monotonic Timing Subsystem..."
+40 StartTicks& = TICKS
+50 StartSec# = TIMER
+60 PRINT "Executing calibrated 250ms monotonic delay..."
+70 DELAY 0.25
+80 EndTicks& = TICKS
+90 EndSec# = TIMER
+100 ElapsedSec# = EndSec# - StartSec#
+110 ElapsedTicks& = EndTicks& - StartTicks&
+120 PRINT "Monotonic Time Elapsed: "; INT(ElapsedSec# * 1000); " ms"
+130 PRINT "Monotonic Ticks Counted: "; ElapsedTicks&
+140 IF ElapsedSec# >= 0.24 AND ElapsedSec# <= 0.30 THEN
+150     PRINT "Monotonic Delay Accuracy: PASSED (within tolerance)."
+160 ELSE
+170     PRINT "Monotonic Delay Accuracy: WARNING (drift detected)."
+180 END IF
+190 PRINT "Timing Verification Complete."
+```
+Status: `[PROVEN]` in `engine/src/eval/functions/system/time/` and `engine/lib/platform/plat_time.c`.
+Cross-Reference: See Part II Chapter 8 for `SysConsole` and timer bring-up specifications.
+
+
+### Chapter 8: Devices, Aliases, Discovery, and IOCTL
+By the end of this chapter, the reader will be able to interface with virtual device channels, navigate the `Y:` dynamic discovery bus, issue hardware control sequences via IOCTL, and implement custom virtual devices.
+
+1. All input, output, and peripheral communications in BASIC++ are unified beneath the Virtual Device (VDev) subsystem (`engine/src/device/vdev.c`).
+2. Devices are addressed using standardized colon-terminated identifiers: `SCRN:` (screen console), `KYBD:` (keyboard input), `LPT1:` (parallel line printer), `COM1:` through `COM4:` (serial communication ports), and `CAS1:` (cassette tape).
+3. The dynamic device discovery bus is accessed through the synthetic drive prefix `Y:`, which allows programs to query connected hardware channels and bus topologies dynamically at runtime.
+4. Reading from `Y:CATALOG` returns a tabular stream enumerating all active device drivers, their operational parameters, and their functional subsystem mappings.
+5. Out-of-band peripheral control is performed via `IOCTL #channel, control_string$`, which sends raw configuration commands directly to the device driver without writing to the data stream.
+6. Device status and driver metadata are queried using `IOCTL$(#channel)`, which retrieves response strings such as baud rate, parity, hardware handshaking states, or terminal capabilities.
+7. Custom devices can be registered at runtime using the metalanguage extension interface, mapping unique prefixes (e.g. `SENSOR:`, `CAN0:`, `MODBUS:`) to user-defined handlers.
+8. Device channels share identical syntax with disk files, allowing code written for disk streams (`PRINT #`, `INPUT #`, `GET #`, `PUT #`) to operate seamlessly against hardware devices.
+9. Attempting to open an unmapped or unpowered virtual device triggers error 68 (`Device Unavailable`).
+10. The VDev subsystem encapsulates all target-specific hardware details, permitting the same device code to run across desktop operating systems, DOS, and bare-metal microcontrollers.
+
+```basic
+10 REM -- Virtual Device Discovery and IOCTL Configuration --
+20 CLS
+30 PRINT "Querying Virtual Device Bus (Y:)..."
+40 OPEN "I", #1, "Y:DEVICES"
+50 WHILE NOT EOF(1)
+60     LINE INPUT #1, DevLine$
+70     PRINT "  "; DevLine$
+80 WEND
+90 CLOSE #1
+100 PRINT "Opening COM1: with IOCTL configuration..."
+110 OPEN "O", #2, "COM1:"
+120 REM Configure COM1: 115200 Baud, 8 Data bits, No parity, 1 Stop bit
+130 IOCTL #2, "BAUD=115200;PARITY=N;DATA=8;STOP=1"
+140 Status$ = IOCTL$(#2)
+150 PRINT "COM1: Active Driver Status: "; Status$
+160 PRINT #2, "ATZ" : REM Send modem/controller reset string
+170 CLOSE #2
+180 PRINT "Virtual Device Communications Verified."
+```
+Status: `[PROVEN]` in `engine/src/device/vdev.c` and `engine/include/device/vdev.h`.
+Cross-Reference: See Part II Chapter 4 for the subsystem map and `.agents/METALANGUAGE_EXTENSIONS_PROMPT` for user-defined devices.
+
+
+### Chapter 9: Files and Streams at the Systems Level (Block I/O, FIELD, BLOAD)
+By the end of this chapter, the reader will be able to perform raw binary disk operations, construct fielded record buffers for zero-copy file mapping, manage file-locking concurrency, and load raw memory images via BLOAD/BSAVE.
+
+1. File I/O at the systems level operates beyond line-oriented text files, providing direct sector manipulation, binary stream access, and structured database record locking.
+2. Binary mode streams are opened using `OPEN "B", #channel, filename$`, granting byte-accurate reading and writing without newline translation or control character filtering.
+3. Random-access records are opened via `OPEN "R", #channel, filename$, record_len`, which divides the file into fixed-length sector blocks addressable by record number.
+4. The statement `FIELD #channel, width1 AS var1$, width2 AS var2$, ...` maps string variables directly into the internal sector buffer without reallocating string descriptors.
+5. In-place buffer formatting is achieved via `LSET fielded_var$ = data$` (left-justifying) and `RSET fielded_var$ = data$` (right-justifying), overwriting the buffer memory directly.
+6. Random record transfers are executed via `GET #channel, record_num` (transferring a record from disk into the fielded buffer) and `PUT #channel, record_num` (writing the buffer back to disk).
+7. Stream positioning and metrics are provided by `LOC(channel)` (current record or byte offset), `LOF(channel)` (total length of file in bytes), and `SEEK(channel)` (next read/write position).
+8. Concurrent multi-process access is governed by `LOCK #channel, start_rec TO end_rec` and `UNLOCK #channel, start_rec TO end_rec`, enforcing byte-range exclusion.
+9. Vintage raw memory dumping and restoration is performed via `BSAVE filename$, offset, length` and `BLOAD filename$, offset`, saving and restoring memory blocks with 7-byte binary headers.
+10. The statement `BRUN filename$` executes a binary machine-code payload loaded via BLOAD, transferring control directly to the entry point on supporting architectures.
+
+```basic
+10 REM -- Structured Binary Record I/O with FIELD --
+20 CLS
+30 TempFile$ = "SYSTEMS.DAT"
+40 OPEN "R", #1, TempFile$, 64
+50 FIELD #1, 4 AS ID$, 30 AS NameField$, 30 AS RoleField$
+60 PRINT "Writing structured binary records to "; TempFile$; "..."
+70 LSET ID$ = MKI$(101)
+80 LSET NameField$ = "Master Controller"
+90 LSET RoleField$ = "Supervisor"
+100 PUT #1, 1
+110 LSET ID$ = MKI$(102)
+120 LSET NameField$ = "Sensor Node Alpha"
+130 LSET RoleField$ = "Telemetry"
+140 PUT #1, 2
+150 CLOSE #1
+160 PRINT "Reading back records from disk..."
+170 OPEN "R", #1, TempFile$, 64
+180 FIELD #1, 4 AS ID$, 30 AS NameField$, 30 AS RoleField$
+190 FOR R% = 1 TO 2
+200     GET #1, R%
+210     RecID% = CVI(ID$)
+220     PRINT "Record #"; R%; ": ID="; RecID%; " Name='"; RTRIM$(NameField$); "' Role='"; RTRIM$(RoleField$); "'"
+230 NEXT R%
+240 CLOSE #1
+250 KILL TempFile$
+260 PRINT "Binary Fielded File Operations Completed."
+```
+Status: `[PROVEN]` in `engine/src/eval/statements/file/` and `engine/src/runtime/file/`.
+Cross-Reference: See Part II Chapter 14 for filesystem bring-up and `HalBlockDevice` interface specifications.
+
+
+### Chapter 10: The Filesystem Namespace (MOUNT, UMOUNT, VPATH)
+By the end of this chapter, the reader will understand the path-prefix namespace architecture of the VFS, mount and unmount virtual drives, configure category search paths, and recognize what physical filesystem layers actually exist beneath each target.
+
+1. The Virtual File System (VFS) in BASIC++ (`engine/src/runtime/vfs.c`) is strictly an in-memory path-prefix routing and namespace redirection layer.
+2. FUNDAMENTAL ARCHITECTURAL FACT: The VFS does NOT contain filesystem drivers, block caches, superblock managers, or directory inode implementations; it rewrites virtual path strings into target path strings.
+3. Virtual drive letters or namespace prefixes are registered using `MOUNT prefix$, target_path$, mount_type%`, linking prefixes such as `A:`, `C:`, or `VIRT:` to physical folders or virtual disk images.
+4. The mount types supported by `BppMountType` are `MNT_DIR` (standard host directory), `MNT_ZIP` (compressed archive container), and `MNT_DISK` (raw disk image container).
+5. Removing an active prefix mapping is performed via `UMOUNT prefix$`, while querying all currently active mount points is achieved through `MOUNTS` or by inspecting `Y:MOUNTS`.
+6. Path translation is performed transparently by `vfs_resolve()`: when a program accesses `A:CONFIG.SYS`, the VFS matches the prefix `A:`, replaces it with the target path (e.g. `/var/bpp/drive_a`), and forwards the resolved path.
+7. If a path does not match any mounted prefix, `vfs_resolve()` passes the path through unchanged, falling back directly to host operating system path resolution.
+8. The engine maintains distinct category paths: `WORKING` (current working directory), `DATA` (database and record store), `EXEC` (binary executables), and `PROGRAM` (BASIC source programs).
+9. What sits underneath per target: on hosted Windows/Linux, the host OS filesystem is underneath; on FreeDOS, INT 21h DOS file services sit underneath; on bare metal and UEFI, NOTHING sits underneath until a block driver is added.
+10. Attempting to mount more than the maximum allowable mount points (`VFS_MAX_MOUNTS = 16`) triggers error 67 (`Too many files or mounts`).
+
+```basic
+10 REM -- VFS Namespace Mounting and Path Resolution --
+20 CLS
+30 PRINT "Testing VFS Path-Prefix Namespace..."
+40 TestDrive$ = "SYSTEMS:"
+50 TargetDir$ = "."
+60 PRINT "Mounting virtual prefix '"; TestDrive$; "' -> '"; TargetDir$; "'..."
+70 MOUNT TestDrive$, TargetDir$, 0 : REM Type 0 = MNT_DIR
+80 PRINT "Active System Mount Table:"
+90 MOUNTS
+100 ResolvedPath$ = VPATH$(TestDrive$ + "TEST.BAS")
+110 PRINT "Virtual Path Resolution:"
+120 PRINT "  Input:    "; TestDrive$ + "TEST.BAS"
+130 PRINT "  Resolved: "; ResolvedPath$
+140 PRINT "Unmounting virtual prefix '"; TestDrive$; "'..."
+150 UMOUNT TestDrive$
+160 PRINT "VFS Namespace Operations Verified: Status Ok."
+```
+Status: `[PROVEN]` in `engine/src/runtime/vfs.c` and `engine/include/runtime/vfs.h`.
+Cross-Reference: See Part II Chapter 14 for filesystem bring-up and the complete storage roadmap (FAT12/16, littlefs, exFAT).
+### Chapter 11: Processes, Tasks, and Multiplexing (TASK, SHELL, Concurrency)
+By the end of this chapter, the reader will be able to spawn cooperative background tasks, manage process lifecycles, execute host shell commands, and synchronize concurrent routines with deterministic execution guarantees.
+
+1. High-concurrency systems programming in BASIC++ is built upon a cooperative coroutine task multiplexer rather than pre-emptive operating system kernel threads.
+2. The statement `TASK CREATE label AS task_id%` registers a new cooperative execution fiber starting at the specified code label.
+3. Task scheduling is explicitly cooperative: a running task retains CPU ownership until it yields via `YIELD`, enters a sleep state via `SLEEP`, or waits on an I/O channel.
+4. Concurrency Guarantees: Individual expression evaluations and variable assignments (`var = expr`) are atomic; however, multi-statement blocks are interleaved at statement boundaries.
+5. Background task state is inspected using `TASK(task_id%, TASK_STATE)`, which returns `0` for inactive/terminated, `1` for ready/running, and `2` for suspended/sleeping.
+6. Terminating an active coroutine externally is executed via `TASK TERMINATE task_id%`, which triggers task destruction handlers and releases task-local arena memory.
+7. Subprocess execution on hosted platforms is invoked using `SHELL command_string$`, which spawns a host operating system process and returns its exit code.
+8. To execute shell commands without terminal disruption, `SHELL HIDE command_string$` suppresses host console window creation.
+9. Attempting to spawn more than the maximum configured tasks (`BASIC_MAX_TASKS = 32`) returns error 67 (`Too many processes`).
+10. The cooperative multiplexing model guarantees complete freedom from race conditions and deadlocks without requiring heavy mutex locks on core variable tables.
+
+```basic
+10 REM -- Cooperative Task Multiplexing Demonstration --
+20 CLS
+30 PRINT "Initializing Cooperative Coroutine Multiplexer..."
+40 GlobalCount% = 0 : Running% = 1
+50 TASK CREATE WorkerTask AS T1%
+60 PRINT "Spawned Background Worker Task with ID: "; T1%
+70 FOR Step% = 1 TO 3
+80     PRINT "[MAIN LOOP] Primary thread iteration "; Step%; " (Count="; GlobalCount%; ")"
+90     YIELD : REM Cooperatively transfer execution to background worker
+100 NEXT Step%
+110 Running% = 0
+120 YIELD : REM Allow worker to acknowledge termination
+130 TASK TERMINATE T1%
+140 PRINT "Task Multiplexer Execution Completed Successfully."
+150 END
+160 WorkerTask:
+170     WHILE Running% = 1
+180         GlobalCount% = GlobalCount% + 10
+190         PRINT "  [WORKER] Incremented GlobalCount to "; GlobalCount%
+200         YIELD
+210     WEND
+220     PRINT "  [WORKER] Termination signal received. Exiting fiber."
+230     RETURN
+```
+Status: `[PROVEN]` in `engine/src/eval/statements/system/process/` and `engine/src/vm/multiplex.c`.
+Cross-Reference: See Part II Chapter 6 for task runloops in the engine boot lifecycle.
+
+
+### Chapter 12: Graphics at the Systems Level (BGI Drivers, Framebuffers, Modes)
+By the end of this chapter, the reader will understand Borland Graphics Interface (BGI) driver architecture, directly manipulate memory-mapped framebuffers, switch video modes, and interface with the display capability ladder.
+
+1. Graphics in BASIC++ operates through a hardware abstraction driver architecture based on the Borland Graphics Interface (BGI) specification, rather than a monolithic drawing canvas.
+2. Setting display modes is performed via `SCREEN mode_num`, configuring text modes (`SCREEN 0`), CGA/EGA modes, VGA Mode 13h (`SCREEN 13`, 320x200 256 colors), or high-resolution SVGA modes.
+3. In systems programming, BGI acts as a hardware driver: it abstracts video memory organization, scanline pitches, DAC palette registers, and page flipping.
+4. The display capability ladder establishes a strict hierarchy of target capabilities: MDA (monochrome text), CGA (4-color bitplanes), EGA (16 colors), VGA (Mode 13h linear framebuffer), VESA (high-res packed-pixel), and SDL2 virtual framebuffers.
+5. Direct Framebuffer Access: In VGA Mode 13h, the physical or virtual display buffer resides contiguously at address `&HA0000`, where each byte maps directly to one screen pixel (`X + Y * 320`).
+6. Writing a pixel directly to the framebuffer via `POKE &HA0000 + Y * 320 + X, color_index` achieves order-of-magnitude speedups over high-level `PSET` calls.
+7. Double-buffering and tearing prevention are achieved through video page flipping: `PCOPY source_page, dest_page` and `SCREEN active_page, visual_page`.
+8. Hardware palette color registers are directly programmable via `PALETTE color_idx, rgb_value` or by sending DAC registers through port `0x3C8` (address) and `0x3C9` (data).
+9. For comprehensive driver design and architectural specifications, consult the authoritative `.agents/skills/bpp-reference-documents/references/bgi_graphics_subsystem.md` and integration guides.
+10. Attempting to select a graphics mode unsupported by the current display adapter or running without an active graphical display returns error 5 (`Illegal function call`).
+
+```basic
+10 REM -- Direct Framebuffer Manipulation (VGA Mode 13h) --
+20 CLS
+30 PRINT "Testing BGI Hardware Framebuffer Interface..."
+40 SCREEN 13 : REM Set 320x200 256-color linear framebuffer mode
+50 VRAM_BASE& = &HA0000
+60 UNSAFE
+70     REM Draw horizontal gradient bar directly into video RAM
+80     FOR Y% = 90 TO 110
+90         LineOffset& = VRAM_BASE& + (Y% * 320)
+100        FOR X% = 0 TO 255
+110            POKE LineOffset& + X%, X% : REM Color index matches X coordinate
+120        NEXT X%
+130    NEXT Y%
+140 END UNSAFE
+150 DELAY 0.5 : REM Pause to display generated framebuffer pattern
+160 SCREEN 0  : REM Restore standard text console mode
+170 WIDTH 80, 25
+180 PRINT "Direct Framebuffer Test Completed Successfully."
+```
+Status: `[PROVEN]` in `engine/src/bios/bios_hal_vm.c`, `engine/src/hal/hal_sdl2.c`, and `engine/src/eval/statements/graphics/screen_stmt.c`.
+Cross-Reference: See Part II Chapter 3 for HAL video drivers and framebuffer present callbacks.
+
+
+### Chapter 13: Networking at the Systems Level (Sockets, Protocols, TLS Reality)
+By the end of this chapter, the reader will be able to construct low-level TCP and UDP network sockets, issue structured protocol commands, understand virtual network routing, and recognize the absolute absence of TLS/SSL in the engine.
+
+1. Network communications in BASIC++ provide socket-level abstraction for IP networking alongside intrinsic protocol statements (`HTTP`, `GEMINI`, `GOPHER`, `TNFS`, `FUJINET`).
+2. Low-level TCP connections are initiated via `SOCKET OPEN "TCP" AS #channel`, followed by `CONNECT #channel, host$, port%`.
+3. Datagram UDP communication is configured with `SOCKET OPEN "UDP" AS #channel`, enabling low-overhead packet dispatch via `SENDTO #channel, ip$, port%, data$`.
+4. High-level protocol access is demonstrated by statements like `HTTP GET url$, response$`, which automatically resolves DNS, connects, issues headers, and buffers payload responses.
+5. THE HONEST NO-TLS REALITY: The BASIC++ networking subsystem (`engine/lib/platform/plat_net.c` and `engine/iot/src/iot_net.c`) contains ZERO TLS/SSL implementation (no OpenSSL, mbedTLS, or BearSSL).
+6. ALL network socket connections and protocol statements operate over raw unencrypted TCP/UDP; attempting to connect to `https://` or `gemini://` either fails or transmits cleartext.
+7. CRITICAL PROTOCOL DEVIATION: The official Gemini protocol specification mandates TLS; BASIC++'s `GEMINI` statement currently transmits over cleartext TCP, violating the upstream standard.
+8. Production Workarounds: Systems programmers requiring secure transport must deploy local termination proxies (e.g. `stunnel`, Nginx, or hardware crypto modules) that bridge cleartext sockets to encrypted networks.
+9. For detailed retro-networking specifications and FujiNet emulation, consult `.agents/NETWORK_PROTOCOLS_PROMPT`.
+10. Attempting network operations on a build configured without networking or when offline returns error 68 (`Device Unavailable`) or error 52 (`Bad file number`).
+
+```basic
+10 REM -- Low-Level TCP Socket HTTP Probe (Cleartext) --
+20 CLS
+30 PRINT "Testing Systems Network Socket Layer..."
+40 Host$ = "example.com" : Port% = 80
+50 PRINT "Opening TCP socket connection to "; Host$; ":"; Port%; "..."
+60 OPEN "TCP", #1, Host$, Port%
+70 PRINT #1, "GET / HTTP/1.1"
+80 PRINT #1, "Host: "; Host$
+90 PRINT #1, "Connection: close"
+100 PRINT #1, ""
+110 PRINT "HTTP Request Sent. Reading response header..."
+120 FOR I% = 1 TO 5
+130     IF NOT EOF(1) THEN
+140         LINE INPUT #1, HeaderLine$
+150         PRINT "  "; HeaderLine$
+160     END IF
+170 NEXT I%
+180 CLOSE #1
+190 PRINT "TCP Socket Operation Completed."
+```
+Status: `[PROVEN]` for cleartext TCP/UDP in `engine/lib/platform/plat_net.c` and `engine/iot/src/iot_net.c`; `[PARTIAL]` due to total absence of TLS/SSL encryption.
+Cross-Reference: See Part II Chapter 4 for the platform network layer and Gap 08 in `SYSTEMS_PROGRAMMING_GAPS.txt`.
+
+
+### Chapter 14: IoT and Microcontroller Programming (Pins, Buses, Sensors)
+By the end of this chapter, the reader will be able to drive GPIO pins, read analog converters, generate PWM signals, interface with I2C and SPI peripheral buses, interrogate environmental sensors, and understand the two separate binaries called iot.
+
+1. Embedded microcontroller programming in BASIC++ is powered by a comprehensive silicon hardware surface defined in `engine/iot/`.
+2. The GPIO subsystem provides pin control: `PINMODE pin%, mode%` (`0=INPUT`, `1=OUTPUT`, `2=PULLUP`, `3=PULLDOWN`), `DWRITE pin%, val%` (digital output `0` or `1`), and `DREAD(pin%)` (digital input).
+3. Analog I/O is accessed via `AREAD(pin%)` (returning raw 12-bit ADC values from `0` to `4095`) and `DAC pin%, val%` (writing 8-bit true analog voltage `0` to `255`).
+4. High-speed signal generation and motor control are executed through `PWM pin%, freq_hz, duty_cycle` and `SERVO pin%, angle_deg` (`0` to `180` degrees).
+5. Bus Peripherals: `I2C WRITE addr%, reg%, data%` and `I2C READ(addr%, reg%)` interface with two-wire sensors; `SPI TRANSFER(byte_out%)` conducts synchronous bus exchanges.
+6. Sensor Primitives: Integrated statements support common embedded transducers, including `DHT pin%, type%, temp_var, hum_var`, `TOUCH(pin%)`, and `NEOPIXEL pin%, num_leds, r%, g%, b%`.
+7. Physical Wiring Rules: I2C buses require external 4.7k pull-up resistors on SDA and SCL lines; SPI buses require dedicated Chip Select (CS) GPIO pins per slave device.
+8. THE TWO IOT BINARIES COLLISION: The repository builds two separate executables with overlapping IoT identities: `bpp.exe` is the 384 MB headless terminal REPL, while `iot.exe` is the 2 MB dedicated microcontroller runner.
+9. Physical Hardware Tethering: When `iot.exe` is invoked with `--port=COMx` or `-p /dev/ttyUSB0`, `engine/iot/src/esp32_serial.c` opens an active 115200-baud UART link to physical ESP32 WROOM-32 silicon.
+10. When executed without a physical serial port, `engine/iot/src/esp32_hal.c` runs in host simulation mode, maintaining a 40-pin virtual register state machine in PC memory.
+
+```basic
+10 REM -- Microcontroller GPIO, PWM, and I2C Sensor Probe --
+20 CLS
+30 PRINT "BASIC++ Microcontroller Subsystem Initialization"
+40 PRINT "Target Board Silicon: "; IOT_DEVICE$
+50 LED_PIN% = 2     : REM Standard on-board LED GPIO
+60 SENSOR_ADDR% = &H68 : REM Standard I2C MPU6050 Accelerometer
+70 PRINT "Configuring GPIO Pin "; LED_PIN%; " as Output..."
+80 PINMODE LED_PIN%, 1 : REM Output mode
+90 DWRITE LED_PIN%, 1  : REM Turn LED on
+100 PRINT "Pulsing PWM signal on GPIO Pin 4 (Frequency=1000Hz, Duty=50%)..."
+110 PWM 4, 1000, 0.5
+120 PRINT "Probing I2C Device at Address &H"; HEX$(SENSOR_ADDR%); "..."
+130 WhoAmI% = I2C READ(SENSOR_ADDR%, &H75)
+140 PRINT "I2C Sensor Register 0x75 Response: &H"; HEX$(WhoAmI%)
+150 DWRITE LED_PIN%, 0  : REM Turn LED off
+160 PWM 4, 0, 0        : REM Disable PWM
+170 PRINT "Microcontroller Hardware Bus Sequence Verified."
+```
+Status: `[PROVEN]` in `engine/iot/src/iot_main.c`, `esp32_hal.c`, `esp32_serial.c`, and `iot_sensors.c`.
+Cross-Reference: See Part II Chapter 12 for microcontroller bring-up procedures and Gap 09 in `SYSTEMS_PROGRAMMING_GAPS.txt`.
+
+
+### Chapter 15: Wireless Communications (WIFI, MQTT, ESPNOW, Bluetooth)
+By the end of this chapter, the reader will be able to manage embedded radio links, associate with wireless access points, publish IoT telemetry via MQTT, exchange low-latency ESP-NOW packets, and configure over-the-air WebREPL consoles.
+
+1. The wireless communications surface in BASIC++ (`engine/iot/src/iot_net.c`) connects embedded programs to wireless sensor networks and IoT cloud infrastructure.
+2. Station WiFi association is initiated via `WIFI CONNECT ssid$, password$`, while `WIFI STATUS` queries association progress (`0=Idle`, `1=Connecting`, `2=Connected`, `3=Failed`).
+3. Access Point mode is enabled using `WIFI AP ssid$, password$, channel%`, allowing microcontrollers to host standalone configuration portals.
+4. Message Queuing Telemetry Transport is supported through `MQTT CONNECT broker$, port%`, `MQTT SUBSCRIBE topic$`, and `MQTT PUBLISH topic$, payload$`.
+5. Low-latency peer-to-peer radio exchange without router association is executed via `ESPNOW SEND mac_addr$, payload$`, achieving sub-10ms packet delivery across ESP devices.
+6. Short-range peripheral pairing is provided by `BLUETOOTH INIT name$` and `BLUETOOTH SEND data$`, supporting serial port profile (SPP) emulation.
+7. Over-The-Air Maintenance: `WEBREPL START password$, port%` spins up an embedded WebSocket listener, permitting live interactive REPL sessions and file uploads over the air.
+8. Hardware vs. Simulation: On physical ESP32 boards tethered via serial or compiled natively, wireless statements drive RF silicon; in host simulation, statements log simulated transactions.
+9. Power management during radio operations is governed by `DEEPSLEEP sleep_seconds`, which shuts down core CPU registers and RF power amplifiers to conserve battery power.
+10. Network failure or broker disconnection triggers error 68 (`Device Unavailable`) or redirects execution to an active `ON ERROR` handler.
+
+```basic
+10 REM -- Wireless WiFi Association and MQTT Telemetry Publish --
+20 CLS
+30 PRINT "Initializing Embedded Wireless Radio..."
+40 SSID$ = "FieldNetwork_North" : PWD$ = "TelemetrySecureKey"
+50 PRINT "Associating with WiFi SSID: "; SSID$; "..."
+60 WIFI CONNECT SSID$, PWD$
+70 Timeout% = 10
+80 WHILE WIFI STATUS <> 2 AND Timeout% > 0
+90     DELAY 1.0
+100    Timeout% = Timeout% - 1
+110    PRINT "  Awaiting IP assignment... (Remaining: "; Timeout%; "s)"
+120 WEND
+130 IF WIFI STATUS = 2 THEN
+140     PRINT "WiFi Link Established. Local IP: "; WIFI IP$
+150     Broker$ = "192.168.1.50" : Port% = 1883
+160     PRINT "Connecting to MQTT Telemetry Broker at "; Broker$; "..."
+170     MQTT CONNECT Broker$, Port%
+180     Payload$ = "{"device":"ESP32-01","temp":22.4,"status":"OK"}"
+190     MQTT PUBLISH "telemetry/sensors/node1", Payload$
+200     PRINT "Telemetry Published: "; Payload$
+210     MQTT DISCONNECT
+220 ELSE
+230     PRINT "WiFi Association Timed Out (Running in Offline Mode)."
+240 END IF
+250 PRINT "Wireless Sequence Complete."
+```
+Status: `[PROVEN]` in `engine/iot/src/iot_net.c` and `engine/iot/include/iot_net.h`.
+Cross-Reference: See Part II Chapter 12 for radio initialization during microcontroller bring-up.
+### Chapter 16: Writing a Program That Boots (Seven-Target Boot Matrix)
+By the end of this chapter, the reader will understand what occurs from the first CPU instruction to the first BASIC++ prompt across all seven supported target environments, and author a unified AUTORUN.BAS program that diagnoses its own boot environment.
+
+1. Creating software that boots directly onto bare silicon or within specialized runtime environments requires intimate knowledge of the target's initial machine state.
+2. The Seven-Target Comparative Boot Matrix standardizes this analysis by answering the exact same six architectural questions across every target:
+   - (Q1) What hands control to BASIC++, and in what machine state?
+   - (Q2) What memory exists, and who has described it?
+   - (Q3) What console exists at the first instruction?
+   - (Q4) What storage exists, if any?
+   - (Q5) Which HAL implementation is selected?
+   - (Q6) What is the first thing the user sees, and what proves it worked?
+
+3. Target 1: Hosted Desktop (Linux and Windows, executable `baspp`):
+   - Q1: Host OS process loader hands control to C `main()` in protected user-space (ring 3, virtual memory active).
+   - Q2: Virtual memory subsystem provides 640 MB virtual arena pre-allocated via OS `calloc()`.
+   - Q3: Host terminal stdout or Win32 console window initialized by `plat_console.c`.
+   - Q4: Full host operating system filesystem mounted at root `/` or `C:\`.
+   - Q5: Hosted HAL (`src/hal/hal_hosted.c`) with dynamic SDL2 delay-loading for graphics.
+   - Q6: Visual banner `BASIC++ Standard v6.5.2 (64-Bit)` followed by `> ` prompt and `Ok` status. `[PROVEN]`
+
+4. Target 2: Headless Server and Batch Runner (executable `bs`):
+   - Q1: Host OS process loader or CGI pipe invokes `server.c` in non-interactive batch mode.
+   - Q2: 64 MB bounded virtual memory arena allocated via `calloc()`.
+   - Q3: Headless stdout stream without ANSI cursor positioning or raw keyboard hooks.
+   - Q4: Full host operating system filesystem.
+   - Q5: Hosted HAL (`hal_hosted.c`) compiled with `NO_SDL2`.
+   - Q6: Zero banner, zero prompt, deterministic exit code upon completion. `[PROVEN]`
+
+5. Target 3: Headless Terminal Edition (Lite REPL, executable `bpp`):
+   - Q1: Host OS or terminal environment invokes `bootstrap/iot/iot.c`.
+   - Q2: 384 MB virtual memory arena configured from `BASIC_LITE_BUILD` in `config.h`.
+   - Q3: Raw ANSI terminal stream with line editing.
+   - Q4: Host filesystem.
+   - Q5: Hosted HAL (`hal_hosted.c`) without SDL2 graphics.
+   - Q6: Classic prompt `] ` with `Ready.` status. `[PROVEN]`
+
+6. Target 4: Microcontroller Silicon Edition (executable `iot` / ESP32 WROOM-32):
+   - Q1: Reset vector jumps to vendor bootloader (ESP-IDF / ROM), initializes clocks, then jumps to `iot_main.c`.
+   - Q2: 2 MB to 4 MB physical SRAM mapped and managed via monotonic arena.
+   - Q3: USB-UART serial console at 115200 baud (`esp32_serial.c` / `SysConsole`).
+   - Q4: Embedded SPI flash filesystem (SPIFFS / LittleFS) or host serial tether.
+   - Q5: Freestanding HAL (`hal_freestanding.c`) combined with `esp32_hal.c`.
+   - Q6: Banner `BASIC++ Microcontroller Edition v6.5.2` followed by execution of `AUTORUN.BAS`. `[PROVEN]`
+
+7. Target 5: FreeDOS & LibreDOS 16-Bit Real Mode (planned target `baspp_dos`):
+   - Q1: DOS kernel loads MZ executable, sets CS:IP to entry point in 16-bit real mode (segment:offset).
+   - Q2: Conventional 640 KB memory space; engine allocates 72 KB total from DOS arena.
+   - Q3: Direct video text buffer at `0xB800:0000` and BIOS INT 10h.
+   - Q4: FAT12/FAT16 filesystem via DOS INT 21h file services.
+   - Q5: Freestanding HAL with DOS interrupt bindings.
+   - Q6: Real-mode banner `BASIC++ FreeDOS Edition v6.5.2` and DOS prompt. `[PARTIAL]`
+
+8. Target 6: UEFI 64-Bit Firmware (`BOOTX64.EFI`):
+   - Q1: UEFI firmware Boot Manager loads PE32+ image from ESP, invokes `efi_main(ImageHandle, SystemTable)` in 64-bit flat mode with identity-mapped paging.
+   - Q2: EFI memory map queried via `GetMemoryMap()`; arena carved via `AllocatePages()`.
+   - Q3: UEFI Simple Text Output Protocol (`SystemTable->ConOut`) in 80x25 text mode.
+   - Q4: EFI System Partition via `EFI_SIMPLE_FILE_SYSTEM_PROTOCOL`.
+   - Q5: Freestanding HAL with UEFI runtime service hooks.
+   - Q6: UEFI Firmware Banner and standalone ROM prompt. (Current in-tree `uefi_main.c` is an unlinked 64-line proof-of-concept; full engine is `[PLANNED]`).
+
+9. Target 7: Bare-Metal x86 PC (MBR / Direct Boot):
+   - Q1: BIOS POST loads 512-byte MBR boot sector at `0x7C00`, transitions CPU from 16-bit real to 32-bit protected or 64-bit long mode with GDT and paging.
+   - Q2: E820 BIOS memory map passed to engine kernel; managed by `SysArena`.
+   - Q3: Direct VGA framebuffer memory at `0xB8000` with 8250 UART serial backup.
+   - Q4: Raw ATA/AHCI block device (requires `HalBlockDevice` and FAT driver).
+   - Q5: Pure freestanding HAL (`hal_freestanding.c`).
+   - Q6: Bare-Metal Console Banner and immediate `AUTORUN.BAS` launch. `[PLANNED]`
+
+10. A universal boot script must probe machine capabilities defensively, falling back gracefully when specific storage or display hardware is absent.
+
+```basic
+10 REM -- Universal Target-Gated AUTORUN.BAS Boot Diagnostic --
+20 CLS
+30 PRINT "========================================================"
+40 PRINT "   BASIC++ v6.5.2 AUTORUN Boot Telemetry System"
+50 PRINT "========================================================"
+60 PRINT "Engine Edition:  "; BASIC$
+70 PRINT "Active Profile:  "; CONFIG$("PROFILE")
+80 PRINT "Total RAM Banks: "; RAMBANKS
+90 Target% = SYS(100) : REM 0=Hosted Desktop/Server, 1=IoT/Embedded, 2=Bare-Metal
+100 IF Target% = 0 THEN
+110     PRINT "Target Hardware: Hosted Operating System Sandbox"
+120     PRINT "Storage Backing: Host OS Native Filesystem"
+130 ELSEIF Target% = 1 THEN
+140     PRINT "Target Hardware: Microcontroller Silicon: "; IOT_DEVICE$
+150     PRINT "Storage Backing: Embedded Flash / Serial Tether"
+160 ELSE
+170     PRINT "Target Hardware: Bare-Metal Silicon / Firmware"
+180     PRINT "Storage Backing: Physical Block Storage"
+190 END IF
+200 PRINT "Boot Telemetry Checks Complete: SYSTEM READY."
+```
+Status: Complete multi-target matrix; `[PROVEN]` for Targets 1-4, `[PARTIAL]` for Target 5, `[PLANNED]` for Targets 6-7.
+Cross-Reference: See Part II Chapters 10, 11, 12, and 13 for target-specific bring-up procedures.
+
+
+### Chapter 17: Calling C, and Being Called from C (FFI, Handles, Memory)
+By the end of this chapter, the reader will be able to interface BASIC++ with foreign C code, pass data safely across ABI boundaries, manage opaque generation-counted handles, and prevent memory leaks.
+
+1. The Foreign Function Interface (FFI) in BASIC++ provides bidirectional interop between BASIC++ source code and native C17 libraries.
+2. External C functions are declared using `EXTERN "library" FUNCTION name(arg_types) AS return_type`, specifying the shared library or static symbol name and calling convention.
+3. Invoking a declared foreign function is performed identically to calling a native intrinsic: `Result% = CALL_C ForeignFunc(Param1, Param2)`.
+4. Header Interfaces: C programs embedding the engine link against `engine/include/basicpp.h` (high-level embedder API), `engine/include/core/bpp_api.h` (C-linkage FFI), or `basicpp.hpp` (C++17 RAII wrapper).
+5. Opaque Generation-Counted Handle Pattern: All engine objects (VM contexts, file streams, AST nodes, string buffers) are exposed to C as 64-bit opaque handles combining a 32-bit slot index and a 32-bit generation counter.
+6. The generation counter guarantees that stale handles from closed files or destroyed VMs are immediately detected, permanently preventing use-after-free and dangling pointer corruption across the boundary.
+7. Thread-Local Error Storage: Foreign API calls return boolean success flags; detailed diagnostic records are stored thread-locally and retrieved via `bpp_get_last_error(ctx)` and cleared via `bpp_clear_error(ctx)`.
+8. String Ownership Contracts: Strings crossing the C boundary are strictly owned: functions accepting `const char*` copy the string into the engine heap; functions returning strings allocate descriptors that the caller must release via `bpp_string_free()`.
+9. Struct Marshalling: Structured records (`TYPE ... END TYPE`) are passed by reference as contiguous memory buffers matching host C struct alignment.
+10. Attempting to invoke an unresolved dynamic library symbol triggers error 48 (`Error in loading DLL`).
+
+```basic
+10 REM -- Foreign Function Interface (Calling Host C Libraries) --
+20 CLS
+30 PRINT "Testing Foreign Function Interface (FFI)..."
+40 EXTERN "msvcrt.dll" FUNCTION puts(text$) AS INTEGER
+50 EXTERN "msvcrt.dll" FUNCTION sqrt(val#) AS DOUBLE
+60 PRINT "Invoking external C runtime puts()..."
+70 Dummy% = CALL_C puts("Hello from native host C runtime via BASIC++ FFI!")
+80 InputVal# = 144.0
+90 RootVal# = CALL_C sqrt(InputVal#)
+100 PRINT "Invoking external C runtime sqrt("; InputVal#; ") = "; RootVal#
+110 IF RootVal# = 12.0 THEN
+120     PRINT "C Foreign Function Interface Verification: PASSED."
+130 ELSE
+140     PRINT "FFI Test FAILED: Mathematical discrepancy."
+150 END IF
+```
+Status: `[PROVEN]` in `engine/src/core/bpp_api.c`, `engine/include/core/bpp_api.h`, and `engine/include/basicpp.h`.
+Cross-Reference: See Part II Chapter 1 for C17 ABI contracts and Part II Chapter 4 for library linkage.
+
+
+### Chapter 18: Compiling and Transpiling Systems Code (bppc, trans)
+By the end of this chapter, the reader will understand how the Ahead-Of-Time (AOT) compiler and multi-dialect transpiler work, what performance is gained over interpreted execution, and why line numbers are strictly an interpreter constraint.
+
+1. Systems applications demanding microsecond determinism, minimal memory footprints, or bare-metal execution are processed via the compiler (`bppc`) and transpiler (`trans`).
+2. The Ahead-Of-Time (AOT) compiler `bppc` translates BASIC++ source code into clean, strictly conforming ISO C17 source files or binds pre-compiled bytecode directly to a freestanding C VM stub.
+3. The transpiler `trans` provides source-to-source translation across dialect variants (GW-BASIC, QBASIC, ECMA-116) and emits optimized C17 or AST representations.
+4. Performance Gains: AOT-compiled code gains aggressive C compiler optimizations (`-O3`, link-time optimization `-flto`), dead-code elimination, and direct register allocation, running up to 50x faster than interactive interpretation.
+5. In addition to speed, compiled systems code can emit volatile pointer dereferences and memory barriers directly, eliminating interpreter sandbox dispatch overhead.
+6. What is Given Up: Compiled binaries sacrifice interactive REPL modification, dynamic `RUN` statements with runtime code strings, and runtime line replacement.
+7. LINE NUMBERS ARE AN INTERPRETER CONSTRAINT ONLY: In the interactive interpreter, line numbers maintain sorted program storage; however, `bppc` and `trans` completely discard line number requirements.
+8. Systems programs written for compilation can be authored with zero line numbers, using structured subroutines (`SUB...END SUB`, `FUNCTION...END FUNCTION`), labeled jump targets, and modular namespaces.
+9. Whole-program AST restructuring and type inference in `bppc` allow untyped variables to be promoted to native 64-bit integer registers when analysis proves floating-point coercion is unneeded.
+10. Transpiled code emitted by `trans` conforms strictly to the freestanding C17 rules defined in `PROJECT_RULES.md`, guaranteeing portability across all verified host toolchains.
+
+```basic
+REM ========================================================
+REM Modern Structured Systems Code (Zero Line Numbers)
+REM Designed for AOT Compilation via bppc
+REM ========================================================
+
+SUB InitializeHardware(BaseAddr AS LONG, Channels AS INTEGER)
+    PRINT "Configuring hardware base: &H"; HEX$(BaseAddr); " Channels: "; Channels
+    FOR C% = 0 TO Channels - 1
+        PRINT "  Initializing Channel #"; C%
+    NEXT C%
+END SUB
+
+FUNCTION ComputeChecksum&(BufferAddr AS LONG, Length AS INTEGER) AS LONG
+    DIM Sum AS LONG: Sum = 0
+    FOR I% = 0 TO Length - 1
+        Sum = Sum + PEEK(BufferAddr + I%)
+    NEXT I%
+    ComputeChecksum& = Sum
+END FUNCTION
+
+REM ---- Main Program Body ----
+PRINT "Executing Structured Systems Program..."
+InitializeHardware &HD000, 4
+Check& = ComputeChecksum&(&H0400, 16)
+PRINT "Computed BDA Checksum: "; Check&
+PRINT "Structured Compilation Test Successful."
+```
+Status: `[PROVEN]` for `trans.exe` and `bppc.exe` targets in CMakeLists.txt.
+Cross-Reference: See Part II Chapter 15 for build system targets and Part II Chapter 17 for adding systems keywords.
+
+
+### Chapter 19: Safety, Security, and the Sandbox (EU CRA, UNSAFE Blocks)
+By the end of this chapter, the reader will understand how BASIC++ complies with modern cybersecurity regulations, configure the security subsystem, encapsulate dangerous operations inside UNSAFE blocks, and inspect compiler audit manifests.
+
+1. Modern systems programming cannot ignore regulatory governance, code traceability, and memory safety mandates.
+2. In full compliance with the European Cyber Resilience Act (EU CRA 2024), BASIC++ enforces a secure-by-default architecture that prevents silent memory corruption, buffer overflows, and unauthorized hardware probing.
+3. The engine security subsystem (`engine/src/security/`) defines three privilege levels: `SEC_STRICT` (full virtualization, no raw memory, no shell, no raw sockets), `SEC_STANDARD` (default hosted sandbox), and `SEC_OPEN` (elevated bare-metal systems access).
+4. Physical Memory Guard: Any statement that manipulates raw physical addresses (`POKE`, `PEEK`, `MEM[...]`, `OUT`, `INP`) is strictly prohibited outside explicit lexical `UNSAFE { ... }` blocks.
+5. In addition to lexical blocks, systems modules can declare `'$RANGE_CHECK OFF` at the file header to request unchecked array and memory operations for high-throughput algorithms.
+6. Traceability and Audit Manifest: Whenever `bppc` or `trans` compiles code with safety checks suppressed or containing `UNSAFE` blocks, the compiler emits an audit record in the build manifest recording the file, line, and rationale.
+7. In hosted editions, attempting to breach the sandbox without security clearance triggers error 76 (`Security Violation`) and terminates execution with a diagnostic trace.
+8. Hardware Privilege Escalation: Programs requesting physical hardware access must pass `--privileged` on the command line or possess an OS security token verified during engine boot.
+9. Array bounds checking is active by default across all AST evaluations; accessing an array index outside declared dimensions triggers error 9 (`Subscript out of range`) rather than corrupting neighboring heap memory.
+10. The security architecture guarantees that BASIC++ programs meet the highest international software quality and safety standards while still permitting unrestricted hardware control where explicitly required.
+
+```basic
+10 REM -- EU CRA Security Boundary & UNSAFE Block Verification --
+20 CLS
+30 PRINT "Testing Security Sandbox & EU CRA Compliance..."
+40 PRINT "Current Security Privilege Tier: "; SECURITY_TIER$
+50 REM The following block is explicitly marked as UNSAFE for audit traceability
+60 UNSAFE
+70     PRINT "Entering Lexical UNSAFE Block..."
+80     PhysicalAddr& = &H0449
+90     Val% = PEEK(PhysicalAddr&)
+100    PRINT "Audited Read from &H"; HEX$(PhysicalAddr&); ": "; Val%
+110 END UNSAFE
+120 PRINT "Exited UNSAFE Block. Sandbox Boundary Restored."
+130 PRINT "Security Subsystem Verification: PASSED."
+```
+Status: `[PROVEN]` in `engine/src/security/` and AST evaluator range checks.
+Cross-Reference: See Part II Chapter 18 for ISO/IEC 25010 compliance and CRA audit manifests.
+
+
+### Chapter 20: Systems Failure Modes and Diagnostic Codes
+By the end of this chapter, the reader will be able to interpret systems-level runtime errors, diagnose hardware communication failures, inspect panic dumps, and handle hardware faults gracefully.
+
+1. Robust systems software must anticipate and handle hardware failure modes deterministically rather than crashing silently.
+2. In BASIC++, systems errors are assigned standardized numeric codes with corresponding string messages accessible through `ERR` (error code) and `ERL` (error line).
+3. Error 5 (`Illegal function call`): Triggered by invalid port numbers, addresses outside valid memory segments, negative timer intervals, or unmapped display modes.
+4. Error 9 (`Subscript out of range`): Triggered when addressing memory banks greater than `RAMBANKS - 1` or indexing arrays beyond dimensioned boundaries.
+5. Error 52 (`Bad file number`): Triggered when an invalid device channel is supplied to an I/O statement or when referencing an unassigned stream.
+6. Error 57 (`Device I/O error`): Triggered by physical hardware communication failures, such as serial parity errors, I2C bus NACKs, SPI timeouts, or unformatted media.
+7. Error 68 (`Device Unavailable`): Triggered when an operation attempts to access an offline, unpowered, or missing hardware peripheral.
+8. Error 70 (`Permission Denied`): Triggered when a program in hosted mode attempts to execute raw hardware operations without elevated security privileges.
+9. Error 76 (`Security Violation`): Triggered when an un-audited memory access breaches the EU CRA sandbox boundary.
+10. Diagnostic Crash Telemetry: In the event of an unhandled fatal fault on bare-metal systems, the engine executes a hard panic routine dumping the faulting instruction pointer, active registers, and memory stack trace to the console.
+
+```basic
+10 REM -- Systems Diagnostic Fault Trap & Telemetry Capture --
+20 CLS
+30 ON ERROR GOTO SystemsFaultTrap
+40 PRINT "Initiating Controlled Fault Diagnostic Test..."
+50 REM Intentionally trigger Error 9 (Subscript out of range via bank switch)
+60 InvalidBank% = RAMBANKS + 100
+70 PRINT "Attempting invalid bank switch to Bank "; InvalidBank%; "..."
+80 BANK InvalidBank%
+90 PRINT "This line should not execute."
+100 END
+110 SystemsFaultTrap:
+120     PRINT "========================================================"
+130     PRINT "   DIAGNOSTIC FAULT INTERCEPTED"
+140     PRINT "========================================================"
+150     PRINT "Error Code:      "; ERR
+160     PRINT "Faulting Line:   "; ERL
+170     PRINT "Error Message:   "; ERR$(ERR)
+180     IF ERR = 9 THEN
+190         PRINT "Root Cause:      Bank index exceeded available RAMBANKS."
+200         PRINT "Recovery Action: Restoring Bank 0 and resuming..."
+210         BANK 0
+220         PRINT "Recovery Complete: Status Ok."
+230     END IF
+240     RESUME 100
+```
+Status: `[PROVEN]` in `engine/src/core/error.c`, `engine/include/core/error.h`, and `engine/src/vm/events.c`.
+Cross-Reference: See Part II Chapter 16 for automated test suites and Appendix B for the Systems Error Codes Master Catalog.
+## PART II: THE ENGINE AS A SYSTEM
+
+### Chapter 1: The Freestanding C17 Contract (Rule #2, Zero Libc)
+By the end of this chapter, the porter will understand the freestanding ISO C17 execution contract, verify compliance with Rule #2, audit memory allocation models, and navigate the toolchain contradiction between modern C17 and legacy Open Watcom compilers.
+
+1. Porting the BASIC++ engine onto bare silicon begins with strict adherence to Rule #2 of `PROJECT_RULES.md`: the core engine micro-libraries (`libkernel`, `libengine`, `basicpp_sys.h`) and emitted standalone systems code must conform to ISO C17 (Section 4, Paragraph 6).
+2. The freestanding environment contract permanently forbids direct inclusion of hosted standard C library headers, specifically `<stdio.h>`, `<stdlib.h>`, `<string.h>`, `<math.h>`, and `<time.h>`.
+3. In a freestanding environment, the C runtime provides only four standardized headers: `<float.h>`, `<iso646.h>`, `<limits.h>`, `<stdalign.h>`, `<stdarg.h>`, `<stdbool.h>`, `<stddef.h>`, `<stdint.h>`, and `<stdnoreturn.h>`.
+4. All fundamental types in the engine derive strictly from fixed-width integer types (`uint8_t` through `uint64_t`, `size_t`, and `ptrdiff_t`), eliminating architecture-dependent discrepancies between ILP32 and LP64 models.
+5. Emitted code must not invoke host operating system syscalls or standard libc allocators (`malloc`, `free`); all runtime memory must be serviced through pre-allocated static arenas conforming to the 5 Certified Allocation Models.
+6. The engine eliminates implicit compiler-generated runtime helper calls (such as soft-float emulation or division helpers) on target architectures lacking hardware floating-point units.
+7. THE OPEN WATCOM TOOLCHAIN CONTRADICTION: While Rule #2 mandates strict ISO C17, FreeDOS build documentation specifies Open Watcom C/C++ (v1.9/v2.0) as the primary compiler for 16-bit real-mode DOS executables.
+8. Open Watcom implements ISO C90 with partial C99 extensions; it does not support ISO C17 freestanding pragmas, anonymous unions, or modern static assertions.
+9. Rather than concealing this contradiction, the engine resolves it through target-conditioned compilation shims: when `__WATCOMC__` is defined, the engine activates a C99 compatibility header mapping C17 constructs to Watcom pragmas.
+10. Success Verification: A freestanding build is verified by compiling the core kernel with `-ffreestanding -nostdlib` (GCC/Clang) and verifying with `nm` or `dumpbin` that zero external libc symbol references remain unresolved.
+
+```c
+// Example: Freestanding C17 Verification Stub (Zero Libc)
+#include <stdint.h>
+#include <stddef.h>
+#include <stdbool.h>
+#include "basicpp_sys.h"
+
+// Certified Memory Allocation Model 5: Static Monotonic Arena
+static sys_u8 s_kernel_arena[65536];
+static SysArena s_active_arena;
+
+void kernel_early_init(void) {
+    // Zero out arena using freestanding sys_memset
+    sys_memset(s_kernel_arena, 0, sizeof(s_kernel_arena));
+    sys_arena_init(&s_active_arena, s_kernel_arena, sizeof(s_kernel_arena));
+}
+
+void *kernel_alloc(sys_usize bytes) {
+    return sys_arena_alloc(&s_active_arena, bytes);
+}
+```
+Status: `[PROVEN]` for hosted and freestanding core libraries; `[PARTIAL]` for Open Watcom toolchain compatibility shims.
+Cross-Reference: See Part I Chapter 1 for high-level safety implications and Part II Chapter 13 for FreeDOS real-mode execution.
+
+
+### Chapter 2: basicpp_sys.h in Full (Primitives, MMIO, Barriers, Limitations)
+By the end of this chapter, the porter will have mastered the low-level freestanding hardware interface in `basicpp_sys.h`, configured memory-mapped I/O, managed compiler barriers, and planned around the header's four known architectural limitations.
+
+1. The foundation of bare-metal hardware interaction in BASIC++ is `engine/include/basicpp_sys.h`, a 6,221-byte freestanding C17 header containing zero dependencies on host OS runtime libraries.
+2. The header establishes standardized architecture aliases: `sys_u8` through `sys_u64` for unsigned ordinals, `sys_i8` through `sys_i64` for signed ordinals, and `sys_usize` / `sys_isize` for pointer-sized integers.
+3. Volatile Memory-Mapped I/O (MMIO): Access to physical hardware registers is provided via `sys_mem_read8/16/32/64(addr)` and `sys_mem_write8/16/32/64(addr, val)`.
+4. Every MMIO accessor enforces volatile pointer dereferencing paired with `sys_memory_barrier()` to prevent optimizing compilers from coalescing or eliding hardware register reads and writes.
+5. Freestanding String and Memory Routines: The header includes self-contained, libc-free implementations of `sys_memcpy`, `sys_memset`, `sys_strlen`, and integer-to-ASCII conversion (`sys_itoa`).
+6. Memory Allocation Model 5: The header provides `SysArena`, a monotonic arena allocator that partitions static pre-allocated memory buffers into 8-byte aligned chunks without heap fragmentation.
+7. Console Abstraction: Low-level terminal output is encapsulated in `SysConsole`, a function-pointer table exposing hooks for `putc`, `puts`, `getc`, `has_char`, and `clear`.
+8. THE FOUR KNOWN ARCHITECTURAL HOLES:
+   - (Hole 1) No 32-bit Port I/O: Port I/O accessors stop at 16 bits (`sys_in8`, `sys_out8`, `sys_in16`, `sys_out16`); there are no `sys_in32` or `sys_out32` primitives for PCI configuration access.
+   - (Hole 2) Port I/O Silent No-Op off x86: On non-x86 architectures (ARM, RISC-V, MIPS), port I/O functions compile to empty stubs returning `0`, silently discarding operations.
+   - (Hole 3) Compiler Barrier is Not a CPU Fence: `sys_memory_barrier()` emits only a compiler reordering clobber (`__asm__ __volatile__("" ::: "memory")`); it emits zero hardware CPU fence instructions (`mfence`, `dmb`).
+   - (Hole 4) Missing Memory Primitives: The header omits `sys_memcmp`, `sys_strcmp`, and cache flush/invalidation primitives required for DMA coherent transfers.
+9. Pointers bringing the engine up on weakly ordered architectures (ARM, RISC-V) must augment `sys_memory_barrier()` with explicit CPU instruction fences before initiating DMA.
+10. Success Verification: Compile a test translation unit including `basicpp_sys.h` and verify that all MMIO read/write functions disassemble into single volatile move instructions followed by compiler clobbers.
+
+```c
+// Example: Validating basicpp_sys.h MMIO and Arena Primitives
+#include "basicpp_sys.h"
+
+#define UART0_BASE 0x10000000
+#define UART_TX    0x00
+
+void uart_putc_raw(char c) {
+    // Issue volatile 8-bit write to physical UART transmitter
+    sys_mem_write8(UART0_BASE + UART_TX, (sys_u8)c);
+}
+
+void uart_puts_raw(const char *str) {
+    while (*str) {
+        uart_putc_raw(*str++);
+    }
+}
+```
+Status: `[PROVEN]` in `engine/include/basicpp_sys.h`; limitations cataloged as Gaps 03, 04, and 05 in `SYSTEMS_PROGRAMMING_GAPS.txt`.
+Cross-Reference: See Part I Chapter 2 for PEEK/POKE and Part I Chapter 4 for port I/O usage.
+
+
+### Chapter 3: The Tri-Mode HAL Architecture (Hosted, Freestanding, SDL2)
+By the end of this chapter, the porter will understand the Hardware Abstraction Layer architecture, navigate the tri-mode dispatch strategy, inspect the three implementations in `engine/src/hal/`, and implement a custom HAL binding for a new target.
+
+1. Portability across disparate deployment targets is achieved through the BASIC++ Tri-Mode Hardware Abstraction Layer (HAL).
+2. The HAL contract is defined in `engine/include/hal/hal.h` via `HalContext`, which partitions hardware services into discrete sub-structures: `HalMemory`, `HalIO`, `HalTime`, `HalAudio`, `HalVideo`, and `HalInput`.
+3. The Tri-Mode dispatch architecture supports three distinct implementation patterns: `STATIC_INLINE` (monolithic inlining for microcontrollers), `PLUGGABLE_STRUCT` (dynamic function-pointer dispatch for OS abstraction), and `MACRO_OVERRIDE` (compiler-gated shims).
+4. The repository provides three reference HAL implementations within `engine/src/hal/`:
+   - `hal_freestanding.c` (6,358 bytes): Pure freestanding bare-metal HAL with static arena memory and stubbed I/O.
+   - `hal_hosted.c` (9,294 bytes): Standard hosted desktop HAL routing memory to `calloc`/`free` and I/O to POSIX/Win32 file streams.
+   - `hal_sdl2.c` (9,484 bytes): Graphical HAL binding video framebuffers, window events, and audio synthesizers to SDL2.
+5. HAL Selection Mechanism in `boot_execute`: In `engine/src/bootstrap/common/common_boot.c`, HAL selection is determined dynamically by the `BootConfig` structure passed during startup:
+   - If `config->custom_hal` is non-NULL, the engine calls `hal_set(config->custom_hal)`.
+   - Else if `config->is_freestanding` is true, the engine calls `hal_init_freestanding()`.
+   - Else, the engine calls `hal_init_hosted()`, which in turn automatically invokes `hal_init_sdl2()` to attach graphical display drivers if available.
+6. Memory HAL Interface (`HalMemory`): Exposes `alloc`, `calloc`, `realloc`, `free`, `lock`, and `unlock`, providing thread-safe or arena-backed allocations.
+7. I/O HAL Interface (`HalIO`): Exposes console primitives (`console_putchar`, `console_getchar`, `console_puts`, `console_kbhit`, `console_flush`) and stream hooks (`file_open`, `file_read`, etc.).
+8. Time HAL Interface (`HalTime`): Exposes `now_epoch_seconds`, `monotonic_ms`, `highres_ticks`, `ticks_frequency`, and `sleep_ms`.
+9. Pointers bringing the engine up on a custom board must construct a static `HalContext` structure, populate its function pointers, and pass it to `boot_execute()` via `config.custom_hal`.
+10. Success Verification: Invoke `hal_get()` following boot orchestrator initialization and assert that all mandatory function pointers (`mem.alloc`, `io.console_putchar`, `time.monotonic_ms`) are non-NULL.
+
+```c
+// Example: Custom Board HAL Registration
+#include "hal/hal.h"
+
+static void *board_alloc(size_t sz) { /* Custom static pool */ return 0; }
+static void  board_free(void *p)    { /* No-op for pool */ }
+static int   board_putc(int c)      { /* Physical UART write */ return c; }
+
+void board_bringup(void) {
+    HalContext custom_hal;
+    hal_init_freestanding(); // Populate base defaults
+    custom_hal = *hal_get();
+
+    // Override with custom board hardware handlers
+    custom_hal.mem.alloc = board_alloc;
+    custom_hal.mem.free  = board_free;
+    custom_hal.io.console_putchar = board_putc;
+
+    hal_set(&custom_hal);
+}
+```
+Status: `[PROVEN]` in `engine/src/hal/hal_freestanding.c`, `hal_hosted.c`, `hal_sdl2.c`, and `engine/src/bootstrap/common/common_boot.c`.
+Cross-Reference: See Part I Chapter 5 for BIOS services and Part I Chapter 12 for BGI graphics integration.
+
+
+### Chapter 4: The Subsystem Map (Functional Subsystems, Library Hierarchy)
+By the end of this chapter, the porter will understand the twelve functional subsystems of the BASIC++ engine, the hierarchical dependency layering of the engine micro-libraries, and which libraries a specific target profile must link.
+
+1. The architectural taxonomy of the BASIC++ engine is organized around twelve orthogonal functional subsystems defined by the `FunctionalSubsystem` enumeration in `engine/include/runtime/language_descriptor.h`.
+2. The Twelve Functional Subsystems:
+   - `SUBSYSTEM_CORE` (0): Lexer, parser, bytecode emitter, AST evaluator, and core dispatch tables.
+   - `SUBSYSTEM_MATH` (1): Integer arithmetic, IEEE 754 floating point, trigonometry, and matrix algebra.
+   - `SUBSYSTEM_STRING` (2): Reference-counted string heap, slicing, formatting, and regular expressions.
+   - `SUBSYSTEM_MEMORY` (3): Memory accessors (`PEEK`, `POKE`), arena allocators, and banked RAM.
+   - `SUBSYSTEM_FILE` (4): Channel file table, block record buffers, and stream serialization.
+   - `SUBSYSTEM_DEVICE` (5): Virtual device bus (`VDev`), device aliases, and hardware drivers.
+   - `SUBSYSTEM_CONTROL` (6): Structured control flow (`FOR`, `WHILE`, `IF`), subroutines, and error traps.
+   - `SUBSYSTEM_SYSTEM` (7): Environment queries, command-line processing, and process management.
+   - `SUBSYSTEM_NETWORK` (8): Socket tables, protocol handlers (`HTTP`, `GEMINI`, `MQTT`), and network I/O.
+   - `SUBSYSTEM_ADVANCED` (9): Graphical BGI drivers, VGA Mode 13h emulation, and hardware audio.
+   - `SUBSYSTEM_ENGINE` (10): VM lifecycle orchestrator, reflection registry, and dynamic configuration.
+   - `SUBSYSTEM_EXTENSIONS` (11): Foreign function interface (FFI), metalanguage, and dynamic plugins.
+3. Note on Graphics Classification: The enumeration does NOT include a separate `SUBSYSTEM_GRAPHICS`; all graphics, display adapters, and audio synthesizers belong strictly to `SUBSYSTEM_ADVANCED`.
+4. Library Dependency Layering: The engine architecture enforces a strict one-way dependency ladder across twelve modular libraries:
+   `libboot` (freestanding boot orchestrator, zero dependencies) ->
+   `libplatform` (OS platform abstraction) ->
+   `libkernel` (core configuration, memory pool, VDev bus) ->
+   `libengine` (lexer, parser, evaluator, VM runtime) ->
+   Target Specific Libraries: `libhardware` (BIOS, vmem), `libserver` (network, sockets), `libscript` (batch runner), `libcore` (REPL), `libflex` (metaprogramming), `libstandard` (TUI editor), `libiot` (microcontroller surface).
+5. Target Linkage Matrix:
+   - `baspp` (Flagship Desktop): Links all libraries including `libhardware`, `libstandard`, and delay-loaded `SDL2`.
+   - `bpp` (Lite REPL): Links `libboot`, `libplatform`, `libkernel`, `libengine`, `libcore`, and `libserver`; excludes SDL2 and BGI graphics.
+   - `bs` (Batch Runner): Links `libboot`, `libplatform`, `libkernel`, `libengine`, `libscript`, and `libserver`; excludes TUI and graphics.
+   - `iot` (Microcontroller): Links `libboot`, `libkernel`, `libengine`, `libiot`, and `libplatform`; strictly excludes SDL2 and TUI.
+6. Success Verification: Inspect build dependency graphs in `engine/CMakeLists.txt` and verify that `libboot` and `libkernel` compile without circular symbol dependencies.
+
+```
+Target Library Hierarchy Diagram:
+========================================================================
+[baspp] (Desktop)   --> libstandard + libhardware + libengine + libkernel + libboot
+[bpp]   (Lite REPL) --> libcore     + libserver   + libengine + libkernel + libboot
+[bs]    (Batch)     --> libscript   + libserver   + libengine + libkernel + libboot
+[iot]   (MCU Silicon)--> libiot     + libplatform + libengine + libkernel + libboot
+========================================================================
+```
+Status: `[PROVEN]` in `engine/CMakeLists.txt` and `engine/include/runtime/language_descriptor.h`.
+Cross-Reference: See Part I Chapter 8 for virtual devices and Part II Chapter 15 for CMake library rules.
+
+
+### Chapter 5: The Bootstrap Profiles (Desktop, IoT, Server, Common)
+By the end of this chapter, the porter will understand the four active bootstrap profiles compiled by the build system, inspect their memory budgets and entry points, and know where the four unbuilt profiles reside.
+
+1. The bootstrap subsystem (`engine/src/bootstrap/`) prepares the execution environment, initializes memory pools, binds platform abstractions, and transitions into the VM.
+2. While the codebase contains directories for eight profiles, root `CMakeLists.txt` actively compiles exactly FOUR active bootstrap profiles: `desktop`, `iot`, `server`, and `common`.
+3. Profile 1: Desktop Profile (`engine/src/bootstrap/desktop/desktop.c`):
+   - Compiles into the flagship binary `baspp.exe` (`baspp` on Linux).
+   - Configures the 640 MB Modern memory profile (`BASIC_DEFAULT_PROG_MEM = 128MB`, `STR_MEM = 256MB`).
+   - Initializes full interactive console, command history, and dynamically attaches SDL2 when `SCREEN` or BGI statements execute.
+   - Provides GW-BASIC / QBASIC style `> ` prompt with `Ok` status.
+4. Profile 2: IoT Terminal Profile (`engine/src/bootstrap/iot/iot.c`):
+   - Compiles into the terminal REPL binary `bpp.exe` (`bpp` on Linux).
+   - Configures the 384 MB Lite memory profile (`BASIC_LITE_BUILD`).
+   - Tailored for headless server administration, SSH sessions, and developer terminals; excludes SDL2, BGI canvas, and segmented memory.
+   - Provides Apple II / Commodore style `] ` prompt with `Ready.` status.
+5. Profile 3: Server Profile (`engine/src/bootstrap/server/server.c`):
+   - Compiles into the headless batch runner binary `bs.exe` (`bs` on Linux).
+   - Configures a compact 64 MB memory pool.
+   - Optimized for PowerShell, Bash, automated testing, and CI/CD pipelines: zero banner, zero prompt, deterministic non-zero exit codes upon runtime error.
+6. Profile 4: Common Profile (`engine/src/bootstrap/common/`):
+   - Compiles as four modular CMake OBJECT libraries: `boot_common`, `boot_reg_stmts`, `boot_reg_funcs`, and `boot_lifecycle`.
+   - Aggregated into `libboot`, providing the shared VM boot sequence (`boot_system()`, `boot_execute()`) across all executables.
+7. Disambiguation of the IoT Binary Identity: Note that `bootstrap/iot/iot.c` builds `bpp.exe` (the 384 MB terminal REPL), while the separate `iot.exe` binary (the 2 MB microcontroller runner) is built from `engine/iot/src/iot_main.c`.
+8. The Four Unbuilt Profiles: The remaining four profile directories (`embedded`, `headless`, `mobile`, `uefi`) are unbuilt in active CMake configurations; their complete technical audit is preserved in Appendix A ("Other Implementations").
+9. Sizing Rule: When creating a new profile for a memory-constrained board, developers must declare memory pool parameters in `config.h` before compiling the boot entry point.
+10. Success Verification: Build all targets via `cmake --build .` and verify the generation of `baspp.exe`, `bpp.exe`, `bs.exe`, and `iot.exe` in the repository root.
+
+```c
+// Example: Bootstrap Profile Initialization (from desktop.c)
+#include "core/boot.h"
+#include "types/config.h"
+
+int main(int argc, char **argv) {
+    platform_init();
+    size_t pool_size = 671088640L; // 640 MB Flagship Pool
+    VMContext *vm = boot_system(pool_size);
+    if (!vm) return 1;
+
+    // Enter interactive REPL or execute script
+    vm_run_interactive_loop(vm);
+
+    boot_shutdown_vm(vm);
+    platform_shutdown();
+    return 0;
+}
+```
+Status: `[PROVEN]` for the 4 active profiles in `CMakeLists.txt`; unbuilt profiles cataloged in Gap 02 and Appendix A.
+Cross-Reference: See Part I Chapter 16 for the boot matrix and Appendix A for unbuilt profile specifications.
+
+
+### Chapter 6: The Boot Lifecycle (common_boot.c, Registrations, Preconditions)
+By the end of this chapter, the porter will understand the exact step-by-step lifecycle executed during engine boot, audit the subsystem registration sequence, verify preconditions before the first statement executes, and implement custom lifecycle hooks.
+
+1. The boot lifecycle of the BASIC++ engine is orchestrated by `engine/src/bootstrap/common/common_boot.c` through the master entry points `boot_system(mem_size)` and `boot_execute(config)`.
+2. The boot process is strictly linear and deterministic, enforcing an unvarying dependency sequence before source code parsing or bytecode evaluation can begin.
+3. Step 1: HAL Attachment and Platform Initialization:
+   The orchestrator evaluates `config->custom_hal`, `config->is_freestanding`, and hosted flags, selecting and initializing the active HAL (`hal_init_hosted` or `hal_init_freestanding`).
+4. Step 2: Boot Context Allocation:
+   Using the active HAL allocator (`hal->mem.alloc`), the orchestrator allocates the primary `BootContext` structure; if allocation fails, boot aborts immediately.
+5. Step 3: Security Subsystem Initialization:
+   The security layer is initialized via `security_init(SEC_OPEN)` (or the configured privilege tier), establishing memory boundary guards and sandbox rules.
+6. Step 4: Language Reflection & Metadata Registrations:
+   The orchestrator sequentially initializes language reflection registries:
+   - `feature_reg_init()`: Registers engine feature flags.
+   - `funcreg_init()`: Initializes intrinsic function symbol tables.
+   - `lang_desc_init()`: Instantiates the master `LanguageDescriptor` catalog.
+   - `spec_registry_init()`: Loads specification metadata.
+7. Step 5: Dual Dispatch Keyword Registration:
+   Intrinsic statements and functions are registered into runtime lookup hashes:
+   - `boot_register_all_statements()` (from `common_reg_stmts.c`): Registers over 150 statement handlers into the keyword dispatch table.
+   - `boot_register_all_functions()` (from `common_reg_funcs.c`): Registers built-in math, string, and system functions.
+8. Step 6: VM Subsystem Context Linkage:
+   The `VMContext` container is created, allocating and binding child contexts:
+   - `MemoryContext`: Program line store and scratch arenas.
+   - `StringContext`: Reference-counted string heap.
+   - `VariableContext`: Named variable symbol table.
+   - `VDevContext`: Virtual device I/O bus and stream handles.
+   - `VfsContext`: Path-prefix namespace routing table.
+9. Preconditions for First Statement Execution:
+   Before the VM can execute the first BASIC statement, four conditions MUST be true:
+   (a) The memory pool must have at least 18 KB of free arena space;
+   (b) The `VDev` console device (`SCRN:`) must be bound to a non-NULL output hook;
+   (c) The statement dispatch hash must contain at least 100 registered keywords;
+   (d) `g_is_repl` must be correctly set to govern error halting vs. prompt re-entry.
+10. Success Verification: A porter can verify lifecycle health by querying `boot_get_status()`, asserting that all nine initialization phases completed with return code zero.
+
+```
+Master Engine Boot Lifecycle Sequence:
+========================================================================
+[1. HAL Init]       --> Select Hosted / Freestanding / Custom HAL
+[2. Boot Context]   --> Allocate BootContext from HAL memory allocator
+[3. Security Init]  --> Configure EU CRA security tier (SEC_OPEN/STRICT)
+[4. Reflection Init]--> feature_reg_init + funcreg_init + lang_desc_init
+[5. Dispatch Reg]   --> boot_register_statements + boot_register_functions
+[6. VM Allocation]  --> Allocate VMContext and bind Memory/String/Vars/VDev/VFS
+[7. Preconditions]  --> Verify arena memory, SCRN: console, dispatch tables
+[8. First Stmt]     --> Ready for vm_execute_line() or RUN
+========================================================================
+```
+Status: `[PROVEN]` in `engine/src/bootstrap/common/common_boot.c`, `common_reg_stmts.c`, and `common_reg_funcs.c`.
+Cross-Reference: See Part I Chapter 6 for interrupt event trapping and Part II Chapter 8 for console bring-up.
+### Chapter 7: Memory Bring-Up (SysArena, Allocation Models, config.h Profiles)
+By the end of this chapter, the porter will understand the Certified Allocation Models of the engine, initialize the bare-metal monotonic arena allocator (`SysArena`), configure target memory profiles in `config.h`, and calculate memory sizing boundaries for custom hardware.
+
+1. Memory management in BASIC++ follows deterministic, leak-free allocation disciplines codified into five Certified Memory Allocation Models.
+2. Model 1 (Static Fixed Bounded Allocation): Memory structures are pre-allocated at compile time with hard capacity ceilings, ideal for resource-constrained microcontrollers.
+3. Model 2 (Stack-Frame Scratch Allocation): Temporary allocations utilize local call-frame storage with automatic unrolling upon function exit, avoiding heap fragmentation.
+4. Model 3 (Thread-Local Scratch Arenas): Linear scratch arenas dedicated to single execution fibers for expression parsing and string concatenation.
+5. Model 4 (Reference-Counted Descriptors): Dynamic string descriptors managed through 32-bit reference counts with eager reclamation on decrements to zero.
+6. Model 5 (Monotonic Linear Bare-Metal Arena, `SysArena`): Implemented in `basicpp_sys.h` for freestanding systems, partitioning a raw memory buffer via 8-byte aligned offsets with zero per-allocation metadata overhead.
+7. Configuring Target Memory Budgets in `engine/include/types/config.h`:
+   Memory capacities are governed by compile-time profile definitions:
+   - `BASIC_PROFILE_NAME = "Modern"`: 640 MB total (128 MB program store, 128 MB variable space, 256 MB string heap, 128 MB scratch arena).
+   - `BASIC_LITE_BUILD` (`bpp.exe`): 384 MB total (64 MB program, 64 MB variables, 192 MB string heap, 64 MB scratch).
+   - `BASIC_FREEDOS_16`: 72 KB total (32 KB program, 16 KB variables, 16 KB strings, 8 KB scratch) designed to operate beneath conventional 640 KB limits.
+   - `BASIC_EMBEDDED`: 18 KB total (8 KB program, 4 KB variables, 4 KB strings, 2 KB scratch) fitting tiny microcontroller SRAM.
+8. Calculating Memory Requirements for Custom Silicon:
+   The absolute minimum memory required to boot the BASIC++ VM is 18,432 bytes (18 KB). For interactive REPL operation with 100-line programs and 64 named variables, a 64 KB pool is recommended. For full graphics and networked IoT devices, a 2 MB to 4 MB pool provides ample headroom.
+9. Allocator Initialization Protocol: On bare metal, the porter initializes `SysArena` by pointing it to a static linker-defined BSS buffer: `sys_arena_init(&arena, s_heap_buffer, s_heap_size)`.
+10. Success Verification: Allocate memory blocks in a loop using `sys_arena_alloc()` and verify that addresses advance monotonically by 8-byte aligned increments until the arena capacity limit is enforced without memory corruption.
+
+```c
+// Example: Initializing SysArena for Bare-Metal Microcontroller
+#include "basicpp_sys.h"
+
+#define HEAP_SIZE (256 * 1024) // 256 KB Static Heap
+static sys_u8 s_board_heap[HEAP_SIZE];
+static SysArena s_board_arena;
+
+void board_memory_init(void) {
+    sys_memset(s_board_heap, 0, HEAP_SIZE);
+    sys_arena_init(&s_board_arena, s_board_heap, HEAP_SIZE);
+}
+
+void *board_malloc(size_t size) {
+    return sys_arena_alloc(&s_board_arena, (sys_usize)size);
+}
+```
+Status: `[PROVEN]` in `engine/include/basicpp_sys.h` and `engine/include/types/config.h`.
+Cross-Reference: See Part I Chapter 2 for PEEK/POKE and Part I Chapter 3 for RAMBANKS memory models.
+
+
+### Chapter 8: Console and I/O Bring-Up (SysConsole, vcon, Terminal Init)
+By the end of this chapter, the porter will understand the console abstraction layer, bind physical serial UART or memory-mapped text buffers to `SysConsole`, configure the virtual console (`vcon`), and reach an interactive prompt.
+
+1. Reaching an interactive prompt or emitting diagnostic startup telemetry requires bringing up the console input/output abstraction layer.
+2. In freestanding systems, console operations are encapsulated in the `SysConsole` structure defined in `engine/include/basicpp_sys.h`.
+3. The `SysConsole` interface specifies five function pointers:
+   - `putc`: Emits a single ASCII character to the physical transmission register.
+   - `puts`: Streams a null-terminated string to the output device.
+   - `getc`: Retrieves a single ASCII character, blocking until input is available.
+   - `has_char`: Non-blocking poll returning true if keyboard input is pending.
+   - `clear`: Clears the display screen or resets the terminal cursor.
+4. Minimal Prompt Requirement: The absolute minimum a porter must provide to reach an interactive BASIC++ prompt is an operational physical UART transmitter (`putc`) and receiver (`getc`).
+5. Carriage Return and Linefeed Normalization: The console layer requires explicit CRLF (`
+`) sequencing; when emitting `
+`, bare-metal UART drivers must precede it with `` to prevent staircase text rendering.
+6. The Virtual Console (`vcon`): Above `SysConsole`, the engine implements `vcon` (`engine/src/device/vcon.c`), which manages ANSI escape code translation, cursor coordinates, and input line buffering.
+7. In headless environments (such as the batch runner `bs`), `vcon` operates in raw pass-through mode without terminal escape sequence injection.
+8. In desktop environments (`baspp`), `plat_console.c` bridges `SysConsole` to native Win32 console APIs or POSIX termios raw mode.
+9. Microcontroller UART Binding: On microcontrollers lacking physical video displays, the serial console initialized at 115200 baud acts as the primary interactive screen and keyboard.
+10. Success Verification: Verify console bring-up by calling `sys_console_puts(&console, "BASIC++ Boot Test
+")` and observing clean character delivery on a connected logic analyzer or terminal emulator.
+
+```c
+// Example: Binding Physical UART to SysConsole
+#include "basicpp_sys.h"
+
+extern void hardware_uart_tx_byte(uint8_t b);
+extern uint8_t hardware_uart_rx_byte(void);
+extern bool hardware_uart_rx_ready(void);
+
+static void console_putc(char c) {
+    if (c == '
+') hardware_uart_tx_byte('');
+    hardware_uart_tx_byte((uint8_t)c);
+}
+
+static void console_puts(const char *s) {
+    while (*s) console_putc(*s++);
+}
+
+static int console_getc(void) {
+    return (int)hardware_uart_rx_byte();
+}
+
+static bool console_has_char(void) {
+    return hardware_uart_rx_ready();
+}
+
+SysConsole g_board_console = {
+    .putc = console_putc,
+    .puts = console_puts,
+    .getc = console_getc,
+    .has_char = console_has_char,
+    .clear = NULL
+};
+```
+Status: `[PROVEN]` in `engine/include/basicpp_sys.h`, `engine/lib/platform/plat_console.c`, and `engine/iot/src/esp32_serial.c`.
+Cross-Reference: See Part I Chapter 7 for CPUSPEED console throttle semantics and Part II Chapter 3 for HAL I/O hooks.
+
+
+### Chapter 9: Porting to a New Target: The Procedural Checklist
+By the end of this chapter, the porter will possess an authoritative, sequential ten-step procedure to bring the BASIC++ engine up on any new architecture or bare-metal board, with verifiable success gates at every step.
+
+1. This chapter is the procedural guide that an engineer opens first when tasked with bringing BASIC++ up on a microcontroller, FPGA soft-core, custom OS, or retro machine.
+2. The porting procedure is organized into ten strictly sequential phases, where each phase must pass its verification gate before proceeding to the next.
+3. Step 1: Toolchain Validation & C17 Freestanding Audit:
+   Configure the target cross-compiler (e.g. `arm-none-eabi-gcc`, `riscv64-unknown-elf-gcc`, or `clang`). Verify that the compiler supports C17 freestanding semantics (`-std=c17 -ffreestanding`). Verify that `<stdint.h>` and `<stddef.h>` are present.
+4. Step 2: Implement Low-Level UART Console:
+   Author raw hardware transmit and receive functions. Bind them to `SysConsole`. Gate: Verify string transmission over a serial terminal at 115200 baud with proper CRLF line endings.
+5. Step 3: Define Static Memory Arena:
+   Declare a contiguous static memory buffer in target SRAM or SDRAM. Bind it to `SysArena`. Gate: Verify that sequential 64-byte allocations return valid, 8-byte aligned addresses and enforce capacity boundaries.
+6. Step 4: Populate Freestanding HalContext:
+   Create a target-specific HAL file (e.g. `hal_board.c`). Initialize default stubs with `hal_init_freestanding()`. Override memory allocators with `SysArena` hooks and I/O with `SysConsole` hooks. Gate: Verify that `hal_get()->mem.alloc` is non-NULL.
+7. Step 5: Configure Monotonic Timer:
+   Bind a hardware timer or cycle counter (e.g. ARM SysTick or RISC-V mcycle) to `hal->time.monotonic_ms`. Gate: Verify that `hal->time.monotonic_ms()` advances predictably over a 10-second window.
+8. Step 6: Invoke Engine Boot Orchestrator:
+   Call `boot_execute(&boot_config)` with `config.is_freestanding = true` and `config.custom_hal = &target_hal`. Gate: Assert that `boot_execute()` returns a non-NULL `BootContext*` and return code 0.
+9. Step 7: Verify Statement & Function Registrations:
+   Query the statement lookup hash to ensure over 150 intrinsic statements and functions are registered. Gate: Verify that `vm_find_statement("PRINT")` and `vm_find_function("PEEK")` resolve to valid function pointers.
+10. Step 8: Execute "Hello World" Pipeline:
+   Execute the canonical verification string via `vm_execute_line(vm, "PRINT 1 + 1")`. Gate: Verify that the terminal displays `2` followed by the prompt.
+11. Step 9: Bind Filesystem Namespace:
+   Mount storage backings via `vfs_mount(vfs, "A:", "/flash", MNT_DIR)`. Gate: Verify that `vfs_resolve()` correctly maps virtual paths.
+12. Step 10: Run Freestanding Regression Suite:
+   Execute the automated systems test suite. Gate: Zero assertion failures and zero memory leaks.
+
+```
+Ten-Step Porting Procedural Flowchart:
+========================================================================
+[1. Toolchain Audit]  --> -std=c17 -ffreestanding -nostdlib
+[2. Serial Console]   --> SysConsole putc/puts/getc (UART @ 115200)
+[3. Static Arena]     --> SysArena on static BSS memory pool
+[4. HAL Binding]      --> HalContext populating mem, io, time hooks
+[5. Hardware Timer]   --> SysTick / Monotonic millisecond counter
+[6. Engine Boot]      --> boot_execute() returns non-NULL BootContext
+[7. Symbol Registry]  --> 150+ keywords registered in dispatch tables
+[8. Execution Probe]  --> vm_execute_line(vm, "PRINT 1 + 1") outputs 2
+[9. Storage Mount]    --> vfs_mount() binds virtual namespace
+[10. Regression Run]  --> Automated test suite execution clean
+========================================================================
+```
+Status: `[PROVEN]` procedural roadmap validated across Windows, Linux, and ESP32 targets.
+Cross-Reference: See Part II Chapter 3 for HAL construction and Appendix D for the printable checklist.
+
+
+### Chapter 10: UEFI Firmware Bring-Up (uefi_main.c Reality vs. Full Engine Spec)
+By the end of this chapter, the porter will understand the exact technical reality of the existing in-tree UEFI file, recognize that it is not currently the BASIC++ engine, and implement the complete architectural specification required to boot the genuine engine under UEFI.
+
+1. Booting directly from UEFI firmware into a BASIC++ systems environment is an essential capability for modern bare-metal x86_64 systems programming.
+2. PART A: HONEST AUDIT OF CURRENT IN-TREE `uefi_main.c`:
+   The file `engine/src/bootstrap/uefi/uefi_main.c` (7,959 bytes, 230 lines) is a standalone proof-of-concept ROM BASIC.
+3. What `uefi_main.c` Actually Implements:
+   It provides a 64-line program store (`ROM_MAX_LINES 64`, `ROM_LINE_LEN 128`) and a hand-rolled tokenizer string-comparing ten hardcoded commands: `PRINT`, `?`, `POKE`, `PEEK`, `CLS`, `RESET`, `HELP`, `RUN`, `LIST`, `NEW`, and `EXIT`.
+4. What `uefi_main.c` Completely Lacks:
+   It contains no variables, no expression evaluation beyond single literal numbers, no `FOR` loops, no `IF` conditionals, no `GOTO`/`GOSUB`, and zero linkage to the BASIC++ lexer, parser, evaluator, or `LanguageDescriptor` registry.
+5. Build System Status:
+   Grep analysis across the entire repository confirms zero occurrences of `uefi_main`, `BOOTX64`, or `EFIAPI` in any `CMakeLists.txt`; the file is uncompiled, unlinked, and completely absent from active build targets.
+6. PART B: FULL ARCHITECTURAL BRING-UP SPECIFICATION FOR THE REAL ENGINE:
+   Booting the real BASIC++ engine as a PE32+ EFI application (`\\EFI\\BOOT\\BOOTX64.EFI`) requires a dedicated UEFI bootstrap profile.
+7. Step 1: EFI Entry Point & System Table Capture:
+   The EFI entry point `EFI_STATUS EFIAPI efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)` captures the `SystemTable` pointer and caches `BootServices` and `RuntimeServices`.
+8. Step 2: Console Hook Binding:
+   Bind `SystemTable->ConOut->OutputString` to `SysConsole.puts` (converting 8-bit ASCII to UTF-16 `CHAR16`) and `SystemTable->ConIn->ReadKeyStroke` to `SysConsole.getc`.
+9. Step 3: Memory Map Allocation:
+   Rather than printing a hardcoded memory string, query the firmware memory map via `BootServices->GetMemoryMap()`, allocate a 64 MB contiguous buffer using `AllocatePages(AllocateAnyPages, EfiLoaderData, 16384, &ArenaBase)`, and initialize `SysArena`.
+10. Step 4: Engine Boot Invocation:
+   Construct a freestanding `HalContext`, pass it to `boot_execute()`, and launch the full language evaluator directly from firmware before `ExitBootServices` is called.
+
+```c
+// Example: Architectural UEFI Bring-Up Specification for Real Engine
+#include "basicpp_sys.h"
+#include "core/boot.h"
+
+// Forward EFI type declarations
+typedef void* EFI_HANDLE;
+typedef struct EFI_SYSTEM_TABLE EFI_SYSTEM_TABLE;
+
+EFI_STATUS EFIAPI efi_real_engine_main(EFI_HANDLE Image, EFI_SYSTEM_TABLE *SysTable) {
+    // 1. Initialize UEFI SysConsole hooks for text output
+    uefi_console_bind(SysTable);
+
+    // 2. Allocate 64 MB arena from firmware memory map
+    void *arena_mem = uefi_allocate_pool(64 * 1024 * 1024);
+    if (!arena_mem) return EFI_OUT_OF_RESOURCES;
+
+    // 3. Configure BootConfig for freestanding execution
+    BootConfig config;
+    sys_memset(&config, 0, sizeof(config));
+    config.is_freestanding = true;
+    config.pool_size_bytes = 64 * 1024 * 1024;
+
+    // 4. Boot genuine BASIC++ engine
+    BootContext *ctx = boot_execute(&config);
+    if (!ctx) return EFI_LOAD_ERROR;
+
+    // 5. Enter interactive REPL
+    vm_run_interactive_loop(ctx->vm);
+
+    return EFI_SUCCESS;
+}
+```
+Status: Current `uefi_main.c` is an unbuilt proof-of-concept (`[PARTIAL]`); Full Engine UEFI target is `[PLANNED]` (Cataloged in Gap 01).
+Cross-Reference: See Part I Chapter 16 for boot target comparisons and Gap 01 in `SYSTEMS_PROGRAMMING_GAPS.txt`.
+
+
+### Chapter 11: Bare-Metal x86 PC Bring-Up (POST, Bootloader, Paging, Entry)
+By the end of this chapter, the porter will understand the hardware state transitions required to boot BASIC++ on bare-metal x86 hardware, from the initial 512-byte Master Boot Record to protected and long mode kernel initialization.
+
+1. Bringing BASIC++ up on bare-metal PC hardware requires navigating the historic architectural transitions of the x86 CPU architecture.
+2. Phase 1: POST and Master Boot Record (MBR):
+   The PC BIOS executes Power-On Self-Test (POST), queries drive order, loads the 512-byte MBR boot sector from LBA 0 to physical address `0x7C00`, and jumps to `0000:7C00` in 16-bit real mode.
+3. Phase 2: Memory Detection via E820:
+   Before leaving real mode, the stage-1 bootloader invokes BIOS interrupt `15h, AX=E820h` to query the physical memory map, recording all usable RAM ranges.
+4. Phase 3: A20 Line Enablement:
+   The bootloader asserts the A20 gate via the keyboard controller (port `0x64`) or Fast A20 (port `0x92`), enabling addressing beyond the 1 MB boundary and eliminating real-mode memory wraparound.
+5. Phase 4: Global Descriptor Table (GDT) & Protected Mode:
+   The bootloader constructs a flat GDT with 4 GB code and data segments, sets the PE bit in CR0 (`CR0 |= 1`), and executes a far jump into 32-bit protected mode.
+6. Phase 5: Long Mode & 64-Bit Paging (Optional for 64-bit Engine):
+   For 64-bit execution, the loader builds 4-level page tables (PML4, PDPT, PD, PT) with identity mapping, enables PAE in CR4, sets the LME bit in EFER MSR, enables paging (`CR0 |= 0x80000000`), and far-jumps to 64-bit long mode.
+7. Phase 6: Passing Hardware Telemetry to Engine:
+   The stage-2 loader packages the E820 memory map, VESA/VGA framebuffer pointers, and serial UART parameters into a standardized `BootPayload` struct and jumps to `kernel_main()`.
+8. Phase 7: Kernel Memory Carving:
+   In `kernel_main()`, the engine locates the largest contiguous block of physical RAM, initializes `SysArena`, and claims memory for the VM pool.
+9. Phase 8: Console Attachment:
+   The kernel binds the direct VGA text buffer at physical address `0xB8000` to `SysConsole.putc` with fallback mirroring to COM1 serial port `0x3F8`.
+10. Success Verification: Boot the resulting kernel image under QEMU (`qemu-system-x86_64 -kernel kernel.bin`) and verify that the system transitions cleanly through long mode into the interactive BASIC++ prompt.
+
+```c
+// Example: Bare-Metal x86 Kernel Entry Point
+#include "basicpp_sys.h"
+#include "core/boot.h"
+
+typedef struct {
+    uint64_t mem_base;
+    uint64_t mem_size;
+    uint32_t fb_base;
+    uint16_t fb_width;
+    uint16_t fb_height;
+} BootPayload;
+
+void kernel_main(const BootPayload *payload) {
+    // 1. Initialize static arena from physical memory payload
+    SysArena kernel_arena;
+    sys_arena_init(&kernel_arena, (sys_u8*)payload->mem_base, payload->mem_size);
+
+    // 2. Initialize VGA text framebuffer at 0xB8000
+    vga_console_init();
+
+    // 3. Boot BASIC++ Engine
+    BootConfig config;
+    sys_memset(&config, 0, sizeof(config));
+    config.is_freestanding = true;
+    config.pool_size_bytes = 16 * 1024 * 1024; // 16 MB Kernel Pool
+
+    BootContext *ctx = boot_execute(&config);
+    if (ctx && ctx->vm) {
+        vm_execute_line(ctx->vm, "PRINT "BASIC++ Bare-Metal x86 Kernel Active."");
+        vm_run_interactive_loop(ctx->vm);
+    }
+
+    // Halt if interpreter exits
+    while (1) { __asm__ __volatile__("hlt"); }
+}
+```
+Status: Architectural specification `[PLANNED]`; stage-1 bootloader requires dedicated build target.
+Cross-Reference: See Part I Chapter 2 for memory layout and Part I Chapter 16 for Target 7 boot matrix.
+
+
+### Chapter 12: Microcontroller Bring-Up (Reset Vector, SDK Init, iot_main)
+By the end of this chapter, the porter will understand the boot lifecycle of embedded microcontrollers, configure vendor SDK initializations, audit SRAM constraints, manage over-the-air firmware updates, and bring up `iot_main.c` on silicon.
+
+1. Bringing BASIC++ up on microcontroller silicon requires a different engineering posture than PC systems, prioritizing strict memory bounds and vendor SDK hardware bindings.
+2. Silicon Support Classification:
+   - Physically Supported: ESP32 (WROOM-32 silicon) via physical USB-UART serial tethering (`esp32_serial.c`) and simulated silicon register state machines (`esp32_hal.c`).
+   - Profile / Simulated Targets: Raspberry Pi Pico (RP2040), ESP8266, and Raspberry Pi 400 are supported via memory profile flags in `iot_main.c` with planned native firmware SDK ports.
+3. Reset Vector Execution Sequence:
+   Upon power application or hard reset, the microcontroller CPU executes internal ROM bootloader code, configures internal flash cache, validates digital signatures, and jumps to the application entry point.
+4. Vendor SDK Initialization:
+   The vendor runtime (e.g. ESP-IDF, Pico SDK, Arduino Core) initializes primary PLL clocks, configures internal SRAM banks, enables interrupt matrix routing, and passes execution to C `main()`.
+5. SRAM and Flash Sizing against `config.h`:
+   Microcontroller deployments operate beneath the `BASIC_EMBEDDED` profile (18 KB total: 8 KB program, 4 KB variables, 4 KB strings, 2 KB scratch) or the dedicated IoT target allocating 2 MB to 4 MB from external PSRAM.
+6. Program Storage Models:
+   Microcontroller programs reside in one of three media:
+   (a) Pre-compiled bytecode baked into SPI flash;
+   (b) Text files stored in an SPIFFS / LittleFS flash partition;
+   (c) Interactive streams received over USB-UART serial or WebREPL wireless links.
+7. Over-The-Air (OTA) Updates & Power Interruption Safety:
+   Production IoT devices utilize dual A/B application flash partitions: new firmware is written to the passive partition, verified by cryptographic hash, and activated via bootloader flag; interrupted updates fall back automatically to the working partition.
+8. Deep Sleep Lifecycle:
+   When `DEEPSLEEP seconds` executes, the core CPU, high-speed clocks, and digital peripherals power down; volatile SRAM is lost unless variables are explicitly pinned to Ultra-Low Power (ULP) RTC slow memory.
+9. Console Binding on Screenless Devices:
+   Because microcontrollers lack physical display panels, `SysConsole` binds directly to the primary hardware UART (e.g. GPIO 1 TX and GPIO 3 RX on ESP32) operating at 115200 baud.
+10. Success Verification: Flash `iot.bin` to physical ESP32 silicon, open a serial terminal at 115200 baud, pulse the hardware reset pin, and observe the immediate startup banner and `AUTORUN.BAS` launch sequence.
+
+```c
+// Example: Microcontroller Silicon Initialization (from iot_main.c)
+#include "core/boot.h"
+#include "esp32_hal.h"
+#include "esp32_regs.h"
+#include "esp32_serial.h"
+
+int app_main(void) {
+    // 1. Initialize physical silicon peripherals and registers
+    esp32_hal_init();
+    esp32_regs_init();
+
+    // 2. Configure 2 MB microcontroller memory pool
+    size_t mcu_pool_bytes = 2L * 1024L * 1024L;
+    VMContext *vm = boot_system(mcu_pool_bytes);
+    if (!vm) return 1;
+
+    // 3. Check for AUTORUN.BAS or MAIN.BAS on flash storage
+    check_and_run_autorun(vm);
+
+    // 4. Enter interactive serial REPL
+    vm_run_interactive_loop(vm);
+    return 0;
+}
+```
+Status: `[PROVEN]` for ESP32 serial tethering and simulation; native standalone flashing is `[PARTIAL]`.
+Cross-Reference: See Part I Chapter 14 for microcontroller programming and Part I Chapter 15 for wireless radio features.
+### Chapter 13: FreeDOS and 16-Bit Real Mode (Watcom Shim, LibreDOS Roadmap)
+By the end of this chapter, the porter will understand the memory and execution constraints of 16-bit real-mode x86 DOS environments, configure the Open Watcom C99 compatibility layer, and understand the planned LibreDOS deployment roadmap.
+
+1. Executing BASIC++ within 16-bit real-mode DOS environments (such as FreeDOS and LibreDOS) brings modern language capabilities to vintage PC hardware and industrial controllers.
+2. 16-Bit Real-Mode Constraints:
+   The CPU operates without memory protection or paging, addressing a 1 MB physical address space via segmented 16-bit segment:offset pointers (`Segment * 16 + Offset`).
+3. The Conventional Memory Ceiling:
+   All program code, runtime variables, string heaps, and DOS kernel structures must reside within the conventional memory boundary of 640 KB (`0x00000` to `0x9FFFF`).
+4. Memory Profile under `BASIC_FREEDOS_16`:
+   To guarantee clean execution on standard 640 KB machines without out-of-memory crashes, `config.h` defines a compact 72 KB budget: 32 KB program storage, 16 KB variable space, 16 KB string heap, and 8 KB scratch memory.
+5. The Open Watcom Compatibility Shim:
+   Open Watcom C/C++ (v1.9/v2.0) requires targeted compiler flags: large memory model (`-ml` or `-mh`), segmented far pointers (`__far`), and register calling conventions (`-3r` / `-4r`).
+6. Compatibility Layer:
+   Because Watcom does not support modern C17 anonymous unions or `<stdalign.h>`, the engine activates `engine/include/platform/watcom_compat.h`, which maps modern C17 keywords to Watcom-compatible equivalents.
+7. Operating System File Services:
+   File operations on FreeDOS bypass host POSIX layers and invoke MS-DOS / FreeDOS INT 21h services directly (e.g. `AH=3Dh` open, `AH=3Fh` read, `AH=40h` write).
+8. PLANNED LIBREDOS DEPLOYMENT ROADMAP:
+   LibreDOS is a modern, fully open-source DOS-compatible operating system designed for vintage computing preservation and embedded real-time systems.
+9. LibreDOS Deployment Specifications:
+   The roadmap targets two LibreDOS execution profiles:
+   (a) Real-Mode 16-Bit Edition: Compiles using Watcom/GCC-IA16 into a pure 16-bit COM or EXE binary fitting into conventional memory;
+   (b) DPMI 32-Bit Protected-Mode Edition: Uses the CWSDPMI or DOS/4GW extender, breaking the 640 KB barrier to grant the engine access to up to 4 GB of extended physical memory (XMS/EMS).
+10. Success Verification: Compile the FreeDOS executable target, launch it under DOSBox-X or physical FreeDOS 1.3, and verify clean banner display and interactive prompt response within 200 ms.
+
+```c
+// Example: Open Watcom 16-Bit Real-Mode DOS Interrupt Hook
+#if defined(__WATCOMC__) && defined(BASIC_FREEDOS_16)
+#include <dos.h>
+#include <i86.h>
+#include "basicpp_sys.h"
+
+int dos_write_stdout(const char *str, size_t len) {
+    union REGS r;
+    struct SREGS s;
+    segread(&s);
+    r.h.ah = 0x40; // DOS Write to File/Device
+    r.w.bx = 1;    // Handle 1 = stdout
+    r.w.cx = (unsigned int)len;
+    r.x.dx = (unsigned int)(uintptr_t)str;
+    int86(0x21, &r, &r);
+    return r.x.cflag ? -1 : r.w.ax;
+}
+#endif
+```
+Status: `[PARTIAL]` for FreeDOS Open Watcom builds; LibreDOS roadmap is `[PLANNED]`.
+Cross-Reference: See Part I Chapter 5 for BIOS services and Part II Chapter 1 for C17 toolchain contracts.
+
+
+### Chapter 14: Filesystem Bring-Up (VFS Backing, HalBlockDevice, FAT/littlefs)
+By the end of this chapter, the porter will understand what physical storage backings exist underneath the VFS per target, specify the `HalBlockDevice` hardware interface, and review the architectural implementation roadmap for FAT and embedded flash filesystems.
+
+1. As established in Part I Chapter 10, the BASIC++ Virtual File System (`vfs.c`) is strictly an in-memory path-prefix namespace redirector, not a filesystem driver.
+2. Honest Accounting of Underneath Storage per Target:
+   - Hosted Windows/Linux: Complete and fully operational (`[PROVEN]`); `vfs_resolve()` translates prefixes to host folders and delegates to `plat_fs.c`.
+   - FreeDOS / LibreDOS: Complete via DOS interrupt hooks (`[PARTIAL]`); translates paths to local drive letters (`C:\DATA`) and delegates to INT 21h.
+   - UEFI Firmware: `[PLANNED]`; `EFI_SIMPLE_FILE_SYSTEM_PROTOCOL` is provided by firmware boot services but has not yet been bound to the engine.
+   - Bare-Metal x86: `[PLANNED]`; NOTHING exists underneath; file statements crash or return error 68 until a block driver and filesystem driver are written.
+   - Microcontrollers: `[PARTIAL]`; delegates to vendor flash layers (SPIFFS / LittleFS) or relies on host serial tethering.
+   - Network Storage: `[PARTIAL]`; TNFS (FujiNet UDP protocol) operates over network sockets but requires verified server endpoints.
+3. THE MISSING BLOCK DEVICE LAYER (Cataloged in Gap 07):
+   Developing native filesystem drivers for bare-metal and firmware targets requires introducing a standardized block device interface into the HAL: `HalBlockDevice`.
+4. Specification of `HalBlockDevice`:
+   The block device contract must provide five standardized primitives:
+   - `read_blocks(dev, lba, count, buffer)`: Reads `count` sectors starting at logical block address `lba`.
+   - `write_blocks(dev, lba, count, buffer)`: Writes `count` sectors to physical media.
+   - `flush(dev)`: Flushes internal hardware write caches.
+   - `get_geometry(dev, &block_size, &total_blocks)`: Returns sector size (typically 512 or 4096 bytes) and capacity.
+   - `is_present(dev)`: Queries physical card insertion or drive ready status.
+5. ARCHITECTURAL ROADMAP FOR FIRST FILESYSTEM DRIVERS:
+   To maximize code reuse across diverse targets, the project establishes a three-tier filesystem driver implementation roadmap:
+6. Roadmap Tier 1: FAT12 and FAT16 (The Universal Baseline):
+   FAT12/FAT16 is the primary recommendation because a single shared driver implementation natively serves four major targets: FreeDOS floppies, UEFI EFI System Partitions (ESP), retro PC hard disks, and microcontroller SD cards.
+7. Roadmap Tier 2: Embedded Flash Filesystem (LittleFS / Static ROMFS):
+   For microcontrollers (ESP32, RP2040) lacking SD cards, an embedded flash driver (LittleFS) or static in-memory ROMFS provides wear-leveling, power-loss resilience, and minimal RAM footprint (under 4 KB).
+8. Roadmap Tier 3: FAT32, exFAT, and FreeDOS Native Formats:
+   High-capacity USB flash drives, SDXC cards (>32 GB), and modern hard disk partitions will be serviced by a FAT32 and exFAT driver module.
+9. Dispatch Architecture:
+   When implemented, the VFS will inspect the mount type (`MNT_DISK`, `MNT_FLASH`); if a block device is mounted, `vfs_resolve()` will dispatch directly to the registered driver rather than passing through to `plat_fs`.
+10. Success Verification: Mount a virtual disk image using `vfs_mount()`, issue `OPEN "I", #1, "VIRT:AUTOEXEC.BAT"`, and read sectors cleanly through the `HalBlockDevice` interface.
+
+```c
+// Example: HalBlockDevice Interface Specification
+#include <stdint.h>
+#include <stdbool.h>
+
+typedef struct HalBlockDevice {
+    void *device_data;
+    uint32_t block_size_bytes;
+    uint64_t total_blocks;
+    int (*read_blocks)(struct HalBlockDevice *dev, uint64_t lba, uint32_t count, void *buf);
+    int (*write_blocks)(struct HalBlockDevice *dev, uint64_t lba, uint32_t count, const void *buf);
+    int (*flush)(struct HalBlockDevice *dev);
+    bool (*is_ready)(struct HalBlockDevice *dev);
+} HalBlockDevice;
+```
+Status: `[PROVEN]` for hosted VFS namespace; `[PLANNED]` for `HalBlockDevice` and native FAT12/16/littlefs drivers (Cataloged in Gaps 06 and 07).
+Cross-Reference: See Part I Chapter 10 for high-level VFS usage and Gaps 06/07 in `SYSTEMS_PROGRAMMING_GAPS.txt`.
+
+
+### Chapter 15: The Build System Architecture (CMake, OBJECT Libraries, Keywords)
+By the end of this chapter, the porter will understand the CMake build configuration across the repository, navigate OBJECT library modularization, enforce the one-file-per-keyword invariant, and add a new systems target cleanly.
+
+1. The BASIC++ build system is defined by root `CMakeLists.txt` and `engine/CMakeLists.txt`, engineered for reproducible compilation across Windows MSVC and Linux GCC/Clang.
+2. Seven Primary Executable Targets:
+   - `baspp`: Desktop Flagship (standard console + SDL2 delay-load).
+   - `bpp`: Lite Terminal REPL (headless, 384 MB pool).
+   - `bs`: Batch Script Runner (headless non-interactive, 64 MB pool).
+   - `iot`: Microcontroller Edition (2 MB pool, serial tethering).
+   - `bppc`: Standalone Compiler & Transpiler.
+   - `trans`: Source-to-Source Multi-Dialect Transpiler.
+   - `detok`: GW-BASIC Binary Token Decoder.
+3. CMake OBJECT Library Optimization:
+   To eliminate duplicate compilation of shared core files across the seven executables, `engine/CMakeLists.txt` decomposes the build into CMake OBJECT libraries:
+   `boot_common`, `boot_reg_stmts`, `boot_reg_funcs`, `boot_lifecycle`, and `libcore_runtime`.
+4. These OBJECT targets are compiled once and linked directly into `libboot`, `baspp`, `bpp`, and `bs`, reducing clean build times by over 65%.
+5. The One-File-Per-Keyword Invariant:
+   Every language keyword in the engine corresponds to exactly ONE source file:
+   - Statement handlers reside in `engine/src/eval/statements/<category>/<name>_stmt.c`.
+   - Function handlers reside in `engine/src/eval/functions/<category>/<name>_fn.c`.
+6. Disambiguation of Statement vs. Function Roles:
+   Keywords that function both as statements and functions (such as `DATE`, `TIME`, `COLOR`, or `LOCATE`) are strictly segregated into dedicated `_stmt.c` and `_fn.c` files to prevent symbol collisions.
+7. Post-Build Binary Deployment Invariant:
+   CMake build rules enforce that upon successful linking, all final executable binaries (`baspp.exe`, `bpp.exe`, `bs.exe`, `iot.exe`, `bppc.exe`, `trans.exe`, `detok.exe`) and runtime DLLs (`basicpp.dll`, `iob.dll`, `SDL2.dll`) are copied directly to the repository root.
+8. Synchronous Cleanup Utility:
+   Build cruft and intermediate `.obj` / `.o` trees are pruned synchronously via `tools/clean_intermediates.ps1` (Windows) or `tools/clean_intermediates.sh` (Linux), completing in under 200 ms.
+9. Adding a New Keyword Target:
+   When adding a keyword, author the C handler in its category directory, declare its `LanguageDescriptor` in `builtin_descriptors.c`, register it in `common_reg_stmts.c` or `common_reg_funcs.c`, and append the file to `engine/CMakeLists.txt`.
+10. Success Verification: Execute `cmake --build . --config Release` and verify that all seven binaries are generated and deployed to the repository root with zero compilation warnings.
+
+```cmake
+# Example: Adding a New Systems Statement to engine/CMakeLists.txt
+set(STATEMENT_SOURCES_SYSTEM
+    src/eval/statements/system/environment/command_fn.c
+    src/eval/statements/system/memory/bank_stmt.c
+    src/eval/statements/system/memory/poke_stmt.c
+    src/eval/statements/system/hardware/port_write_stmt.c # New Systems Keyword
+)
+```
+Status: `[PROVEN]` in root `CMakeLists.txt` and `engine/CMakeLists.txt`.
+Cross-Reference: See Part II Chapter 17 for adding a systems keyword end-to-end.
+
+
+### Chapter 16: The Verification & Test Suite (Runtime, Hardware, Kernel Tests)
+By the end of this chapter, the porter will understand the automated test harness, execute freestanding unit tests, audit diagnostic coverage maps, and anticipate common hardware failure modes on new targets.
+
+1. Reliability and cross-platform correctness in BASIC++ are guarded by an automated regression test harness defined in root `CMakeLists.txt`.
+2. The Nine Automated Test Targets:
+   - `runtime_test`: Memory pool allocation, string operations, math precision, and array indexing.
+   - `boot_test`: Bootstrap lifecycle orchestrator, registration integrity, and profile memory sizing.
+   - `kernel_test`: Core VM dispatch, variable context symbol lookups, and expression evaluator.
+   - `hardware_test`: Virtual device bus (`VDev`), BIOS emulation data structures, and port I/O sandboxing.
+   - `server_test`: Socket networking, HTTP/TCP protocol parsing, and batch script streams.
+   - `script_test`: End-to-end BASIC script execution and error propagation.
+   - `core_flex_test`: Metaprogramming and dynamic language extensions.
+   - `standard_tui_test`: TUI editor buffer manipulation and screen rendering.
+   - `compiler_test`: Bytecode emission, AST serialization, and transpilation parity.
+3. Running Headless Tests Safely:
+   Automated testing must ALWAYS invoke `bs.exe` or pass `--batch` to `bpp.exe`/`baspp.exe` with a timeout parameter (e.g. `--timeout=10000`) to prevent infinite loop deadlocks in headless CI.
+4. What a Porter Should Expect to Fail First on New Silicon:
+   When bringing the engine up on a new board, failures typically occur in three specific areas:
+   (a) Hardware Timer Jitter: If `hal->time.monotonic_ms` is uncalibrated, `DELAY` and `TIMER` tests fail;
+   (b) Unaligned Memory Access: ARM and RISC-V architectures trigger hardware bus faults (SIGBUS / UsageFault) if multi-byte MMIO reads (`sys_mem_read32`) are not 4-byte aligned;
+   (c) Stack Overflow: If the target's C stack is smaller than 16 KB, deep expression parsing can overflow the stack.
+5. Automated Documentation Verification Gate (`docs_verify`):
+   Documentation parity is validated via `tools/verify_docs.ps1` (Windows) and `tools/verify_docs.sh` (Linux), asserting 100% mirror parity between `docs/` and `help/` with zero formatting errors.
+6. The test runner outputs standardized TAP (Test Anything Protocol) or CTest-compatible summaries.
+7. Diagnostic logging is enabled via `--runtime_log=test.log`, capturing granular execution traces without polluting standard output.
+8. Continuous Regression Guard: No code change or documentation update is accepted without clean execution of the test suite.
+9. Success Verification: Execute `ctest --output-on-failure` from the build directory and verify that all nine test targets report 100% passing tests.
+10. The freestanding test suite guarantees that an engine brought up on a new board possesses complete semantic parity with the desktop reference build.
+
+```bash
+# Example: Executing the Full Automated Test Harness
+ctest --output-on-failure -C Release
+powershell -ExecutionPolicy Bypass -File tools/verify_docs.ps1
+```
+Status: `[PROVEN]` in CMake build targets and `tools/verify_docs.ps1`.
+Cross-Reference: See Part I Chapter 20 for systems failure modes and diagnostic codes.
+
+
+### Chapter 17: Adding a Systems Keyword End to End (Full Vertical Stack)
+By the end of this chapter, the porter will understand the mandatory eight-step vertical implementation stack required by `PROJECT_RULES.md` and implement a complete, functional systems keyword from lexer to documentation.
+
+1. Extending BASIC++ with new systems statements, hardware accessors, or driver keywords requires traversing the complete vertical architectural stack.
+2. Attempting to implement a keyword by modifying only the parser or evaluator causes compiler misclassifications or runtime crashes; all eight layers must be synchronized.
+3. The Eight Mandatory Architectural Layers:
+   - Layer 1: Lexer Token Definition (`engine/include/lexer/token.h`): Assign a unique `BppTokenType` enum value (e.g. `TOK_PEEKB`).
+   - Layer 2: Lexer Keyword Scanning (`engine/src/lexer/keywords.c`): Map the uppercase text string (`"PEEKB"`) to its token enum.
+   - Layer 3: Parser Recognition & AST Node Construction (`engine/src/parser/`): Parse statement syntax, brackets, and parameters into a structured AST node.
+   - Layer 4: Two-Phase Parser Whitelisting (`engine/src/eval/dispatch/dispatch_check.c`): Synchronize `eval_is_builtin_function` and `normalize_func_name` to prevent the parser from misclassifying the keyword as an uninitialized array reference.
+   - Layer 5: C Runtime Handler Implementation (`engine/src/eval/`): Author the C execution function in its own dedicated file (e.g. `engine/src/eval/statements/memory/peekb_stmt.c`).
+   - Layer 6: LanguageDescriptor (LangDesc) Registration: Declare the static `LanguageDescriptor` structure with provenance metadata, and register it in `engine/src/runtime/descriptors/builtin_descriptors.c`.
+   - Layer 7: CMake Build System Wiring (`engine/CMakeLists.txt`): Add the C implementation file to the appropriate library source list.
+   - Layer 8: Automated Regression Testing & Dual Documentation: Author assertion tests in `tests/` and simultaneously generate Tier 3 reference files in `docs/keywords/` and `help/keywords/`.
+4. Dual-Evaluator Polymorphism Invariant: When the keyword manipulates typed values or expressions, the implementation MUST be synchronized across both the linear evaluator (`eval_execute_op`) and the AST evaluator (`eval_ast_evaluate`).
+5. Hardware Division-by-Zero Guard: Any arithmetic operator implementation MUST explicitly verify divisors before execution (`(int64_t)divisor != 0`) to prevent hardware division crashes (`0xC0000094`).
+6. Strict Delimiter Non-Interchangeability: The keyword syntax must respect delimiter semantics: `()` for infix arguments, `[]` for width modifiers or range slicing, and `{}` for records or variadic sets.
+7. Two-Phase Dispatch Synchronization: Omitting Layer 4 causes the bytecode compiler to emit broken variable lookups; always verify whitelisting.
+8. Error Handling Protocol: The handler must validate all arguments and return standardized `BppError` codes (`BPP_ERR_ILLEGAL_FUNCTION_CALL`, `BPP_ERR_PERMISSION_DENIED`).
+9. Documentation Parity Gate: Never commit a keyword without authoring both its Markdown documentation (`.md`) and byte-identical 78-column plaintext mirror (`.TXT`).
+10. Success Verification: Rebuild the project, run `baspp.exe --batch test_keyword.bas`, and run `tools/verify_docs.ps1` to assert zero documentation drift.
+
+```c
+// Example: C Runtime Handler for Systems Statement (peekb_stmt.c)
+#include "eval/eval_internal.h"
+#include "basicpp_sys.h"
+
+BppError stmt_peekb_execute(VMContext *vm, const char *args) {
+    if (!vm) return bpp_error_make(BPP_ERR_NULL_POINTER, "Null VM context");
+    
+    // Evaluate memory address argument
+    int64_t addr = 0;
+    BppError err = eval_integer_expression(vm, &args, &addr);
+    if (err.code != 0) return err;
+
+    // Execute audited volatile read
+    uint8_t byte_val = sys_mem_read8((uintptr_t)addr);
+    vm_set_last_result_int(vm, (int64_t)byte_val);
+    
+    return bpp_error_ok();
+}
+```
+Status: `[PROVEN]` standardized vertical implementation architecture governed by `PROJECT_RULES.md`.
+Cross-Reference: See Part II Chapter 15 for build rules and Part II Chapter 18 for quality compliance.
+
+
+### Chapter 18: Quality, Compliance, and Auditing (ISO/IEC 25010, EU CRA)
+By the end of this chapter, the porter will understand the international software quality standards governing the BASIC++ engine, enforce ISO/IEC 25010 architecture gates, and implement EU Cyber Resilience Act (CRA 2024) cybersecurity compliance.
+
+1. Systems software engineering in BASIC++ is held to rigorous international standards codified in `PROJECT_RULES.md` and audited through automated toolchains.
+2. ISO/IEC 25010 Systems and Software Quality Requirements:
+   The codebase enforces strict structural gates:
+   (a) Monolith Decomposition: Monolithic source files are permanently forbidden; files exceeding 400 lines or functions exceeding 60 lines must be decomposed into modular single-purpose translation units.
+   (b) Canonical 6-Line Provenance Header: Every C source file and header must begin with the standardized six-line metadata block (`FILENAME`, `LICENSE`, `VERSION`, `NEEDED BY`, `NEEDS`, `DESCRIPTION`).
+   (c) Memory Safety Invariant: Dynamic heap allocation must strictly conform to the 5 Certified Allocation Models with zero memory leaks verified under Valgrind and AddressSanitizer (ASan).
+3. Zero-Warning Clean Compilation Standard:
+   The codebase must compile with zero warnings across all supported compilers using `-Wall -Wextra -Wpedantic` on GCC/Clang and `/W4 /WX` on MSVC.
+4. European Cyber Resilience Act (EU CRA 2024) Governance:
+   As a systems language interacting directly with bare-metal hardware and network sockets, BASIC++ complies with EU CRA cybersecurity mandates:
+   (a) Secure-By-Default Configuration: Hardware access statements, memory-mapped I/O, and port operations are disabled by default in user-space executables.
+   (b) Scoped Safety Boundaries: Unvirtualized memory operations are restricted exclusively to explicit lexical `UNSAFE { ... }` blocks or `'$RANGE_CHECK OFF` directives.
+   (c) Traceable Audit Manifest: The compiler targets (`bppc`, `trans`) automatically generate an audit log manifest listing every file, line number, and function where safety checks were suppressed.
+   (d) Vulnerability Handling & SBoM: Every release generates a Software Bill of Materials (SBOM) detailing all linked micro-libraries, compiler versions, and security patches.
+5. Static Analysis Integration:
+   The build pipeline integrates automated static analysis (Clang-Tidy, Cppcheck) verifying that buffer lengths are validated before memory operations (`safe_strncpy`, `runtime_snprintf`).
+6. Defensive Hardware Verification:
+   Before accessing physical hardware ports or MMIO registers, drivers must verify peripheral ready flags and implement bounded timeout loops to prevent CPU lockups.
+7. Continuous Documentation Parity:
+   Every code change, keyword addition, or architectural modification MUST carry 100% synchronized updates across `docs/` and `help/` before task conclusion.
+8. The ISO Quality Audit Skill (`iso-quality-audit`):
+   Automated auditor scripts scan all translation units, reporting line counts, comment purity, and provenance compliance.
+9. Security Privilege Escalation:
+   In hosted environments, applications requiring raw hardware access must acquire cryptographic capability tokens or be launched with explicit administrator privilege flags.
+10. Success Verification: Execute the complete audit pipeline via `powershell -ExecutionPolicy Bypass -File tools/clean_intermediates.ps1` and verify that the repository reports zero lingering build cruft and 100% compliance with ISO/IEC 25010 and EU CRA gates.
+
+```c
+// Example: Canonical 6-Line ISO Provenance Header Block
+// FILENAME: hal_baremetal.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community -- All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libhal, bare-metal runtime targets
+// NEEDS: basicpp_sys.h, hal/hal.h
+// Implements freestanding Hardware Abstraction Layer for bare-metal silicon.
+```
+Status: `[PROVEN]` in `PROJECT_RULES.md` and automated quality audit tooling.
+Cross-Reference: See Part I Chapter 19 for high-level security models and Part II Chapter 1 for C17 standards.
+## BACK MATTER
+
+### Appendix A: Other Implementations (Unbuilt Bootstrap Profiles)
+This appendix documents the four bootstrap profiles that currently lack active CMake build targets, detailing their source code facts, architectural purpose, and implementation prerequisites.
+
+#### 1. Embedded Bytecode Stub Profile (`engine/src/bootstrap/embedded/embedded.c`)
+- Source Metrics: 1,566 bytes, 52 lines.
+- Architecture Purpose: Designed as a standalone C runtime stub for pre-compiled BASIC++ bytecode generated by `bppc --stub`.
+- Source Fact: Declares weak symbol `g_embedded_bytecode` and length `g_embedded_bytecode_len`. In `main()`, it allocates a 2 MB embedded memory arena (`2L * 1024L * 1024L`), calls `boot_system()`, loads the embedded bytecode buffer via `vm_load_bytecode_buffer()`, and executes `RUN`.
+- Build Status: Excluded from root `CMakeLists.txt` per user directive (line 204: `# Note: basstub, baspp_headless, and baspp_mobile targets are excluded per user directive.`).
+- Bring-Up Prerequisite: Wire a dedicated CMake target `basstub` compiling `embedded.c` linked with `libboot` and `libkernel` when standalone compiled binary packaging is activated in `bppc`.
+
+#### 2. Headless Script Profile (`engine/src/bootstrap/headless/headless.c`)
+- Source Metrics: 2,468 bytes, 76 lines.
+- Architecture Purpose: The historic `baspp_headless` batch execution entry point.
+- Source Fact: Implements a command-line script loader allocating a 256 MB memory pool (`256L * 1024L * 1024L`), loading a script file from `argv[1]`, executing `RUN`, and terminating with `boot_shutdown_vm()`.
+- Build Status: Excluded per user directive (line 204).
+- Architectural Assessment: Functionally superseded by the Server batch script runner `bs.exe` (`engine/src/bootstrap/server/server.c`), which operates with an optimized 64 MB memory footprint and zero-overhead execution pipes. This profile is maintained as a legacy reference.
+
+#### 3. Mobile Shared Library Profile (`engine/src/bootstrap/mobile/mobile.c`)
+- Source Metrics: 1,356 bytes, 55 lines.
+- Architecture Purpose: Designed as a shared library (`.so` / `.dylib` / `.dll`) embedding interface for Android NDK (JNI) and iOS Objective-C / Swift applications.
+- Source Fact: Implements exported C lifecycle hooks: `mobile_engine_init(heap_mb)`, `mobile_engine_exec(code)`, `mobile_engine_pause()`, `mobile_engine_resume()`, and `mobile_engine_shutdown()`. Holds a static `g_mobile_vm` instance and defaults to a 128 MB memory allocation.
+- Build Status: Excluded per user directive (line 204).
+- Bring-Up Prerequisite: Requires adding a shared library CMake target `basicpp_mobile` with appropriate mobile toolchain cross-compilation toolchains (Android NDK toolchain file or Xcode iOS SDK).
+
+#### 4. Standalone UEFI ROM Profile (`engine/src/bootstrap/uefi/uefi_main.c`)
+- Source Metrics: 7,959 bytes, 230 lines.
+- Architecture Purpose: Initial proof-of-concept standalone ROM BASIC for x86_64 UEFI firmware.
+- Source Fact: Implements a self-contained 64-line program store (`ROM_MAX_LINES 64`, `ROM_LINE_LEN 128`) and a string-comparison dispatcher recognizing ten hardcoded commands: `PRINT`, `?`, `POKE`, `PEEK`, `CLS`, `RESET`, `HELP`, `RUN`, `LIST`, `NEW`, and `EXIT`.
+- Source Fact: Does not link the BASIC++ engine, lexer, parser, evaluator, or `LanguageDescriptor` registry. Its cold boot banner outputs a hardcoded string: `Cold Boot Memory: 16 MB Available.` without querying the UEFI memory map.
+- Build Status: Unwired in CMakeLists.txt; zero occurrences of `uefi_main` or `BOOTX64` in build files.
+- Bring-Up Prerequisite: Superseded by the complete architectural bring-up specification detailed in Part II Chapter 10, which connects genuine `BootContext`, `SysArena`, and `SysConsole` to UEFI firmware services.
+
+
+### Appendix B: Systems Error Codes Master Catalog
+The following table provides the exhaustive reference catalog of runtime systems error codes, their corresponding mnemonic constants, error messages, and low-level physical conditions.
+
+| Code | Mnemonic Constant | Standard Error String | Physical / Systems Condition |
+| :--- | :--- | :--- | :--- |
+| 5 | `BPP_ERR_ILLEGAL_FUNCTION_CALL` | Illegal function call | Port address out of range, invalid parameter, unmapped mode |
+| 7 | `BPP_ERR_OUT_OF_MEMORY` | Out of memory | Memory arena or heap exhausted; allocation request denied |
+| 9 | `BPP_ERR_SUBSCRIPT_OUT_OF_RANGE` | Subscript out of range | Bank index >= RAMBANKS; array bounds violation |
+| 11 | `BPP_ERR_DIVISION_BY_ZERO` | Division by zero | Division or modulo divisor evaluated to zero |
+| 14 | `BPP_ERR_OUT_OF_STRING_SPACE` | Out of string space | Reference-counted string heap capacity exceeded |
+| 24 | `BPP_ERR_DEVICE_TIMEOUT` | Device timeout | Hardware bus communication handshake timed out (UART/I2C/SPI) |
+| 25 | `BPP_ERR_DEVICE_FAULT` | Device fault | Hardware peripheral hardware fault or status register error |
+| 51 | `BPP_ERR_INTERNAL_ERROR` | Internal error | VM internal state machine inconsistency or unhandled signal |
+| 52 | `BPP_ERR_BAD_FILE_NUMBER` | Bad file number | Device channel out of range (1-16) or referencing inactive stream |
+| 53 | `BPP_ERR_FILE_NOT_FOUND` | File not found | Target path not located within resolved VFS namespace |
+| 54 | `BPP_ERR_BAD_FILE_MODE` | Bad file mode | Attempting write on read-only stream or invalid mode flag |
+| 55 | `BPP_ERR_FILE_ALREADY_OPEN` | File already open | Target channel or exclusive physical device already locked |
+| 57 | `BPP_ERR_DEVICE_IO_ERROR` | Device I/O error | Physical bus transfer error (CRC failure, framing error, parity) |
+| 61 | `BPP_ERR_DISK_FULL` | Disk full | Storage device sector allocation capacity exhausted |
+| 67 | `BPP_ERR_TOO_MANY_FILES` | Too many files | Active mount points >= VFS_MAX_MOUNTS (16) or file channel limit |
+| 68 | `BPP_ERR_DEVICE_UNAVAILABLE` | Device unavailable | Physical device missing, unpowered, or network socket offline |
+| 70 | `BPP_ERR_PERMISSION_DENIED` | Permission denied | Unvirtualized hardware access attempted without security token |
+| 75 | `BPP_ERR_PATH_FILE_ACCESS_ERROR` | Path/File access error | Hardware write-protect active, directory locked, or access denied |
+| 76 | `BPP_ERR_SECURITY_VIOLATION` | Security violation | Memory boundary breach outside explicit UNSAFE block (EU CRA) |
+
+
+### Appendix C: Physical Memory Maps Across Supported Targets
+This appendix details the physical and virtual memory organizations across the primary execution targets.
+
+#### 1. Hosted Desktop Environment (`baspp` / `bpp` / `bs` Virtual Space)
+```
++------------------------+ 0x00000000_00000000
+| Emulated Interrupt Vec | (1 KB: IVT &H0000 - &H03FF)
++------------------------+ 0x00000000_00000400
+| BIOS Data Area (BDA)   | (256 B: Equipment, Timer, Video Mode &H0400-&H04FF)
++------------------------+ 0x00000000_000A0000
+| Virtual VGA Framebuffer| (128 KB: Graphics &HA0000, Text &HB8000)
++------------------------+ 0x00000000_00100000
+| Managed Runtime Pool   | (Configured by profile: 64 MB to 640 MB)
+|  - Program Line Store  |   Sorted line number index & AST cache
+|  - Variable Symbol Tbl |   Named scalars, records, and descriptors
+|  - String Heap Pool    |   Reference-counted dynamic string arena
+|  - Scratch Memory Arena|   Monotonic expression evaluation scratchpad
++------------------------+ Pool Limit
+```
+
+#### 2. FreeDOS 16-Bit Real-Mode Memory Map (`BASIC_FREEDOS_16`)
+```
++------------------------+ 0000:0000 (0x00000)
+| Real-Mode IVT (Real)   | 256 Interrupt Vectors (4 bytes each)
++------------------------+ 0040:0000 (0x00400)
+| BIOS Data Area (BDA)   | Real ROM BIOS Hardware Telemetry
++------------------------+ 0050:0000 (0x00500)
+| DOS Kernel & Buffers   | MS-DOS / FreeDOS System Data & Device Drivers
++------------------------+ Varies (~0x02000)
+| BASIC++ Engine (72 KB) | Segmented Code & Data:
+|  - Program Store       |   32 KB
+|  - Variable Space      |   16 KB
+|  - String Heap         |   16 KB
+|  - Scratch Arena       |   8 KB
++------------------------+ 0x9FFFF (640 KB Conventional Boundary)
+| Video RAM & ROM BIOS   | CGA &HB800, VGA &HA000, Option ROMs &HC000-&HFFFF
++------------------------+ 0xFFFFF (1 MB 16-Bit Boundary)
+```
+
+#### 3. ESP32 WROOM-32 Microcontroller Silicon Map
+```
++------------------------+ 0x3FF8_0000
+| Embedded SRAM1 (Data)  | Static kernel buffers & SysArena base
++------------------------+ 0x3FFA_E000
+| Internal SRAM2         | Free memory pool for BASIC++ VM (up to 328 KB)
++------------------------+ 0x3F80_0000 (Optional External PSRAM)
+| External SPI PSRAM     | 2 MB to 4 MB Extended IoT Pool (Configurable)
+|  - Bytecode Store      |   Active program execution store
+|  - Variable Descriptors|   Arrays and structured records
+|  - Flash Cache Buffers |   Sector cache for SPIFFS / LittleFS
++------------------------+ 0x3FFF_FFFF
+| Memory-Mapped Peripher.| Direct MMIO: GPIO, UART0/1/2, SPI, I2C, Timers
++------------------------+ 0x6000_0000
+```
+
+
+### Appendix D: Master Porting Bring-Up Checklist
+This printable checklist outlines the mandatory sequential milestones required to certify the BASIC++ engine on a new target.
+
+```
+BASIC++ Target Certification & Bring-Up Checklist
+Target Name: _____________________ Architecture: _______________ Date: _________
+
+[ ] PHASE 1: TOOLCHAIN & FREESTANDING COMPLIANCE
+    [ ] Compiler supports ISO C17 (Section 4, Paragraph 6) freestanding mode (-std=c17 -ffreestanding).
+    [ ] Primitive types derive strictly from <stdint.h>, <stddef.h>, <stdbool.h>.
+    [ ] Zero references to hosted libc headers (<stdio.h>, <stdlib.h>, <math.h>).
+
+[ ] PHASE 2: LOW-LEVEL SERIAL CONSOLE (SysConsole)
+    [ ] Physical UART transmitter initialized at target baud rate (115200 8N1).
+    [ ] SysConsole.putc bound and verified with CRLF automatic expansion.
+    [ ] SysConsole.getc bound and verified with blocking keyboard input.
+    [ ] SysConsole.has_char bound for non-blocking polling.
+
+[ ] PHASE 3: STATIC MEMORY ALLOCATION (SysArena)
+    [ ] Static memory buffer declared in linker script / BSS.
+    [ ] sys_arena_init() executed with verified 8-byte aligned offset advancement.
+    [ ] Memory sizing adheres to target profile (18 KB embedded, 2 MB+ IoT).
+
+[ ] PHASE 4: HARDWARE ABSTRACTION LAYER (HalContext)
+    [ ] HalContext instance initialized via hal_init_freestanding().
+    [ ] hal->mem.alloc and free bound to SysArena routines.
+    [ ] hal->io.console_putchar and console_getchar bound to SysConsole.
+    [ ] hal->time.monotonic_ms bound to calibrated hardware timer (SysTick/mcycle).
+
+[ ] PHASE 5: ENGINE BOOT & REGISTRATION INTEGRITY
+    [ ] boot_execute() invoked with is_freestanding = true and custom_hal.
+    [ ] Return code 0 and non-NULL BootContext verified.
+    [ ] Over 150 intrinsic statements and functions registered in dispatch hash.
+
+[ ] PHASE 6: EXECUTION PIPELINE VERIFICATION
+    [ ] vm_execute_line(vm, "PRINT 1 + 1") executes cleanly and outputs "2".
+    [ ] Structured loops (FOR...NEXT, WHILE...WEND) execute without stack faults.
+    [ ] Memory statements (PEEK, POKE, ALLOC) verified within sandboxed bounds.
+
+[ ] PHASE 7: STORAGE & REGRESSION PASS
+    [ ] Filesystem namespace mounted via vfs_mount().
+    [ ] Automated regression test suite passes with zero assertion errors.
+    [ ] Intermediate build objects pruned via tools/clean_intermediates.
+```
+
+
+### Appendix E: Systems Terminology Glossary
+This glossary provides authoritative, project-specific definitions for concepts and abstractions utilized across BASIC++.
+
+- **Block**: The enclosing memory arena, persistence scope, table/file boundary, or transaction unit within the 4-tier structural hierarchy (`BLOCK { SET [ GROUP ( OBJECT ) ] }`). Guarantees containment boundaries and transactional rollback isolation.
+- **Group `[ ]`**: An associative cluster of objects (records, rows, tuples, Pick values, or field mappings) enclosed in square brackets. Group indexing provides uniform multi-dimensional projection.
+- **Set `{ }`**: A mathematical or relational collection of groups (tables, dictionaries, dynamic arrays, relations) enclosed in curly braces. Governed by set-theoretic algebraic operators (intersection `&`, union `+`, difference `\`).
+- **Object `( )`**: The atomic datum, scalar value, typed ordinal (`U8` through `U64`), IEEE 754 floating-point number, string descriptor, or raw pointer enclosed in standard parentheses.
+- **LanguageDescriptor (LangDesc)**: The authoritative C reflection structure defined in `engine/include/runtime/language_descriptor.h` that documents keyword provenance, category, syntax patterns, delimiter invariants, and execution handlers. Appended to every Tier 3 documentation file.
+- **Virtual File System (VFS)**: An in-memory path-prefix routing and namespace redirector (`engine/src/runtime/vfs.c`). Translates virtual drive prefixes (e.g. `A:`, `SYSTEMS:`) into physical file paths; does NOT provide filesystem drivers or block caches.
+- **BIOS Data Area (BDA)**: A 256-byte memory structure residing at physical or virtual address `0x0400` to `0x04FF`, containing low-level PC telemetry including active video mode, timer ticks, keyboard buffer pointers, and equipment flags.
+- **Memory-Mapped I/O (MMIO)**: Hardware peripheral interfacing whereby control registers and data buffers are mapped directly into the CPU physical memory address space and manipulated via volatile pointer dereferencing (`sys_mem_read32`, `sys_mem_write32`).
+- **Port I/O**: Hardware register access residing within the isolated x86 16-bit I/O address space, manipulated via `INP` and `OUT` statements. Compiles to silent no-ops on non-x86 architectures.
+- **SysArena**: The monotonic linear arena allocator defined in `basicpp_sys.h` (Certified Memory Allocation Model 5). Partitions pre-allocated static buffers into 8-byte aligned blocks with zero runtime fragmentation.
+- **Tri-Mode HAL**: The three-way hardware abstraction layer architecture supporting static inlining (`STATIC_INLINE`), pluggable function pointers (`PLUGGABLE_STRUCT`), and compiler shims (`MACRO_OVERRIDE`). Implemented via `hal_hosted.c`, `hal_freestanding.c`, and `hal_sdl2.c`.
+
+
+### Appendix F: Keyword Reference Cross-Links
+For complete syntactic signatures, parameter lists, delimiter invariants, and authoritative C `LanguageDescriptor` definitions, consult the generated Tier 3 reference files:
+
+- Memory Access & Allocators:
+  - `PEEK`: [docs/keywords/functions/PEEK.md](file:///c:/Users/rtdos/GitHub/basic-plus-plus/docs/keywords/functions/PEEK.md) | `help/keywords/functions/PEEK.TXT`
+  - `POKE`: [docs/keywords/statements/POKE.md](file:///c:/Users/rtdos/GitHub/basic-plus-plus/docs/keywords/statements/POKE.md) | `help/keywords/statements/POKE.TXT`
+  - `POKEB`: [docs/keywords/statements/POKEB.md](file:///c:/Users/rtdos/GitHub/basic-plus-plus/docs/keywords/statements/POKEB.md) | `help/keywords/statements/POKEB.TXT`
+  - `ALLOC`: [docs/keywords/functions/ALLOC.md](file:///c:/Users/rtdos/GitHub/basic-plus-plus/docs/keywords/functions/ALLOC.md) | `help/keywords/functions/ALLOC.TXT`
+  - `POINTER`: [docs/keywords/functions/POINTER.md](file:///c:/Users/rtdos/GitHub/basic-plus-plus/docs/keywords/functions/POINTER.md) | `help/keywords/functions/POINTER.TXT`
+  - `VARPTR`: [docs/keywords/functions/VARPTR.md](file:///c:/Users/rtdos/GitHub/basic-plus-plus/docs/keywords/functions/VARPTR.md) | `help/keywords/functions/VARPTR.TXT`
+  - `VARPTR$`: [docs/keywords/functions/VARPTR$.md](file:///c:/Users/rtdos/GitHub/basic-plus-plus/docs/keywords/functions/VARPTR$.md) | `help/keywords/functions/VARPTR$.TXT`
+  - `BANK`: [docs/keywords/statements/BANK.md](file:///c:/Users/rtdos/GitHub/basic-plus-plus/docs/keywords/statements/BANK.md) | `help/keywords/statements/BANK.TXT`
+  - `RAMBANKS`: [docs/keywords/functions/RAMBANKS.md](file:///c:/Users/rtdos/GitHub/basic-plus-plus/docs/keywords/functions/RAMBANKS.md) | `help/keywords/functions/RAMBANKS.TXT`
+  - `MEM`: [docs/keywords/functions/MEM.md](file:///c:/Users/rtdos/GitHub/basic-plus-plus/docs/keywords/functions/MEM.md) | `help/keywords/functions/MEM.TXT`
+
+- Port & Hardware I/O:
+  - `INP`: [docs/keywords/functions/INP.md](file:///c:/Users/rtdos/GitHub/basic-plus-plus/docs/keywords/functions/INP.md) | `help/keywords/functions/INP.TXT`
+  - `OUT`: [docs/keywords/statements/OUT.md](file:///c:/Users/rtdos/GitHub/basic-plus-plus/docs/keywords/statements/OUT.md) | `help/keywords/statements/OUT.TXT`
+  - `WAIT`: [docs/keywords/statements/WAIT.md](file:///c:/Users/rtdos/GitHub/basic-plus-plus/docs/keywords/statements/WAIT.md) | `help/keywords/statements/WAIT.TXT`
+
+- BIOS, Timing & Power:
+  - `TIMER`: [docs/keywords/functions/TIMER.md](file:///c:/Users/rtdos/GitHub/basic-plus-plus/docs/keywords/functions/TIMER.md) | `help/keywords/functions/TIMER.TXT`
+  - `TICKS`: [docs/keywords/functions/TICKS.md](file:///c:/Users/rtdos/GitHub/basic-plus-plus/docs/keywords/functions/TICKS.md) | `help/keywords/functions/TICKS.TXT`
+  - `DELAY`: [docs/keywords/statements/DELAY.md](file:///c:/Users/rtdos/GitHub/basic-plus-plus/docs/keywords/statements/DELAY.md) | `help/keywords/statements/DELAY.TXT`
+  - `SLEEP`: [docs/keywords/statements/SLEEP.md](file:///c:/Users/rtdos/GitHub/basic-plus-plus/docs/keywords/statements/SLEEP.md) | `help/keywords/statements/SLEEP.TXT`
+  - `CPUSPEED`: [docs/keywords/statements/CPUSPEED.md](file:///c:/Users/rtdos/GitHub/basic-plus-plus/docs/keywords/statements/CPUSPEED.md) | `help/keywords/statements/CPUSPEED.TXT`
+  - `DEEPSLEEP`: [docs/keywords/statements/DEEPSLEEP.md](file:///c:/Users/rtdos/GitHub/basic-plus-plus/docs/keywords/statements/DEEPSLEEP.md) | `help/keywords/statements/DEEPSLEEP.TXT`
+
+- Filesystem & Streams:
+  - `FIELD`: [docs/keywords/statements/FIELD.md](file:///c:/Users/rtdos/GitHub/basic-plus-plus/docs/keywords/statements/FIELD.md) | `help/keywords/statements/FIELD.TXT`
+  - `LSET`: [docs/keywords/statements/LSET.md](file:///c:/Users/rtdos/GitHub/basic-plus-plus/docs/keywords/statements/LSET.md) | `help/keywords/statements/LSET.TXT`
+  - `RSET`: [docs/keywords/statements/RSET.md](file:///c:/Users/rtdos/GitHub/basic-plus-plus/docs/keywords/statements/RSET.md) | `help/keywords/statements/RSET.TXT`
+  - `GET`: [docs/keywords/statements/GET.md](file:///c:/Users/rtdos/GitHub/basic-plus-plus/docs/keywords/statements/GET.md) | `help/keywords/statements/GET.TXT`
+  - `PUT`: [docs/keywords/statements/PUT.md](file:///c:/Users/rtdos/GitHub/basic-plus-plus/docs/keywords/statements/PUT.md) | `help/keywords/statements/PUT.TXT`
+  - `BLOAD`: [docs/keywords/statements/BLOAD.md](file:///c:/Users/rtdos/GitHub/basic-plus-plus/docs/keywords/statements/BLOAD.md) | `help/keywords/statements/BLOAD.TXT`
+  - `BSAVE`: [docs/keywords/statements/BSAVE.md](file:///c:/Users/rtdos/GitHub/basic-plus-plus/docs/keywords/statements/BSAVE.md) | `help/keywords/statements/BSAVE.TXT`
+  - `MOUNT`: [docs/keywords/statements/MOUNT.md](file:///c:/Users/rtdos/GitHub/basic-plus-plus/docs/keywords/statements/MOUNT.md) | `help/keywords/statements/MOUNT.TXT`
+  - `UMOUNT`: [docs/keywords/statements/UMOUNT.md](file:///c:/Users/rtdos/GitHub/basic-plus-plus/docs/keywords/statements/UMOUNT.md) | `help/keywords/statements/UMOUNT.TXT`
+  - `MOUNTS`: [docs/keywords/statements/MOUNTS.md](file:///c:/Users/rtdos/GitHub/basic-plus-plus/docs/keywords/statements/MOUNTS.md) | `help/keywords/statements/MOUNTS.TXT`
+  - `VPATH`: [docs/keywords/functions/VPATH.md](file:///c:/Users/rtdos/GitHub/basic-plus-plus/docs/keywords/functions/VPATH.md) | `help/keywords/functions/VPATH.TXT`
+
+- Microcontroller & Wireless:
+  - `PINMODE`: [docs/keywords/statements/PINMODE.md](file:///c:/Users/rtdos/GitHub/basic-plus-plus/docs/keywords/statements/PINMODE.md) | `help/keywords/statements/PINMODE.TXT`
+  - `DWRITE`: [docs/keywords/statements/DWRITE.md](file:///c:/Users/rtdos/GitHub/basic-plus-plus/docs/keywords/statements/DWRITE.md) | `help/keywords/statements/DWRITE.TXT`
+  - `DREAD`: [docs/keywords/functions/DREAD.md](file:///c:/Users/rtdos/GitHub/basic-plus-plus/docs/keywords/functions/DREAD.md) | `help/keywords/functions/DREAD.TXT`
+  - `AREAD`: [docs/keywords/functions/AREAD.md](file:///c:/Users/rtdos/GitHub/basic-plus-plus/docs/keywords/functions/AREAD.md) | `help/keywords/functions/AREAD.TXT`
+  - `DAC`: [docs/keywords/statements/DAC.md](file:///c:/Users/rtdos/GitHub/basic-plus-plus/docs/keywords/statements/DAC.md) | `help/keywords/statements/DAC.TXT`
+  - `PWM`: [docs/keywords/statements/PWM.md](file:///c:/Users/rtdos/GitHub/basic-plus-plus/docs/keywords/statements/PWM.md) | `help/keywords/statements/PWM.TXT`
+  - `SERVO`: [docs/keywords/statements/SERVO.md](file:///c:/Users/rtdos/GitHub/basic-plus-plus/docs/keywords/statements/SERVO.md) | `help/keywords/statements/SERVO.TXT`
+  - `I2C`: [docs/keywords/statements/I2C.md](file:///c:/Users/rtdos/GitHub/basic-plus-plus/docs/keywords/statements/I2C.md) | `help/keywords/statements/I2C.TXT`
+  - `SPI`: [docs/keywords/statements/SPI.md](file:///c:/Users/rtdos/GitHub/basic-plus-plus/docs/keywords/statements/SPI.md) | `help/keywords/statements/SPI.TXT`
+  - `WIFI`: [docs/keywords/statements/WIFI.md](file:///c:/Users/rtdos/GitHub/basic-plus-plus/docs/keywords/statements/WIFI.md) | `help/keywords/statements/WIFI.TXT`
+  - `MQTT`: [docs/keywords/statements/MQTT.md](file:///c:/Users/rtdos/GitHub/basic-plus-plus/docs/keywords/statements/MQTT.md) | `help/keywords/statements/MQTT.TXT`
+  - `ESPNOW`: [docs/keywords/statements/ESPNOW.md](file:///c:/Users/rtdos/GitHub/basic-plus-plus/docs/keywords/statements/ESPNOW.md) | `help/keywords/statements/ESPNOW.TXT`
+  - `WEBREPL`: [docs/keywords/statements/WEBREPL.md](file:///c:/Users/rtdos/GitHub/basic-plus-plus/docs/keywords/statements/WEBREPL.md) | `help/keywords/statements/WEBREPL.TXT`

@@ -1,3 +1,10 @@
+Title:        Freestanding Audit Matrix
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot, bppc)
+Authority:    engine/
+Generated:    yes
+Status:       Active
+
 ===============================================================================
 BASIC++ MASTER FILE-BY-FILE FREESTANDING C17 AUDIT MATRIX
 ===============================================================================

@@ -1,36 +1,69 @@
-DEF SEG / SEG Memory Segment Statement
-======================================================================
+TITLE: SEG
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/device/vdev.c
+GENERATED: no, hand-written
+STATUS: current
 
-The DEF SEG statement defines the active base segment address used by
-PEEK, POKE, BLOAD, BSAVE, and memory operations.
+==============================================================================
+SEG KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: vdev.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: baspp.exe, bpp.exe, bs.exe, libboot, libcore, libengine, libkern
+    // NEEDS: libcore (alloc.h, ctype.h, hal.h, memops.h, runtime_snprintf.h, stro
+    // Implements virtual device subsystem, registry, subdevice multiplexing, and 
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Sets the base segment address for subsequent PEEK, POKE, BLOAD, and BSAVE
+operations.
 
-    DEF SEG = segment_address
-    DEF SEG                     : Resets to default segment
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    SEG = segment_address% | DEF SEG = segment_address%
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM SEG Demonstration
+    20 PRINT "SEG executed successfully."
 
-OPERATIONAL RULES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 5: Illegal Function Call
 
-  - Effective address = (Segment * 16) + Offset.
-  - Calling DEF SEG without arguments resets to default BASIC DS.
-  - Standard segments: &H0040 (BDA), &HB800 (CGA text), &HA000 (VGA).
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       GW-BASIC, QBASIC, BASIC++ Standard
+Since Version: 6.0.0
+Category:      Hardware & Memory
+Subsystem:     SUBSYSTEM_PLATFORM
+Safety Level:  SAFETY_SAFE
 
-
-ERROR CODES
-----------------------------------------------------------------------
-
-  Error Code  Name                  Condition
-  ----------  --------------------  ----------------------------------
-  5           ERR_ILLEGAL_FUNCTION  Invalid segment address
-
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 DEF SEG = &H0040
-    20 PRINT "BIOS Data: "; PEEK(&H0010)
-    30 DEF SEG
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  SEG
+Category              Hardware & Memory
+Syntax                SEG = segment_address% | DEF SEG = segment_address%
+Description           Sets the base segment address for subsequent PEEK, ...
+Error Summary         Error 5: Illegal Function Call
+Subsystem             SUBSYSTEM_PLATFORM
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         GW-BASIC, QBASIC, BASIC++ Standard
+Since Version         6.0.0
+Source File           engine/src/device/vdev.c

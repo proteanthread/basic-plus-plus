@@ -1,25 +1,73 @@
-# `OUT` Hardware I/O Port Output Statement
+<!--
+Title:        OUT
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/statements/system/hardware/out.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Keyword Definition
+# `OUT` Keyword Reference
 
-Writes an 8-bit byte value to a specified hardware or virtualized I/O port address.
+## Source Header
 
-### Syntax Signatures:
-```basic
-OUT port_address%, byte_value%
+```c
+// FILENAME: out.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore (language_descriptor.h, string.h)
+// NEEDS: libengine (bios.h, bios.c, eval.h, eval.c, out.h, string.c)
+// NEEDS: libkernel (bus.h, bus.c, security.h, security.c)
+// Provides runtime implementation for the OUT statement in BASIC++.
+//
+// ---- Includes ----
 ```
 
-### Error Handling & Boundary Conditions:
-- **Error 70 (ERR_PERMISSION_DENIED)**: Hardware direct I/O blocked in sandbox.
+## 1. Description & Usage
 
-### Operational Notes:
-- Routes to virtual BIOS and device bus drivers.
+Sends a byte (0-255) to a hardware or virtual I/O port address.
+
+## 2. Syntax
+
+```basic
+OUT port, data
+```
+
+## 3. Code Example
+
+```basic
+10 REM OUT Demonstration
+20 PRINT "OUT executed successfully."
+```
+
+## 4. Error Conditions
+
+Error 2: Syntax Error, Error 5: Illegal Function Call, Error 13: Type Mismatch
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: System & Hardware I/O
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_SYSTEM
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 OUT &H3C8, 0 : REM Set VGA palette index 0
-20 OUT &H3C9, 63 : OUT &H3C9, 0 : OUT &H3C9, 0 : REM Full red
-```
+| Field | Value |
+|---|---|
+| Name | OUT |
+| Category | System & Hardware I/O |
+| Syntax | OUT port, data |
+| Description | Sends a byte (0-255) to a hardware or virtual I/O port address. |
+| Error Summary | Error 2: Syntax Error, Error 5: Illegal Function Call, Error 13: Type Mismatch |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_SYSTEM |
+| Feature Type | FEATURE_STATEMENT |
+| Delimiter Mask | none |
+| Compatibility | none |
+| Since Version | none |
+| Source File | engine/src/statements/system/hardware/out.c |

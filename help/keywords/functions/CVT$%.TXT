@@ -1,0 +1,72 @@
+TITLE: CVT$%
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/functions/string/conversion/cvt.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+CVT$% KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: cvt.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (conversion_fn.c, string_fn.c)
+    // NEEDS: libcore (hal.h, memory.h, memory.c)
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libcore (strings.h, strings.c)
+    // NEEDS: libengine (cvt.h, string.c)
+    // Provides runtime implementation for the CVT built-in function in BASIC++.
+    //
+    // ---- Includes ----
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Performs DEC PDP-11 / BASIC-PLUS binary word/byte conversion, float packing,
+character transformations, and byte swapping.
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    CVT$%(str_val) | CVT%$(int_val) | CVT$F(str_val) | CVTF$(flt_val) | CVT$$(str_val, flags) | SWAP%(int_val)
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = CVT$%(str_val) | CVT%$(int_val) | CVT$F(str_val) | CVTF$(flt_val) | CVT$$(str_val, flags) | SWAP%(int_val)
+    20 PRINT "Result: "; Val
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 5: Illegal Function Call, Error 13: Type Mismatch
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      String Functions
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_IO
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  CVT$%
+Category              String Functions
+Syntax                CVT$%(str_val) | CVT%$(int_val) | CVT$F(str_val) | ...
+Description           Performs DEC PDP-11 / BASIC-PLUS binary word/byte c...
+Error Summary         Error 5: Illegal Function Call, Error 13: Type Mism...
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_IO
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/eval/functions/string/conversion/cvt.c

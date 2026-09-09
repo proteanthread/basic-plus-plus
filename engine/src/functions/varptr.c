@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (sys_fn.c)
 // NEEDS: libcore (funcreg.h, funcreg.c, memory.h, memory.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libcore (varptr.h)
 // NEEDS: libengine (string.c, vm.h)
 // Provides runtime implementation for the VARPTR built-in function in BASIC++.
@@ -11,19 +11,31 @@
 // ---- Includes ----
 
 #include <stdint.h>
-#include <stdio.h>
-#include <string.h>
+#include "runtime/format/snprintf.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
 
 #include "functions/varptr.h"
 #include "vm/vm.h"
 #include "memory/memory.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "runtime/funcreg.h"
+
+static const LangDesc g_varptr_desc = {
+    .name = "VARPTR",
+    .category = "Variables & Memory",
+    .syntax = "VARPTR(var) | VARPTR$(var)",
+    .description = "Returns the 64-bit integer memory address or descriptor string for a variable.",
+    .error_summary = "Error 2: Syntax Error",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SYSTEM,
+    .type = FEATURE_FUNCTION
+};
 
 BValue func_varptr_eval(BValue *args, int arg_count, void *rt) {
     VMContext *vm = (VMContext *)rt;
     BValue res;
-    memset(&res, 0, sizeof(res));
+    runtime_memset(&res, 0, sizeof(res));
 
     StringContext *str_ctx = vm_get_str(vm);
     uintptr_t addr = 0;
@@ -51,7 +63,7 @@ BValue func_varptr_eval(BValue *args, int arg_count, void *rt) {
 BValue func_varptr_str_eval(BValue *args, int arg_count, void *rt) {
     VMContext *vm = (VMContext *)rt;
     BValue res;
-    memset(&res, 0, sizeof(res));
+    runtime_memset(&res, 0, sizeof(res));
 
     StringContext *str_ctx = vm_get_str(vm);
     uintptr_t addr = 0;
@@ -64,10 +76,10 @@ BValue func_varptr_str_eval(BValue *args, int arg_count, void *rt) {
     }
 
     char desc[64];
-    snprintf(desc, sizeof(desc), "VARPTR:0x%016llX", (unsigned long long)addr);
+    runtime_snprintf(desc, sizeof(desc), "VARPTR:0x%016llX", (unsigned long long)addr);
 
     res.type = VAL_STRING;
-    res.as.string = str_create(str_ctx, desc, strlen(desc));
+    res.as.string = str_create(str_ctx, desc, runtime_strlen(desc));
 
     for (int i = 0; i < arg_count; i++) {
         if (args[i].type == VAL_STRING && args[i].as.string) {
@@ -79,14 +91,7 @@ BValue func_varptr_str_eval(BValue *args, int arg_count, void *rt) {
 }
 
 void func_varptr_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "VARPTR",
-        .category = "Variables & Memory",
-        .syntax = "VARPTR(var) | VARPTR$(var)",
-        .help_text = "Returns the 64-bit integer memory address or descriptor string for a variable.",
-        .error_codes = "Error 2: Syntax Error"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_varptr_desc);
 
     FunctionEntry entry1 = {
         .name = "VARPTR",

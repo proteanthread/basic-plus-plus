@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (record.c)
 // NEEDS: libcore (memory.h, memory.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libcore (struct.h, struct.c)
 // NEEDS: libengine (class.h, eval.h, eval.c, lexer.h, lexer.c, string.c, vm.h)
 // Provides runtime implementation for the CLASS statement in BASIC++.
@@ -16,12 +16,35 @@
 #include "lexer/lexer.h"
 #include "eval/eval.h"
 #include "memory/memory.h"
-#include "runtime/micro_lib_metadata.h"
-#include <string.h>
+#include "runtime/language_descriptor.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_class_desc = {
+    .name = "CLASS",
+    .category = "Object-Oriented Programming",
+    .syntax = "CLASS class_name [EXTENDS parent] \n member_name AS type \n ... \n END CLASS",
+    .description = "Defines an Object-Oriented class with inheritance and encapsulation support.",
+    .error_summary = "Error 2: Syntax Error, Error 38: CLASS Without END CLASS, Error 10: Duplicate Definition",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SAFE,
+    .type = FEATURE_STATEMENT
+};
+
+static const LangDesc g_record_desc = {
+    .name = "RECORD",
+    .category = "Variables & Memory",
+    .syntax = "RECORD record_name \n member_name AS type \n ... \n END RECORD",
+    .description = "Defines a VAX BASIC / DEC RECORD structured composite data type.",
+    .error_summary = "Error 2: Syntax Error, Error 38: RECORD Without END RECORD, Error 10: Duplicate Definition",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SYSTEM,
+    .type = FEATURE_STATEMENT
+};
 
 static BppError parse_struct_block(VMContext *vm, LexerContext *lex, bool is_class, bool is_record) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     if (!vm || !lex) {
         err.code = 5; err.message = "Null VM or lexer context";
@@ -35,21 +58,21 @@ static BppError parse_struct_block(VMContext *vm, LexerContext *lex, bool is_cla
     }
 
     BppUserTypeDef def;
-    memset(&def, 0, sizeof(def));
+    runtime_memset(&def, 0, sizeof(def));
     size_t name_len = (name_tok.length < sizeof(def.name) - 1) ? name_tok.length : sizeof(def.name) - 1;
-    memcpy(def.name, name_tok.start, name_len);
+    runtime_memcpy(def.name, name_tok.start, name_len);
     def.is_class = is_class;
     def.is_record = is_record;
 
     // Check for optional EXTENDS parent
     BppToken next_tok = lex_peek(lex);
     if ((next_tok.type == TOK_KEYWORD && next_tok.as.keyword == KW_EXTENDS) ||
-        (next_tok.type == TOK_IDENT && next_tok.length == 7 && strncasecmp(next_tok.start, "EXTENDS", 7) == 0)) {
+        (next_tok.type == TOK_IDENT && next_tok.length == 7 && runtime_strncasecmp(next_tok.start, "EXTENDS", 7) == 0)) {
         lex_next(lex); // Consume EXTENDS
         BppToken parent_tok = lex_next(lex);
         if (parent_tok.type == TOK_IDENT || parent_tok.type == TOK_KEYWORD) {
             size_t plen = (parent_tok.length < sizeof(def.parent_name) - 1) ? parent_tok.length : sizeof(def.parent_name) - 1;
-            memcpy(def.parent_name, parent_tok.start, plen);
+            runtime_memcpy(def.parent_name, parent_tok.start, plen);
         }
     }
 
@@ -74,17 +97,17 @@ static BppError parse_struct_block(VMContext *vm, LexerContext *lex, bool is_cla
         BppToken stok = lex_next(scan);
 
         if ((stok.type == TOK_KEYWORD && stok.as.keyword == KW_END) ||
-            (stok.type == TOK_IDENT && stok.length == 3 && strncasecmp(stok.start, "END", 3) == 0)) {
+            (stok.type == TOK_IDENT && stok.length == 3 && runtime_strncasecmp(stok.start, "END", 3) == 0)) {
             BppToken ntok = lex_next(scan);
             bool match = false;
             if (is_class && ((ntok.type == TOK_KEYWORD && ntok.as.keyword == KW_CLASS) ||
-                            (ntok.type == TOK_IDENT && ntok.length == 5 && strncasecmp(ntok.start, "CLASS", 5) == 0))) {
+                            (ntok.type == TOK_IDENT && ntok.length == 5 && runtime_strncasecmp(ntok.start, "CLASS", 5) == 0))) {
                 match = true;
             } else if (is_record && ((ntok.type == TOK_KEYWORD && ntok.as.keyword == KW_RECORD) ||
-                                     (ntok.type == TOK_IDENT && ntok.length == 6 && strncasecmp(ntok.start, "RECORD", 6) == 0))) {
+                                     (ntok.type == TOK_IDENT && ntok.length == 6 && runtime_strncasecmp(ntok.start, "RECORD", 6) == 0))) {
                 match = true;
             } else if (!is_class && !is_record && ((ntok.type == TOK_KEYWORD && ntok.as.keyword == KW_TYPE) ||
-                                                   (ntok.type == TOK_IDENT && ntok.length == 4 && strncasecmp(ntok.start, "TYPE", 4) == 0))) {
+                                                   (ntok.type == TOK_IDENT && ntok.length == 4 && runtime_strncasecmp(ntok.start, "TYPE", 4) == 0))) {
                 match = true;
             }
 
@@ -105,21 +128,21 @@ static BppError parse_struct_block(VMContext *vm, LexerContext *lex, bool is_cla
                 continue;
             }
         } else if (stok.type == TOK_IDENT) {
-            if (stok.length == 6 && strncasecmp(stok.start, "PUBLIC", 6) == 0) {
+            if (stok.length == 6 && runtime_strncasecmp(stok.start, "PUBLIC", 6) == 0) {
                 BppToken colon = lex_peek(scan);
                 if (colon.type == TOK_EOL || (colon.start && *colon.start == ':')) {
                     cur_private = false;
                     lex_shutdown(scan);
                     continue;
                 }
-            } else if (stok.length == 7 && strncasecmp(stok.start, "PRIVATE", 7) == 0) {
+            } else if (stok.length == 7 && runtime_strncasecmp(stok.start, "PRIVATE", 7) == 0) {
                 BppToken colon = lex_peek(scan);
                 if (colon.type == TOK_EOL || (colon.start && *colon.start == ':')) {
                     cur_private = true;
                     lex_shutdown(scan);
                     continue;
                 }
-            } else if (stok.length == 9 && strncasecmp(stok.start, "PROTECTED", 9) == 0) {
+            } else if (stok.length == 9 && runtime_strncasecmp(stok.start, "PROTECTED", 9) == 0) {
                 BppToken colon = lex_peek(scan);
                 if (colon.type == TOK_EOL || (colon.start && *colon.start == ':')) {
                     cur_private = false;
@@ -140,20 +163,20 @@ static BppError parse_struct_block(VMContext *vm, LexerContext *lex, bool is_cla
         } else if (stok.type == TOK_KEYWORD && stok.as.keyword == KW_PROTECTED) {
             line_private = false;
             stok = lex_next(scan);
-        } else if (stok.type == TOK_IDENT && stok.length == 6 && strncasecmp(stok.start, "PUBLIC", 6) == 0) {
+        } else if (stok.type == TOK_IDENT && stok.length == 6 && runtime_strncasecmp(stok.start, "PUBLIC", 6) == 0) {
             line_private = false;
             stok = lex_next(scan);
-        } else if (stok.type == TOK_IDENT && stok.length == 7 && strncasecmp(stok.start, "PRIVATE", 7) == 0) {
+        } else if (stok.type == TOK_IDENT && stok.length == 7 && runtime_strncasecmp(stok.start, "PRIVATE", 7) == 0) {
             line_private = true;
             stok = lex_next(scan);
-        } else if (stok.type == TOK_IDENT && stok.length == 9 && strncasecmp(stok.start, "PROTECTED", 9) == 0) {
+        } else if (stok.type == TOK_IDENT && stok.length == 9 && runtime_strncasecmp(stok.start, "PROTECTED", 9) == 0) {
             line_private = false;
             stok = lex_next(scan);
         }
 
         // Check for ABSTRACT prefix before SUB/FUNCTION
         if ((stok.type == TOK_KEYWORD && stok.as.keyword == KW_ABSTRACT) ||
-            (stok.type == TOK_IDENT && stok.length == 8 && strncasecmp(stok.start, "ABSTRACT", 8) == 0)) {
+            (stok.type == TOK_IDENT && stok.length == 8 && runtime_strncasecmp(stok.start, "ABSTRACT", 8) == 0)) {
             stok = lex_next(scan);
         }
 
@@ -164,12 +187,12 @@ static BppError parse_struct_block(VMContext *vm, LexerContext *lex, bool is_cla
                                          stok.as.keyword == KW_DESTRUCTOR || stok.as.keyword == KW_OPERATOR)) {
             is_method_header = true;
         } else if (stok.type == TOK_IDENT) {
-            if ((stok.length == 3 && strncasecmp(stok.start, "SUB", 3) == 0) ||
-                (stok.length == 8 && strncasecmp(stok.start, "FUNCTION", 8) == 0) ||
-                (stok.length == 8 && strncasecmp(stok.start, "PROPERTY", 8) == 0) ||
-                (stok.length == 11 && strncasecmp(stok.start, "CONSTRUCTOR", 11) == 0) ||
-                (stok.length == 10 && strncasecmp(stok.start, "DESTRUCTOR", 10) == 0) ||
-                (stok.length == 8 && strncasecmp(stok.start, "OPERATOR", 8) == 0)) {
+            if ((stok.length == 3 && runtime_strncasecmp(stok.start, "SUB", 3) == 0) ||
+                (stok.length == 8 && runtime_strncasecmp(stok.start, "FUNCTION", 8) == 0) ||
+                (stok.length == 8 && runtime_strncasecmp(stok.start, "PROPERTY", 8) == 0) ||
+                (stok.length == 11 && runtime_strncasecmp(stok.start, "CONSTRUCTOR", 11) == 0) ||
+                (stok.length == 10 && runtime_strncasecmp(stok.start, "DESTRUCTOR", 10) == 0) ||
+                (stok.length == 8 && runtime_strncasecmp(stok.start, "OPERATOR", 8) == 0)) {
                 is_method_header = true;
             }
         }
@@ -183,17 +206,17 @@ static BppError parse_struct_block(VMContext *vm, LexerContext *lex, bool is_cla
                 if (!mscan) continue;
                 BppToken mtok = lex_next(mscan);
                 if ((mtok.type == TOK_KEYWORD && mtok.as.keyword == KW_END) ||
-                    (mtok.type == TOK_IDENT && mtok.length == 3 && strncasecmp(mtok.start, "END", 3) == 0)) {
+                    (mtok.type == TOK_IDENT && mtok.length == 3 && runtime_strncasecmp(mtok.start, "END", 3) == 0)) {
                     BppToken ntok = lex_next(mscan);
                     if ((ntok.type == TOK_KEYWORD && (ntok.as.keyword == KW_SUB || ntok.as.keyword == KW_FUNCTION ||
                                                       ntok.as.keyword == KW_PROPERTY || ntok.as.keyword == KW_CONSTRUCTOR ||
                                                       ntok.as.keyword == KW_DESTRUCTOR || ntok.as.keyword == KW_OPERATOR)) ||
-                        (ntok.type == TOK_IDENT && ((ntok.length == 3 && strncasecmp(ntok.start, "SUB", 3) == 0) ||
-                                                    (ntok.length == 8 && strncasecmp(ntok.start, "FUNCTION", 8) == 0) ||
-                                                    (ntok.length == 8 && strncasecmp(ntok.start, "PROPERTY", 8) == 0) ||
-                                                    (ntok.length == 11 && strncasecmp(ntok.start, "CONSTRUCTOR", 11) == 0) ||
-                                                    (ntok.length == 10 && strncasecmp(ntok.start, "DESTRUCTOR", 10) == 0) ||
-                                                    (ntok.length == 8 && strncasecmp(ntok.start, "OPERATOR", 8) == 0)))) {
+                        (ntok.type == TOK_IDENT && ((ntok.length == 3 && runtime_strncasecmp(ntok.start, "SUB", 3) == 0) ||
+                                                    (ntok.length == 8 && runtime_strncasecmp(ntok.start, "FUNCTION", 8) == 0) ||
+                                                    (ntok.length == 8 && runtime_strncasecmp(ntok.start, "PROPERTY", 8) == 0) ||
+                                                    (ntok.length == 11 && runtime_strncasecmp(ntok.start, "CONSTRUCTOR", 11) == 0) ||
+                                                    (ntok.length == 10 && runtime_strncasecmp(ntok.start, "DESTRUCTOR", 10) == 0) ||
+                                                    (ntok.length == 8 && runtime_strncasecmp(ntok.start, "OPERATOR", 8) == 0)))) {
                         lex_shutdown(mscan);
                         break;
                     }
@@ -205,36 +228,36 @@ static BppError parse_struct_block(VMContext *vm, LexerContext *lex, bool is_cla
 
         // Check if field definition starts with optional DIM
         if ((stok.type == TOK_KEYWORD && stok.as.keyword == KW_DIM) ||
-            (stok.type == TOK_IDENT && stok.length == 3 && strncasecmp(stok.start, "DIM", 3) == 0)) {
+            (stok.type == TOK_IDENT && stok.length == 3 && runtime_strncasecmp(stok.start, "DIM", 3) == 0)) {
             stok = lex_next(scan);
         }
 
         if ((stok.type == TOK_IDENT || stok.type == TOK_KEYWORD) && def.field_count < MAX_TYPE_FIELDS) {
             BppUserTypeField *field = &def.fields[def.field_count];
-            memset(field, 0, sizeof(*field));
+            runtime_memset(field, 0, sizeof(*field));
             size_t flen = (stok.length < sizeof(field->name) - 1) ? stok.length : sizeof(field->name) - 1;
-            memcpy(field->name, stok.start, flen);
+            runtime_memcpy(field->name, stok.start, flen);
             field->name[flen] = '\0';
             field->is_private = line_private;
 
             BppToken as_tok = lex_next(scan);
             if ((as_tok.type == TOK_KEYWORD && as_tok.as.keyword == KW_AS) ||
-                (as_tok.type == TOK_IDENT && as_tok.length == 2 && strncasecmp(as_tok.start, "AS", 2) == 0)) {
+                (as_tok.type == TOK_IDENT && as_tok.length == 2 && runtime_strncasecmp(as_tok.start, "AS", 2) == 0)) {
                 BppToken type_tok = lex_next(scan);
                 char type_str[64] = {0};
                 size_t tlen = (type_tok.length < sizeof(type_str) - 1) ? type_tok.length : sizeof(type_str) - 1;
-                memcpy(type_str, type_tok.start, tlen);
+                runtime_memcpy(type_str, type_tok.start, tlen);
 
-                if (strcasecmp(type_str, "INTEGER") == 0 || strcasecmp(type_str, "LONG") == 0 ||
-                    strcasecmp(type_str, "SINGLE") == 0 || strcasecmp(type_str, "DOUBLE") == 0) {
+                if (runtime_strcasecmp(type_str, "INTEGER") == 0 || runtime_strcasecmp(type_str, "LONG") == 0 ||
+                    runtime_strcasecmp(type_str, "SINGLE") == 0 || runtime_strcasecmp(type_str, "DOUBLE") == 0) {
                     field->type = VAL_NUMBER;
-                } else if (strcasecmp(type_str, "STRING") == 0) {
+                } else if (runtime_strcasecmp(type_str, "STRING") == 0) {
                     field->type = VAL_STRING;
-                } else if (strcasecmp(type_str, "COMPLEX") == 0) {
+                } else if (runtime_strcasecmp(type_str, "COMPLEX") == 0) {
                     field->type = VAL_COMPLEX;
                 } else {
                     field->type = VAL_MAP;
-                    strncpy(field->nested_type, type_str, sizeof(field->nested_type) - 1);
+                    runtime_strncpy(field->nested_type, type_str, sizeof(field->nested_type) - 1);
                 }
             } else {
                 field->type = VAL_NUMBER;
@@ -269,23 +292,9 @@ BppError stmt_record_type_handler(VMContext *vm, LexerContext *lex) {
 }
 
 void stmt_class_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "CLASS",
-        .category = "Object-Oriented Programming",
-        .syntax = "CLASS class_name [EXTENDS parent] \n member_name AS type \n ... \n END CLASS",
-        .help_text = "Defines an Object-Oriented class with inheritance and encapsulation support.",
-        .error_codes = "Error 2: Syntax Error, Error 38: CLASS Without END CLASS, Error 10: Duplicate Definition"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_class_desc);
 }
 
 void stmt_record_type_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "RECORD",
-        .category = "Variables & Memory",
-        .syntax = "RECORD record_name \n member_name AS type \n ... \n END RECORD",
-        .help_text = "Defines a VAX BASIC / DEC RECORD structured composite data type.",
-        .error_codes = "Error 2: Syntax Error, Error 38: RECORD Without END RECORD, Error 10: Duplicate Definition"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_class_desc);
 }

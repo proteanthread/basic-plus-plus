@@ -9,13 +9,40 @@
 
 #include "eval/builtins_internal.h"
 #include "eval/eval.h"
-#include "eval/functions/datetime/pds_datetime.h"
+#include "eval/functions/datetime/dateserial.h"
+#include "eval/functions/datetime/timeserial.h"
+#include "eval/functions/datetime/datevalue.h"
+#include "eval/functions/datetime/timevalue.h"
+#include "eval/functions/datetime/day.h"
+#include "eval/functions/datetime/month.h"
+#include "eval/functions/datetime/year.h"
+#include "eval/functions/datetime/weekday.h"
+#include "eval/functions/datetime/func_week.h"
+#include "eval/functions/datetime/hour.h"
+#include "eval/functions/datetime/minute.h"
+#include "eval/functions/datetime/second.h"
+#include "eval/functions/datetime/unixtime.h"
+#include "eval/functions/datetime/epochdate.h"
+#include "eval/functions/datetime/utc.h"
 #include "eval/functions/filesystem/descriptors/typ.h"
-#include "eval/functions/math/financial/financial.h"
+#include "eval/functions/types/isnumeric.h"
+#include "eval/functions/types/isarray.h"
+#include "eval/functions/math/financial/pv.h"
+#include "eval/functions/math/financial/fv.h"
+#include "eval/functions/math/financial/pmt.h"
+#include "eval/functions/math/financial/ipmt.h"
+#include "eval/functions/math/financial/ppmt.h"
+#include "eval/functions/math/financial/nper.h"
+#include "eval/functions/math/financial/rate.h"
+#include "eval/functions/math/financial/npv.h"
+#include "eval/functions/math/financial/irr.h"
 #include "eval/functions/string/conversion/bin.h"
 #include "eval/functions/string/conversion/cvt.h"
 #include "eval/functions/string/conversion/hex.h"
-#include "eval/functions/string/conversion/mbf.h"
+#include "eval/functions/string/conversion/cvsmbf.h"
+#include "eval/functions/string/conversion/cvdmbf.h"
+#include "eval/functions/string/conversion/mksmbf.h"
+#include "eval/functions/string/conversion/mkdmbf.h"
 #include "eval/functions/string/conversion/oct.h"
 #include "eval/functions/system/environment/category.h"
 #include "eval/functions/system/time/clock_num.h"
@@ -24,10 +51,18 @@
 #include "eval/functions/system/time/date.h"
 #include "eval/functions/system/environment/environ.h"
 #include "eval/functions/system/environment/moddir.h"
-#include "eval/functions/system/environment/pds_sys.h"
+#include "eval/functions/system/environment/dir_fn.h"
+#include "eval/functions/system/environment/curdir.h"
+#include "eval/functions/system/environment/setmem.h"
+#include "eval/functions/system/environment/sseg.h"
 #include "eval/functions/system/time/time.h"
-#include "eval/functions/ui/dialogs/vbdos_filebox.h"
-#include "eval/functions/ui/dialogs/vbdos_fn.h"
+#include "eval/functions/ui/dialogs/fileopenbox.h"
+#include "eval/functions/ui/dialogs/filesavebox.h"
+#include "eval/functions/ui/dialogs/func_msgbox.h"
+#include "eval/functions/ui/dialogs/inputbox.h"
+#include "eval/functions/ui/dialogs/func_doevents.h"
+#include "runtime/string/strops.h"
+#include "runtime/math/math.h"
 
 
 //
@@ -134,20 +169,28 @@ bool eval_builtin_conversion(VMContext *vm, const char *uname, int arg_count, BV
         *out_res = func_day_eval(vm, uname, arg_count, args, err);
         return true;
     }
-    if (runtime_strcmp(uname, "HOUR") == 0) {
+    if (runtime_strcmp(uname, "HOUR") == 0 || runtime_strcmp(uname, "HOURS") == 0 || runtime_strcmp(uname, "HOUR$") == 0) {
         *out_res = func_hour_eval(vm, uname, arg_count, args, err);
         return true;
     }
-    if (runtime_strcmp(uname, "MINUTE") == 0) {
+    if (runtime_strcmp(uname, "MINUTE") == 0 || runtime_strcmp(uname, "MINUTES") == 0 || runtime_strcmp(uname, "MINUTE$") == 0) {
         *out_res = func_minute_eval(vm, uname, arg_count, args, err);
         return true;
     }
-    if (runtime_strcmp(uname, "SECOND") == 0) {
+    if (runtime_strcmp(uname, "SECOND") == 0 || runtime_strcmp(uname, "SECONDS") == 0 || runtime_strcmp(uname, "SECOND$") == 0) {
         *out_res = func_second_eval(vm, uname, arg_count, args, err);
         return true;
     }
     if (runtime_strcmp(uname, "WEEKDAY") == 0) {
         *out_res = func_weekday_eval(vm, uname, arg_count, args, err);
+        return true;
+    }
+    if (runtime_strcmp(uname, "WEEK") == 0) {
+        *out_res = func_week_eval(vm, uname, arg_count, args, err);
+        return true;
+    }
+    if (runtime_strcmp(uname, "WEEK$") == 0) {
+        *out_res = func_week_str_eval(vm, uname, arg_count, args, err);
         return true;
     }
     if (runtime_strcmp(uname, "COMMAND$") == 0 || runtime_strcmp(uname, "COMMAND") == 0) {
@@ -219,6 +262,74 @@ bool eval_builtin_conversion(VMContext *vm, const char *uname, int arg_count, BV
         runtime_strcmp(uname, "MKD$") == 0 || runtime_strcmp(uname, "CVD") == 0 ||
         runtime_strcmp(uname, "MKL$") == 0 || runtime_strcmp(uname, "CVL") == 0) {
         *out_res = func_cvt_eval(vm, uname, arg_count, args, err);
+        return true;
+    }
+    if (runtime_strcmp(uname, "ISNUMERIC") == 0) {
+        *out_res = func_isnumeric_eval(vm, uname, arg_count, args, err);
+        return true;
+    }
+    if (runtime_strcmp(uname, "ISARRAY") == 0) {
+        *out_res = func_isarray_eval(vm, uname, arg_count, args, err);
+        return true;
+    }
+    if (runtime_strcmp(uname, "CBOOL") == 0) {
+        if (arg_count != 1) {
+            err->code = 13;
+            err->message = "CBOOL expects one argument";
+            return false;
+        }
+        double b_val = 0.0;
+        if (args[0].type == VAL_STRING) {
+            const char *s = args[0].as.string ? str_data(args[0].as.string) : "";
+            if (runtime_strcasecmp(s, "TRUE") == 0 || runtime_strcmp(s, "-1") == 0) {
+                b_val = -1.0;
+            } else if (runtime_strcasecmp(s, "FALSE") == 0 || runtime_strcmp(s, "0") == 0 || s[0] == '\0') {
+                b_val = 0.0;
+            } else {
+                b_val = -1.0;
+            }
+            if (args[0].as.string) str_release(vm_get_str(vm), args[0].as.string);
+        } else {
+            b_val = (args[0].as.number != 0.0) ? -1.0 : 0.0;
+        }
+        out_res->type = VAL_NUMBER;
+        out_res->as.number = b_val;
+        return true;
+    }
+    if (runtime_strcmp(uname, "CBYTE") == 0) {
+        if (arg_count != 1 || args[0].type == VAL_STRING) {
+            err->code = 13;
+            err->message = "CBYTE expects numeric argument";
+            return false;
+        }
+        out_res->type = VAL_NUMBER;
+        out_res->as.number = (double)(uint8_t)runtime_round(args[0].as.number);
+        return true;
+    }
+    if (runtime_strcmp(uname, "CCUR") == 0) {
+        if (arg_count != 1 || args[0].type == VAL_STRING) {
+            err->code = 13;
+            err->message = "CCUR expects numeric argument";
+            return false;
+        }
+        out_res->type = VAL_NUMBER;
+        out_res->as.number = (double)runtime_round(args[0].as.number * 10000.0) / 10000.0;
+        return true;
+    }
+    if (runtime_strcmp(uname, "CSTR") == 0) {
+        if (arg_count != 1) {
+            err->code = 13;
+            err->message = "CSTR expects one argument";
+            return false;
+        }
+        if (args[0].type == VAL_STRING) {
+            *out_res = args[0];
+            return true;
+        }
+        char buf[64];
+        runtime_snprintf(buf, sizeof(buf), "%.14g", args[0].as.number);
+        out_res->type = VAL_STRING;
+        out_res->as.string = str_create(vm_get_str(vm), buf, runtime_strlen(buf));
         return true;
     }
     if (runtime_strcmp(uname, "CINT") == 0) {

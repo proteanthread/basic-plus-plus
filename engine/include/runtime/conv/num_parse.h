@@ -13,6 +13,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
+#include "runtime/conv/num_parse.h"
 
 #ifdef __cplusplus
 extern "C" {

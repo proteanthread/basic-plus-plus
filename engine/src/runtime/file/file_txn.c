@@ -8,6 +8,9 @@
 // ---- Includes ----
 
 #include "runtime/file_internal.h"
+#include "runtime/format/snprintf.h"
+#include "runtime/string/strops.h"
+#include "runtime/string/memops.h"
 
 //
 // ---- Range Locking ----

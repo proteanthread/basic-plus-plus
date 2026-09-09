@@ -1,146 +1,80 @@
-======================================================================
-  BASIC++ V6.5.2 USER-DEFINED TYPES
-======================================================================
+TITLE: User_Defined_Types
+TIER: 2
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/data/type.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+BASIC++ v6.5.2 USER-DEFINED TYPES (UDT) ARCHITECTURE
+==============================================================================
+
+The authoritative specification for composite record structures, field
+layout, nested types, and structured memory packing in BASIC++ v6.5.2.
 
 
-======================================================================
-  1. OVERVIEW
-======================================================================
+1. OVERVIEW AND STRUCTURAL INVARIANTS
 
-BASIC++ supports user-defined composite types through the TYPE block, which groups related variables into a named structure. This feature is available when the SUPPORT_STRUCT feature gate is enabled (it is enabled by default in both baspp and bpp builds).
+BASIC++ supports user-defined composite types through the TYPE...END TYPE
+statement block (engine/src/statements/data/type.c). User-Defined Types
+allow bundling heterogeneous fields (integers, floating-point numbers,
+fixed-length strings, pointers, and sub-structures) into contiguous
+record structures.
 
-
-======================================================================
-  2. DEFINING A TYPE
-======================================================================
-
-The TYPE...END TYPE block defines a named structure with named fields:
-
-10 TYPE Employee
-20   Name AS STRING * 30
-30   Age AS INTEGER
-40   Salary AS DOUBLE
-50   Department AS STRING * 20
-60 END TYPE
-
-Each field has a name, a data type, and for strings, a fixed length specified by STRING * length. Supported field types are INTEGER (2 bytes), LONG (4 bytes), SINGLE (4 bytes), DOUBLE (8 bytes), and STRING * n (n bytes, fixed-length, space-padded).
+In accordance with the Hierarchical Set-Based Data Subsumption Invariant,
+UDT records operate at the GROUP tier: an associative cluster of typed
+atomic objects that can be organized into mathematical SET collections.
 
 
-======================================================================
-  3. DECLARING TYPE VARIABLES
-======================================================================
+2. DEFINING RECORD TYPES (TYPE...END TYPE)
 
-After a TYPE is defined, variables of that type are declared with DIM:
+    TYPE Point2D
+      x AS DOUBLE
+      y AS DOUBLE
+    END TYPE
 
-100 DIM Emp AS Employee
-110 DIM Staff(50) AS Employee
+    TYPE EmployeeRecord
+      ID AS LONG
+      Name AS STRING * 30
+      Salary AS DOUBLE
+      Location AS Point2D
+    END TYPE
 
-The first line declares a single Employee variable. The second declares an array of 51 Employee values (elements 0 through 50 with OPTION BASE 0).
-
-
-======================================================================
-  4. ACCESSING FIELDS
-======================================================================
-
-Fields are accessed using the dot notation: variable.field:
-
-200 Emp.Name = "Alice Johnson"
-210 Emp.Age = 34
-220 Emp.Salary = 75000.00
-230 Emp.Department = "Engineering"
-240 PRINT Emp.Name; " - Age:"; Emp.Age
-
-Array elements use the same syntax: Staff(5).Name = "Bob Smith".
+Field type specifiers include:
+* Integers: INTEGER (16-bit), LONG (32-bit), INT64 (64-bit).
+* Floats: SINGLE (32-bit IEEE), DOUBLE (64-bit IEEE).
+* Strings: Fixed-length STRING * length.
+* Nested UDTs: Any previously defined TYPE identifier.
 
 
-======================================================================
-  5. TYPES AND FILE I/O
-======================================================================
+3. VARIABLE DECLARATION AND FIELD ACCESS
 
-User-defined types work naturally with random-access file I/O. The total size of a TYPE determines the record length:
+Variables of a user-defined type are declared using DIM:
 
-300 OPEN "STAFF.DAT" FOR RANDOM AS #1 LEN = LEN(Emp)
-310 Emp.Name = "Alice"
-320 Emp.Age = 34
-330 Emp.Salary = 75000
-340 PUT #1, 1, Emp
-350 GET #1, 1, Emp
-360 PRINT Emp.Name, Emp.Age
-370 CLOSE #1
+    DIM Pt AS Point2D
+    DIM Staff(1 TO 100) AS EmployeeRecord
 
-The LEN function returns the total byte size of a TYPE variable (the sum of all field sizes). PUT writes the entire record as a binary block. GET reads it back.
+* Field access uses dot notation: Pt.x = 10.5 : Pt.y = 20.0.
+* Nested fields chain dot references: Staff(1).Location.x = 45.2.
+* Structured initializers use curly braces: Pt = Point2D{x: 10.5, y: 20.0}.
 
 
-======================================================================
-  6. NESTED TYPES
-======================================================================
+4. FILE I/O WITH UDT RECORDS
 
-Types can contain fields of other user-defined types:
-
-10 TYPE Address
-20   Street AS STRING * 40
-30   City AS STRING * 20
-40   State AS STRING * 2
-50   Zip AS STRING * 10
-60 END TYPE
-70 TYPE Person
-80   Name AS STRING * 30
-90   HomeAddress AS Address
-100  WorkAddress AS Address
-110 END TYPE
-
-Access nested fields with chained dot notation: P.HomeAddress.City = "Portland".
+UDTs integrate seamlessly with binary and random-access files:
+* GET #filenum, record_num, record_var: Reads entire structured record.
+* PUT #filenum, record_num, record_var: Writes entire structured record.
 
 
-======================================================================
-  7. TYPE CONSTRAINTS
-======================================================================
+5. EXAMPLE: GEOMETRIC POINT CALCULATIONS
 
-- TYPE definitions must appear in numbered program lines, not in immediate mode.
-- A TYPE cannot contain dynamic strings (variable-length STRING without * n).
-- A TYPE cannot contain arrays as fields.
-- TYPE names are case-insensitive.
-- The maximum number of fields in a TYPE is 255.
-- The maximum total size of a TYPE is 65535 bytes.
-
-
-======================================================================
-  8. ENUM TYPES
-======================================================================
-
-The ENUM block defines a set of named integer constants:
-
-10 ENUM Color
-20   Red = 1
-30   Green = 2
-40   Blue = 3
-50   Yellow = 4
-60 END ENUM
-
-Enum values are accessible as named constants: C = Color.Red. If no explicit value is assigned, values start at 0 and increment by 1 for each member.
-
-
-======================================================================
-  9. CLASS TYPES (OOP EXTENSION)
-======================================================================
-
-When SUPPORT_OOP is enabled, the CLASS block extends TYPE with methods:
-
-10 CLASS Counter
-20   Value AS INTEGER
-30   SUB Increment()
-40     Value = Value + 1
-50   END SUB
-60   FUNCTION GetValue()
-70     GetValue = Value
-80   END FUNCTION
-90 END CLASS
-
-CLASS instances are created with DIM and methods are called with dot notation:
-
-100 DIM C AS Counter
-110 C.Increment()
-120 C.Increment()
-130 PRINT C.GetValue()   ' Prints 2
-
-CLASS is a BASIC++ extension not present in GW-BASIC or QBASIC.
+    10 REM UDT Geometric Points Demo
+    20 TYPE Point
+    30   x AS DOUBLE
+    40   y AS DOUBLE
+    50 END TYPE
+    60 DIM P1 AS Point, P2 AS Point
+    70 P1.x = 0.0 : P1.y = 0.0
+    80 P2.x = 3.0 : P2.y = 4.0
+    90 Dist = SQR((P2.x - P1.x)^2 + (P2.y - P1.y)^2)
+    100 PRINT "Distance between P1 and P2: "; Dist

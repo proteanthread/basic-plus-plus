@@ -3,45 +3,50 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
 // NEEDS: libcore (file.h, file.c, memory.h, memory.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libengine (eval.h, eval.c, if.h, string.c, vm.h)
 // Provides runtime implementation for the IF statement in BASIC++.
 //
 // ---- Includes ----
 
 #include "statements/core/program/if.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "vm/vm.h"
 #include "eval/eval.h"
 #include "runtime/file.h"
 #include "memory/memory.h"
-#include <string.h>
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
 #include <stdbool.h>
 
+static const LangDesc g_if_desc = {
+    .name = "IF",
+    .category = "Control Flow",
+    .syntax = "IF expr THEN stmt/line [ELSE stmt/line]",
+    .description = "Evaluates boolean expression expr and executes THEN clause if true, ELSE clause if false.",
+    .error_summary = "Error 2: Syntax error (missing THEN or malformed expression)",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SAFE,
+    .type = FEATURE_STATEMENT
+};
+
 void stmt_if_register(void) {
-    MicroLibMetadata meta = {
-        .name = "IF",
-        .category = "Control Flow",
-        .syntax = "IF expr THEN stmt/line [ELSE stmt/line]",
-        .help_text = "Evaluates boolean expression expr and executes THEN clause if true, ELSE clause if false.",
-        .error_codes = "Error 2: Syntax error (missing THEN or malformed expression)"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_if_desc);
 }
 
 static inline bool is_tok_then(BppToken tok) {
     return (tok.type == TOK_KEYWORD && tok.as.keyword == KW_THEN) ||
-           (tok.type == TOK_IDENT && tok.length == 4 && strncasecmp(tok.start, "THEN", 4) == 0);
+           (tok.type == TOK_IDENT && tok.length == 4 && runtime_strncasecmp(tok.start, "THEN", 4) == 0);
 }
 
 static inline bool is_tok_else(BppToken tok) {
     return (tok.type == TOK_KEYWORD && tok.as.keyword == KW_ELSE) ||
-           (tok.type == TOK_IDENT && tok.length == 4 && strncasecmp(tok.start, "ELSE", 4) == 0);
+           (tok.type == TOK_IDENT && tok.length == 4 && runtime_strncasecmp(tok.start, "ELSE", 4) == 0);
 }
 
 static inline bool is_tok_goto(BppToken tok) {
     return (tok.type == TOK_KEYWORD && tok.as.keyword == KW_GOTO) ||
-           (tok.type == TOK_IDENT && tok.length == 4 && strncasecmp(tok.start, "GOTO", 4) == 0);
+           (tok.type == TOK_IDENT && tok.length == 4 && runtime_strncasecmp(tok.start, "GOTO", 4) == 0);
 }
 
 static BppError dispatch_branch(VMContext *vm, LexerContext *lex) {
@@ -51,12 +56,12 @@ static BppError dispatch_branch(VMContext *vm, LexerContext *lex) {
 
 BppError stmt_if_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     // Check for HP TSB: IF END #channel THEN line/stmt
     BppToken peek = lex_peek(lex);
     bool is_end = (peek.type == TOK_KEYWORD && peek.as.keyword == KW_END) ||
-                  (peek.type == TOK_IDENT && peek.length == 3 && strncasecmp(peek.start, "END", 3) == 0);
+                  (peek.type == TOK_IDENT && peek.length == 3 && runtime_strncasecmp(peek.start, "END", 3) == 0);
     if (is_end) {
         LexerContext *look = lex_init(vm_get_mem(vm), lex_get_pos(lex));
         lex_next(look); // consume END

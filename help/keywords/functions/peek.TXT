@@ -1,36 +1,69 @@
-PEEK Read Memory Byte Function
-======================================================================
+TITLE: PEEK
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/functions/system/hardware/peek.c
+GENERATED: no, hand-written
+STATUS: current
 
-The PEEK function reads and returns an 8-bit byte value (0 to 255) from
-virtual memory.
+==============================================================================
+PEEK KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: peek.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (sys_fn.c)
+    // NEEDS: libcore, libengine, libkernel
+    // Provides runtime implementation for the PEEK built-in function in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Reads a byte (0-255) from virtual memory address addr.
 
-    byte_val% = PEEK(address_expression)
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    PEEK(addr)
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = PEEK(addr)
+    20 PRINT "Result: "; Val
 
-OPERATIONAL RULES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 5: Illegal Function Call (addr out of memory bounds), Error 13: Type
+Mismatch (expects numeric address)
 
-  - Reads byte from active DEF SEG / BANK segment.
-  - Returns integer in range 0..255.
-  - Security checked: Error 70 if restricted.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      System Functions
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_IO
 
-
-ERROR CODES
-----------------------------------------------------------------------
-
-  Error Code  Name                  Condition
-  ----------  --------------------  ----------------------------------
-  5           ERR_ILLEGAL_FUNCTION  Address out of segment bounds
-  70          ERR_PERMISSION_DENIED Memory access restricted
-
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 DEF SEG = &H0040
-    20 PRINT PEEK(&H0010)
-    30 DEF SEG
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  PEEK
+Category              System Functions
+Syntax                PEEK(addr)
+Description           Reads a byte (0-255) from virtual memory address addr.
+Error Summary         Error 5: Illegal Function Call (addr out of memory ...
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_IO
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/eval/functions/system/hardware/peek.c

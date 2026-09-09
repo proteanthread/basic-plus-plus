@@ -1,104 +1,83 @@
-BASIC++ v6.5.2 Subroutines, Functions, and Procedures
+TITLE: Subroutines_And_Functions
+TIER: 2
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/control/, engine/src/eval/
+GENERATED: no, hand-written
+STATUS: current
 
-1. CLASSIC SUBROUTINES (GOSUB/RETURN)
--------------------------------------
-The simplest form of code reuse is the GOSUB/RETURN pair. GOSUB pushes the current execution position onto the GosubStack and jumps to the target line. RETURN pops the saved position and resumes at the next statement after the GOSUB:
+==============================================================================
+BASIC++ v6.5.2 SUBROUTINES, FUNCTIONS, AND PROCEDURES ARCHITECTURE
+==============================================================================
 
-  100 GOSUB 1000
-  110 PRINT "Back from subroutine"
-  120 END
-  1000 REM --- Print Header ---
-  1010 PRINT "========================="
-  1020 PRINT "  BASIC++ PROGRAM OUTPUT"
-  1030 PRINT "========================="
-  1040 RETURN
+The authoritative specification for procedural abstraction, stack frames,
+parameter passing, return values, and subroutine invocation in
+BASIC++ v6.5.2.
 
-The GosubStack has a depth limit of 1023 on modern builds. Exceeding the limit produces Error 7 (Out of memory). Each GOSUB must have a matching RETURN; issuing RETURN with an empty stack produces Error 3 (RETURN without GOSUB).
 
-2. DEF FN USER FUNCTIONS
-------------------------
-DEF FN defines a single-expression or multi-line inline function:
+1. PROCEDURAL ABSTRACTION MODELS
 
-  10 DEF FN AREA(R) = PI * R * R
-  20 DEF FN HYPOTENUSE(A, B) = SQR(A^2 + B^2)
-  30 PRINT FN AREA(5)
-  40 PRINT FN HYPOTENUSE(3, 4)
+BASIC++ supports procedural decomposition across three distinct
+abstraction tiers:
 
-DEF FN functions can accept up to 16 parameters. Parameters are local to the function call and do not affect variables with the same name in the main program.
+* Vintage Subroutines (GOSUB...RETURN): Minimal overhead, line-number
+  targeted subroutines operating in caller variable scope.
+* User-Defined Single-Line Functions (DEF FN): Lightweight arithmetic
+  macros returning scalar numeric or string values.
+* Structured Procedures (SUB and FUNCTION): Scoped procedures with
+  named formal parameter lists, local variable frames, recursive
+  capability, and explicit return semantics.
 
-Multi-line user functions are supported using DEF FN ... FNEND:
-  100 DEF FN Factorial(N)
-  110   IF N <= 1 THEN Factorial = 1 ELSE Factorial = N * FN Factorial(N - 1)
-  120 FNEND
 
-3. SUB PROCEDURES
------------------
-SUB defines a named subroutine with formal parameters, explicit passing modes (BYVAL / BYREF), and local variable isolation:
+2. STRUCTURED PROCEDURES (SUB AND FUNCTION)
 
-  100 SUB PrintBox(width, height, char$)
-  110   FOR Y = 1 TO height
-  120     FOR X = 1 TO width
-  130       PRINT char$;
-  140     NEXT X
-  150     PRINT
-  160   NEXT Y
-  170 END SUB
+A. Subroutine Procedures (SUB):
+    SUB ProcedureName [(param1 [AS type]...)]
+      statements
+      [EXIT SUB]
+    END SUB
 
-Flexible Invocation Syntax:
-- Standard CALL with parens: CALL PrintBox(20, 5, "*")
-- CALL without parens: CALL PrintBox 20, 5, "*"
-- Call-less invocation: PrintBox 20, 5, "*"
-- Parenthesized call-less invocation: PrintBox(20, 5, "*")
+Invoked via CALL ProcedureName(arg1, arg2) or bare ProcedureName a1, a2.
+Operates on an isolated stack frame; outer variables are inaccessible
+unless explicitly declared SHARED.
 
-Scoping Statements Inside Procedures:
-- LOCAL var1, var2   - Explicitly declares local variables shadowed from caller.
-- SHARED var1, var2  - Imports main-program variables into the SUB.
-- STATIC var1, var2  - Preserves a local variable's value across multiple invocations.
-- GLOBAL var1, var2  - Binds variables directly to the root global namespace.
+B. Function Procedures (FUNCTION):
+    FUNCTION FunctionName [(param1 [AS type]...)] [AS return_type]
+      statements
+      FunctionName = result_value
+      [EXIT FUNCTION]
+    END FUNCTION
 
-4. FUNCTION PROCEDURES
-----------------------
-FUNCTION defines a named function that returns a value. The return value is assigned to the function name within the body:
+Invoked as an expression term: Result = FunctionName(arg1, arg2). Value
+is returned by assigning to function name identifier before returning.
 
-  100 FUNCTION AddThree(a, b, c)
-  110   AddThree = a + b + c
-  120 END FUNCTION
 
-Functions can return numeric, string, or user-defined types:
-- String function: FUNCTION Greeting$(name$)
-- Numeric function: FUNCTION Hypotenuse(a, b)
+3. PARAMETER PASSING AND RECURSION
 
-5. PARAMETER PASSING: BYVAL AND BYREF
--------------------------------------
-- BYVAL  - The argument expression is evaluated and passed by value.
-- BYREF  - The argument variable is passed by reference; changes write back to caller.
-- Default: Unannotated bare variables default to by-reference; expressions/literals default to by-value.
+* Pass by Reference (Default): Variables passed to SUB or FUNCTION
+  parameters are bound by reference.
+* Pass by Value: Enclosing an argument in parentheses forces evaluation
+  as an expression and passes a copy by value: CALL UpdateVar((X)).
+* Recursion: Procedures support recursive re-entrance, allocating an
+  isolated stack frame on each call.
 
-  100 SUB DoubleVal(BYREF x, BYVAL y)
-  110   x = x * 2
-  120   y = y * 2
-  130 END SUB
 
-6. DECLARE STATEMENTS
----------------------
-DECLARE provides optional forward prototypes for SUB and FUNCTION procedures:
+4. VINTAGE MECHANISMS (GOSUB AND DEF FN)
 
-  10 DECLARE SUB DoubleVal(BYREF x, BYVAL y)
-  20 DECLARE FUNCTION AddThree(a, b, c)
-  30 CALL DoubleVal(v1, v2)
-  40 res = AddThree(1, 2, 3)
+* GOSUB line_num / RETURN: Pushes program return address onto call stack.
+* ON expr GOSUB line1, line2: Computed branch based on 1-based index.
+* DEF FNname(param) = expr: Vintage inline user-defined function.
 
-7. EXIT SUB AND EXIT FUNCTION
------------------------------
-- EXIT SUB      - Immediately returns from the current subroutine frame.
-- EXIT FUNCTION - Immediately returns from the current function frame.
 
-8. STRUCTURED EXCEPTION HANDLING: WHEN EXCEPTION IN
----------------------------------------------------
-BASIC++ implements ECMA-116 standard structured exception handling:
+5. EXAMPLE: RECURSIVE FACTORIAL FUNCTION
 
-  1000 WHEN EXCEPTION IN
-  1010   ERROR 5
-  1020 USE
-  1030   PRINT "Caught exception: "; ERR; " ("; ERR$; ")"
-  1040 END WHEN
+    10 REM Procedural Recursion Demo
+    20 PRINT "5! = "; Factorial(5)
+    30 END
+    40 
+    50 FUNCTION Factorial(N AS INTEGER) AS DOUBLE
+    60   IF N <= 1 THEN
+    70     Factorial = 1
+    80   ELSE
+    90     Factorial = N * Factorial(N - 1)
+    100  END IF
+    110 END FUNCTION

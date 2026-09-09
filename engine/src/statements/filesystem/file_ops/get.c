@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
 // NEEDS: libcore (arrays.h, arrays.c, file.h, file.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libengine (bgi.h, bgi.c, eval.h, eval.c, get.h, lexer.h, lexer.c)
 // NEEDS: libengine (map.h, map.c, string.c, vm.h)
 // NEEDS: libplatform (platform.h)
@@ -19,24 +19,29 @@
 #include "runtime/file.h"
 #include "runtime/arrays.h"
 #include "device/bgi.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "platform/platform.h"
-#include <string.h>
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_get_desc = {
+    .name = "GET",
+    .category = "Filesystem I/O & Graphics",
+    .syntax = "GET [#]file_num [, record_number] | GET (x1, y1)-(x2, y2), array_name",
+    .description = "Reads a record from a random-access file or captures a screen rectangle into a memory array.",
+    .error_summary = "Error 2: Syntax Error, Error 52: Bad File Number, Error 63: Bad Record Number",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_STATEMENT
+};
 
 void stmt_get_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "GET",
-        .category = "Filesystem I/O & Graphics",
-        .syntax = "GET [#]file_num [, record_number] | GET (x1, y1)-(x2, y2), array_name",
-        .help_text = "Reads a record from a random-access file or captures a screen rectangle into a memory array.",
-        .error_codes = "Error 2: Syntax Error, Error 52: Bad File Number, Error 63: Bad Record Number"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_get_desc);
 }
 
 BppError stmt_get_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BppToken tok = lex_peek(lex);
     if (tok.type == TOK_LPAREN) {
@@ -101,7 +106,7 @@ BppError stmt_get_handler(VMContext *vm, LexerContext *lex) {
 
         char arr_name[64];
         if (tok.length >= sizeof(arr_name)) tok.length = sizeof(arr_name) - 1;
-        memcpy(arr_name, tok.start, tok.length);
+        runtime_memcpy(arr_name, tok.start, tok.length);
         arr_name[tok.length] = '\0';
 
         BppToken peek_paren = lex_peek(lex);

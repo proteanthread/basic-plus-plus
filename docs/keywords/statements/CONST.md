@@ -1,40 +1,73 @@
-# `CONST` Constant Declaration Statement
+<!--
+Title:        CONST
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/statements/variables/declaration/const.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Statement Definition
+# `CONST` Keyword Reference
 
-The `CONST` statement declares one or more named compile-time/runtime constants with fixed immutable values. Attempting to assign a new value to a constant variable at runtime triggers Error 17 (`ERR_CANNOT_ASSIGN_TO_CONST`).
+## Source Header
 
-### Syntax Signatures:
-```basic
-CONST constname = constant_expression [, constname2 = constant_expression2 ...]
+```c
+// FILENAME: const.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore (language_descriptor.h, string.h)
+// NEEDS: libcore (strings.h, strings.c, variables.h, variables.c)
+// NEEDS: libengine (const.h, eval.h, eval.c, lexer.h, lexer.c, string.c, vm.h
+// Provides runtime implementation for the CONST statement in BASIC++.
+//
+// ---- Includes ----
 ```
 
-### Operational Rules:
-- **Immutability**: Once defined, the symbol cannot be altered by `LET`, `INPUT`, `READ`, or `FOR`.
-- **Expression Evaluation**: The initial value can be a literal or a static expression computed from literals and previously declared constants.
-- **Type Invariant**: The constant inherits the type from its literal or type suffix (`%`, `!`, `#`, `$`, `&`).
-- **Scope**: Subject to procedure-local or module-global scoping rules.
+## 1. Description & Usage
+
+Declares one or more symbolic constants assigned to literal or constant expressions.
+
+## 2. Syntax
+
+```basic
+CONST constantname = expression [, constantname = expression...]
+```
+
+## 3. Code Example
+
+```basic
+10 REM CONST Demonstration
+20 PRINT "CONST executed successfully."
+```
+
+## 4. Error Conditions
+
+Error 2: Syntax Error, Error 13: Type Mismatch
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Variables & Memory
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_SYSTEM
 
 ---
 
-## 2. Language Dialect & Compatibility
+## LanguageDescriptor (LangDesc) Quick Reference
 
-| Dialect | Syntax | Constant Types Supported | Scope |
-|---|---|---|---|
-| **GW-BASIC / BASICA** | *None* | N/A | Not supported |
-| **QuickBASIC / QBASIC** | `CONST NAME = value` | Numeric and String | Local/Global |
-| **Visual Basic** | `Const NAME As Type = value` | All primitive types | Public/Private |
-| **BASIC++ (Master)** | `CONST NAME = value` | Number, String, Typed | Local/Global |
-
----
-
-## 3. Examples
-
-```basic
-10 CONST PI# = 3.141592653589793
-20 CONST MAX_USERS% = 256, APP_NAME$ = "BASIC++ Core Engine"
-30 PRINT APP_NAME$; " - Max capacity: "; MAX_USERS%
-40 RADIUS = 10
-50 AREA = PI# * RADIUS * RADIUS
-60 PRINT "Area: "; AREA
-```
+| Field | Value |
+|---|---|
+| Name | CONST |
+| Category | Variables & Memory |
+| Syntax | CONST constantname = expression [, constantname = expression...] |
+| Description | Declares one or more symbolic constants assigned to literal or constant expressions. |
+| Error Summary | Error 2: Syntax Error, Error 13: Type Mismatch |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_SYSTEM |
+| Feature Type | FEATURE_STATEMENT |
+| Delimiter Mask | none |
+| Compatibility | none |
+| Since Version | none |
+| Source File | engine/src/statements/variables/declaration/const.c |

@@ -18,6 +18,7 @@
 #include "runtime/ctype/ctype.h"
 #include "runtime/conv/float_parse.h"
 #include "runtime/conv/num_parse.h"
+#include "runtime/string/memops.h"
 
 //
 // ---- Radix & Base Literal Scanners ----
@@ -173,16 +174,32 @@ bool scan_try_radix_number(LexerContext *ctx, BppToken *tok) {
 bool scan_try_decimal_number(LexerContext *ctx, BppToken *tok) {
     if (!ctx || !ctx->pos || !tok) return false;
 
-    if (runtime_isdigit((unsigned char)*ctx->pos) || (*ctx->pos == '.' && runtime_isdigit((unsigned char)*(ctx->pos + 1)))) {
+    bool is_dot_range = (ctx->source && ctx->pos > ctx->source && *(ctx->pos - 1) == '.') || (*(ctx->pos + 1) == '.');
+    bool is_leading_dot_float = (*ctx->pos == '.' && !is_dot_range && runtime_isdigit((unsigned char)*(ctx->pos + 1)));
+
+    if (runtime_isdigit((unsigned char)*ctx->pos) || is_leading_dot_float) {
         char *endptr;
         double val = runtime_strtod(ctx->pos, &endptr);
         if (endptr != ctx->pos) {
+            if (endptr > ctx->pos && *(endptr - 1) == '.' && *endptr == '.') {
+                endptr--;
+                char temp[64];
+                size_t len = (size_t)(endptr - ctx->pos);
+                if (len < sizeof(temp)) {
+                    runtime_memcpy(temp, ctx->pos, len);
+                    temp[len] = '\0';
+                    val = runtime_strtod(temp, NULL);
+                }
+            }
             if ((*endptr == 'I' || *endptr == 'i') && !runtime_isalnum((unsigned char)*(endptr + 1)) && *(endptr + 1) != '_') {
                 tok->type = TOK_IMAGINARY;
                 tok->length = (endptr + 1) - ctx->pos;
                 tok->as.number = val;
                 ctx->pos = endptr + 1;
                 return true;
+            }
+            if (*endptr == '!' || *endptr == '#' || *endptr == '%' || *endptr == '&') {
+                endptr++;
             }
             tok->type = TOK_NUMBER;
             tok->length = endptr - ctx->pos;

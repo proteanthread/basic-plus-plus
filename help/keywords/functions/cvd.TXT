@@ -1,19 +1,69 @@
-BASIC++ FUNCTION REFERENCE: CVD
-======================================================================
+TITLE: CVD
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/builtins/string_fn.c
+GENERATED: no, hand-written
+STATUS: current
 
-1. SYNTAX & DESCRIPTION
-  result# = CVD(string_8_bytes)
+==============================================================================
+CVD KEYWORD REFERENCE
+==============================================================================
 
-Unpacks an 8-byte binary string into a 64-bit double-precision floating-point
-number. Inverse of MKD$.
+SOURCE HEADER:
+    // FILENAME: string_fn.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore, libengine
+    // Provides core logic and interface definitions for string_fn within BASIC++.
+    //
+    // ---- Includes ----
 
-2. PARAMETERS & RETURN VALUES
-- string_8_bytes: String expression of exactly 8 bytes.
-- Returns: Double-precision floating-point number.
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Decodes an 8-byte fielded binary string into a double-precision floating-point
+number.
 
-3. ERROR CODES
-- Error 5 (ERR_ILLEGAL_FUNCTION_CALL): String length is not 8 bytes.
-- Error 13 (ERR_TYPE_MISMATCH): Non-string argument.
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    CVD(8byte_str$)
 
-4. EXAMPLES
-  10 E# = CVD(D$)
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = CVD(8byte_str$)
+    20 PRINT "Result: "; Val
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 5: Illegal Function Call (length != 8)
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       GW-BASIC, QBASIC, BASIC++ Standard
+Since Version: 6.0.0
+Category:      Binary & Byte Conversion
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_PURE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  CVD
+Category              Binary & Byte Conversion
+Syntax                CVD(8byte_str$)
+Description           Decodes an 8-byte fielded binary string into a doub...
+Error Summary         Error 5: Illegal Function Call (length != 8)
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_PURE
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         GW-BASIC, QBASIC, BASIC++ Standard
+Since Version         6.0.0
+Source File           engine/src/eval/builtins/string_fn.c

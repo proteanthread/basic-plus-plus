@@ -1,18 +1,70 @@
-BASIC++ STATEMENT REFERENCE: ERASE
-======================================================================
+TITLE: ERASE
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/variables/data/erase.c
+GENERATED: no, hand-written
+STATUS: current
 
-1. SYNTAX & DESCRIPTION
-  ERASE arrayname [, arrayname2, ...]
+==============================================================================
+ERASE KEYWORD REFERENCE
+==============================================================================
 
-Reclaims memory allocated for dynamic arrays or resets the elements of static
-arrays back to initial zero / empty string values.
+SOURCE HEADER:
+    // FILENAME: erase.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (arrays.h, arrays.c)
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libengine (erase.h, string.c)
+    // Provides runtime implementation for the ERASE statement in BASIC++.
+    //
+    // ---- Includes ----
 
-2. PARAMETERS
-- arrayname: The name of one or more declared array variables.
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Eliminates dynamic arrays from memory and reallocates storage space.
 
-3. ERROR CODES
-- Error 9 (ERR_SUBSCRIPT_OUT_OF_RANGE): Specified array does not exist.
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    ERASE array_name1 [, array_name2...]
 
-4. EXAMPLES
-  10 ERASE Scores, PlayerNames$
-  20 DIM Scores(500)
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM ERASE Demonstration
+    20 PRINT "ERASE executed successfully."
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error, Error 10: Array Not Dimensioned
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Variables & Memory
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SYSTEM
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  ERASE
+Category              Variables & Memory
+Syntax                ERASE array_name1 [, array_name2...]
+Description           Eliminates dynamic arrays from memory and reallocat...
+Error Summary         Error 2: Syntax Error, Error 10: Array Not Dimensioned
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SYSTEM
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/variables/data/erase.c

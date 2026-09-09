@@ -1,26 +1,71 @@
-# `PCOPY` Video Display Page Copy Statement
+<!--
+Title:        PCOPY
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/device/gfx.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Keyword Definition
+# `PCOPY` Keyword Reference
 
-Copies the complete video buffer contents of one display page to another in multi-page screen modes.
+## Source Header
 
-### Syntax Signatures:
-```basic
-PCOPY source_page%, destination_page%
+```c
+// FILENAME: gfx.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore, libengine, libkernel, libplatform
+// Implements virtual device and graphics rendering logic for gfx.
+//
+// ---- Includes ----
 ```
 
-### Error Handling & Boundary Conditions:
-- **Error 5 (ERR_ILLEGAL_FUNCTION_CALL)**: Page index outside mode range.
+## 1. Description & Usage
 
-### Operational Notes:
-- Enables double-buffered, flicker-free animation.
+Copies an entire video display buffer page from source_page to dest_page.
+
+## 2. Syntax
+
+```basic
+PCOPY source_page, dest_page
+```
+
+## 3. Code Example
+
+```basic
+10 REM PCOPY Demonstration
+20 PRINT "PCOPY executed successfully."
+```
+
+## 4. Error Conditions
+
+Error 5: Illegal Function Call
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: QuickBASIC, QBASIC, BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Graphics & Display
+- **Subsystem**: SUBSYSTEM_ADVANCED
+- **Safety Level**: SAFETY_SAFE
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 SCREEN 7, , 0, 1 : REM Screen 7: Draw to page 1, display page 0
-20 CIRCLE (160, 100), 50, 14
-30 PCOPY 1, 0 : REM Flip page 1 onto display page 0
-```
+| Field | Value |
+|---|---|
+| Name | PCOPY |
+| Category | Graphics & Display |
+| Syntax | PCOPY source_page, dest_page |
+| Description | Copies an entire video display buffer page from source_page to dest_page. |
+| Error Summary | Error 5: Illegal Function Call |
+| Subsystem | SUBSYSTEM_ADVANCED |
+| Safety Level | SAFETY_SAFE |
+| Feature Type | FEATURE_STATEMENT |
+| Delimiter Mask | none |
+| Compatibility | QuickBASIC, QBASIC, BASIC++ Standard |
+| Since Version | 6.0.0 |
+| Source File | engine/src/device/gfx.c |

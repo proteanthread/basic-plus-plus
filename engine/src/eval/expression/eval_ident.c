@@ -6,141 +6,71 @@
 // Provides core logic and interface definitions for eval_ident within BASIC++.
 //
 // ---- Includes ----
-
 #include "eval/eval_expr_internal.h"
+#include "runtime/variables_internal.h"
+#include "statements/oop/sub.h"
+#include "eval/functions/network/func_ip.h"
+#include "eval/functions/system/time/func_tim.h"
+#include "eval/functions/datetime/time_part.h"
+#include "eval/functions/system/hardware/func_baud.h"
+#include "eval/functions/system/hardware/func_cpuspeed.h"
+#include "eval/functions/system/hardware/func_clocks.h"
+#include "eval/functions/system/hardware/stick.h"
+#include "eval/functions/system/hardware/strig.h"
+#include "eval/functions/system/hardware/paddle.h"
+#include "eval/functions/system/hardware/ptrig.h"
+#include "bios/bios_cpu8086.h"
+#include "platform/platform.h"
+#include "runtime/memory/alloc.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "runtime/math/math.h"
+#include "eval/functions/math/random/rnd.h"
 
 //
 // ---- Identifier & Member Resolution Helpers ----
-
-static BValue eval_handle_special_builtin(VMContext *vm, LexerContext *lex, const char *name_buf, BppError *out_err) {
-    BValue val;
-    runtime_memset(&val, 0, sizeof(val));
-
-    if (runtime_strcmp(name_buf, "RND") == 0) {
-        BppToken next = lex_peek(lex);
-        bool has_arg = false;
-        bool is_negative = false;
-        if (next.type == TOK_MINUS) {
-            LexerContext *temp = lex_init(vm_get_mem(vm), lex_get_pos(lex));
-            if (temp) {
-                lex_next(temp);
-                BppToken sub = lex_next(temp);
-                if (sub.type == TOK_NUMBER) {
-                    has_arg = true;
-                    is_negative = true;
-                }
-                lex_shutdown(temp);
-            }
-        } else if (next.type == TOK_NUMBER || next.type == TOK_IDENT || next.type == TOK_KEYWORD) {
-            has_arg = true;
-        }
-
-        if (has_arg) {
-            if (is_negative) lex_next(lex);
-            BppToken arg_tok = lex_next(lex);
-            if (arg_tok.type == TOK_NUMBER) {
-                double num_val = arg_tok.as.number;
-                if (is_negative) num_val = -num_val;
-                int base = 0;
-                if (arg_tok.length > 2 && arg_tok.start[0] == '&') {
-                    char b = (char)runtime_toupper((unsigned char)arg_tok.start[1]);
-                    if (b == 'H') base = 16;
-                    else if (b == 'O') base = 8;
-                    else if (b == 'B') base = 2;
-                    else if (runtime_isdigit((unsigned char)arg_tok.start[1])) base = 8;
-                }
-
-                double last = vm_get_last_rnd(vm);
-                uint64_t seed = (uint64_t)(last * 4294967296.0);
-                if (seed == 0) seed = 123456789ULL;
-                seed = seed * 6364136223846793005ULL + 1442695040888963407ULL;
-                uint32_t raw_r = (uint32_t)(seed & 0xFFFFFFFF);
-                vm_set_last_rnd(vm, (double)raw_r / 4294967296.0);
-
-                if (base > 0) {
-                    long max_val = (long)num_val;
-                    long r_val = (max_val > 0) ? (long)(raw_r % (uint32_t)(max_val + 1)) : 0;
-                    char buf[128] = "";
-                    if (base == 16) runtime_snprintf(buf, sizeof(buf), "%X", (unsigned int)r_val);
-                    else if (base == 8) runtime_snprintf(buf, sizeof(buf), "%o", (unsigned int)r_val);
-                    else if (base == 2) {
-                        char bin[64] = "";
-                        int idx = 0;
-                        unsigned long tmp = r_val;
-                        if (tmp == 0) {
-                            runtime_strcpy(buf, "0");
-                        } else {
-                            while (tmp > 0) {
-                                bin[idx++] = (tmp & 1) ? '1' : '0';
-                                tmp >>= 1;
-                            }
-                            for (int j = 0; j < idx; j++) buf[j] = bin[idx - 1 - j];
-                            buf[idx] = '\0';
-                        }
-                    }
-                    val.type = VAL_STRING;
-                    val.as.string = str_create(vm_get_str(vm), buf, runtime_strlen(buf));
-                } else {
-                    long limit = (long)num_val;
-                    long r_val = (limit > 0) ? (long)(raw_r % (uint32_t)(limit + 1)) : ((limit < 0) ? -(long)(raw_r % (uint32_t)(-limit + 1)) : 0);
-                    val.type = VAL_NUMBER;
-                    val.as.number = (double)r_val;
-                }
-            } else if (arg_tok.type == TOK_IDENT || arg_tok.type == TOK_KEYWORD) {
-                char arg_name[64] = "";
-                size_t alen = (arg_tok.length < 63) ? arg_tok.length : 63;
-                runtime_memcpy(arg_name, arg_tok.start, alen);
-                arg_name[alen] = '\0';
-                for (size_t k = 0; k < alen; k++) arg_name[k] = (char)runtime_toupper((unsigned char)arg_name[k]);
-
-                double last = vm_get_last_rnd(vm);
-                uint64_t seed = (uint64_t)(last * 4294967296.0);
-                if (seed == 0) seed = 123456789ULL;
-                seed = seed * 6364136223846793005ULL + 1442695040888963407ULL;
-                uint32_t raw_r = (uint32_t)(seed & 0xFFFFFFFF);
-                vm_set_last_rnd(vm, (double)raw_r / 4294967296.0);
-
-                if (runtime_strcmp(arg_name, "TIME") == 0) {
-                    char buf[16];
-                    runtime_snprintf(buf, sizeof(buf), "%02d:%02d:%02d", (int)(raw_r % 24), (int)((raw_r / 24) % 60), (int)((raw_r / 1440) % 60));
-                    val.type = VAL_STRING;
-                    val.as.string = str_create(vm_get_str(vm), buf, runtime_strlen(buf));
-                } else if (runtime_strcmp(arg_name, "TI") == 0) {
-                    val.type = VAL_NUMBER;
-                    val.as.number = (double)((raw_r % 24) * 10000 + ((raw_r / 24) % 60) * 100 + ((raw_r / 1440) % 60));
-                } else if (runtime_strcmp(arg_name, "TIMER") == 0) {
-                    val.type = VAL_NUMBER;
-                    val.as.number = ((double)raw_r / 4294967296.0) * 86400.0;
-                } else {
-                    val = eval_builtin_function(vm, name_buf, lex, false, out_err);
-                }
-            } else {
-                val = eval_builtin_function(vm, name_buf, lex, false, out_err);
-            }
-        } else {
-            val = eval_builtin_function(vm, name_buf, lex, false, out_err);
-        }
-    } else if (runtime_strcasecmp(name_buf, "COMMAND$") == 0 || runtime_strcasecmp(name_buf, "COMMAND") == 0) {
-        const char *cmd = runtime_get_command_line();
-        val.type = VAL_STRING;
-        val.as.string = str_create(vm_get_str(vm), cmd ? cmd : "", cmd ? runtime_strlen(cmd) : 0);
-    } else if (runtime_strcasecmp(name_buf, "DOEVENTS") == 0) {
-        platform_sleep_ms(0);
-        val.type = VAL_NUMBER;
-        val.as.number = 0.0;
-    } else {
-        val = eval_builtin_function(vm, name_buf, lex, false, out_err);
-    }
-
-    return val;
+static inline bool is_delim_token(BppTokenType t) {
+    return (t == TOK_LPAREN || t == TOK_LBRACKET || t == TOK_LBRACE ||
+            t == TOK_PN_LITERAL || t == TOK_RPN_LITERAL);
 }
 
+static inline bool eval_check_bare_hw(VMContext *vm, const char *name, BValue *out_val, BppError *err) {
+    if (runtime_strcasecmp(name, "BAUD") == 0) { *out_val = func_baud_eval(vm, name, 0, NULL, err); return true; }
+    if (runtime_strcasecmp(name, "CPUSPEED") == 0 || runtime_strcasecmp(name, "CPUSPEED$") == 0 ||
+        runtime_strcasecmp(name, "SYS.CPUSPEED") == 0 || runtime_strcasecmp(name, "SYS.CPUSPEED$") == 0) {
+        *out_val = func_cpuspeed_eval(vm, name, 0, NULL, err); return true;
+    }
+    if (runtime_strcasecmp(name, "CLOCKS") == 0 || runtime_strcasecmp(name, "CLOCKS$") == 0 ||
+        runtime_strcasecmp(name, "SYS.CLOCKS") == 0 || runtime_strcasecmp(name, "SYS.CLOCKS$") == 0) {
+        *out_val = func_clocks_eval(vm, name, 0, NULL, err); return true;
+    }
+    if (runtime_strcasecmp(name, "STICK") == 0) { *out_val = func_stick_eval(vm, name, 0, NULL, err); return true; }
+    if (runtime_strcasecmp(name, "STRIG") == 0) { *out_val = func_strig_eval(vm, name, 0, NULL, err); return true; }
+    if (runtime_strcasecmp(name, "PADDLE") == 0) { *out_val = func_paddle_eval(vm, name, 0, NULL, err); return true; }
+    if (runtime_strcasecmp(name, "PTRIG") == 0) { *out_val = func_ptrig_eval(vm, name, 0, NULL, err); return true; }
+    return false;
+}
 
 bool eval_parse_identifier_expression(VMContext *vm, LexerContext *lex, BppToken tok, BValue *out_val, bool *out_is_func, BppError *out_err) {
     if (!vm || !lex || !out_val || !out_is_func || !out_err) return false;
 
     VariableContext *var = vm_get_var(vm);
     *out_is_func = false;
+
+    // Ultra-Fast Path: 1-character identifier (e.g. X, Y, I, J, K, A..Z)
+    if (tok.type == TOK_IDENT && tok.length == 1 && var && var->shared_count == 0 && var->active_scope[0] == '\0') {
+        BppTokenType peek_type = lex_peek(lex).type;
+        if (!is_delim_token(peek_type) && peek_type != TOK_PERIOD) {
+            char c0 = tok.start[0];
+            if ((c0 >= 'A' && c0 <= 'Z') || (c0 >= 'a' && c0 <= 'z')) {
+                int idx = (c0 >= 'a') ? (c0 - 'a') : (c0 - 'A');
+                if (var->fast_scalars_valid[idx]) {
+                    *out_val = var->fast_scalars[idx];
+                    return true;
+                }
+            }
+        }
+    }
 
     char name_buf[256];
     if (tok.type == TOK_PERIOD) {
@@ -171,14 +101,7 @@ bool eval_parse_identifier_expression(VMContext *vm, LexerContext *lex, BppToken
         name_buf[copy_len] = '\0';
     }
 
-    if ((tok.type == TOK_KEYWORD && tok.as.keyword == KW_NOTHING) ||
-        (tok.type == TOK_IDENT && (runtime_strcasecmp(name_buf, "NOTHING") == 0 || runtime_strcasecmp(name_buf, "NULL") == 0))) {
-        runtime_memset(out_val, 0, sizeof(*out_val));
-        out_val->type = VAL_MAP;
-        out_val->as.map = NULL;
-        return true;
-    }
-
+    // Accumulate all dotted tokens early so names like SYS.OS$, MATH.PI, WIFI.SSID$ are fully populated
     while (lex_peek(lex).type == TOK_PERIOD) {
         lex_next(lex);
         BppToken sub_tok = lex_next(lex);
@@ -198,6 +121,174 @@ bool eval_parse_identifier_expression(VMContext *vm, LexerContext *lex, BppToken
         name_buf[sizeof(name_buf) - 1] = '\0';
     }
 
+    DynamicVarEntry *dvar = var_find_dynamic(var, name_buf);
+    if (dvar && !is_delim_token(lex_peek(lex).type)) {
+        if (dvar->getter) {
+            *out_val = dvar->getter(vm, name_buf, dvar->user_data);
+            *out_is_func = true;
+            return true;
+        }
+        if (dvar->read_fn[0] != '\0') {
+            BppError fn_err;
+            runtime_memset(&fn_err, 0, sizeof(fn_err));
+            *out_val = invoke_user_function(vm, dvar->read_fn, NULL, 0, &fn_err);
+            if (fn_err.code != 0) {
+                *out_err = fn_err;
+                return false;
+            }
+            *out_is_func = true;
+            return true;
+        }
+    }
+
+    // Check built-in constants and system identifiers
+    if (!is_delim_token(lex_peek(lex).type)) {
+        if (eval_try_resolve_builtin_constant_or_system_var(vm, name_buf, out_val)) {
+            return true;
+        }
+    }
+
+    // Check user variable table if not followed by delimiter
+    if (!is_delim_token(lex_peek(lex).type)) {
+        BValue *existing_user_var = var_lookup(var, name_buf, false);
+        if (existing_user_var && existing_user_var->type != VAL_NONE) {
+            *out_val = *existing_user_var;
+            if (existing_user_var->type == VAL_STRING && existing_user_var->as.string) {
+                str_add_ref(existing_user_var->as.string);
+            } else if (existing_user_var->type == VAL_MAP && existing_user_var->as.map) {
+                map_add_ref(existing_user_var->as.map);
+            }
+            return true;
+        }
+
+        // Check if name_buf is an object property access: base.field
+        const char *dot_pos = runtime_strchr(name_buf, '.');
+        if (dot_pos) {
+            char base_name[128];
+            size_t blen = (size_t)(dot_pos - name_buf);
+            if (blen < sizeof(base_name)) {
+                runtime_memcpy(base_name, name_buf, blen);
+                base_name[blen] = '\0';
+                const char *field_name = dot_pos + 1;
+                BValue *base_val = var_lookup(var, base_name, false);
+                if (base_val && base_val->type == VAL_MAP && base_val->as.map) {
+                    BValue prop_val;
+                    if (map_get(base_val->as.map, field_name, &prop_val)) {
+                        *out_val = prop_val;
+                        if (prop_val.type == VAL_STRING && prop_val.as.string) {
+                            str_add_ref(prop_val.as.string);
+                        } else if (prop_val.type == VAL_MAP && prop_val.as.map) {
+                            map_add_ref(prop_val.as.map);
+                        }
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+
+    // Special handling for RND without parentheses (e.g. RND, RND 255, RND 15, RND -5, RND min, max)
+    if (runtime_strcasecmp(name_buf, "RND") == 0 && !is_delim_token(lex_peek(lex).type)) {
+        BppToken next = lex_peek(lex);
+        bool has_arg = (next.type == TOK_NUMBER || next.type == TOK_IDENT || next.type == TOK_KEYWORD || next.type == TOK_MINUS);
+        if (has_arg) {
+            BValue arg = eval_expression(vm, lex, out_err);
+            if (out_err->code == 0) {
+                if (lex_peek(lex).type == TOK_COMMA) {
+                    lex_next(lex); // consume comma
+                    BValue arg2 = eval_expression(vm, lex, out_err);
+                    if (out_err->code == 0) {
+                        BValue args[2] = { arg, arg2 };
+                        *out_val = func_rnd_eval(vm, "RND", 2, args, out_err);
+                    } else {
+                        out_val->type = VAL_NUMBER; out_val->as.number = 0.0;
+                    }
+                    *out_is_func = true;
+                    return true;
+                }
+
+                double num_val = (arg.type == VAL_NUMBER || arg.type == VAL_INTEGER) ? arg.as.number : 0.0;
+                if (num_val <= 1.0) {
+                    BValue args[1] = { arg };
+                    *out_val = func_rnd_eval(vm, "RND", 1, args, out_err);
+                } else {
+                    // Unparenthesized RND n (e.g. RND 255 or RND 15) -> returns integer in [0, n] inclusive (0-based range)
+                    BValue rnd0 = func_rnd_eval(vm, "RND", 0, NULL, out_err);
+                    double v = rnd0.as.number;
+                    if (num_val == runtime_floor(num_val)) {
+                        int64_t n_int = (int64_t)num_val;
+                        int64_t rand_int = (int64_t)(v * (double)(n_int + 1));
+                        if (rand_int > n_int) rand_int = n_int;
+                        out_val->type = VAL_NUMBER;
+                        out_val->as.number = (double)rand_int;
+                    } else {
+                        out_val->type = VAL_NUMBER;
+                        out_val->as.number = v * num_val;
+                    }
+                }
+            } else {
+                out_val->type = VAL_NUMBER;
+                out_val->as.number = 0.0;
+            }
+        } else {
+            *out_val = func_rnd_eval(vm, "RND", 0, NULL, out_err);
+        }
+        *out_is_func = true;
+        return true;
+    }
+
+    // Unparenthesized NEG <expr> (e.g. NEG X, NEG 5, NEG A+B)
+    if (runtime_strcasecmp(name_buf, "NEG") == 0 && !is_delim_token(lex_peek(lex).type)) {
+        BValue arg = eval_expression(vm, lex, out_err);
+        if (out_err->code == 0) {
+            if (arg.type == VAL_INTEGER) {
+                out_val->type = VAL_INTEGER;
+                out_val->as.number = -arg.as.number;
+            } else if (arg.type == VAL_NUMBER) {
+                out_val->type = VAL_NUMBER;
+                out_val->as.number = -arg.as.number;
+            } else {
+                out_err->code = 13;
+                out_err->message = "Type mismatch: NEG requires a numeric argument";
+                return false;
+            }
+        } else {
+            out_val->type = VAL_NUMBER;
+            out_val->as.number = 0.0;
+        }
+        *out_is_func = true;
+        return true;
+    }
+
+    // Bare IP$ without parentheses
+    if (runtime_strcasecmp(name_buf, "IP$") == 0 && lex_peek(lex).type != TOK_LPAREN) {
+        *out_val = func_ip_eval(vm, "IP$", 0, NULL, out_err);
+        return (out_err->code == 0);
+    }
+
+    // Bare TIM without parentheses
+    if (runtime_strcasecmp(name_buf, "TIM") == 0 && lex_peek(lex).type != TOK_LPAREN) {
+        *out_val = func_tim_eval(vm, "TIM", 0, NULL, out_err);
+        return (out_err->code == 0);
+    }
+
+    // Bare ALARM / ALARM$ without parentheses
+    if (runtime_strcasecmp(name_buf, "ALARM") == 0 && lex_peek(lex).type != TOK_LPAREN) {
+        runtime_memset(out_val, 0, sizeof(*out_val));
+        out_val->type = VAL_NUMBER;
+        out_val->as.number = 0.0;
+        return true;
+    }
+    if (runtime_strcasecmp(name_buf, "ALARM$") == 0 && lex_peek(lex).type != TOK_LPAREN) {
+        runtime_memset(out_val, 0, sizeof(*out_val));
+        out_val->type = VAL_STRING;
+        out_val->as.string = str_create(vm_get_str(vm), "", 0);
+        return true;
+    }
+    if (!is_delim_token(lex_peek(lex).type) && eval_check_bare_hw(vm, name_buf, out_val, out_err)) {
+        return (out_err->code == 0);
+    } 
+
     BValue *ref_var = var_lookup(var, name_buf, false);
     if (ref_var && ref_var->type == VAL_ARRAY_REF && ref_var->as.string) {
         const char *orig_name = str_data(ref_var->as.string);
@@ -209,12 +300,111 @@ bool eval_parse_identifier_expression(VMContext *vm, LexerContext *lex, BppToken
     }
 
     BppTokenType next_tok_type = lex_peek(lex).type;
+    if (next_tok_type == TOK_PN_LITERAL) {
+        if (eval_is_builtin_function(name_buf)) {
+            *out_is_func = true;
+            BppToken pn_tok = lex_next(lex);
+            char *pn_buf = (char *)mem_scratch_alloc(vm_get_mem(vm), pn_tok.length + 3);
+            if (pn_buf) {
+                runtime_memcpy(pn_buf, pn_tok.as.string, pn_tok.length);
+                pn_buf[pn_tok.length] = ']';
+                pn_buf[pn_tok.length + 1] = '\0';
+                LexerContext *sub_lex = lex_init(vm_get_mem(vm), pn_buf);
+                *out_val = eval_builtin_function_delim(vm, name_buf, sub_lex, TOK_LBRACKET, out_err);
+                lex_shutdown(sub_lex);
+                return (out_err->code == 0);
+            }
+        }
+    }
+
+    if (next_tok_type == TOK_RPN_LITERAL) {
+        if (eval_is_builtin_function(name_buf)) {
+            *out_is_func = true;
+            BppToken rpn_tok = lex_next(lex);
+            char *rpn_buf = (char *)mem_scratch_alloc(vm_get_mem(vm), rpn_tok.length + 3);
+            if (rpn_buf) {
+                runtime_memcpy(rpn_buf, rpn_tok.as.string, rpn_tok.length);
+                rpn_buf[rpn_tok.length] = '}';
+                rpn_buf[rpn_tok.length + 1] = '\0';
+                LexerContext *sub_lex = lex_init(vm_get_mem(vm), rpn_buf);
+                *out_val = eval_builtin_function_delim(vm, name_buf, sub_lex, TOK_LBRACE, out_err);
+                lex_shutdown(sub_lex);
+                return (out_err->code == 0);
+            }
+        }
+        if (arr_exists(vm_get_arr(vm), name_buf) || var_lookup(vm_get_var(vm), name_buf, false)) {
+            *out_is_func = true;
+            return eval_parse_brace_access(vm, lex, name_buf, out_val, out_err);
+        }
+    }
+
     if (next_tok_type == TOK_LBRACKET) {
+        if (eval_is_builtin_function(name_buf)) {
+            *out_is_func = true;
+            lex_next(lex);
+            *out_val = eval_builtin_function_delim(vm, name_buf, lex, TOK_LBRACKET, out_err);
+            return (out_err->code == 0);
+        }
+        if (arr_exists(vm_get_arr(vm), name_buf)) {
+            *out_is_func = true;
+            return eval_parse_array_access(vm, lex, name_buf, out_val, out_err);
+        }
         *out_is_func = true;
         *out_val = eval_parse_string_slice(vm, lex, name_buf, TOK_LBRACKET, out_err);
         return (out_err->code == 0);
     }
     
+    if (next_tok_type == TOK_LBRACE) {
+        if (eval_is_builtin_function(name_buf)) {
+            *out_is_func = true;
+            lex_next(lex);
+            *out_val = eval_builtin_function_delim(vm, name_buf, lex, TOK_LBRACE, out_err);
+            return (out_err->code == 0);
+        }
+        if (arr_exists(vm_get_arr(vm), name_buf) || var_lookup(vm_get_var(vm), name_buf, false)) {
+            *out_is_func = true;
+            return eval_parse_brace_access(vm, lex, name_buf, out_val, out_err);
+        }
+        const BppUserTypeDef *utype = struct_find_type(vm_get_types(vm), name_buf);
+        if (utype) {
+            *out_is_func = true;
+            lex_next(lex);
+            BppMap *rec_map = map_create();
+            BValue tname_val;
+            tname_val.type = VAL_STRING;
+            tname_val.as.string = str_create(vm_get_str(vm), utype->name, runtime_strlen(utype->name));
+            map_set(vm_get_str(vm), rec_map, "__type__", tname_val);
+            str_release(vm_get_str(vm), tname_val.as.string);
+
+            while (lex_peek(lex).type != TOK_RBRACE && lex_peek(lex).type != TOK_EOF && lex_peek(lex).type != TOK_EOL) {
+                BppToken fld_tok = lex_next(lex);
+                char fld_name[64];
+                size_t flen = (fld_tok.length < sizeof(fld_name) - 1) ? fld_tok.length : sizeof(fld_name) - 1;
+                runtime_memcpy(fld_name, fld_tok.start, flen);
+                fld_name[flen] = '\0';
+
+                if (lex_peek(lex).type == TOK_EQ || (lex_peek(lex).type == TOK_EOL && lex_peek(lex).start && lex_peek(lex).start[0] == ':')) {
+                    lex_next(lex);
+                }
+                BValue fld_val = eval_expression(vm, lex, out_err);
+                if (out_err->code != 0) {
+                    map_release(vm_get_str(vm), rec_map);
+                    return false;
+                }
+                map_set(vm_get_str(vm), rec_map, fld_name, fld_val);
+                if (fld_val.type == VAL_STRING && fld_val.as.string) str_release(vm_get_str(vm), fld_val.as.string);
+                else if (fld_val.type == VAL_MAP && fld_val.as.map) map_release(vm_get_str(vm), fld_val.as.map);
+
+                if (lex_peek(lex).type == TOK_COMMA) lex_next(lex);
+                else if (lex_peek(lex).type == TOK_RBRACE) break;
+            }
+            if (lex_peek(lex).type == TOK_RBRACE) lex_next(lex);
+            out_val->type = VAL_MAP;
+            out_val->as.map = rec_map;
+            return true;
+        }
+    }
+
     if (next_tok_type == TOK_LPAREN) {
         bool is_slicing = false;
         if (name_buf[runtime_strlen(name_buf) - 1] == '$' && runtime_strchr(name_buf, '.') == NULL) {
@@ -234,7 +424,7 @@ bool eval_parse_identifier_expression(VMContext *vm, LexerContext *lex, BppToken
         if (eval_is_builtin_function(name_buf)) {
             *out_is_func = true;
             lex_next(lex);
-            *out_val = eval_builtin_function(vm, name_buf, lex, true, out_err);
+            *out_val = eval_builtin_function_delim(vm, name_buf, lex, TOK_LPAREN, out_err);
             return (out_err->code == 0);
         }
         
@@ -371,7 +561,7 @@ bool eval_parse_identifier_expression(VMContext *vm, LexerContext *lex, BppToken
     }
 
     if (!var_lookup(var, name_buf, false) && eval_is_zero_arg_builtin_function(name_buf)) {
-        *out_val = eval_handle_special_builtin(vm, lex, name_buf, out_err);
+        *out_val = eval_builtin_function(vm, name_buf, lex, false, out_err);
         if (out_err->code != 0) return false;
         *out_is_func = true;
         return true;
@@ -606,4 +796,3 @@ bool eval_parse_identifier_expression(VMContext *vm, LexerContext *lex, BppToken
     *out_val = val;
     return true;
 }
-

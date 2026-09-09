@@ -18,7 +18,6 @@
 
 #include "vm/vm.h"
 
-#include "vm/vm.h"
 #include "stmt/stmt.h"
 #include "device/vdev.h"
 #include "types/config.h"
@@ -146,6 +145,7 @@ struct VMContext {
     BiosContext     *bios;
     bool             opt_eh;
     bool             opt_arithmetic_decimal;
+    int              angle_mode; // 0 = RADIAN, 1 = DEGREE, 2 = GRAD
     int              margin;
     int              zone_width;
     BppSessionContext session;
@@ -329,7 +329,7 @@ struct VMContext {
     } jump_cache[16];
     uint8_t          jump_cache_head;
 
-    // Reusable Line Scratch Buffer (Eliminates per-line calloc/free)
+    // Reusable Line Scratch Buffer (Eliminates per-line runtime_calloc/runtime_free)
     char            *line_scratch_buf;
     size_t           line_scratch_cap;
 };

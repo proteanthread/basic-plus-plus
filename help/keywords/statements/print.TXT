@@ -1,30 +1,74 @@
-PRINT Formatted Console and File Output Statement
-=================================================
+TITLE: PRINT
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/core/io/print.c
+GENERATED: no, hand-written
+STATUS: current
 
-Outputs text, numeric values, and expressions to the screen console, line printer, or open file channel.
+==============================================================================
+PRINT KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: print.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (dialect.h, dialect.c, math.h)
+    // NEEDS: libcore (language_descriptor.h)
+    // NEEDS: libcore (num_format.h, num_format.c, string.h, using.h)
+    // NEEDS: libengine (eval.h, eval.c, math.c, stmt.h, string.c)
+    // NEEDS: libkernel (vcon.h, vcon.c, vdev.h, vdev.c)
+    // Provides runtime implementation for the PRINT statement in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Outputs formatted text or numeric expressions to console or file, with 2D grid
+and 1D buffer cursor positioning.
 
-    PRINT [#filenum%,] [USING format_string$;] [expression [{; | ,}] ...]
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    PRINT [#n,] [AT x, y | AT(x, y) | AT[x, y] | AT{map}] [@z | @(z) | @[z] | @{map}] [exprlist] [;|,]
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = PRINT [#n,] [AT 10, y | AT(10, y) | AT[10, y] | AT{map}] [@z | @(z) | @[z] | @{map}] [e10prlist] [;|,]
+    20 PRINT "Result: "; Val
 
-ERROR CONDITIONS
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error, Error 5: Illegal Function Call, Error 13: Type
+Mismatch, Error 52: Bad File Number
 
-  - Error 52 (ERR_BAD_FILE_NUMBER): File channel not open for output.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Console I/O
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SAFE
 
-
-OPERATIONAL NOTES
-----------------------------------------------------------------------
-
-  Semicolon suppresses trailing newline; comma advances to next tab stop (14 cols).
-
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 PRINT "Name", "Score"
-    20 PRINT "Alice"; 95
-    30 PRINT USING "Total: $$###.##"; 49.99
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  PRINT
+Category              Console I/O
+Syntax                PRINT [#n,] [AT x, y | AT(x, y) | AT[x, y] | AT{map...
+Description           Outputs formatted text or numeric expressions to co...
+Error Summary         Error 2: Syntax Error, Error 5: Illegal Function Ca...
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/core/io/print.c

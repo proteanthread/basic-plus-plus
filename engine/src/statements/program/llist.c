@@ -17,12 +17,29 @@
 #include "memory/memory.h"
 #include "device/vprinter.h"
 #include "security/security.h"
-#include <string.h>
-#include <stdio.h>
+#include "runtime/language_descriptor.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "runtime/format/snprintf.h"
+
+static const LangDesc g_llist_desc = {
+    .name = "LLIST",
+    .category = "Program Management",
+    .syntax = "LLIST [start_line] [- [end_line]]",
+    .description = "Lists program lines to the line printer device (LPT1: / virtual printer).",
+    .error_summary = "Error 5: Illegal function call",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_STATEMENT
+};
+
+void stmt_llist_register(void) {
+    lang_desc_register(&g_llist_desc);
+}
 
 BppError stmt_llist_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     if (!vm || !lex) {
         err.code = ERR_ILLEGAL_FUNCTION_CALL;
         return err;
@@ -66,7 +83,7 @@ BppError stmt_llist_handler(VMContext *vm, LexerContext *lex) {
     for (size_t i = 0; i < count; i++) {
         if (lines[i].line_number >= start_line && lines[i].line_number <= end_line) {
             const char *text = lines[i].text ? lines[i].text : "";
-            snprintf(line_buf, sizeof(line_buf), "%lld %s\n", (long long)lines[i].line_number, text);
+            runtime_snprintf(line_buf, sizeof(line_buf), "%lld %s\n", (long long)lines[i].line_number, text);
             vprinter_write_str(line_buf);
         }
     }

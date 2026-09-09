@@ -14,12 +14,12 @@
 #include "eval/eval.h"
 
 void func_pick_register(void);
-BValue func_dcount_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err);
 BValue func_field_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err);
 BValue func_extract_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err);
 BValue func_count_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err);
-BValue func_insert_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err);
-BValue func_delete_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err);
-BValue func_replace_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err);
+BValue func_count_str_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err);
+BValue func_dynarray_str_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err);
+BValue func_parse_dynarray_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err);
+
 
 #endif // EVAL_FUNCTIONS_STRING_PICK_H

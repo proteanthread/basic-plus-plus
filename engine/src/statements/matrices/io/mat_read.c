@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine (mat_internal.h)
 // NEEDS: libcore (arrays.h, arrays.c, ctype.h, ctype.c, file.h, file.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libengine (eval.h, eval.c, lexer.h, lexer.c, mat_read.h, string.c)
 // NEEDS: libengine (vm.h)
 // NEEDS: libkernel (errors.h)
@@ -17,27 +17,33 @@
 #include "eval/eval.h"
 #include "runtime/arrays.h"
 #include "runtime/file.h"
-#include "runtime/micro_lib_metadata.h"
+#include "runtime/language_descriptor.h"
 #include "types/errors.h"
-#include <string.h>
-#include <stdlib.h>
-#include <ctype.h>
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "runtime/memory/alloc.h"
+#include "runtime/ctype/ctype.h"
+#include "runtime/conv/float_parse.h"
+
+static const LangDesc g_mat_read_desc = {
+    .name = "MAT READ",
+    .category = "Matrix Operations",
+    .syntax = "MAT READ [#channel,] array_name [(num_rows [, num_cols])]",
+    .description = "Populates matrix elements sequentially from DATA statements or open file stream (SDS 940 / DEC PDP-10 Super BASIC).",
+    .error_summary = "Error 2: Syntax Error, Error 4: Out of DATA, Error 9: Subscript Out of Range, Error 52: Bad File Number",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_IO,
+    .type = FEATURE_STATEMENT
+};
 
 void stmt_mat_read_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "MAT READ",
-        .category = "Matrix Operations",
-        .syntax = "MAT READ [#channel,] array_name [(num_rows [, num_cols])]",
-        .help_text = "Populates matrix elements sequentially from DATA statements or open file stream (SDS 940 / DEC PDP-10 Super BASIC).",
-        .error_codes = "Error 2: Syntax Error, Error 4: Out of DATA, Error 9: Subscript Out of Range, Error 52: Bad File Number"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_mat_read_desc);
 }
 
 static bool read_field_from_file(FileContext *fc, int channel, char *buf, size_t max_len) {
     size_t len = 0;
     int c;
-    while ((c = file_getc(fc, channel)) != -1 && (isspace((unsigned char)c) || c == ','));
+    while ((c = file_getc(fc, channel)) != -1 && (runtime_isspace((unsigned char)c) || c == ','));
     if (c == -1) return false;
 
     if (c == '"') {
@@ -46,7 +52,7 @@ static bool read_field_from_file(FileContext *fc, int channel, char *buf, size_t
         }
     } else {
         buf[len++] = (char)c;
-        while ((c = file_getc(fc, channel)) != -1 && !isspace((unsigned char)c) && c != ',' && len < max_len - 1) {
+        while ((c = file_getc(fc, channel)) != -1 && !runtime_isspace((unsigned char)c) && c != ',' && len < max_len - 1) {
             buf[len++] = (char)c;
         }
     }
@@ -57,7 +63,7 @@ static bool read_field_from_file(FileContext *fc, int channel, char *buf, size_t
 
 BppError stmt_mat_read_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     ArrayContext *arr = vm_get_arr(vm);
     FileContext *fc = vm_get_file(vm);
@@ -94,7 +100,7 @@ BppError stmt_mat_read_handler(VMContext *vm, LexerContext *lex) {
 
     char arr_name[64];
     size_t arr_len = (tok.length < sizeof(arr_name) - 1) ? tok.length : sizeof(arr_name) - 1;
-    memcpy(arr_name, tok.start, arr_len);
+    runtime_memcpy(arr_name, tok.start, arr_len);
     arr_name[arr_len] = '\0';
 
     // Optional redimension: A(r, c) or A(r)
@@ -140,7 +146,7 @@ BppError stmt_mat_read_handler(VMContext *vm, LexerContext *lex) {
     int bounds[4] = {0};
     int dims = arr_get_dimensions(arr, arr_name, bounds, 4);
     int base = arr_get_option_base(arr);
-    bool is_str = (arr_name[strlen(arr_name) - 1] == '$');
+    bool is_str = (arr_name[runtime_strlen(arr_name) - 1] == '$');
 
     int ptr = vm_get_data_ptr(vm);
     int count = vm_get_data_count(vm);
@@ -183,10 +189,10 @@ BppError stmt_mat_read_handler(VMContext *vm, LexerContext *lex) {
                 if (is_str) {
                     if (elem->type == VAL_STRING && elem->as.string) str_release(vm_get_str(vm), elem->as.string);
                     elem->type = VAL_STRING;
-                    elem->as.string = str_create(vm_get_str(vm), val_buf, strlen(val_buf));
+                    elem->as.string = str_create(vm_get_str(vm), val_buf, runtime_strlen(val_buf));
                 } else {
                     elem->type = VAL_NUMBER;
-                    elem->as.number = strtod(val_buf, NULL);
+                    elem->as.number = runtime_strtod(val_buf, NULL);
                 }
             }
         }
@@ -228,10 +234,10 @@ BppError stmt_mat_read_handler(VMContext *vm, LexerContext *lex) {
                     if (is_str) {
                         if (elem->type == VAL_STRING && elem->as.string) str_release(vm_get_str(vm), elem->as.string);
                         elem->type = VAL_STRING;
-                        elem->as.string = str_create(vm_get_str(vm), val_buf, strlen(val_buf));
+                        elem->as.string = str_create(vm_get_str(vm), val_buf, runtime_strlen(val_buf));
                     } else {
                         elem->type = VAL_NUMBER;
-                        elem->as.number = strtod(val_buf, NULL);
+                        elem->as.number = runtime_strtod(val_buf, NULL);
                     }
                 }
             }

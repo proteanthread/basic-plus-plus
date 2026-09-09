@@ -1,112 +1,66 @@
-# BASIC++ v6.5.2 Compiling BASIC Programs
+<!--
+Title:        Compiling BASIC Programs
+Tier:         1
+Applies to:   BASIC++ v6.5.2 (bppc, trans)
+Authority:    engine/src/compiler/, engine/include/compiler/
+Generated:    no
+Status:       Active
+-->
 
-## 1. THE bppc COMPILER
+# Compiling BASIC++ Programs with `bppc` and `trans`
 
-The bppc (BASIC++ Compiler) build target compiles BASIC++ source programs into standalone executables or bytecode files. The compiler is a separate executable from the interpreter and is part of active development.
+The reference manual for compiling BASIC++ source programs into portable bytecode binaries (`.bbc`) or transpiling to standalone ISO C17 native executables.
 
-## 2. COMPILATION MODES
+## 1. The `bppc` Compiler and `trans` Transpiler
 
-bppc operates in two modes:
+BASIC++ provides two specialized tools for ahead-of-time (AOT) compilation:
+1. **`bppc` (BASIC++ Compiler)**: Compiles source code into optimized VM bytecode or transpiles to C17.
+2. **`trans` (Source Transpiler)**: Performs direct dialect-to-dialect translation and emits clean C17 source files.
 
-**Bytecode compilation** produces a compact binary file containing the program's operations as BppOpcode values. The bytecode file runs on the BASIC++ VM runtime (a small stub linked with the core libraries).
+Both tools process line-numbered and unnumbered structured BASIC programs.
 
-**C17 transpilation** produces clean, portable C17 source code that compiles to a native executable using any C17 compiler. The generated C includes the necessary runtime support as a self-contained unit.
+---
 
-## 3. BYTECODE COMPILATION
+## 2. Compilation Modes
 
-```bash
-bppc --bytecode program.bas -o program.bbc
-```
-
-The resulting .bbc file can be executed by the BASIC++ runtime:
-
-```bash
-baspp --run program.bbc
-```
-
-Bytecode programs start faster than interpreted programs because the tokenization and parsing phases are skipped. The bytecode execution loop dispatches opcodes through a switch statement.
-
-## 4. C17 TRANSPILATION
+### 2.1 Bytecode Compilation (`--bytecode` / `-b`)
 
 ```bash
-bppc --c17 program.bas -o program.c
+bppc --bytecode input.bas -o output.bbc
 ```
 
-The generated C file can be compiled with GCC, Clang, or MSVC:
+Bytecode compilation tokenizes and parses source files ahead of time, emitting a binary stream of `BppOpcode` instructions. Executing bytecode via `baspp --run output.bbc` eliminates parsing overhead and accelerates program startup.
+
+### 2.2 ISO C17 Transpilation (`--c17` / `-c`)
 
 ```bash
-gcc -std=c17 -O2 -o program program.c -lm
-cl /std:c17 /O2 program.c
+bppc --c17 input.bas -o output.c
 ```
 
-The transpiled program runs as a native executable with no dependency on the BASIC++ interpreter. The generated C includes:
-
-- Runtime library functions (string management, numeric formatting, I/O).
-- The program's logic translated to C control flow.
-- Constants and DATA statements as C arrays.
-
-## 5. COMPILATION CONSTRAINTS
-
-Not all BASIC++ features compile. Features that depend on the interactive REPL (CONT, EDIT, AUTO, RENUM, LIST) are unavailable in compiled programs. Self-modifying programs that use EXEC to insert lines at runtime cannot be compiled because the program text is fixed at compile time.
-
-Features that compile cleanly:
-- All arithmetic and string operations.
-- Control flow (IF, FOR, WHILE, DO, SELECT CASE).
-- SUB/FUNCTION procedures.
-- File I/O.
-- Arrays and user-defined types.
-- Error handling (ON ERROR GOTO, TRY/CATCH).
-- DEF FN functions.
-
-Features that require the VM runtime stub:
-- Event trapping (ON TIMER, ON KEY).
-- Dynamic memory management (REDIM PRESERVE).
-- Module loading.
-
-## 6. OPTIMIZATION
-
-The bppc compiler performs several optimizations:
-
-- Constant folding: `PRINT 2 + 3` compiles to `PRINT 5`.
-- Dead code elimination: Unreachable lines after unconditional GOTO are removed.
-- Loop strength reduction: Simple loop counters are optimized.
-- String pooling: Identical string constants share storage.
-
-## 7. BRUN (COMPILE AND RUN)
-
-The BRUN command in the interpreter compiles the current program to bytecode and executes it immediately:
-
-```basic
-> BRUN
-Compiling... done (247 opcodes)
-Running bytecode...
-Hello, World!
-Ok
-```
-
-BRUN is useful for testing compilation without creating a separate file.
-
-## 8. BSAVE AND BLOAD
-
-BSAVE "filename" saves the current program as a bytecode file. BLOAD "filename" loads a bytecode file into the interpreter. These are the interpreter-side equivalents of bppc's bytecode output.
-
-## 9. LINKING
-
-For complex programs that use multiple source files, bppc supports multi-file compilation:
+Transpilation translates BASIC++ control flow, variables, and statements into self-contained ISO C17 source code. The emitted C code compiles with any standard compiler:
 
 ```bash
-bppc --bytecode main.bas module1.bas module2.bas -o program.bbc
+# MSVC
+cl /std:c17 /O2 output.c
+
+# GCC / Clang
+gcc -std=c17 -O2 -o output output.c -lm
 ```
 
-The compiler merges the source files, resolves CHAIN and COMMON references, and produces a single output file.
+Transpiled executables run natively without requiring the BASIC++ interpreter runtime.
 
-## 10. ERROR REPORTING
+---
 
-Compilation errors include the source line number and a description:
+## 3. Compilation Constraints & Supported Language Surface
 
-```
-program.bas:150: Error: Type mismatch in assignment
-program.bas:250: Warning: Variable 'X' used before assignment
-```
+### 3.1 Features that Compile Cleanly
+- All arithmetic, comparison, and bitwise expressions.
+- Structured procedures: `SUB ... END SUB` and `FUNCTION ... END FUNCTION`.
+- Control flow: `IF/THEN/ELSE`, `SELECT CASE`, `FOR/NEXT`, `WHILE/WEND`, `DO/LOOP`.
+- Multi-dimensional arrays (`DIM`) and structured `TYPE` records.
+- Sequential and random-access file I/O (`OPEN`, `CLOSE`, `INPUT #`, `PRINT #`).
+- Exception trapping: `TRY/CATCH` and `ON ERROR GOTO`.
 
-The compiler performs type checking and variable usage analysis that the interpreter does not — some programs that run in the interpreter may produce compilation warnings about implicit type conversions or unused variables.
+### 3.2 Features Excluded from AOT Compilation
+- **Interactive REPL Commands**: `AUTO`, `RENUM`, `EDIT`, `LIST`, `CONT` require interactive line buffer state.
+- **Dynamic Program Mutation**: `EXEC` expressions that inject new program lines at runtime cannot be statically compiled.

@@ -28,6 +28,18 @@ bool docgen_export_json(const char *filepath);
 // @return True on success, false on error.
 bool docgen_export_markdown(const char *output_dir);
 
+// @brief Exports per-keyword reference pages to docs/keywords/ and help/keywords/.
+// @param docs_dir Base path for Markdown output (e.g. "docs" or "docs/keywords").
+// @param help_dir Base path for Plaintext output (e.g. "help" or "help/keywords").
+// @return True on success, false on error.
+bool docgen_export_keywords(const char *docs_dir, const char *help_dir);
+
+// @brief Exports Tier 4 catalogs in Markdown (docs/) and Plaintext (help/).
+// @param docs_dir Base path for docs output directory (e.g. "docs").
+// @param help_dir Base path for help output directory (e.g. "help").
+// @return True on success, false on error.
+bool docgen_export_catalogs(const char *docs_dir, const char *help_dir);
+
 // @brief Exports a standalone, zero-dependency offline HTML documentation manual.
 // @param filepath Path to destination HTML file (e.g. "api_reference.html").
 // @return True on success, false on error.

@@ -8,13 +8,15 @@
 // ---- Includes ----
 
 #include "runtime/variables_internal.h"
+#include "runtime/string/memops.h"
+#include "runtime/memory/alloc.h"
 
 //
 // ---- Lifecycle & Clearing ----
 
 VariableContext *var_init(MemoryContext *mem, StringContext *str) {
     if (!mem || !str) return NULL;
-    VariableContext *ctx = (VariableContext *)calloc(1, sizeof(VariableContext));
+    VariableContext *ctx = (VariableContext *)runtime_calloc(1, sizeof(VariableContext));
     if (!ctx) return NULL;
     ctx->mem = mem;
     ctx->str = str;
@@ -23,7 +25,7 @@ VariableContext *var_init(MemoryContext *mem, StringContext *str) {
     ctx->active_namespace[0] = '\0';
     ctx->shared_count = 0;
     ctx->common_count = 0;
-    memset(ctx->buckets, 0, sizeof(ctx->buckets));
+    runtime_memset(ctx->buckets, 0, sizeof(ctx->buckets));
     for (int i = 0; i < 26; ++i) {
         ctx->global_def_types[i] = VAL_NUMBER;
     }
@@ -35,7 +37,14 @@ VariableContext *var_init(MemoryContext *mem, StringContext *str) {
 void var_shutdown(VariableContext *ctx) {
     if (!ctx) return;
     var_clear_all(ctx);
-    free(ctx);
+    DynamicVarEntry *dvar = ctx->dynamic_vars;
+    while (dvar) {
+        DynamicVarEntry *next = dvar->next;
+        runtime_free(dvar);
+        dvar = next;
+    }
+    ctx->dynamic_vars = NULL;
+    runtime_free(ctx);
 }
 
 void var_clear_all(VariableContext *ctx) {
@@ -45,13 +54,13 @@ void var_clear_all(VariableContext *ctx) {
         VarEntry *entry = ctx->buckets[i];
         while (entry) {
             VarEntry *next = entry->next;
-            free(entry->name);
+            runtime_free(entry->name);
             if ((entry->value.type == VAL_STRING || entry->value.type == VAL_ARRAY_REF) && entry->value.as.string) {
                 str_release(ctx->str, entry->value.as.string);
             } else if (entry->value.type == VAL_MAP && entry->value.as.map) {
                 map_release(ctx->str, entry->value.as.map);
             }
-            free(entry);
+            runtime_free(entry);
             entry = next;
         }
         ctx->buckets[i] = NULL;
@@ -63,7 +72,7 @@ void var_clear_all(VariableContext *ctx) {
     ScopeDefMapping *curr = ctx->scope_defs;
     while (curr) {
         ScopeDefMapping *next = curr->next;
-        free(curr);
+        runtime_free(curr);
         curr = next;
     }
     ctx->scope_defs = NULL;
@@ -71,6 +80,7 @@ void var_clear_all(VariableContext *ctx) {
     for (int i = 0; i < 26; ++i) {
         ctx->global_def_types[i] = VAL_NUMBER;
     }
-    memset(ctx->mru_cache, 0, sizeof(ctx->mru_cache));
-    ctx->mru_head = 0;
+    runtime_memset(ctx->fast_scalars_valid, 0, sizeof(ctx->fast_scalars_valid));
+    runtime_memset(ctx->fast_scalars, 0, sizeof(ctx->fast_scalars));
+    runtime_memset(ctx->direct_cache, 0, sizeof(ctx->direct_cache));
 }

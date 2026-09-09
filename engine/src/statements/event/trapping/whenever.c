@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
 // NEEDS: libcore (ctype.h, ctype.c, file.h, file.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libcore (strings.h, strings.c)
 // NEEDS: libengine (eval.h, eval.c, string.c, whenever.h)
 // Provides runtime implementation for the WHENEVER statement in BASIC++.
@@ -13,31 +13,35 @@
 #include "statements/event/trapping/whenever.h"
 #include "eval/eval.h"
 #include "runtime/file.h"
-#include "runtime/micro_lib_metadata.h"
-#include <string.h>
-#include <ctype.h>
+#include "runtime/language_descriptor.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "runtime/ctype/ctype.h"
 
 #ifdef _WIN32
-#define strncasecmp _strnicmp
-#define strcasecmp _stricmp
+#define runtime_strncasecmp runtime_strncasecmp
+#define runtime_strcasecmp runtime_strcasecmp
 #else
-#include <strings.h>
 #endif
 
+static const LangDesc g_whenever_desc = {
+    .name = "WHENEVER",
+    .category = "Event Trapping",
+    .syntax = "WHENEVER {ERROR | [NOT] EOF #channel} THEN {GOTO line | statement}",
+    .description = "Establishes conditional event traps and exception handlers (IBM VS BASIC / CMS).",
+    .error_summary = "Error 2: Syntax Error, Error 5: Illegal Function Call, Error 52: Bad File Number",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SAFE,
+    .type = FEATURE_STATEMENT
+};
+
 void stmt_whenever_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "WHENEVER",
-        .category = "Event Trapping",
-        .syntax = "WHENEVER {ERROR | [NOT] EOF #channel} THEN {GOTO line | statement}",
-        .help_text = "Establishes conditional event traps and exception handlers (IBM VS BASIC / CMS).",
-        .error_codes = "Error 2: Syntax Error, Error 5: Illegal Function Call, Error 52: Bad File Number"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_whenever_desc);
 }
 
 BppError stmt_whenever_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     if (!vm || !lex) {
         err.code = 5; err.message = "Null VM or lexer context";
@@ -52,7 +56,7 @@ BppError stmt_whenever_handler(VMContext *vm, LexerContext *lex) {
 
     // Check for WHENEVER OFF or WHENEVER NONE
     if ((tok.type == TOK_KEYWORD && tok.as.keyword == KW_OFF) ||
-        (tok.type == TOK_IDENT && (strncasecmp(tok.start, "OFF", 3) == 0 || strncasecmp(tok.start, "NONE", 4) == 0))) {
+        (tok.type == TOK_IDENT && (runtime_strncasecmp(tok.start, "OFF", 3) == 0 || runtime_strncasecmp(tok.start, "NONE", 4) == 0))) {
         lex_next(lex);
         vm_set_error_trap(vm, 0);
         return err;
@@ -60,7 +64,7 @@ BppError stmt_whenever_handler(VMContext *vm, LexerContext *lex) {
 
     // Check for WHENEVER ERROR THEN ...
     if ((tok.type == TOK_KEYWORD && tok.as.keyword == KW_ERROR) ||
-        (tok.type == TOK_IDENT && tok.length == 5 && strncasecmp(tok.start, "ERROR", 5) == 0)) {
+        (tok.type == TOK_IDENT && tok.length == 5 && runtime_strncasecmp(tok.start, "ERROR", 5) == 0)) {
         lex_next(lex);
         tok = lex_next(lex);
         if (tok.type != TOK_KEYWORD || tok.as.keyword != KW_THEN) {
@@ -94,13 +98,13 @@ BppError stmt_whenever_handler(VMContext *vm, LexerContext *lex) {
     // Check for WHENEVER [NOT] EOF #channel THEN ...
     bool is_not = false;
     if ((tok.type == TOK_KEYWORD && tok.as.keyword == KW_NOT) ||
-        (tok.type == TOK_IDENT && tok.length == 3 && strncasecmp(tok.start, "NOT", 3) == 0)) {
+        (tok.type == TOK_IDENT && tok.length == 3 && runtime_strncasecmp(tok.start, "NOT", 3) == 0)) {
         is_not = true;
         lex_next(lex);
         tok = lex_peek(lex);
     }
 
-    if (tok.type == TOK_IDENT && tok.length == 3 && strncasecmp(tok.start, "EOF", 3) == 0) {
+    if (tok.type == TOK_IDENT && tok.length == 3 && runtime_strncasecmp(tok.start, "EOF", 3) == 0) {
         lex_next(lex);
         tok = lex_peek(lex);
         int channel = 1;

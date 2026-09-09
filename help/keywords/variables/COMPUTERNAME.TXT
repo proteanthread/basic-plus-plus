@@ -1,0 +1,69 @@
+TITLE: COMPUTERNAME
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/introspection/introspection.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+COMPUTERNAME KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: introspection.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (language_descriptor.h, memops.h)
+    // NEEDS: libengine (introspection.h, stmt.h)
+    // NEEDS: libkernel (security.h, vdev.h)
+    // NEEDS: libplatform (platform.h)
+    // Provides runtime implementation for system diagnostic statements in BASIC++
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Outputs the host computer machine name to console.
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    COMPUTERNAME
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM COMPUTERNAME Demonstration
+    20 PRINT "COMPUTERNAME executed successfully."
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+None
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Introspection
+Subsystem:     SUBSYSTEM_PLATFORM
+Safety Level:  SAFETY_SAFE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  COMPUTERNAME
+Category              Introspection
+Syntax                COMPUTERNAME
+Description           Outputs the host computer machine name to console.
+Error Summary         None
+Subsystem             SUBSYSTEM_PLATFORM
+Safety Level          SAFETY_SAFE
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/introspection/introspection.c

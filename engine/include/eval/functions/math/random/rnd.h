@@ -15,6 +15,7 @@
 #include "eval/eval_internal.h"
 
 BValue func_rnd_eval(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err);
+void func_rnd_set_seed(uint64_t seed);
 void func_rnd_register(void);
 
 #endif // EVAL_FUNC_RND_H

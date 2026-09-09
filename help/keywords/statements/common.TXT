@@ -1,36 +1,71 @@
-COMMON Shared Overlay Variable Statement
-======================================================================
+TITLE: COMMON
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/variables/declaration/common.c
+GENERATED: no, hand-written
+STATUS: current
 
-The COMMON statement designates variables that persist across program
-overlays when executing CHAIN or RUN "file", R.
+==============================================================================
+COMMON KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: common.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine, BASIC++ runtime
+    // NEEDS: libcore (language_descriptor.h, string.h)
+    // NEEDS: libcore (variables.h, variables.c)
+    // NEEDS: libengine (common.h, string.c)
+    // NEEDS: libkernel (errors.h)
+    // Provides runtime implementation for the COMMON statement in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Declares global variables to be preserved across CHAIN and module boundaries.
 
-    COMMON var1 [, var2, var3, ...]
-    COMMON SHARED var1 [, var2, ...]
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    COMMON [SHARED] var1 [()] [, var2 [()]...]
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = COMMON [SHARED] var1 [()] [, var2 [()]...]
+    20 PRINT "Result: "; Val
 
-OPERATIONAL RULES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error, Error 5: Illegal Function Call
 
-  - Preserved in memory across CHAIN calls without file I/O.
-  - Lists in chained programs must match in order and type.
-  - COMMON SHARED gives SUBs and FUNCTIONs global visibility.
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Variables & Memory
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_SYSTEM
 
-
-ERROR CODES
-----------------------------------------------------------------------
-
-  Error Code  Name                  Condition
-  ----------  --------------------  ----------------------------------
-  2           ERR_SYNTAX_ERROR      Invalid variable list in COMMON
-
-
-CODE EXAMPLES
-----------------------------------------------------------------------
-
-    10 COMMON USER$, LEVEL%
-    20 USER$ = "Admin" : LEVEL% = 1
-    30 CHAIN "PROG2.BAS"
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  COMMON
+Category              Variables & Memory
+Syntax                COMMON [SHARED] var1 [()] [, var2 [()]...]
+Description           Declares global variables to be preserved across CH...
+Error Summary         Error 2: Syntax Error, Error 5: Illegal Function Call
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_SYSTEM
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/variables/declaration/common.c

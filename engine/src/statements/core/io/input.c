@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
 // NEEDS: libcore (arrays.h, arrays.c, ctype.h, ctype.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libcore (strings.h, strings.c, using.h, variables.h, variables.c)
 // NEEDS: libengine (eval.h, eval.c, stmt.h, string.c)
 // NEEDS: libkernel (vdev.h, vdev.c)
@@ -18,21 +18,28 @@
 #include "runtime/variables.h"
 #include "runtime/arrays.h"
 #include "runtime/strings.h"
-#include "runtime/micro_lib_metadata.h"
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <ctype.h>
+#include "runtime/language_descriptor.h"
+#include "types/errors.h"
+#include "runtime/format/snprintf.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "runtime/memory/alloc.h"
+#include "runtime/ctype/ctype.h"
+#include "runtime/conv/float_parse.h"
+
+static const LangDesc g_input_desc = {
+    .name = "INPUT",
+    .category = "Console I/O",
+    .syntax = "INPUT [;] [\"prompt\";] variable[, ...]",
+    .description = "Prompts the user or reads values from console input into target variables.",
+    .error_summary = "Error 2: Syntax Error, Error 13: Type Mismatch, Error 52: Bad File Number",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SAFE,
+    .type = FEATURE_STATEMENT
+};
 
 void stmt_input_register(void) {
-    MicroLibMetadata meta = {
-        .name = "INPUT",
-        .category = "Console I/O",
-        .syntax = "INPUT [;] [\"prompt\"{;|,}] var1[, var2...]",
-        .help_text = "Prompts the user or reads values from console input into target variables.",
-        .error_codes = "Error 2: Syntax Error, Error 13: Type Mismatch, Error 52: Bad File Number"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_input_desc);
 }
 
 BppError stmt_file_input_handler(VMContext *vm, LexerContext *lex);
@@ -47,7 +54,7 @@ typedef struct {
 
 BppError stmt_input_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     BppToken tok = lex_peek(lex);
     if (tok.type == TOK_HASH) {
@@ -71,7 +78,7 @@ BppError stmt_input_handler(VMContext *vm, LexerContext *lex) {
             err.code = 13; err.message = "Type mismatch: INPUT USING expects format string";
             return err;
         }
-        strncpy(format_mask, str_data(fmt_val.as.string), sizeof(format_mask) - 1);
+        runtime_strncpy(format_mask, str_data(fmt_val.as.string), sizeof(format_mask) - 1);
         str_release(vm_get_str(vm), fmt_val.as.string);
         is_using = true;
 
@@ -109,7 +116,7 @@ BppError stmt_input_handler(VMContext *vm, LexerContext *lex) {
         }
 
         size_t copy_len = (prompt_len < sizeof(prompt_buf) - 1) ? prompt_len : sizeof(prompt_buf) - 1;
-        memcpy(prompt_buf, prompt, copy_len);
+        runtime_memcpy(prompt_buf, prompt, copy_len);
         prompt_buf[copy_len] = '\0';
     }
 
@@ -126,11 +133,11 @@ BppError stmt_input_handler(VMContext *vm, LexerContext *lex) {
         }
 
         InputTarget *tgt = &targets[target_count++];
-        memset(tgt, 0, sizeof(InputTarget));
+        runtime_memset(tgt, 0, sizeof(InputTarget));
         size_t copy_len = (tok.length < sizeof(tgt->var_name) - 1) ? tok.length : sizeof(tgt->var_name) - 1;
-        memcpy(tgt->var_name, tok.start, copy_len);
+        runtime_memcpy(tgt->var_name, tok.start, copy_len);
         tgt->var_name[copy_len] = '\0';
-        tgt->is_str = (tgt->var_name[strlen(tgt->var_name) - 1] == '$');
+        tgt->is_str = (tgt->var_name[runtime_strlen(tgt->var_name) - 1] == '$');
 
         BppToken peek_sub = lex_peek(lex);
         if (peek_sub.type == TOK_LPAREN) {
@@ -184,12 +191,17 @@ BppError stmt_input_handler(VMContext *vm, LexerContext *lex) {
 
         // Read line from VDev
         if (!con_dev || !con_dev->ops.gets || !con_dev->ops.gets(con_dev, input_buf, sizeof(input_buf))) {
+            if (vm_break_triggered(vm)) {
+                err.code = ERR_DEVICE_IO_ERROR;
+                err.message = "Break";
+                return err;
+            }
             err.code = 5; err.message = "Failed to read input from console device";
             return err;
         }
 
         // Strip trailing newline
-        size_t in_len = strlen(input_buf);
+        size_t in_len = runtime_strlen(input_buf);
         while (in_len > 0 && (input_buf[in_len - 1] == '\n' || input_buf[in_len - 1] == '\r')) {
             input_buf[in_len - 1] = '\0';
             in_len--;
@@ -214,7 +226,7 @@ BppError stmt_input_handler(VMContext *vm, LexerContext *lex) {
     for (int i = 0; i < target_count; ++i) {
         InputTarget *tgt = &targets[i];
 
-        while (*scan_ptr && isspace((unsigned char)*scan_ptr)) scan_ptr++;
+        while (*scan_ptr && runtime_isspace((unsigned char)*scan_ptr)) scan_ptr++;
 
         char val_buf[512] = "";
         size_t val_len = 0;
@@ -231,20 +243,20 @@ BppError stmt_input_handler(VMContext *vm, LexerContext *lex) {
             while (*scan_ptr && *scan_ptr != ',' && val_len < sizeof(val_buf) - 1) {
                 val_buf[val_len++] = *scan_ptr++;
             }
-            while (val_len > 0 && isspace((unsigned char)val_buf[val_len - 1])) val_len--;
+            while (val_len > 0 && runtime_isspace((unsigned char)val_buf[val_len - 1])) val_len--;
             if (*scan_ptr == ',') scan_ptr++;
         }
         val_buf[val_len] = '\0';
 
         BValue assign_val;
-        memset(&assign_val, 0, sizeof(assign_val));
+        runtime_memset(&assign_val, 0, sizeof(assign_val));
 
         if (tgt->is_str) {
             assign_val.type = VAL_STRING;
             assign_val.as.string = str_create(str_ctx, val_buf, val_len);
         } else {
             char *endptr;
-            double val = strtod(val_buf, &endptr);
+            double val = runtime_strtod(val_buf, &endptr);
             assign_val.type = VAL_NUMBER;
             assign_val.as.number = val;
         }

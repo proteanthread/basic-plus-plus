@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
 // NEEDS: libcore (memory.h, memory.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libcore (strings.h, strings.c)
 // NEEDS: libengine (eval.h, eval.c, lexer.h, lexer.c, save.h, string.c, vm.h)
 // NEEDS: libkernel (errors.h, security.h, security.c, vdev.h, vdev.c)
@@ -20,13 +20,26 @@
 #include "runtime/strings.h"
 #include "device/vdev.h"
 #include "security/security.h"
-#include "runtime/micro_lib_metadata.h"
-#include <stdio.h>
-#include <string.h>
+#include "runtime/language_descriptor.h"
+#include "runtime/format/snprintf.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "platform/platform.h"
+
+static const LangDesc g_save_desc = {
+    .name = "SAVE",
+    .category = "Program Mgmt & Editing",
+    .syntax = "SAVE filename_expr [, A | P]",
+    .description = "Saves the program currently in memory to a file on disk.",
+    .error_summary = "Error 2: Syntax Error, Error 64: Bad File Name, Error 70: Permission Denied",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SAFE,
+    .type = FEATURE_STATEMENT
+};
 
 BppError stmt_save_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     if (!vm || !lex) {
         err.code = ERR_ILLEGAL_FUNCTION_CALL;
         return err;
@@ -45,7 +58,7 @@ BppError stmt_save_handler(VMContext *vm, LexerContext *lex) {
     }
 
     const char *filename = str_data(fn_val.as.string);
-    FILE *fp = fopen(filename, "w");
+    void *fp = platform_file_open(filename, "w");
     if (!fp) {
         str_release(vm_get_str(vm), fn_val.as.string);
         err.code = ERR_PERMISSION_DENIED;
@@ -55,22 +68,15 @@ BppError stmt_save_handler(VMContext *vm, LexerContext *lex) {
     size_t count = 0;
     BppProgramLine *lines = mem_program_get_all(vm_get_mem(vm), &count);
     for (size_t i = 0; i < count; i++) {
-        fprintf(fp, "%lld %s\n", (long long)lines[i].line_number, lines[i].text ? lines[i].text : "");
+        platform_file_printf(fp, "%lld %s\n", (long long)lines[i].line_number, lines[i].text ? lines[i].text : "");
     }
 
-    fclose(fp);
+    platform_file_close(fp);
     str_release(vm_get_str(vm), fn_val.as.string);
     return err;
 }
 
 void stmt_save_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "SAVE",
-        .category = "Program Mgmt & Editing",
-        .syntax = "SAVE filename_expr [, A | P]",
-        .help_text = "Saves the program currently in memory to a file on disk.",
-        .error_codes = "Error 2: Syntax Error, Error 64: Bad File Name, Error 70: Permission Denied"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_save_desc);
 }
 

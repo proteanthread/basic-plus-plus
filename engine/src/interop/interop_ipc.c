@@ -11,9 +11,11 @@
 
 #include "interop/interop_ipc.h"
 #include "interop/interop_jsonrpc.h"
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
+#include "platform/platform.h"
+#include "runtime/memory/alloc.h"
+#include "runtime/format/snprintf.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
 
 struct InteropIpcServer {
     InteropIpcMode mode;
@@ -21,7 +23,7 @@ struct InteropIpcServer {
 };
 
 InteropIpcServer* interop_ipc_create(InteropIpcMode mode, const char* address, int port) {
-    InteropIpcServer* srv = (InteropIpcServer*)calloc(1, sizeof(InteropIpcServer));
+    InteropIpcServer* srv = (InteropIpcServer*)runtime_calloc(1, sizeof(InteropIpcServer));
     if (srv) {
         srv->mode = mode;
         srv->running = false;
@@ -37,20 +39,20 @@ static void process_request(InteropIpcServer* server, const char* line) {
         jsonrpc_format_error(&res, -32700, "Parse error");
     } else {
         res.id = req.id;
-        if (strncmp(req.method, "init", 128) == 0) {
-            strncpy(res.result, "{\"success\":true}", sizeof(res.result) - 1);
-        } else if (strncmp(req.method, "exec", 128) == 0) {
-            strncpy(res.result, "{\"success\":true}", sizeof(res.result) - 1);
-        } else if (strncmp(req.method, "eval", 128) == 0) {
-            strncpy(res.result, "{\"success\":true}", sizeof(res.result) - 1);
-        } else if (strncmp(req.method, "get_var", 128) == 0) {
-            strncpy(res.result, "{\"success\":true}", sizeof(res.result) - 1);
-        } else if (strncmp(req.method, "set_var", 128) == 0) {
-            strncpy(res.result, "{\"success\":true}", sizeof(res.result) - 1);
-        } else if (strncmp(req.method, "version", 128) == 0) {
-            strncpy(res.result, "{\"version\":\"6.5\"}", sizeof(res.result) - 1);
-        } else if (strncmp(req.method, "shutdown", 128) == 0) {
-            strncpy(res.result, "{\"success\":true}", sizeof(res.result) - 1);
+        if (runtime_strncmp(req.method, "init", 128) == 0) {
+            runtime_strncpy(res.result, "{\"success\":true}", sizeof(res.result) - 1);
+        } else if (runtime_strncmp(req.method, "exec", 128) == 0) {
+            runtime_strncpy(res.result, "{\"success\":true}", sizeof(res.result) - 1);
+        } else if (runtime_strncmp(req.method, "eval", 128) == 0) {
+            runtime_strncpy(res.result, "{\"success\":true}", sizeof(res.result) - 1);
+        } else if (runtime_strncmp(req.method, "get_var", 128) == 0) {
+            runtime_strncpy(res.result, "{\"success\":true}", sizeof(res.result) - 1);
+        } else if (runtime_strncmp(req.method, "set_var", 128) == 0) {
+            runtime_strncpy(res.result, "{\"success\":true}", sizeof(res.result) - 1);
+        } else if (runtime_strncmp(req.method, "version", 128) == 0) {
+            runtime_strncpy(res.result, "{\"version\":\"6.5\"}", sizeof(res.result) - 1);
+        } else if (runtime_strncmp(req.method, "shutdown", 128) == 0) {
+            runtime_strncpy(res.result, "{\"success\":true}", sizeof(res.result) - 1);
             server->running = false;
         } else {
             jsonrpc_format_error(&res, -32601, "Method not found");
@@ -59,8 +61,9 @@ static void process_request(InteropIpcServer* server, const char* line) {
 
     char out_buf[8192];
     jsonrpc_format_response(&res, out_buf, sizeof(out_buf));
-    fprintf(stdout, "%s\n", out_buf);
-    fflush(stdout);
+    platform_console_puts(out_buf);
+    platform_console_putchar('\n');
+    platform_console_flush();
 }
 
 void interop_ipc_run(InteropIpcServer* server) {
@@ -69,7 +72,7 @@ void interop_ipc_run(InteropIpcServer* server) {
 
     if (server->mode == IPC_MODE_STDIO) {
         char buffer[8192];
-        while (server->running && fgets(buffer, sizeof(buffer), stdin)) {
+        while (server->running && platform_console_gets(buffer, sizeof(buffer))) {
             process_request(server, buffer);
         }
     }
@@ -83,7 +86,7 @@ void interop_ipc_stop(InteropIpcServer* server) {
 
 void interop_ipc_destroy(InteropIpcServer* server) {
     if (server) {
-        free(server);
+        runtime_free(server);
     }
 }
 

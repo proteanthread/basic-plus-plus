@@ -3,7 +3,7 @@
 // VERSION: 6.5.2.0
 // NEEDED BY: libengine, BASIC++ runtime
 // NEEDS: libcore (arrays.h, arrays.c)
-// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (language_descriptor.h, string.h)
 // NEEDS: libcore (strings.h, strings.c, variables.h, variables.c)
 // NEEDS: libengine (clr.h, lexer.h, lexer.c, string.c, vm.h)
 // Provides runtime implementation for the CLR statement in BASIC++.
@@ -16,18 +16,23 @@
 #include "runtime/variables.h"
 #include "runtime/arrays.h"
 #include "runtime/strings.h"
-#include "runtime/micro_lib_metadata.h"
-#include <string.h>
+#include "runtime/language_descriptor.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+
+static const LangDesc g_clr_desc = {
+    .name = "CLR",
+    .category = "Variables & Memory",
+    .syntax = "CLR [var1, var2, ...]",
+    .description = "Clears specified variables or all variables to default zero/empty values.",
+    .error_summary = "Error 2: Syntax Error",
+    .subsystem = SUBSYSTEM_ENGINE,
+    .safety = SAFETY_SYSTEM,
+    .type = FEATURE_STATEMENT
+};
 
 void stmt_clr_register(void) {
-    static const MicroLibMetadata meta = {
-        .name = "CLR",
-        .category = "Variables & Memory",
-        .syntax = "CLR [var1, var2, ...]",
-        .help_text = "Clears specified variables or all variables to default zero/empty values.",
-        .error_codes = "Error 2: Syntax Error"
-    };
-    microlib_register(&meta);
+    lang_desc_register(&g_clr_desc);
 }
 
 BppError stmt_clr_handler(VMContext *vm, LexerContext *lex) {
@@ -50,7 +55,7 @@ BppError stmt_clr_handler(VMContext *vm, LexerContext *lex) {
 
         char var_name[64];
         size_t len = (var_tok.length < sizeof(var_name) - 1) ? var_tok.length : sizeof(var_name) - 1;
-        memcpy(var_name, var_tok.start, len);
+        runtime_memcpy(var_name, var_tok.start, len);
         var_name[len] = '\0';
 
         BValue *var = var_lookup(vc, var_name, false);

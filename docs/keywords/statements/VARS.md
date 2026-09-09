@@ -1,22 +1,69 @@
-# `VARS` Variable Table Inspection Statement
+<!--
+Title:        VARS
+Tier:         3
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/variable/var.c
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. BASIC Usage and Keyword Definition
+# `VARS` Keyword Reference
 
-Displays a formatted table of all active variables, types, and values in the current variable context.
+## Source Header
 
-### Syntax Signatures:
-```basic
-VARS
+```c
+// FILENAME: var.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community -- All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: baspp.exe, bpp.exe, bs.exe, libengine
+// NEEDS: libcore, libkernel
+// Implements component functionality for VARS.
 ```
 
-### Operational Notes:
-- Diagnostic statement for interactive debugging.
+## 1. Description & Usage
+
+Lists all currently allocated variables, their scopes, data types, and values to the console.
+
+## 2. Syntax
+
+```basic
+VARS [prefix$]
+```
+
+## 3. Code Example
+
+```basic
+10 REM VARS Demonstration
+20 PRINT "VARS executed successfully."
+```
+
+## 4. Error Conditions
+
+None
+
+## 5. Compatibility & Lineage
+
+- **Lineage**: BASIC++ Standard
+- **Since Version**: 6.0.0
+- **Category**: Program Management & Introspection
+- **Subsystem**: SUBSYSTEM_ENGINE
+- **Safety Level**: SAFETY_SAFE
 
 ---
 
-## 2. Code Examples
+## LanguageDescriptor (LangDesc) Quick Reference
 
-```basic
-10 LET A = 42 : S$ = "Test"
-20 VARS : REM Displays variable inspection table
-```
+| Field | Value |
+|---|---|
+| Name | VARS |
+| Category | Program Management & Introspection |
+| Syntax | VARS [prefix$] |
+| Description | Lists all currently allocated variables, their scopes, data types, and values to the console. |
+| Error Summary | None |
+| Subsystem | SUBSYSTEM_ENGINE |
+| Safety Level | SAFETY_SAFE |
+| Feature Type | FEATURE_STATEMENT |
+| Delimiter Mask | none |
+| Compatibility | BASIC++ Standard |
+| Since Version | 6.0.0 |
+| Source File | engine/src/variable/var.c |

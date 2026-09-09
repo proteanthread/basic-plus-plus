@@ -1019,7 +1019,7 @@ static void cmd_help(void) {
     printf("=== TRS-80 LEVEL I BASIC HELP ===\n");
     printf("COMMANDS:   RUN [file], LIST [range], LOAD/CLOAD [file], SAVE/CSAVE [file], NEW, CONT/C., CLEAR, BYE/GOODBYE, HELP\n");
     printf("STATEMENTS: PRINT/P./?, INPUT/I., LET/L., GOTO/G., GOSUB/GS., RETURN/R., IF..THEN/F.,\n");
-    printf("            FOR..TO..STEP/F., NEXT/N., READ, DATA, RESTORE, REM, STOP/ST., END, POKE, CLS/CL., SET, RESET, POINT\n");
+    printf("            FOR..TO..STEP/F., NEXT/N., READ, DATA, RESTORE, REM, STOP/ST., END, POKE, SET, RESET, POINT\n");
     printf("FUNCTIONS:  PEEK, MEM/M., TAB/T., RND, ABS, INT, SGN, POINT\n");
     printf("VARIABLES:  A-Z (16-bit integers), A(expr) (1D array), A$, B$ (strings A$-Z$)\n");
 }
@@ -1058,7 +1058,6 @@ static void exec_statement(void) {
     if (match_keyword("BEEP"))                           { trigger_beep(); return; }
 
     /* Screen & Graphics */
-    if (match_keyword("CLS") || match_keyword("CL."))    { printf("\033[2J\033[H"); fflush(stdout); return; }
     if (match_keyword("SET"))                            { cmd_set(); return; }
     if (match_keyword("RESET"))                          { cmd_reset(); return; }
 

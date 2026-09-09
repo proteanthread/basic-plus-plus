@@ -1,0 +1,197 @@
+Title:        Game_Development_Guide
+Tier:         1
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/device/gfx.c, engine/src/device/bgi/,
+              engine/src/statements/sound/synthesis/,
+              engine/src/statements/system/mouse.c, joystick.c,
+              engine/src/eval/functions/math/algebra/
+Generated:    no, hand-written
+Status:       current
+
+==============================================================================
+BASIC++ V6.5.2 GAME DEVELOPMENT GUIDE & REUSABLE LIBRARIES
+==============================================================================
+
+The comprehensive guide to building games in BASIC++, covering the main game
+loop, non-blocking keyboard and joystick input, double-buffered screen
+rendering, sprite manipulation, sound effects, and reusable game math and
+collision algorithms.
+
+1. ARCHITECTURAL FOUNDATIONS OF BASIC++ GAMES
+------------------------------------------------------------------------------
+
+BASIC++ provides a complete suite of real-time game programming primitives:
+
+  Graphics Subsystems: Hardware-accelerated SDL2 canvas surfaces
+  (engine/src/device/gfx.c) and vector/raster BGI engines
+  (engine/src/device/bgi/).
+  Display Buffering: Double-buffered video pages via SCREEN mode, ,
+  active_page, visual_page and zero-tearing buffer flipping with PCOPY.
+  Input Subsystems: Non-blocking keyboard polling (INKEY$). The keyboard is
+  the only working input device  --  see section 3A.
+  Sound and Music: Background polyphonic music and tone synthesis (SOUND,
+  PLAY, BEEP, VOICE).
+
+1A. READ THIS BEFORE DESIGNING YOUR CONTROLS
+------------------------------------------------------------------------------
+
+MOUSE, PEN, STICK and STRIG are registered statements that do nothing. All six
+mouse handlers in engine/src/statements/system/mouse.c are (void)vm;
+(void)lex; return err;. joystick.c and pen.c are the same shape, and the
+STICK(port%) function casts its argument to void and returns zero, despite a
+registered description claiming it autodetects a USB controller.
+
+An earlier version of this guide listed joystick and mouse input among the
+working subsystems, and showed a joystick polling routine. Both were wrong.
+The routine is retained below, marked, because it is the code that will work
+once phase 3.7 of the 7.0.0 plan lands.
+
+Design for the keyboard. It is real, it is non-blocking through INKEY$, and it
+is what every player of a BASIC++ game has today.
+
+2. THE MAIN GAME LOOP ARCHITECTURE
+------------------------------------------------------------------------------
+
+Every real-time game implements a deterministic cycle: processing user input,
+advancing game state, rendering the back-buffer, and swapping display pages:
+
+    100 SCREEN 7, , 0, 1       ' Draw on page 0, display page 1 (320x200 16-co
+    110 RANDOMIZE TIMER
+    120 PlayerX = 160 : PlayerY = 100 : PlayerSpeed = 3
+    130 Score = 0 : GameOver = 0
+    140 WHILE NOT GameOver
+    150   GOSUB 1000             ' 1. Process user input
+    160   GOSUB 2000             ' 2. Update entities and game physics
+    170   GOSUB 3000             ' 3. Render frame to back-buffer (page 0)
+    180   PCOPY 0, 1             ' 4. Flip back-buffer to active display
+    190 WEND
+    200 SCREEN 0 : CLS : PRINT "Game Over! Final Score:"; Score : END
+
+3. HIGH-PERFORMANCE INPUT POLLING
+------------------------------------------------------------------------------
+
+Non-Blocking Keyboard Input
+------------------------------------------------------------------------------
+
+    1000 ' Process keyboard input
+    1010 K$ = INKEY$
+    1020 IF K$ = "" THEN RETURN
+    1030 IF LEN(K$) = 2 THEN
+    1040   Code = ASC(MID$(K$, 2, 1))
+    1050   IF Code = 72 THEN PlayerY = PlayerY - PlayerSpeed    ' Up arrow
+    1060   IF Code = 80 THEN PlayerY = PlayerY + PlayerSpeed    ' Down arrow
+    1070   IF Code = 75 THEN PlayerX = PlayerX - PlayerSpeed    ' Left arrow
+    1080   IF Code = 77 THEN PlayerX = PlayerX + PlayerSpeed    ' Right arrow
+    1090 END IF
+    1100 IF K$ = " " THEN GOSUB 4000      ' Fire missile on Spacebar
+    1110 IF K$ = CHR$(27) THEN GameOver = 1 ' Escape key exits
+    1120 RETURN
+
+Analog joystick and button trapping  --  DOES NOT WORK YET
+------------------------------------------------------------------------------
+
+The code below is correct in shape and inert in effect. STICK returns 0 for
+every port and STRIG the same, because the handlers are empty. Keep it if you
+are writing forward-compatible code; do not rely on it.
+
+    1200 REM NOT FUNCTIONAL in v6.5.2 -- STICK and STRIG return 0
+    1210 JoyX = STICK(0) : JoyY = STICK(1)
+    1220 TriggerA = STRIG(0) : TriggerB = STRIG(4)
+    1230 IF TriggerA THEN GOSUB 4000
+    1240 RETURN
+
+See Physical_Device_Access section 5.
+
+4. REUSABLE GAME MATH AND PHYSICS ALGORITHMS
+------------------------------------------------------------------------------
+
+These routines provide essential building blocks for entity movement,
+collision detection, and procedural generation:
+
+Random Numbers and Array Shuffling
+------------------------------------------------------------------------------
+
+    ' Generate random integer in closed interval [low, high]
+    FUNCTION RandInt(low, high)
+      RandInt = INT(RND * (high - low + 1)) + low
+    END FUNCTION
+
+    ' SHUFFLE is a built-in statement using Fisher-Yates; prefer it.
+    ' This SUB is shown for the algorithm only.
+    SUB Shuffle(arr(), count)
+      FOR I = count - 1 TO 1 STEP -1
+        J = RandInt(0, I)
+        SWAP arr(LBOUND(arr) + I), arr(LBOUND(arr) + J)
+      NEXT I
+    END SUB
+
+Arithmetic Clamping, Distance, and Interpolation
+------------------------------------------------------------------------------
+
+These three are built in. CLAMP(value, lo, hi), HYPOT(dx, dy) and LERP(a, b,
+t) are registered functions (engine/src/eval/functions/math/algebra/), and so
+are MAG, MIN, MAX, ROUND, SGN, PDIF and AVG. Use them rather than the
+definitions below, which are kept only to show what they compute:
+
+    1 REM Prefer the built-ins:
+    2 REM   CLAMP(v, lo, hi)      instead of FUNCTION Clamp
+    3 REM   HYPOT(x2-x1, y2-y1)   instead of FUNCTION Distance
+    4 REM   LERP(a, b, t)         instead of FUNCTION Lerp
+
+    ' Clamp scalar value to interval [lo, hi]
+    FUNCTION Clamp(value, lo, hi)
+      IF value < lo THEN Clamp = lo
+      ELSE IF value > hi THEN Clamp = hi
+      ELSE Clamp = value
+      END IF
+    END FUNCTION
+
+    ' Euclidean distance between two 2D points
+    FUNCTION Distance(x1, y1, x2, y2)
+      Distance = SQR((x2 - x1) ^ 2 + (y2 - y1) ^ 2)
+    END FUNCTION
+
+    ' Linear interpolation between points a and b
+    FUNCTION Lerp(a, b, t)
+      Lerp = a + (b - a) * t
+    END FUNCTION
+
+Axis-Aligned Bounding Box (AABB) Collision Detection
+------------------------------------------------------------------------------
+
+    ' Returns -1 (True) if two rectangular bounding boxes overlap
+    FUNCTION CheckAABB(x1, y1, w1, h1, x2, y2, w2, h2)
+      IF x1 + w1 >= x2 AND x1 <= x2 + w2 AND _
+         y1 + h1 >= y2 AND y1 <= y2 + h2 THEN
+        CheckAABB = -1
+      ELSE
+        CheckAABB = 0
+      END IF
+    END FUNCTION
+
+WHAT IS VERIFIED AND WHAT IS NOT
+------------------------------------------------------------------------------
+
+This guide was corrected in September 2026 against the sources in its header.
+The input claims in section 1A and section 3, the built-in function list in
+section 4, and the SHUFFLE note were established by reading the source.
+
+The graphics and sound sections have not been verified that way. gfx.c, the
+BGI tree and the sound statements exist and are substantial, but the specific
+mode numbers, page-flipping behaviour and PLAY string syntax shown here have
+not been checked against them. Treat those parts as a guide to intent rather
+than as a specification until they carry the same verification.
+
+SEE ALSO
+------------------------------------------------------------------------------
+
+  Physical_Device_Access  --  which input hardware works
+  Graphics_Modes, Graphics_Sound  --  the display and audio subsystems
+  BGI_Graphics_And_SDL2_Decomposition  --  the graphics layering
+  TUI_Programming  --  text-mode games and the widget layer
+  Game_Libraries_and_Engines/  --  reusable engines
+  Implementation_Status  --  the evidence register
+
+==============================================================================
+END OF DOCUMENT
+==============================================================================

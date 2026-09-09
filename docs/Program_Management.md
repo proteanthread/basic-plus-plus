@@ -1,82 +1,43 @@
-# BASIC++ v6.5.2 Program Management
+<!--
+Title:        Program_Management
+Tier:         2
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+Authority:    engine/src/statements/system/, engine/src/bootstrap/
+Generated:    no, hand-written
+Status:       current
+-->
 
-## 1. CREATING AND EDITING PROGRAMS
+# BASIC++ v6.5.2 Program Management Architecture
 
-NEW clears the current program from memory and resets all variables, arrays, file channels, and the DATA pointer. After NEW, the interpreter is in a clean state ready for a new program.
+The authoritative specification for program storage, line buffer editing, session control, file overlays, and execution management in BASIC++ v6.5.2.
 
-AUTO generates line numbers automatically as you type. AUTO starts numbering at line 10 with a step of 10. AUTO start,step specifies both: `AUTO 100,5` begins at line 100, incrementing by 5. Press Ctrl+C or type a period (.) as the first character on a line to exit AUTO mode.
+---
 
-RENUM renumbers program lines. RENUM alone renumbers starting at 10 with a step of 10. RENUM new,old,step renumbers starting from line old, assigning new numbers starting at new with the given step. All GOTO, GOSUB, ON GOTO, ON GOSUB, RESTORE, RESUME, and other line references are automatically updated.
+## 1. Program Creation and Buffer Editing
 
-DELETE removes a range of lines: `DELETE 100-200` removes lines 100 through 200. DELETE -200 removes all lines up to and including 200. DELETE 300- removes line 300 and all lines after it.
+The interactive interpreter provides direct manipulation commands for managing source program buffers in memory:
 
-## 2. LISTING PROGRAMS
+- **`NEW`**: Clears the stored program buffer from memory, reclaims variable and array allocations, resets open file channels, and restores the `DATA` pointer to the first entry.
+- **`AUTO [start [, step]]`**: Automatically generates sequential line numbers during interactive console entry. Defaults to starting at line 10 with step 10. Exit AUTO mode by pressing `Ctrl+C` or typing a period (`.`) as the first character of a line.
+- **`RENUM [new_start [, old_start [, step]]]`**: Renumbers stored program lines. All line targets in `GOTO`, `GOSUB`, `ON...GOTO`, `RESTORE`, and `RESUME` statements are automatically updated to match the renumbered lines.
+- **`DELETE [start] - [end]`**: Removes a range of lines from the current program buffer. Forms include `DELETE 100-200`, `DELETE -200` (from beginning up to 200), or `DELETE 300-` (from 300 to end).
+- **`LIST [range]`**: Outputs stored program source lines to standard console output.
+- **`LLIST [range]`**: Outputs stored program source lines to the primary line printer channel (`LPT1:`).
 
-LIST displays the current program. LIST alone shows all lines. LIST n shows a single line. LIST n1-n2 shows a range. LIST -n shows all lines up to n. LIST n- shows all lines from n onward.
+---
 
-LLIST sends the program listing to the printer instead of the screen.
+## 2. Program Persistence and Overlays
 
-LIST outputs formatted source text with consistent indentation. REFORMAT standardizes the indentation and spacing of the entire program without changing line numbers.
+- **`SAVE "filename.bas" [, A]`**: Writes the active program buffer to disk. The optional `, A` flag forces storage as standard 7-bit ASCII text.
+- **`LOAD "filename.bas" [, R]`**: Reads a program file from disk into the interpreter buffer. The optional `, R` switch immediately begins execution upon loading.
+- **`MERGE "filename.bas"`**: Merges lines from an external ASCII BASIC file into the existing memory buffer, overwriting colliding lines and inserting new lines in sorted order.
+- **`CHAIN [MERGE] "filename.bas" [, line_num]`**: Transfers execution control to an external program overlay. The optional `MERGE` clause overlays lines without resetting common variable buffers.
 
-## 3. SAVING AND LOADING
+---
 
-SAVE "filename" writes the current program to disk as a plain text file. SAVE "filename", A forces ASCII format. SAVE "filename", P saves in a protected (tokenized) format.
+## 3. Execution Control
 
-LOAD "filename" reads a program file into memory, replacing the current program. Variables are cleared. LOAD "filename", R loads and immediately runs the program.
-
-BSAVE "filename" saves the program in bytecode format. BLOAD "filename" loads a bytecode file. BRUN compiles the current program to bytecode and executes it.
-
-## 4. MERGING PROGRAMS
-
-MERGE "filename" reads a program file and overlays its lines onto the existing program. Lines in the merged file with the same number as existing lines replace those lines. Lines with new numbers are inserted at the correct position. Variables and the execution state are not affected.
-
-MERGE is used to combine modular program files and to insert reusable code libraries into programs.
-
-## 5. CHAINING PROGRAMS
-
-CHAIN loads a new program file and begins executing it, optionally preserving variables:
-
-```basic
-10 COMMON Score, Level
-20 CHAIN "LEVEL2.BAS"
-```
-
-Variables declared with COMMON are preserved across the CHAIN. All other variables are cleared. The COMMON statement must appear before the CHAIN statement.
-
-CHAIN with options:
-- `CHAIN "file"` — Load and run, preserving COMMON variables only.
-- `CHAIN "file", ALL` — Load and run, preserving ALL variables.
-- `CHAIN "file", line` — Load and begin execution at the specified line number.
-- `CHAIN "file", DELETE range` — Load and delete the specified line range from the old program before merging.
-- `CHAIN MERGE "file"` — Merge the file into the current program without clearing any variables.
-
-## 6. THE RUN COMMAND
-
-RUN executes the current program from the lowest line number. RUN n starts execution at line n.
-
-RUN "filename" loads a new file and executes it. All variables are cleared. RUN "filename", R loads and runs, preserving COMMON variables and keeping open file channels.
-
-## 7. CONT (CONTINUE)
-
-CONT resumes execution after a STOP statement, breakpoint, or Ctrl+C interrupt. CONT returns to the exact point where execution was paused.
-
-CONT fails with Error 17 (Cannot continue) if:
-- The program has been modified since it stopped (any line added, changed, or deleted).
-- NEW has been executed.
-- An error occurred and was not handled.
-
-## 8. EDITING LINES
-
-Entering a line number followed by a statement replaces any existing line with that number. Entering a line number alone deletes the line. EDIT n opens line n in a simple line editor where you can modify the text.
-
-The EDIT command enters an interactive line editor that supports cursor movement (arrow keys), insertion, deletion (Backspace, Delete), and confirmation (Enter). Press Escape to cancel without changes.
-
-## 9. PROGRAM MEMORY
-
-Programs are stored in the MemoryContext managed by the memory subsystem (engine/src/memory/mem_system.c). Each line is stored as a source text string indexed by line number. The program memory allocation is 128 MB on modern builds, 64 MB on lite builds, 32 KB on FreeDOS, and 8 KB on embedded.
-
-FRE(-2) returns the amount of free variable memory. FRE(0) returns the amount of free string heap space.
-
-## 10. PROGRAM INFORMATION
-
-The program line count is available through introspection. VARS displays all active variables. DUMP shows the VM state including stack depths and error state. LIST shows the program text. INFO shows the overall system configuration.
+- **`RUN [line_num | "filename.bas"]`**: Resets runtime state and begins execution from the first stored line, a specified line number, or loads and executes a program file.
+- **`STOP`**: Suspends program execution, displays a break message with the current line number, and returns control to the interactive command prompt.
+- **`CONT`**: Resumes execution immediately following a `STOP` statement or manual `Ctrl+C` break.
+- **`END`**: Terminates program execution normally and closes all open file channels.

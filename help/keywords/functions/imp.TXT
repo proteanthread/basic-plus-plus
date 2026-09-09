@@ -1,16 +1,70 @@
-IMP Bitwise and Logical Implication Operator
-======================================================================
+TITLE: IMP
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/functions/bits/logic/imp.c
+GENERATED: no, hand-written
+STATUS: current
 
-The IMP operator performs logical or bitwise implication ((NOT A) OR B).
+==============================================================================
+IMP KEYWORD REFERENCE
+==============================================================================
 
+SOURCE HEADER:
+    // FILENAME: imp.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (sys_fn.c)
+    // NEEDS: libcore (language_descriptor.h)
+    // NEEDS: libengine (imp.h)
+    // Provides runtime implementation for the IMP built-in function in BASIC++.
+    //
+    // ---- Includes ----
 
-SYNTAX
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Performs bitwise and logical implication (NOT val1 OR val2) on integers or
+boolean values.
 
-    result = expr1 IMP expr2
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    IMP(val1, val2) or val1 IMP val2
 
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 Val = IMP(val1, val2) or val1 IMP val2
+    20 PRINT "Result: "; Val
 
-CODE EXAMPLES
-----------------------------------------------------------------------
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 13: Type Mismatch
 
-    10 PRINT (0 IMP 1)   : REM Outputs -1 (true)
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Bitwise & Logical Functions
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_PURE
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  IMP
+Category              Bitwise & Logical Functions
+Syntax                IMP(val1, val2) or val1 IMP val2
+Description           Performs bitwise and logical implication (NOT val1 ...
+Error Summary         Error 13: Type Mismatch
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_PURE
+Feature Type          FEATURE_FUNCTION
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/eval/functions/bits/logic/imp.c

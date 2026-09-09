@@ -1,142 +1,78 @@
-======================================================================
-  BASIC++ V6.5.2 SUPER BASIC COMPATIBILITY & EXTENDED CAPABILITIES
-======================================================================
+TITLE: Super_BASIC
+TIER: 2
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/eval/functions/math/complex.c, engine/src/statements/io/
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+BASIC++ v6.5.2 SUPER BASIC (TYMSHARE) COMPATIBILITY ARCHITECTURE
+==============================================================================
+
+The authoritative specification for Tymshare Super BASIC (SDS 940 / DEC
+PDP-10) language features, native complex numbers, matrix operations,
+and layout controls in BASIC++ v6.5.2.
 
 
-======================================================================
-  1. HISTORY & ARCHITECTURAL OVERVIEW
-======================================================================
+1. HISTORY & ARCHITECTURAL OVERVIEW
 
-SDS 940 (1968) and DEC PDP-10 (1970-1972) Super BASIC introduced
-extended language features: native complex numbers, bidirectional
-string/ASCII array conversions (CHANGE), fine-grained layout control
-(MARGIN, ZONE), direct text and modify file modes (TEXT, APPEND, MODIFY),
-template-based formatted output (IMAGE, FORM), line input preservation
-(LINPUT), and full matrix file I/O (MAT READ, MAT PRINT #, MAT INPUT #).
+SDS 940 (1968) and DEC PDP-10 (1970-1972) Super BASIC, developed by
+Tymshare Inc., introduced pioneering additions to early Dartmouth BASIC:
+first-class complex numbers, bidirectional string/array conversion
+(CHANGE), layout zones (MARGIN, ZONE), direct stream modes (TEXT,
+MODIFY, APPEND), template-based formatted printing (IMAGE, FORM), full
+line preservation (LINPUT), and matrix file I/O (MAT).
 
-In BASIC++ v6.5.2, all of these features are implemented as first-class
-native engine capabilities with 100% backward compatibility for GW-BASIC,
-BASICA, and QBASIC.
+In BASIC++ v6.5.2, all Tymshare Super BASIC features are supported as
+native first-class constructs integrated into the unified engine, with
+100% backward compatibility for GW-BASIC and QBASIC.
 
 
-======================================================================
-  2. NATIVE COMPLEX NUMBER SYSTEM
-======================================================================
+2. NATIVE COMPLEX NUMBER SYSTEM
 
-Imaginary Literals & Construction:
-  10 LET Z1 = 3 + 4I
-  20 LET Z2 = CMPLX(5, -12)
-
-Complex Arithmetic & Operators (+, -, *, /, ^, unary -, ==, <>):
-  10 LET Z_ADD = (3 + 4I) + (1 - 2I)      ' Result: 4 + 2I
-  20 LET Z_SUB = (3 + 4I) - (1 + 2I)      ' Result: 2 + 2I
-  30 LET Z_MUL = (3 + 4I) * (1 - 2I)      ' Result: 11 - 2I
-  40 LET Z_DIV = (11 - 2I) / (1 - 2I)     ' Result: 3 + 4I
-  50 LET Z_POW = (0 + 1I) ^ 2             ' Result: -1 + 0I
-
-Built-in Complex Functions:
-  CMPLX(r, i), REAL(z), IMAG(z), CONJ(z), ARG(z), CMPLX$(z)
-  CSQR(z), CLOG(z), CEXP(z), CSIN(z), CCOS(z), CTAN(z)
-  CASN(z), CACS(z), CATN(z)
-
-Type Declarations & IEEE Binary Serialization:
-  DEFCPX letter[-letter]
-  COMPLEX var1, var2, ...
-  MKC$(z), CVC(s$), MKL$(n&), CVL(s$)
+Imaginary literals are lexed directly using trailing I or i notation:
+* Constant syntax: 3 + 4I, 2.5 - 1.2i, 0 + 1I.
+* Built-in Complex Functions:
+  - MAG(z): Magnitude / absolute value.
+  - ANGLE(z): Phase angle (respects OPTION ANGLE DEGREES/RADIANS).
+  - CONJG(z): Complex conjugate.
+  - REAL(z) / IMAG(z): Extracts real or imaginary component.
 
 
-======================================================================
-  3. STRING & ASCII CONVERSION (CHANGE)
-======================================================================
+3. STRING / ARRAY CONVERSION (CHANGE)
 
-The CHANGE statement converts bidirectionally between strings and 1D
-numeric ASCII arrays. A(0) holds the string length:
+The CHANGE statement provides bidirectional conversion between strings
+and integer ASCII arrays:
 
-  10 LET S$ = "HELLO"
-  20 CHANGE S$ TO A          ' A(0)=5, A(1)=72, A(2)=69, A(3)=76, A(4)=76, A(5)=79
-  30 LET A(1) = 74           ' Replace 'H' with 'J'
-  40 CHANGE A TO RES$        ' RES$ = "JELLO"
-  50 LET A(0) = 3            ' Truncate length
-  60 CHANGE A TO SHORT$      ' SHORT$ = "JEL"
+* CHANGE s$ TO arr%: Populates arr%(0) with string length and elements
+  arr%(1)..arr%(n) with ASCII character codes.
+* CHANGE arr% TO s$: Reconstructs string s$ from character codes in arr%
+  using length in arr%(0).
 
 
-======================================================================
-  4. CONSOLE & FILE OUTPUT FORMATTING (MARGIN, ZONE, IMAGE, FORM)
-======================================================================
+4. CONSOLE AND FILE LAYOUT CONTROLS
 
-Margins and Comma Print Zones:
-  10 ZONE 10                 ' Set comma tab width to 10 columns
-  20 MARGIN 132              ' Set line wrap margin to 132 columns
-  30 ZONE #1, 20             ' Set zone width for file channel #1
-  40 MARGIN #1, 120
-
-Formatted Templates (IMAGE & FORM):
-  100 IMAGE : Total: $$$$,$$$.##   Status: \      \
-  110 PRINT USING 100, 1250.75, "APPROVED"
-  120 FORM C10, N5.2, C5
+* MARGIN n: Configures maximum print column boundary for channel.
+* ZONE n: Sets tab zone width (default 14 columns).
+* LINPUT [#filenum,] var$: Reads entire line verbatim without stripping
+  delimiters.
 
 
-======================================================================
-  5. TIMESHARING FILE I/O & MATRIX I/O
-======================================================================
+5. MATRIX OPERATIONS (MAT)
 
-Dedicated File Open Statements:
-  TEXT [#]ch, "file"         ' Open file in sequential text output mode
-  APPEND [#]ch, "file"       ' Open file in append output mode
-  MODIFY [#]ch, "file"       ' Open file for read/write random modify mode
-  LINPUT [#ch,] ["prompt";] var$  ' Read entire line preserving delimiters
+Supports matrix manipulation and file streaming:
+* MAT READ #ch, A / MAT WRITE #ch, A: Reads/writes matrix to file.
+* MAT PRINT [#ch,] A: Formats and displays matrix elements.
 
-Matrix File I/O & MAT READ:
-  10 OPTION BASE 1
-  20 DATA 10, 20, 30, 40, 50, 60
-  30 DIM M(2, 3)
-  40 MAT READ M              ' Populate 2x3 matrix from DATA items
-  50 TEXT #1, "matrix.dat"
-  60 MAT PRINT #1, M         ' Write formatted matrix to file
-  70 CLOSE #1
-  80 OPEN "matrix.dat" FOR INPUT AS #1
-  90 DIM M2(2, 3)
-  100 MAT INPUT #1, M2       ' Read matrix from file
-  110 CLOSE #1
-  120 MAT PRINT M2           ' Display matrix on console
- 
- 
-======================================================================
-  6. ADVANCED MATH, TRIGONOMETRIC, HYPERBOLIC & MATRIX OPERATIONS
-======================================================================
- 
-Hyperbolic Functions:
-  SINH(x), HSN(x)            ' Hyperbolic sine
-  COSH(x), HCS(x)            ' Hyperbolic cosine
-  TANH(x), HTN(x)            ' Hyperbolic tangent
- 
-Reciprocal Trigonometric & Inverse Aliases:
-  COT(x)                     ' Cotangent (1 / tan(x))
-  SEC(x)                     ' Secant (1 / cos(x))
-  CSC(x)                     ' Cosecant (1 / sin(x))
-  ASN(x), ASIN(x)            ' Inverse arcsine (radians, [-1, 1])
-  ACS(x), ACOS(x)            ' Inverse arccosine (radians, [-1, 1])
- 
-Angular Conversions, Logarithms & Utilities:
-  RAD(deg)                   ' Convert degrees to radians
-  DEG(rad)                   ' Convert radians to degrees
-  LOG10(x), LGT(x)           ' Common base-10 logarithm
-  LOG2(x)                    ' Binary base-2 logarithm
-  EXN(x), EXP(x)             ' Exponential e^x
-  COMP(a, b)                 ' Comparison: -1 (a<b), 0 (a=b), 1 (a>b)
-  PDIF(a, b)                 ' Positive difference: a-b if a>b else 0
-  DET, DET(), DET(A)         ' Matrix determinant
- 
-Matrix Algebraic Operations:
-  10 OPTION BASE 1
-  20 DIM A(2, 2), B(2, 2), V(2), M(2, 2)
-  30 MAT B = A + 5           ' Scalar addition
-  40 MAT B = A - 2           ' Scalar subtraction
-  50 MAT B = 3 * A           ' Scalar multiplication
-  60 MAT B = A / 10          ' Scalar division
-  70 MAT RES1 = V * M        ' Vector-matrix multiplication (1xN * NxP -> 1xP)
-  80 MAT RES2 = M * V        ' Matrix-vector multiplication (MxN * Nx1 -> Mx1)
-  90 DIM S$(2, 2), S_COPY$(2, 2)
-  100 MAT S$ = NUL$          ' String matrix clear
-  110 MAT S_COPY$ = S$       ' String matrix copy with refcounting
 
+6. EXAMPLE: TYMSHARE SUPER BASIC FEATURES
+
+    10 REM Tymshare Super BASIC Demo
+    20 Z = 3 + 4I
+    30 PRINT "Complex Z: "; Z; " Mag: "; MAG(Z); " Angle: "; ANGLE(Z)
+    40 A$ = "HEURISTIC"
+    50 CHANGE A$ TO V%
+    60 PRINT "Length in V%(0): "; V%(0)
+    70 PRINT "First byte in V%(1): "; V%(1)
+    80 MARGIN 60 : ZONE 10
+    90 PRINT 10, 20, 30, 40

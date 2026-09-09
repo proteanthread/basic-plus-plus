@@ -1,0 +1,58 @@
+==============================================================================
+Title:        Delimiter_And_Bracket_Keyword_Taxonomy
+Tier:         2
+Applies to:   BASIC++ v6.5.2 (baspp, bpp, bs, iot, bppc, trans)
+Authority:    engine/src/eval/ops.c, engine/src/lexer/lexer.c
+Generated:    no, hand-written
+Status:       current
+==============================================================================
+
+BASIC++ DELIMITER & BRACKET ARCHITECTURE: KEYWORD ANALYSIS
+
+The authoritative subsystem specification defining the distinct,
+non-interchangeable semantic roles of standard parentheses ( ), square
+brackets [ ], and curly braces { } across all BASIC++ keywords, functions,
+statements, and evaluation engines.
+
+
+1. EXECUTIVE SUMMARY & CORE DELIMITER INVARIANT
+
+In BASIC++, standard parentheses ( ), square brackets [ ], and curly
+braces { } are strictly non-interchangeable:
+
+1. Parentheses ( ) -- Dedicated to Infix Notation & Algebraic Grouping:
+   - Algebraic precedence: (a + b) * c
+   - Standard function argument lists: SIN(x), MID$(s$, 1, 3)
+   - Traditional array element subscripting: A(i, j)
+2. Square Brackets [ ] -- Dedicated to Prefix Polish Notation & Bounds:
+   - Prefix Polish Notation expressions: [+ 1 2 * 3]
+   - Array and string range slicing: s$[1:5], arr[10..20]
+   - Anonymous list and vector literals: [1, 2, 3, 4]
+   - Hardware memory width and port offsets: PEEK[addr, 4]
+   - UDT type array sizing: Point[10]
+   - UDD sub-channel options: DEV[1, aux]
+3. Curly Braces { } -- Dedicated to Postfix RPN & Maps:
+   - Postfix Reverse Polish Notation: { 1 2 + 3 * }
+   - JSON, dictionary, and hash map literals: {"key": "value"}
+   - Structured TYPE record initializers: Point{x: 10, y: 20}
+   - Variadic mathematical set collections: MIN{1, 5, 2, 8}
+   - String interpolation template expansion: $'User: {name$}'
+
+
+2. DELIMITER ROLE COMPARISON MATRIX
+
+Delimiter    Discipline    Data Role              Specialization
+-----------  ------------  ---------------------  ----------------------------
+( ) Parens   Infix (A + B) Parameters, grouping   GW-BASIC / QBASIC baseline.
+[ ] Brackets Prefix (+ A B) Array literals, slices Hardware widths, UDT sizes.
+{ } Braces   RPN (A B +)   Maps, structs, sets    UDD properties, closures.
+
+
+3. MATHEMATICAL FUNCTION TAXONOMY EXAMPLES
+
+Keyword  Standard Infix ( )  Prefix Bounds [ ]       Postfix Set { }
+-------  ------------------  ----------------------  -------------------------
+RND      RND(n): Float/int   RND[min, max]: Range    RND{seed, count}: Array
+ABS      ABS(x): Scalar abs  ABS[arr]: Vector abs    ABS{v1, v2}: Magnitude
+MIN      MIN(a, b): Min of 2 MIN[arr]: Min in array  MIN{v1, v2, ..}: Set min
+MAX      MAX(a, b): Max of 2 MAX[arr]: Max in array  MAX{v1, v2, ..}: Set max

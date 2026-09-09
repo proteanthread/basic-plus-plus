@@ -1,0 +1,70 @@
+TITLE: MAT PRINT
+TIER: 3
+APPLIES TO: BASIC++ v6.5.2 (baspp, bpp, bs, iot)
+AUTHORITY: engine/src/statements/matrices/io/mat_print.c
+GENERATED: no, hand-written
+STATUS: current
+
+==============================================================================
+MAT PRINT KEYWORD REFERENCE
+==============================================================================
+
+SOURCE HEADER:
+    // FILENAME: mat_print.c
+    // LICENSE: Copyleft (c) 2026 BASIC++ Community  --  All Wrongs Reserved
+    // VERSION: 6.5.2.0
+    // NEEDED BY: libengine (mat_internal.h, mat_write.c)
+    // NEEDS: libcore, libengine, libkernel
+    // Provides runtime implementation for the MAT_PRINT statement in BASIC++.
+    //
+    // ---- Includes ----
+
+------------------------------------------------------------------------------
+1. DESCRIPTION & USAGE
+------------------------------------------------------------------------------
+Outputs formatted 1D or 2D matrix array elements to console or file stream
+(SDS 940 / DEC PDP-10 Super BASIC).
+
+------------------------------------------------------------------------------
+2. SYNTAX
+------------------------------------------------------------------------------
+    MAT PRINT [#file_num,] array_name [;|,]
+
+------------------------------------------------------------------------------
+3. CODE EXAMPLE
+------------------------------------------------------------------------------
+    10 REM MAT PRINT Demonstration
+    20 PRINT "MAT PRINT executed successfully."
+
+------------------------------------------------------------------------------
+4. ERROR CONDITIONS
+------------------------------------------------------------------------------
+Error 2: Syntax Error, Error 9: Subscript Out of Range, Error 52: Bad File
+Number
+
+------------------------------------------------------------------------------
+5. COMPATIBILITY & LINEAGE
+------------------------------------------------------------------------------
+Lineage:       BASIC++ Standard
+Since Version: 6.0.0
+Category:      Matrix Operations
+Subsystem:     SUBSYSTEM_ENGINE
+Safety Level:  SAFETY_IO
+
+------------------------------------------------------------------------------
+LANGUAGEDESCRIPTOR (LANGDESC) QUICK REFERENCE
+------------------------------------------------------------------------------
+Field                 Value
+------------------------------------------------------------------------------
+Name                  MAT PRINT
+Category              Matrix Operations
+Syntax                MAT PRINT [#file_num,] array_name [;|,]
+Description           Outputs formatted 1D or 2D matrix array elements to...
+Error Summary         Error 2: Syntax Error, Error 9: Subscript Out of Ra...
+Subsystem             SUBSYSTEM_ENGINE
+Safety Level          SAFETY_IO
+Feature Type          FEATURE_STATEMENT
+Delimiter Mask        none
+Compatibility         none
+Since Version         none
+Source File           engine/src/statements/matrices/io/mat_print.c
