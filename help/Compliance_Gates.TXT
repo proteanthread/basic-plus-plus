@@ -1,0 +1,373 @@
+==============================================================================
+BASIC++ COMPLIANCE GATES
+How the code is made to comply, and how to keep it that way
+==============================================================================
+
+Version:        1.0
+Date:           2026-09-10
+Tools:          tools/compliance/
+Run:            sh tools/compliance/run_all.sh .
+Companion:      docs/Conformance.md -- WHICH standards apply and why
+                This document -- HOW each one is enforced
+
+
+THE IDEA
+------------------------------------------------------------------------------
+
+A conformance claim without an automated check is not a claim. Every TARGETS
+position in docs/Conformance.md names a gate that would turn it into
+CONFORMS, and this is where those gates live.
+
+Nine gates, one command, one line of output each. They are POSIX sh and
+python3 with no third-party dependencies, because a gate that needs a
+commercial tool does not run on the machine of the person who broke the rule.
+
+THE RATCHET. Every gate compares against a ceiling in
+tools/compliance/baseline.json and fails only on a REGRESSION, never on the
+existing count. This is deliberate. A gate that can never pass gets switched
+off by the first person it annoys. A gate that says "this was 649 and you
+made it 650" gets obeyed. When a number improves the gate SAYS SO and asks
+you to lower the ceiling; that ratchet is the entire mechanism.
+
+WHY THIS MATTERS FOR PORTING. FreeDOS with 16-bit Watcom, an ESP32, a UEFI
+boot target and a hosted Linux build do not share a libc, a word size, or an
+allocator. What they share is the ability to compile ONE translation unit
+that includes ONLY the public headers. Every gate below is, ultimately,
+about protecting that property.
+
+
+------------------------------------------------------------------------------
+GATE 1  FREESTANDING BOUNDARY               gate_freestanding.sh
+------------------------------------------------------------------------------
+
+STANDARD   ISO/IEC 9899:2018 clause 4 paragraph 6
+QUALITY    Flexibility > Adaptability, Portability
+BASELINE   38 violations
+
+WHAT IT CHECKS. C17 permits exactly nine headers in a freestanding
+implementation: float.h, iso646.h, limits.h, stdalign.h, stdarg.h, stdbool.h,
+stddef.h, stdint.h, stdnoreturn.h. Anything else is hosted. Hosted headers
+are permitted ONLY inside:
+
+    engine/lib/platform/      engine/src/hal/       engine/src/hardware/
+    engine/iot/src/           engine/include/platform/
+
+WHY A PLACE AND NOT A PROMISE. "No libc" is unenforceable, because
+plat_net.c genuinely needs <sys/socket.h> -- that is its job. A boundary that
+names directories can be checked in eight lines of shell. A boundary that
+lives in someone's intention drifts one file at a time and nobody notices
+until the FreeDOS build fails.
+
+HOW TO COMPLY.
+  1  If the file IS the platform layer, move it into one of the five
+     directories above. That is not a workaround; it is the correct home.
+  2  If the file needs a facility, call the project's own version:
+       <string.h>   ->  runtime/string/strops.h, runtime/string/memops.h
+       <ctype.h>    ->  runtime/ctype/ctype.h
+       <stdio.h>    ->  runtime/format/snprintf.h, vdev_printf
+       <stdlib.h>   ->  runtime/memory/alloc.h
+       <math.h>     ->  runtime/math/basic.h
+     These exist precisely so that the engine does not reach past them.
+  3  If the file needs something genuinely platform-specific, add a
+     platform_* function in engine/lib/platform/ and call THAT. The engine
+     calls platform_socket_connect; it never calls connect().
+  4  A PUBLIC HEADER that includes a hosted header is the worst case,
+     because it infects every consumer. engine/include/interop/interop_com.h
+     includes <windows.h> and makes anything that includes it Windows-only.
+     Move the include into the .c file, or behind an opaque handle.
+
+
+------------------------------------------------------------------------------
+GATE 2  7-BIT ASCII SOURCE                  gate_ascii.sh
+------------------------------------------------------------------------------
+
+STANDARD   ISO/IEC 9899:2018 clause 5.2.1
+QUALITY    Flexibility > Portability
+BASELINE   1,600 files  (that is all of them)
+
+WHAT IT CHECKS. No byte above 0x7F in any .c or .h.
+
+WHY. C17 leaves the mapping of characters outside the basic source character
+set implementation-defined. A compiler reading UTF-8 in a non-UTF-8 locale
+sees code-page bytes; MSVC emits C4819; a 16-bit Watcom toolchain on FreeDOS
+has no opinion at all and will do something arbitrary. The project's own
+plaintext rule is already 7-bit ASCII, so the source should not be held to a
+lower standard than the documentation.
+
+HOW TO COMPLY. Today the entire cause is one character: U+2014 EM DASH in
+the licence line of the standard file header, 1,676 occurrences, plus a
+single U+2584 in a graphics file. Replace the em dash with a plain hyphen.
+It is one substitution across 1,600 files and it takes minutes.
+
+
+------------------------------------------------------------------------------
+GATE 3  STANDALONE COMPILATION              gate_standalone.sh
+------------------------------------------------------------------------------
+
+STANDARD   ISO/IEC 9899:2018, compiled with -std=c17 -pedantic-errors
+QUALITY    Flexibility, Maintainability > Modularity
+BASELINE   842 compile alone, 14 do not
+
+WHAT IT CHECKS. Every .c under engine/src and engine/lib is compiled ON ITS
+OWN, seeing only engine/include, with pedantic C17 conformance enforced.
+
+WHY THIS IS THE PORTING GATE. A file that cannot be compiled by itself
+cannot be lifted onto a new target one piece at a time. It has to arrive with
+whatever else it silently depends on, and on a 16-bit target that "whatever
+else" is usually the thing that does not fit. If this gate is clean, ANY
+subset of the engine can be taken to a new platform and built.
+
+HOW TO COMPLY.
+  1  Include what you use. If a file calls runtime_strlen it includes
+     runtime/string/strops.h itself; it does not rely on some other header
+     having pulled it in.
+  2  Never depend on include ORDER. If a header needs a type, it includes
+     the header that defines it.
+  3  Forward-declare rather than include, where the type is only used
+     through a pointer. That is how a micro-library stays small.
+  4  -pedantic-errors is not optional here. It is what catches the
+     constructs that a specific compiler tolerates and a different one does
+     not -- the forward enum reference in interop_core.h is exactly that
+     shape.
+
+
+------------------------------------------------------------------------------
+GATE 4  FILE AND FUNCTION SIZE              gate_size.py
+------------------------------------------------------------------------------
+
+STANDARD   ISO/IEC 25010:2023 Maintainability > Modularity, Analysability
+QUALITY    modularity, readability
+BASELINE   83 files over 400 lines, 367 functions over 60
+
+WHAT IT CHECKS. Files against a 400-line ceiling and a 250-line target;
+functions against a 60-line gate.
+
+WHY IT IS NOT ARBITRARY. The median file is 55 lines and the median function
+is 10. The tree is already overwhelmingly small; these ceilings describe what
+the project actually does and catch the drift away from it.
+
+HOW TO COMPLY.
+  1  Split by RESPONSIBILITY, not by line count. A 900-line file that does
+     one thing badly becomes two 450-line files that do one thing badly.
+  2  A dispatch table or a keyword table is legitimately long. Write the
+     exception down in docs/Conformance.md rather than pretending, and keep
+     the exception list short enough to read.
+  3  A long function inside a long file is the real signal. renum.c is 759
+     lines and stmt_renum_handler is 494 of them; that is one function
+     doing six jobs.
+
+
+------------------------------------------------------------------------------
+GATE 5  NO DOXYGEN TAGS                     gate_doxygen.sh
+------------------------------------------------------------------------------
+
+STANDARD   ISO/IEC 25010:2023 Maintainability > Analysability
+BASELINE   70 files
+
+WHAT IT CHECKS. No @brief, @param, @return, @returns anywhere.
+
+WHY. The project's documentation standard is the 6-line file header plus
+conversational comments that explain invariants and failure modes. Doxygen
+tags restate the signature, which the reader can already see, and they crowd
+out the sentence that says why the function exists. This is a house-style
+rule, and the point of the gate is that a house-style rule with 630 live
+violations is not a rule.
+
+HOW TO COMPLY. Delete the tag and, where it said something the signature
+does not, keep the sentence as prose.
+
+
+------------------------------------------------------------------------------
+GATE 6  KEYWORD CONTRACT                    gate_contract.py
+------------------------------------------------------------------------------
+
+STANDARD   ISO/IEC 25010:2023 Functional Suitability > Correctness
+           ISO/IEC/IEEE 26514 -- documentation must match the product
+BASELINE   5 orphans, 5 misfiled, 118 undocumented
+
+WHAT IT CHECKS. Three ways a keyword can lie about itself:
+  ORPHAN        a LangDesc defined and never registered
+  MISFILED      one descriptor registered from two register functions, so
+                HELP EXITIF prints ENDLOOP's text
+  UNDOCUMENTED  a name registered with the dispatcher and no descriptor, so
+                HELP has nothing and lang_desc_export_json omits it -- and
+                that JSON is what the documentation is generated from
+
+HOW TO COMPLY.
+  1  One descriptor per keyword, registered from that keyword's own
+     register function. The five misfiled cases are copy-paste: three
+     register functions in sub.c all pass &g_sub_desc.
+  2  Every registered name gets a descriptor, including the QB64 _-prefixed
+     family and the Apple HGR/HPLOT family. 118 keywords currently work and
+     cannot be discovered.
+  3  Every descriptor gets a registration. Eight statements currently have
+     a descriptor, a handler, documentation, and no way to reach them --
+     including VIEW and PEN, which are GW-BASIC.
+
+
+------------------------------------------------------------------------------
+GATE 7  HEADER DECLARATIONS                 gate_headers.py
+------------------------------------------------------------------------------
+
+STANDARD   ISO/IEC 25010:2023 Maintainability > Analysability
+           IEEE 1016 -- a design description names its dependencies
+BASELINE   35 missing NEEDS, 1 missing NEEDED BY, 84 non-canonical names
+
+WHAT IT CHECKS. Every file carries the 6-line header, and every library
+named in a NEEDS line is one of the canonical names.
+
+WHY IT IS WORTH ENFORCING NOW. On its own a NEEDS line is a comment. Next to
+gate 9, which MEASURES the real dependency graph, it becomes a contract that
+can be diffed against reality. That is the only reason to care about it.
+
+HOW TO COMPLY. Canonical names are libcore, libengine, libkernel,
+libplatform, libstandard, libboot, libhardware, libserver, libreg, libext,
+libadvanced. Today 58 files write "platform" for libplatform, and thirteen
+write "types" -- a header name where a library name belongs.
+
+
+------------------------------------------------------------------------------
+GATE 8  HONEST FAILURE                      gate_stubs.py
+------------------------------------------------------------------------------
+
+STANDARD   ISO/IEC 25010:2023 Safety, Reliability > Fault Tolerance
+           Directive (EU) 2024/2853 -- defectiveness is what a user is
+           entitled to expect, and a silent wrong result is the exposure
+BASELINE   35 statement handlers
+
+WHAT IT CHECKS. A statement handler whose entire body is
+
+    BppError err; runtime_memset(&err, 0, sizeof(err));
+    (void)vm; (void)lex; return err;
+
+A zeroed BppError is SUCCESS. STATESAVE "file" writes no file and reports
+success. SEEK moves no pointer and reports success.
+
+THE DISTINCTION THAT MATTERS. An unimplemented feature is a limitation. An
+unimplemented feature that reports success is a trap, and under the Product
+Liability Directive it is the trap that creates exposure, not the gap.
+
+THE MODEL TO COPY. engine/src/hal/hal_freestanding.c has an entirely
+unimplemented file layer and every single function says so in its return
+value: fs_file_open returns IO_HANDLE_INVALID, fs_file_close returns -1,
+fs_file_read returns 0 bytes, fs_file_exists returns false, fs_file_eof
+returns true. A caller that checks return values learns the truth.
+
+HOW TO COMPLY. Return the error. Error 5, Illegal function call, or a
+dedicated "not supported on this platform" code, is a correct and shippable
+answer. Returning success is not.
+
+
+------------------------------------------------------------------------------
+GATE 9  LINK-TIME MODULARITY                gate_modularity.py
+------------------------------------------------------------------------------
+
+STANDARD   ISO/IEC 25010:2023 Maintainability > Modularity, Flexibility
+QUALITY    modularity, portability, scalability of the build
+BASELINE   649 of 962 translation units exceed a closure of 25  (67.5%)
+
+WHAT IT CHECKS. This is the gate the project never had, and it is the one
+that tests the central claim.
+
+For every object in the build, nm reports what it DEFINES and what it
+REFERENCES. Resolving references to defining objects gives a directed graph.
+The TRANSITIVE CLOSURE of a node is everything that must be linked with it.
+A module whose closure is the whole engine does not stand on its own, no
+matter how clean its source looks.
+
+WHY SOURCE INSPECTION CANNOT FIND THIS. The median module names only SIX
+others directly. Reading any one file, the design looks exactly as intended.
+The coupling is not visible at the scale a human reads at.
+
+HOW TO COMPLY. In increasing order of effort:
+
+  1  ACCESSORS BECOME INLINE OR MOVE TO A LEAF FILE. vm_get_str, vm_get_mem,
+     vm_get_vdev, vm_get_arr, vm_get_file, vm_get_vfs and vm_get_metadata
+     are one-line struct reads, and 492 of the 595 modules in the big cycle
+     reference vm/context.c for one of them. Made static inline in a header,
+     or moved to a context_accessors.c that includes only the struct
+     definition, they stop being an edge at all. Few hours, no call site
+     changes, largest single hub addressed.
+
+  2  CALLERS SUPPLY WHAT THE CALLEE NEEDS. runtime/print_using.c calls
+     eval_expression, vm_set_error, vdev_putc and vm_get_str. A print_using
+     that takes an output callback and a string context as PARAMETERS needs
+     none of them, and is a simpler function as well as a looser one.
+
+  3  REGISTRATION INVERTS. exec_dispatch.c names 303 handlers in 415
+     hand-written stmt_register() calls, so the dispatcher cannot be built
+     without every keyword and no keyword can be built without the
+     dispatcher. PROJECT_RULES PART II section 7 ALREADY requires
+     declarative REGISTER_STATEMENT and REGISTER_FUNCTION macros. With
+     self-registration -- a link-time section, a constructor, or a table the
+     BOOTSTRAP assembles rather than the VM core -- each keyword library
+     becomes independently linkable, which is the actual goal.
+
+WHAT NOT TO DO. Do not go looking for the one bad edge. Two plausible
+single-edge hypotheses were tested during the audit and both failed: cutting
+nineteen layering "back edges" moved the count 649 to 614, and cutting the
+context.c / exec_dispatch.c cycle moved it 649 to 647. The cycle is held by
+many redundant paths. Six files, treated in turn, take it from 595 to 77.
+
+
+------------------------------------------------------------------------------
+THE SCALABILITY GATES -- not yet automated
+------------------------------------------------------------------------------
+
+STANDARD   ISO/IEC 25010:2023 Flexibility > Scalability
+           ISO/IEC 25023:2016 for measurement
+           ISO/IEC 5055:2021 Performance Efficiency for the weakness list
+           Regulation (EU) 2024/2847 Annex I Part I point 2(d) -- protect
+           the availability of essential functions, including resilience
+           against denial of service
+
+An interpreter that can be made to allocate, recurse or loop without bound
+BY ITS INPUT is a denial-of-service surface. That is why scalability sits
+beside security rather than in a performance section.
+
+  1  BOUNDED INPUT. Every loop whose trip count comes from program text or
+     user input has an explicit ceiling AND a defined error when it is
+     reached. Silent truncation is not a ceiling.
+  2  NO HOST RECURSION. Parser and AST state lives in interpreter-managed
+     structures, never on the host stack.
+  3  BOUNDED STACK PER FRAME. No function places a large or unbounded object
+     on the stack. set_pick.c currently uses 14 KB in one call, on a profile
+     whose target has 4 KB.
+  4  ALLOCATION IS DECLARED. Where a module allocates, its size is a
+     function of a declared bound, not of input length.
+  5  COMPLEXITY IS WRITTEN DOWN. Any operation worse than O(n log n) on a
+     user-visible collection carries its complexity in the file header. An
+     interpreter is allowed to be slow; it is not allowed to be
+     SURPRISINGLY slow.
+  6  THE PROFILE IS THE UNIT. BASIC_FREESTANDING_16, the IoT profile and the
+     desktop profile have different ceilings. A scalability claim names its
+     profile or it means nothing.
+
+Gate 5 is the cheapest to start and needs no tooling: it is one line in a
+file header. Gates 1, 3 and 4 have known violations already on the register.
+
+
+------------------------------------------------------------------------------
+STILL OWED
+------------------------------------------------------------------------------
+
+  MISRA C:2012 AMD3       the baseline run. cppcheck ships a misra addon at
+                          /usr/lib/*/cppcheck/addons/misra.py; it reports
+                          rule numbers without the copyrighted rule text,
+                          which is correct and sufficient. Triage Mandatory,
+                          then Required, then Advisory, and remember that
+                          advisory findings are not defects.
+  ISO/IEC 5055:2021       one baseline measurement, then a no-regress gate.
+                          The number matters less than having one.
+  MSVC                    the third compiler. GCC and Clang already
+                          disagreed usefully -- GCC promoted
+                          implicit-function-declaration to an error and
+                          Clang did not, and Clang alone found the
+                          int64/double conversion in ast_internal.h.
+  Test exit status        ISO/IEC/IEEE 29119. Until the suites exit non-zero
+                          on failure, no gate can use them and nothing they
+                          print is evidence of anything.
+
+==============================================================================
+END OF COMPLIANCE GATES
+==============================================================================

@@ -422,6 +422,9 @@ const char  *vm_with_stack_peek(VMContext *vm);
 void vm_halt(VMContext *vm);
 void vm_request_exit(VMContext *vm);
 bool vm_exit_requested(VMContext *vm);
+// Process exit status requested by BYE n or GOODBYE n; 0 unless a program set one.
+void vm_set_exit_code(VMContext *vm, int code);
+int  vm_get_exit_code(VMContext *vm);
 void vm_trigger_break(VMContext *vm);
 bool vm_break_triggered(VMContext *vm);
 void vm_reset_break(VMContext *vm);

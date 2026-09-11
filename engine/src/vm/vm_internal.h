@@ -192,6 +192,7 @@ struct VMContext {
     bool             jump_active;
     bool             running;
     bool             exit_requested;
+    int              exit_code;       // process exit status set by BYE n / GOODBYE n; 0 unless set
     bool             break_triggered;
     bool             break_enabled;
     BppLineNumber    break_trap_line;

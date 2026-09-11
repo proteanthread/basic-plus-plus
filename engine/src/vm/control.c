@@ -244,6 +244,20 @@ void vm_request_exit(VMContext *vm) {
     }
 }
 
+// vm_set_exit_code / vm_get_exit_code - the process exit status a program
+// asked for with BYE n or GOODBYE n. Masked to 0..255 because that is all a
+// POSIX shell or a DOS ERRORLEVEL can see. The bootstrap returns it from
+// main() so a test suite can fail without printing a marker (AUD-0081).
+void vm_set_exit_code(VMContext *vm, int code) {
+    if (vm) {
+        vm->exit_code = code & 0xFF;
+    }
+}
+
+int vm_get_exit_code(VMContext *vm) {
+    return vm ? vm->exit_code : 0;
+}
+
 // vm_exit_requested - Check if the interpreter should exit.
 bool vm_exit_requested(VMContext *vm) {
     return vm ? vm->exit_requested : false;

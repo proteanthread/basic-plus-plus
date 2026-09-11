@@ -442,6 +442,18 @@ add_library(libserver STATIC
 )
 target_include_directories(libserver PUBLIC ${ENGINE_INCLUDE_DIR})
 target_link_libraries(libserver PUBLIC libhardware)
+# libengine calls hash_string, vfs_* and vnet_* (ast_eval_expr_str.c among
+# others) while libserver calls funcreg_register and str_* back in libengine.
+# That is a real cycle between two tiers and it has to be DECLARED so that
+# CMake repeats the archives on the link line; undeclared, ld resolved
+# libserver once, then met libengine's references with nothing left to scan,
+# and bppc and detok could not link on Linux (AUD-0158). The cycle itself is
+# register row AUD-0130 and is scheduled; this line makes the build honest
+# about it until then.
+target_link_libraries(libengine PUBLIC libserver)
+# vm/context.c (libkernel) calls vnet_init / vnet_shutdown in libserver: the
+# same undeclared cycle one tier lower.
+target_link_libraries(libkernel PUBLIC libserver)
 
 # --- 7. Batch Script Runner Subsystem Library: libscript ---
 add_library(libscript STATIC
@@ -548,7 +560,10 @@ if(UNIX)
         target_compile_definitions(${tgt} PUBLIC _POSIX_C_SOURCE=200809L _XOPEN_SOURCE=700 _GNU_SOURCE)
     endforeach()
     target_link_libraries(libplatform PUBLIC m)
-    target_link_libraries(libstandard PUBLIC ncurses)
+    # ncurses is called from lib/platform/plat_console.c, so it belongs to
+    # libplatform. It was on libstandard, which bs, bpp, iot and trans never
+    # link, so none of the four could link on Linux (AUD-0102).
+    target_link_libraries(libplatform PUBLIC ncurses)
 endif()
 
 if(WIN32)
@@ -2364,8 +2379,12 @@ target_link_libraries(libstandard PUBLIC
 
 if(UNIX)
     target_link_libraries(libcore PUBLIC m)
-    target_link_libraries(libstandard PUBLIC ncurses)
 endif()
+foreach(tier libserver libscript libcore libflex libstandard libadvanced libengine libkernel libplatform libhardware libreg libboot libhal libcore_runtime)
+    if(TARGET ${tier})
+        set_target_properties(${tier} PROPERTIES LINK_INTERFACE_MULTIPLICITY ${BPP_LINK_MULTIPLICITY})
+    endif()
+endforeach()
 
 if(WIN32)
     target_link_libraries(libcore PUBLIC ws2_32)

@@ -221,10 +221,11 @@ int main(int argc, char **argv) {
             prompt_pause_if_needed(pause_on_error);
         }
         vdev_gfx_force_flush();
+        int requested_exit = vm_get_exit_code(vm);
         tui_multiplexer_shutdown();
         boot_shutdown_vm(vm);
         platform_shutdown();
-        return err.code;
+        return err.code != 0 ? err.code : requested_exit;
     }
 
     if (script_file) {
@@ -260,10 +261,11 @@ int main(int argc, char **argv) {
                 }
                 prompt_pause_if_needed(pause_on_error);
             }
+            int requested_exit = vm_get_exit_code(vm);
             tui_multiplexer_shutdown();
             boot_shutdown_vm(vm);
             platform_shutdown();
-            return err.code;
+            return err.code != 0 ? err.code : requested_exit;
         }
         // Enter REPL loop after program completes so window stays open
     }
@@ -350,8 +352,11 @@ int main(int argc, char **argv) {
         }
     }
 
+    // A program that said BYE n or GOODBYE n asked for that status. Read it
+    // before the VM is torn down.
+    int requested_exit = vm_get_exit_code(vm);
     tui_multiplexer_shutdown();
     boot_shutdown_vm(vm);
     platform_shutdown();
-    return 0;
+    return requested_exit;
 }

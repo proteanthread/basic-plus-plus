@@ -23,7 +23,7 @@
 static const LangDesc g_system_desc = {
     .name = "SYSTEM",
     .category = "System & Environ",
-    .syntax = "SYSTEM | BYE | SHELL [command_string$]",
+    .syntax = "SYSTEM | BYE [exit_code] | SHELL [command_string$]",
     .description = "Exits BASIC++ interpreter session or executes an operating system command.",
     .error_summary = "Error 2: Syntax Error, Error 70: Permission Denied",
     .subsystem = SUBSYSTEM_ENGINE,
@@ -41,11 +41,21 @@ extern void platform_execute_shell(void);
 BppError stmt_bye_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
     runtime_memset(&err, 0, sizeof(err));
+    // BYE [code]: the optional numeric expression becomes the process exit
+    // status, so a program -- a test suite in particular -- can fail without
+    // printing a marker. Bare BYE is unchanged and exits 0. Not GW-BASIC
+    // syntax, but bare BYE is preserved so Rule #1 holds.
     BppToken tok = lex_peek(lex);
     if (tok.type != TOK_EOF && tok.type != TOK_EOL && tok.type != TOK_BACKSLASH) {
-        err.code = 2;
-        err.message = "Unexpected argument after BYE";
-        return err;
+        BValue code_val = eval_expression(vm, lex, &err);
+        if (err.code != 0) return err;
+        if (code_val.type != VAL_NUMBER && code_val.type != VAL_INTEGER) {
+            if (code_val.type == VAL_STRING) str_release(vm_get_str(vm), code_val.as.string);
+            err.code = 13;
+            err.message = "Type mismatch: BYE expects a numeric exit code";
+            return err;
+        }
+        vm_set_exit_code(vm, (int)code_val.as.number);
     }
     task_mgr_shutdown();
     FileContext *fc = vm_get_file(vm);

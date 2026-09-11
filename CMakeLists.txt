@@ -23,6 +23,16 @@ project(basicpp VERSION 6.5.0 LANGUAGES C CXX)
 # Strict C17 Compliance
 set(CMAKE_C_STANDARD 17)
 set(CMAKE_C_STANDARD_REQUIRED ON)
+# Every object may end up inside libbasicpp.so / libiob.so; without PIC the
+# thread-local g_last_error in interop_error.c cannot be relocated into a
+# shared object on x86-64 (register row AUD-0158).
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+# The engine is ~900 static micro-libraries with mutual references (register
+# row AUD-0130). GNU ld resolves a static archive once, in order, so a symbol
+# referenced from a later archive is lost. LINK_INTERFACE_MULTIPLICITY tells
+# CMake to repeat the tier libraries on the link line; this replaces the
+# dangling -Wl,--start-group that bs used to carry.
+set(BPP_LINK_MULTIPLICITY 3)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF) # Disable GNU and MSVC language extensions
@@ -141,9 +151,6 @@ add_executable(bs engine/src/bootstrap/server/server.c ${HEADLESS_OBJECTS})
 target_include_directories(bs PRIVATE engine/include)
 target_compile_definitions(bs PRIVATE BASIC_LITE_BUILD BASIC_HEADLESS_BUILD NO_SDL2)
 target_link_libraries(bs PRIVATE libscript ${SYS_LIBS})
-if(NOT MSVC)
-    set_target_properties(bs PROPERTIES LINK_FLAGS "-Wl,--start-group")
-endif()
 
 # --- Binary Target 4: bppc (Transpiler/Compiler Tool) ---
 add_executable(bppc
@@ -159,7 +166,7 @@ add_executable(bppc
     ${FULL_STD_OBJECTS}
 )
 target_include_directories(bppc PRIVATE engine/include)
-target_link_libraries(bppc PRIVATE libadvanced ${SDL2_LIBRARIES} ${SYS_LIBS})
+target_link_libraries(bppc PRIVATE libadvanced libscript libserver ${SDL2_LIBRARIES} ${SYS_LIBS})
 if(MSVC)
     target_link_libraries(bppc PRIVATE delayimp.lib)
     target_link_options(bppc PRIVATE "/DELAYLOAD:SDL2.dll")
@@ -168,7 +175,7 @@ endif()
 # --- Binary Target 5: detok (GW-BASIC Detokenizer Tool) ---
 add_executable(detok engine/src/tools/detok.c ${FULL_STD_OBJECTS})
 target_include_directories(detok PRIVATE engine/include)
-target_link_libraries(detok PRIVATE libadvanced ${SDL2_LIBRARIES} ${SYS_LIBS})
+target_link_libraries(detok PRIVATE libadvanced libscript libserver ${SDL2_LIBRARIES} ${SYS_LIBS})
 
 # --- Binary Target 6: trans (Source-to-Source Transpiler Tool) ---
 add_executable(trans

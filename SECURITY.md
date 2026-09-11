@@ -151,15 +151,35 @@ other architecture the port functions compile to a no-op returning zero, with
 no diagnostic. A program that believes it has written to a hardware register
 on ARM or RISC-V has not.
 
-### Untrusted programs
+### The sandbox is advisory — do not run untrusted programs
 
-BASIC++ has a real capability and safety model — per-keyword safety levels, a
-fifteen-flag module capability mask, `SCOPE DISABLE`, and virtual filesystem
-path sandboxing — and it is enforced rather than advisory. It has not been
-independently audited. If you intend to run untrusted BASIC programs, set the
-safety level explicitly, declare only the capabilities the program needs,
-mount only the paths it needs, and treat the sandbox as defence in depth
-rather than as a boundary you would bet on.
+An earlier version of this document said the safety model was "enforced
+rather than advisory". That was wrong, and the audit that found it is
+recorded as AUD-0149 in the project's defect register.
+
+What exists: a global security level (`SECURITY OPEN` through
+`SECURITY PARANOID`, default **OPEN**), a per-keyword restriction list set by
+`SCOPE DISABLE`, a required level on module specs, and one capability check on
+file channels. The per-keyword `SAFETY_*` level carried by every descriptor is
+metadata only — nothing reads it.
+
+What that means in practice, verified on the current release:
+
+```
+10 SECURITY PARANOID
+20 EXTERN "libc.so.6", "getpid"           ' accepted: native code loads
+30 SHELL "echo shell-ran"                 ' runs
+40 OPEN "/tmp/x" FOR OUTPUT AS #1         ' file written
+```
+
+`EXTERN`, `SHELL` and `OPEN` do not consult the security level at all. The
+statements that do — sound, audio, task and introspection — are the least
+dangerous in the language.
+
+**Do not run BASIC programs you do not trust, at any security level, until
+this is fixed.** The fix is scheduled as the first item of the 7.0.0 build:
+make the dispatcher read the safety level it already carries, and gate
+`EXTERN`, `SHELL`, `OPEN` and the network family on it.
 
 ---
 
@@ -204,4 +224,4 @@ defect to everyone at once.
 
 ---
 
-*Last reviewed: 2026-09-09*
+*Last reviewed: 2026-09-11*
