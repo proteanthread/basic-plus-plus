@@ -1,0 +1,22 @@
+{
+  "_comment": "Baseline measured 2026-09-10 against v6.5.2. Every number here is a CEILING: a gate fails when the count goes UP. Lower these as the build steps land; never raise one without a recorded reason. regression_failing_suites counts suites tests/run.sh reports as failing; 3 at baseline (pick_dynamic, vintage_compatibility_gate, gwbasic_qbasic_compat).",
+  "_measured": "2026-09-10",
+  "_applies_to": "v6.5.2",
+  "freestanding_violations": 38,
+  "ascii_files": 1600,
+  "standalone_failures": 14,
+  "size_files_over": 83,
+  "size_funcs_over": 367,
+  "doxygen_files": 70,
+  "contract_orphans": 5,
+  "contract_misfiled": 5,
+  "contract_undocumented": 118,
+  "headers_no_needs": 35,
+  "headers_no_neededby": 1,
+  "headers_bad_vocab": 84,
+  "stub_handlers": 35,
+  "modularity_over_closure": 649,
+  "modularity_total_units": 962,
+  "modularity_closure_gate": 25,
+  "regression_failing_suites": 3
+}
